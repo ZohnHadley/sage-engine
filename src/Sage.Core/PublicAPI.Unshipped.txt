@@ -1,4 +1,6 @@
 #nullable enable
+const Sage.Core.ContentProblem.NoFile = "(no file)" -> string!
+override Sage.Core.ContentProblem.ToString() -> string!
 Sage.Core.AssemblyContentMount
 Sage.Core.AssemblyContentMount.AssemblyContentMount(string! name, System.Reflection.Assembly! assembly, string! recordNamespace) -> void
 Sage.Core.AssemblyContentMount.Count.get -> int
@@ -29,6 +31,19 @@ Sage.Core.ContentMountReport.Patched.get -> System.Collections.Generic.IReadOnly
 Sage.Core.ContentMountReport.Redefinitions.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Core.ContentMountReport.Shadows.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ShadowedAsset!>!
 Sage.Core.ContentMountReport.SkippedPatches.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.ContentProblem
+Sage.Core.ContentProblem.ContentProblem(bool IsError, string! File, int Line, string! Message, Sage.Core.RecordId Record = default(Sage.Core.RecordId)) -> void
+Sage.Core.ContentProblem.File.get -> string!
+Sage.Core.ContentProblem.File.init -> void
+Sage.Core.ContentProblem.IsError.get -> bool
+Sage.Core.ContentProblem.IsError.init -> void
+Sage.Core.ContentProblem.Line.get -> int
+Sage.Core.ContentProblem.Line.init -> void
+Sage.Core.ContentProblem.Message.get -> string!
+Sage.Core.ContentProblem.Message.init -> void
+Sage.Core.ContentProblem.Record.get -> Sage.Core.RecordId
+Sage.Core.ContentProblem.Record.init -> void
+Sage.Core.ContentProblems
 Sage.Core.ContentReport
 Sage.Core.ContentReport.Conflicts.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.ContentConflict!>!
 Sage.Core.ContentReport.Lines(string? mount = null) -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -159,6 +174,9 @@ override Sage.Core.ContentConflict.ToString() -> string!
 override Sage.Core.ContentReport.ToString() -> string!
 override Sage.Core.ModManifest.ToString() -> string!
 override Sage.Core.RecordWrite.ToString() -> string!
+static Sage.Core.ContentProblems.Build(Sage.Core.RecordStore! records, Sage.Core.VirtualFileSystem? vfs) -> System.Collections.Generic.IReadOnlyList<Sage.Core.ContentProblem!>!
+static Sage.Core.ContentProblems.Lines(System.Collections.Generic.IReadOnlyList<Sage.Core.ContentProblem!>! problems) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Core.ContentProblems.Summary(int errors, int warnings) -> string!
 static Sage.Core.ContentReport.Build(Sage.Core.RecordStore! records, Sage.Core.VirtualFileSystem! vfs) -> Sage.Core.ContentReport!
 static Sage.Core.ContentReport.IsModMount(Sage.Core.IMount? mount) -> bool
 static Sage.Core.ContentReport.NameOf(Sage.Core.IMount? mount) -> string!

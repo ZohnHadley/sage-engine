@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace Sage.Editing;
 
@@ -44,10 +43,6 @@ public sealed class ProblemList : IDisposable
     private readonly List<Problem> _doc = new();
     private readonly List<Problem> _all = new();
     private List<ProblemGroup> _groups = new();
-
-    // "mount:path:line:col: " (the column optional) at the start of a loader message, then maybe "type id: ".
-    private static readonly Regex Where = new(@"^(?<file>\S+?\.[A-Za-z0-9]+):(?<line>\d+)(?::\d+)?: ", RegexOptions.Compiled);
-    private static readonly Regex Subject = new(@"^(?<type>[a-z_][a-z_0-9]*) (?<id>[^\s:]+:[^\s:]+): ", RegexOptions.Compiled);
 
     public ProblemList(Engine engine, EditDocument? document = null)
     {
@@ -91,40 +86,8 @@ public sealed class ProblemList : IDisposable
     private void RefreshContent()
     {
         _content.Clear();
-        var records = _engine.Records;
-        foreach (string message in records.LoadErrors) _content.Add(FromMessage(ProblemSeverity.Error, message));
-        foreach (string message in records.LoadWarnings) _content.Add(FromMessage(ProblemSeverity.Warning, message));
-        try
-        {
-            var report = ContentReport.Build(records, _engine.Vfs);
-            foreach (var conflict in report.Conflicts)
-                _content.Add(new Problem(ProblemSeverity.Warning, conflict.Winner.Name, 0, $"conflict: {conflict.Line}", conflict.Id));
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            Log.Warn(LogCat.Editor, $"problems: the content report failed: {ex.Message}");
-        }
-    }
-
-    private static Problem FromMessage(ProblemSeverity severity, string message)
-    {
-        string file = "(no file)";
-        int line = 0;
-        var at = Where.Match(message);
-        if (at.Success)
-        {
-            file = at.Groups["file"].Value;
-            line = int.Parse(at.Groups["line"].Value, System.Globalization.CultureInfo.InvariantCulture);
-            message = message[at.Length..];
-        }
-        RecordId record = default;
-        var subject = Subject.Match(message);
-        if (subject.Success)
-        {
-            try { record = RecordId.Parse(subject.Groups["id"].Value, ""); }
-            catch (FormatException) { }
-        }
-        return new Problem(severity, file, line, message, record);
+        foreach (var p in ContentProblems.Build(_engine.Records, _engine.Vfs))
+            _content.Add(new Problem(p.IsError ? ProblemSeverity.Error : ProblemSeverity.Warning, p.File, p.Line, p.Message, p.Record));
     }
 
     private void RefreshDocument()

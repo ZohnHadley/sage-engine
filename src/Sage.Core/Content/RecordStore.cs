@@ -986,6 +986,12 @@ public sealed class RecordStore
             Log.Info(LogCat.Console, Describe(a[0], Resolve(a[0], a[1])));
         });
         cvars.RegisterCommand("rec_reload", CVarFlags.None, "Reload and re-merge all record files.", _ => Reload());
+        // The content's errors and warnings with file:line, and mod conflicts: what `sage validate` says about
+        // the records, without the editor (issue #301). Not dev-only: a Shipping build in the field can run it.
+        cvars.RegisterCommand("problems", CVarFlags.None, "problems: the content's errors and warnings with file and line, and mod conflicts, from the last load.", _ =>
+        {
+            foreach (var line in ContentProblems.Lines(ContentProblems.Build(this, _vfs))) Log.Info(LogCat.Console, line);
+        });
         // With the record commands, so it answers with no mods too: a game patching a kit (4j-2).
         cvars.RegisterCommand("mod_conflicts", CVarFlags.None, "mod_conflicts [mount]: what each mount added, patched and shadowed, and where mods conflict.", a =>
         {
