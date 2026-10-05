@@ -936,6 +936,12 @@
           },
           "minItems": 3,
           "maxItems": 3
+        },
+        "gravityScale": {
+          "description": "The scene's gravity, times the world's (1: the same; 0: none), for what falls and walks in it. Range: 0 to 10. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
         }
       },
       "additionalProperties": false
@@ -961,6 +967,11 @@
         "Exterior",
         "Interior"
       ]
+    },
+    "live": {
+      "description": "Stay live — placed and simulated — when the player leaves for another scene, instead of going dormant (an exterior only while the player is inside) (bool, default false)",
+      "default": false,
+      "type": "boolean"
     }
   },
   "additionalProperties": false

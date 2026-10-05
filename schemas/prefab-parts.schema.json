@@ -159,6 +159,14 @@
         }
       ]
     },
+    "follower": {
+      "description": "Prefab part 'follower' (FollowerPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/follower"
+        }
+      ]
+    },
     "foot_ik": {
       "description": "Prefab part 'foot_ik' (FootIkPart).",
       "allOf": [
@@ -462,6 +470,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/state_machine"
+        }
+      ]
+    },
+    "streaming_ring": {
+      "description": "Prefab part 'streaming_ring' (StreamingRingPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/streaming_ring"
         }
       ]
     },
@@ -1060,6 +1076,19 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'first_person_rig' (FirstPersonRigPart)."
+    },
+    "follower": {
+      "type": "object",
+      "properties": {
+        "distance": {
+          "description": "How far behind the player it arrives after a journey. Unit: m. At least 0. (float, default 2)",
+          "default": 2,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'follower' (FollowerPart)."
     },
     "foot_ik": {
       "type": "object",
@@ -2862,6 +2891,27 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'state_machine' (StateMachinePart)."
+    },
+    "streaming_ring": {
+      "type": "object",
+      "properties": {
+        "radius": {
+          "description": "Full-detail sectors kept around it (0: only the one it stands in) Unit: sectors. Range: 0 to 8. (int, default 1)",
+          "default": 1,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "farRadius": {
+          "description": "Coarse ground and far looks out to here (0, or not more than radius: none) Unit: sectors. Range: 0 to 16. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'streaming_ring' (StreamingRingPart)."
     },
     "third_person_rig": {
       "type": "object",

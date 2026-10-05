@@ -27,6 +27,11 @@ internal sealed class CharacterMovementSystem : ISystem
     private readonly OverlapHit[] _overlaps = new OverlapHit[8];
     private readonly World _world;
     private readonly WaterVolumes _water;
+    // The space's gravity where the character being moved is (4m-17), times its profile's.
+#pragma warning disable SAGE0129 // space gravity (4m-17): physics ships with the engine that declares it
+    private SpaceGravity? _spaceGravity;
+#pragma warning restore SAGE0129
+    private float _gravityScale = 1f;
 
     // The outputs a character fires going into and out of water (issue #262); declared by CharacterModule.
     internal const string OnEnterWater = "OnEnterWater";
@@ -52,6 +57,9 @@ internal sealed class CharacterMovementSystem : ISystem
     public void Run(in SystemContext ctx)
     {
         float dt = ctx.Tick.Dt;
+#pragma warning disable SAGE0129 // space gravity (4m-17): physics ships with the engine that declares it
+        _spaceGravity ??= _world.Resources.TryGet<SpaceGravity>(out var gravity) ? gravity : null;
+#pragma warning restore SAGE0129
         foreach (var (transforms, characters, intents, entities) in _characters.Chunks)
         {
             var t = transforms.Span;
@@ -65,6 +73,8 @@ internal sealed class CharacterMovementSystem : ISystem
     private void Move(Entity entity, ref Transform transform, ref CharacterController character, in PawnIntent intent, float dt)
     {
         var profile = _conventions.ProfileOf(_records, character.Profile);
+        _gravityScale = _spaceGravity?.ScaleAt(_world, transform.LocalPosition) ?? 1f;
+#pragma warning restore SAGE0129
         var mask = LayerMask.All.Except(character.Layer);
         // Height is not saved: a character loaded crouched comes back crouched, under whatever it was under.
         if (character.Height <= 0) character.Height = character.Crouching ? profile.CrouchHeight : profile.StandHeight;
@@ -155,7 +165,7 @@ internal sealed class CharacterMovementSystem : ISystem
         }
         else if (!character.Grounded)
         {
-            character.Velocity.Y += profile.Gravity * dt;
+            character.Velocity.Y += profile.Gravity * _gravityScale * dt;
         }
         else if (character.Velocity.Y < 0)
         {
@@ -170,7 +180,7 @@ internal sealed class CharacterMovementSystem : ISystem
             if (downhill.LengthSquared() > 1e-6f)
             {
                 downhill = Vector3.Normalize(downhill);
-                character.Velocity += downhill * (MathF.Abs(profile.Gravity) * (1f - normal.Y) * dt);
+                character.Velocity += downhill * (MathF.Abs(profile.Gravity) * _gravityScale * (1f - normal.Y) * dt);
 
                 // And it can't push itself uphill.
                 Vector3 uphill = -downhill with { Y = 0 };

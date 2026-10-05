@@ -228,6 +228,28 @@ public class Game1 : Game
         return "sage";
     }
 
+    // host_maxfps: sleep out the rest of the frame (coarse sleep, then spin the last millisecond).
+    private void LimitFrameRate()
+    {
+        int cap = hostCVars.MaxFps.Value;
+        double now = limiterClock.Elapsed.TotalSeconds;
+        if (cap > 0)
+        {
+            double wait = FrameLimiter.Remaining(cap, lastFrameStart, now);
+            while (wait > 0)
+            {
+                if (wait > 0.002) System.Threading.Thread.Sleep((int)((wait - 0.001) * 1000));
+                else System.Threading.Thread.SpinWait(50);
+                now = limiterClock.Elapsed.TotalSeconds;
+                wait = FrameLimiter.Remaining(cap, lastFrameStart, now);
+            }
+        }
+        lastFrameStart = now;
+    }
+
+    private readonly System.Diagnostics.Stopwatch limiterClock = System.Diagnostics.Stopwatch.StartNew();
+    private double lastFrameStart;
+
     private void ApplyVSync()
     {
         graphics.SynchronizeWithVerticalRetrace = hostCVars.VSync.Value;
@@ -280,6 +302,7 @@ public class Game1 : Game
     protected override void Update(GameTime gameTime)
     {
         Log.SetFrame(++frame);
+        LimitFrameRate();
         float realDt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         // A console script paces itself with `wait` (02 §4.2), which means somebody has to age it.
