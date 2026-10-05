@@ -125,6 +125,8 @@ The RPG kit, the Sandbox, Hello and the `sage-game` template declare `>=0.1`.
    also retired the test that held Shipped empty before the first release.)
 3. Review `docs/` for the version (MAKING_A_GAME's install line names the templates' file), merge.
 4. Tag the merge commit and push the tag: `git tag -a v0.1.0 -m "Sage 0.1.0" && git push origin v0.1.0`.
+   Or, without a clone, draft a release on GitHub's Releases page with a new tag `v0.1.0` on `main` and
+   publish it: the tag it creates starts the same workflow, which attaches the packages to that release.
    Every build of that commit is now `0.1.0`; the next commit is `0.1.1-alpha.0.1`.
 5. The tag starts the release workflow ([`.github/workflows/release.yml`](../.github/workflows/release.yml)):
    on Windows, so the Player's shaders compile, it builds the tagged commit in all three configurations,

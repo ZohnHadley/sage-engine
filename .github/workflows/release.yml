@@ -67,5 +67,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" "$FEED"/*.nupkg \
-            --title "Sage ${GITHUB_REF_NAME#v}" --generate-notes --verify-tag
+          # A release made on GitHub's Releases page creates the tag, which starts this run: attach the
+          # packages to it. A tag pushed from git has no release yet: create one.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$FEED"/*.nupkg --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$FEED"/*.nupkg \
+              --title "Sage ${GITHUB_REF_NAME#v}" --generate-notes --verify-tag
+          fi
