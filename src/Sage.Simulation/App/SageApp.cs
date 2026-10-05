@@ -45,6 +45,10 @@ public sealed class SageAppOptions
     // Archived cvars are written back to it on shutdown. Null: neither.
     public string? ConfigFile { get; init; }
 
+    // autoexec.cfg (issue #299): commands run right after config.cfg, so they win over saved values.
+    // Optional; a missing file is not an error.
+    public string? AutoexecFile { get; init; }
+
     // `+command` launch arguments, run once the first world exists.
     public IReadOnlyList<string> LaunchCommands { get; init; } = Array.Empty<string>();
 
@@ -307,6 +311,8 @@ public sealed class SageApp : IDisposable
         CVars.CVarSeal.Seal("config.cfg was read");
         if (_options.ConfigFile is { } config && File.Exists(config))
             CVars.ExecFile(config, ExecSource.Config);
+        if (_options.AutoexecFile is { } autoexec && File.Exists(autoexec))
+            CVars.ExecFile(autoexec, ExecSource.Config);
     }
 
     public void LoadContent()
