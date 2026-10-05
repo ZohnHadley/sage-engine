@@ -17,8 +17,9 @@ namespace Sage.Core;
 // parallel; later a server or an editor's play world): it used to write into the same Dictionary,
 // corrupting it ("an item with the same key has already been added") and allocating on the other
 // world's behalf; now it has tables of its own. `Enabled` is still one setting for the process.
-// Later: Chrome-trace dump (profile_start/profile_stop) and Tracy.
-public static class Profiler
+// A capture of every scope as a Chrome trace (trace_start / trace_dump, issue #300) is ProfilerTrace.cs;
+// Tracy is later.
+public static partial class Profiler
 {
     public sealed class Entry
     {
@@ -74,7 +75,9 @@ public static class Profiler
         public void Dispose()
         {
             if (_entry == null) return;
-            _entry.Ticks += Stopwatch.GetTimestamp() - _start;
+            long end = Stopwatch.GetTimestamp();
+            _entry.Ticks += end - _start;
+            if (_capture != null) Capture(_entry.Name, _start, end);
             _entry.Calls++;
             if (_tracking != null)
             {
@@ -132,6 +135,7 @@ public static class Profiler
     // accumulators.
     public static void EndFrame()
     {
+        if (_capture != null) { long now = Stopwatch.GetTimestamp(); Capture(FrameMarker, now, now); }
         double msPerTick = 1000.0 / Stopwatch.Frequency;
         foreach (var e in Current.Ordered)
         {

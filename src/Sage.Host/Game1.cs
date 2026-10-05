@@ -437,6 +437,7 @@ public class Game1 : Game
         dev.EndFrame(frameSeconds);
 #endif
         Profiler.EndFrame();
+        WorkStats.EndFrame();   // this frame's jobs, loads and uploads, for `stat render` / `stat assets` (#300)
     }
 
     // What a save keeps of the screen (issue #285): the back buffer, at most 320 pixels wide. A save is

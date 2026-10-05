@@ -35,6 +35,10 @@ public struct RenderStats
 
     // Full-screen draws of the post-processing chain this frame (issue 4h-6): 0 while it is off.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int PostSteps;
+
+    // What the renderer holds (`stat assets`, issue #300): mesh slots (an unloaded one counts until it is
+    // reused), textures and materials, the placeholders not counted.
+    public int Meshes, Textures, Materials;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -351,6 +355,14 @@ public sealed class Renderer : IDisposable
     // The mesh for a `.glb` stream, not yet in the table; null when it cannot be read.
     private MeshData? BuildMesh(string name, System.IO.Stream stream)
     {
+        WorkStats.LoadStarted();   // `stat assets` (issue #300)
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { return BuildMeshTimed(name, stream); }
+        finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
+    }
+
+    private MeshData? BuildMeshTimed(string name, System.IO.Stream stream)
+    {
         if (!GltfLoader.TryLoad(stream, name, out var model)) return null;
 
         var parts = new List<MeshPart>(model.Parts.Count);
@@ -371,6 +383,7 @@ public sealed class Renderer : IDisposable
             }
             var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, loaded.Indices.Length, BufferUsage.WriteOnly);
             ib.SetData(loaded.Indices);
+            WorkStats.Uploaded((long)vb.VertexCount * vb.VertexDeclaration.VertexStride + loaded.Indices.Length * 4L);
 
             parts.Add(new MeshPart
             {
@@ -398,6 +411,7 @@ public sealed class Renderer : IDisposable
         vb.SetData(vertices.ToArray());
         var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, indices.Length, BufferUsage.WriteOnly);
         ib.SetData(indices.ToArray());
+        WorkStats.Uploaded((long)vertices.Length * VertexPositionNormalTexture.VertexDeclaration.VertexStride + indices.Length * 4L);   // `stat render` (issue #300)
         var part = new MeshPart
         {
             VertexBuffer = vb,
@@ -505,6 +519,7 @@ public sealed class Renderer : IDisposable
         {
             Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, FogCulled = s.FogCulled, Lights = s.Lights.Count,
             Bones = s.Bones.Count,
+            Meshes = _meshes.Count - 1, Textures = _textures.Count - 1, Materials = Materials.Count,
         };
         Plan(s);
         _sprites.FaceCameraPosition = _spriteFaceCamera.Value;

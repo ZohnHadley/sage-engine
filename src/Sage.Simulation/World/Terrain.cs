@@ -272,10 +272,20 @@ public sealed class Terrain
         return job;
     }
 
-    private Lazy<Heightfield> Job(ITerrainGenerator generator, int seed, SectorCoord coord, int resolution) =>
-        new(() =>
+    // Every one of these is evaluated (Prefetch and Coarse start them, Load takes the value), so each is a
+    // load in `stat assets` from when it is made to when its heights are there (issue #300).
+    private Lazy<Heightfield> Job(ITerrainGenerator generator, int seed, SectorCoord coord, int resolution)
+    {
+        WorkStats.LoadStarted();
+        return new(() =>
         {
-            var heights = Generate(generator, seed, coord, resolution);
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            Heightfield heights;
+            using (Profiler.Begin(resolution == SectorResolution ? "Job.TerrainSector" : "Job.TerrainCoarse"))
+            {
+                try { heights = Generate(generator, seed, coord, resolution); }
+                finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
+            }
             if (resolution == SectorResolution)
             {
                 if (Environment.CurrentManagedThreadId == _mainThread) GeneratedHere++;
@@ -283,10 +293,15 @@ public sealed class Terrain
             }
             return heights;
         }, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+    }
 
     // In a method of its own: a lambda capturing `job` in Prefetch would allocate its closure on every
     // call, even the ones that return early (it is made where the captured local's scope begins).
-    private static void Start(Lazy<Heightfield> job) => System.Threading.Tasks.Task.Run(() => Run(job));
+    private static void Start(Lazy<Heightfield> job)
+    {
+        WorkStats.JobStarted();
+        System.Threading.Tasks.Task.Run(() => Run(job));
+    }
 
     // A worker's half: claims the job unless the main thread got there first. A generator that throws is
     // reported when the main thread takes the result (Lazy keeps the exception), not here.
@@ -294,6 +309,7 @@ public sealed class Terrain
     {
         try { _ = job.Value; }
         catch (Exception) { /* rethrown by Lazy.Value on the main thread */ }
+        finally { WorkStats.JobFinished(); }
     }
 
     // One sector's heights and normals, on whatever thread. With an ITerrainSampler the normals at the

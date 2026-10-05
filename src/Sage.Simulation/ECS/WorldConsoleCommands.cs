@@ -15,6 +15,8 @@ internal static class WorldConsoleCommands
     public static void Register(CVarRegistry cvars, Engine engine)
     {
         engine.Scheduling = new SchedulingCVars(cvars);   // sys_parallel, sys_threads, sys_access_check (#288)
+        engine.VisualLogSettings = new VisualLogCVars(cvars);   // vlog_record, vlog_ticks, vlog_show (#300)
+        RegisterVisualLog(cvars, engine);
 
         cvars.RegisterCommand("ent_list", CVarFlags.None, "ent_list [filter]: list entities in every world.", a =>
         {
@@ -389,5 +391,77 @@ internal static class WorldConsoleCommands
                 Log.Info(LogCat.Console, $"'{world.Name}': x{scale:0.##}");
             }
         });
+    }
+
+    // Scrubbing the visual log (issue #300): which tick every world's log shows, and what it holds.
+    private static void RegisterVisualLog(CVarRegistry cvars, Engine engine)
+    {
+        cvars.RegisterCommand("vlog_at", CVarFlags.DevOnly,
+            "vlog_at <tick|-ticks|live>: show the visual log at a tick, so many ticks before the newest, or live.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "vlog_at <tick|-ticks|live>"); return; }
+            bool live = a[0].Equals("live", StringComparison.OrdinalIgnoreCase);
+            if (!live && !long.TryParse(a[0], out _)) { Log.Warn(LogCat.Console, $"vlog_at: '{a[0]}' is not a tick (or -ticks, or live)"); return; }
+            foreach (var world in engine.Worlds)
+            {
+                var log = world.VisualLog();
+                if (live) log.ScrubTick = null;
+                else
+                {
+                    long at = long.Parse(a[0]);
+                    log.ScrubTick = at < 0 ? log.NewestTick + at : at;
+                }
+                Report(world, log);
+            }
+        });
+
+        cvars.RegisterCommand("vlog_step", CVarFlags.DevOnly,
+            "vlog_step [ticks]: move the visual log's shown tick (default 1; negative goes back).", a =>
+        {
+            int by = 1;
+            if (a.Count > 0 && !int.TryParse(a[0], out by)) { Log.Warn(LogCat.Console, "vlog_step [ticks]"); return; }
+            foreach (var world in engine.Worlds)
+            {
+                var log = world.VisualLog();
+                log.ScrubTick = log.ShownTick + by;
+                Report(world, log);
+            }
+        });
+
+        cvars.RegisterCommand("vlog_list", CVarFlags.DevOnly,
+            "vlog_list [tick]: the visual log's range and categories; with a tick (or 'shown'), its shapes and their text.", a =>
+        {
+            var entries = new List<VisualLogEntry>();
+            foreach (var world in engine.Worlds)
+            {
+                var log = world.VisualLog();
+                if (a.Count == 0)
+                {
+                    Log.Info(LogCat.Console, $"'{world.Name}': {log.Count} shape(s), ticks {log.OldestTick}..{log.NewestTick}, " +
+                                             $"showing {log.ShownTick}{(log.ScrubTick == null ? " (live)" : "")}; " +
+                                             $"categories: {(log.Categories.Count == 0 ? "(none)" : string.Join(", ", log.Categories))}" +
+                                             $"{(log.Recording ? "" : "; vlog_record is off")}");
+                    continue;
+                }
+                long tick = a[0].Equals("shown", StringComparison.OrdinalIgnoreCase) ? log.ShownTick
+                    : long.TryParse(a[0], out long t) ? (t < 0 ? log.NewestTick + t : t) : long.MinValue;
+                if (tick == long.MinValue) { Log.Warn(LogCat.Console, "vlog_list [tick|-ticks|shown]"); return; }
+                entries.Clear();
+                log.CollectAt(tick, entries);
+                Log.Info(LogCat.Console, $"'{world.Name}' tick {tick}: {entries.Count} shape(s)");
+                foreach (var e in entries)
+                    Log.Info(LogCat.Console, $"  [{e.Category}] {e.Shape} at {e.A.X:F1},{e.A.Y:F1},{e.A.Z:F1}" +
+                                             $"{(e.Entity.IsNull ? "" : " " + World.Describe(e.Entity))}{(e.Text != null ? ": " + e.Text : "")}");
+            }
+        });
+
+        cvars.RegisterCommand("vlog_clear", CVarFlags.DevOnly, "vlog_clear: forget the visual log's history, in every world.", _ =>
+        {
+            foreach (var world in engine.Worlds) world.VisualLog().Clear();
+        });
+
+        static void Report(World world, VisualLog log) =>
+            Log.Info(LogCat.Console, $"'{world.Name}': visual log at tick {log.ShownTick}{(log.ScrubTick == null ? " (live)" : "")}, " +
+                                     $"{log.CountAt(log.ShownTick)} shape(s); kept {log.OldestTick}..{log.NewestTick}");
     }
 }

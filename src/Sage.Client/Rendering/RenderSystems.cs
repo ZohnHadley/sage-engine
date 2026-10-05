@@ -461,6 +461,7 @@ internal sealed class DebugExtract : ISystem
 {
     private readonly RenderSnapshot _snapshot;
     private readonly DebugDraw _debug;
+    private readonly VisualLog _visualLog;
     private readonly CVar<bool> _enabled;
     private readonly List<DebugLine> _lines = new(256);   // reused: the frame budget allows no garbage
 
@@ -468,6 +469,7 @@ internal sealed class DebugExtract : ISystem
     {
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _debug = world.Resources.Get<DebugDraw>();
+        _visualLog = world.VisualLog();
         _enabled = enabled;
     }
 
@@ -478,6 +480,7 @@ internal sealed class DebugExtract : ISystem
 
         _lines.Clear();
         _debug.CopyTo(_lines);
+        _visualLog.DrawShown(_lines);   // the visual log's shown tick, live or scrubbed to (#300)
 
         // Every view gets its own camera-relative, near-clipped copy (one run each); the queue ages once.
         var s = _snapshot;

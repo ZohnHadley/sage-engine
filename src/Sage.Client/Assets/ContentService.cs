@@ -241,18 +241,22 @@ public sealed class ContentService : IDisposable
         }
         else
         {
+            WorkStats.LoadStarted();   // `stat assets` (issue #300)
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
                 using var stream = mount.Open(path.Path);
                 texture = Texture2D.FromStream(_device, stream);
                 texture.Name = path.ToString();
                 Premultiply(texture);
+                WorkStats.Uploaded((long)texture.Width * texture.Height * 4);
                 Log.Debug(LogCat.Assets, $"Loaded texture {path} ({texture.Width}x{texture.Height}) from {mount.Name}");
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException)
             {
                 Log.Warn(LogCat.Assets, $"Texture '{path}' from {mount.Name} failed to decode: {ex.Message}");
             }
+            finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
         }
         return _textures[path] = texture;
     }

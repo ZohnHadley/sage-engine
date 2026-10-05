@@ -189,6 +189,37 @@ public sealed class CoreCVars
                 $"allocated total {GC.GetTotalAllocatedBytes() / (1024 * 1024)} MB");
         });
 
+        // A Chrome trace of the profiler's scopes (02 §4.4, issue #300): start, play, dump; open the file in
+        // ui.perfetto.dev or chrome://tracing.
+        r.RegisterCommand("trace_start", CVarFlags.None,
+            "trace_start [max events]: capture every profiler scope on every thread until trace_dump.", a =>
+        {
+            int max = Profiler.DefaultTraceEvents;
+            if (a.Count > 0 && (!int.TryParse(a[0], out max) || max <= 0))
+            {
+                Log.Warn(LogCat.Console, "trace_start [max events]   (a positive number; default 262144)");
+                return;
+            }
+            if (!Profiler.StartCapture(max)) { Log.Warn(LogCat.Console, "trace_start: the profiler is off (a Shipping build)"); return; }
+            Log.Info(LogCat.Console, $"Tracing (up to {max} events); trace_dump writes it");
+        });
+
+        r.RegisterCommand("trace_dump", CVarFlags.None,
+            "trace_dump [file]: stop the capture trace_start began and write it as a Chrome trace (logs/trace-<time>.json; opens in Perfetto).", a =>
+        {
+            if (!Profiler.Capturing && Profiler.CapturedEvents == 0) { Log.Warn(LogCat.Console, "trace_dump: nothing captured (trace_start first)"); return; }
+            try
+            {
+                string file = Profiler.DumpTrace(a.Count > 0 ? a.Rest : null, out int events);
+                int dropped = Profiler.DroppedEvents;
+                Log.Info(LogCat.Console, $"Trace written: {file} ({events} events{(dropped > 0 ? $", {dropped} dropped: trace_start with a larger buffer" : "")})");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Error(LogCat.Console, $"trace_dump: could not write the trace: {ex.Message}");
+            }
+        });
+
         r.RegisterCommand("crash", CVarFlags.DevOnly, "Throw an exception to test the crash reporter.", _ =>
             throw new InvalidOperationException("Deliberate crash from the `crash` console command."));
     }

@@ -35,6 +35,7 @@ public sealed class DevTools : IDisposable
     private readonly DevCamera _camera;
     private readonly DevConsoleWindow _console;
     private readonly StatOverlay _stats;
+    private readonly VisualLogWindow _visualLog;   // vlog_window (#300)
     private readonly ProblemsBadge _badge;
     private readonly CVar<bool> _camFree;
     private readonly CVar<bool> _viewport;
@@ -85,7 +86,8 @@ public sealed class DevTools : IDisposable
         _console = new DevConsoleWindow(cvars, engine.Core,
             () => engine.Records.TypeNames.SelectMany(t => engine.Records.Ids(t)).Select(i => i.ToString()));
         _records = new RecordsPanel(new RecordEditor(engine));
-        _stats = new StatOverlay(cvars, engine.Core);
+        _stats = new StatOverlay(cvars, engine.Core, () => _renderer, () => _world);
+        _visualLog = new VisualLogWindow(cvars, () => _world);
         _badge = new ProblemsBadge(engine);
 
         _camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
@@ -309,6 +311,7 @@ public sealed class DevTools : IDisposable
             _console.Draw();
             _playBar.DrawPlaying();
             _stats.Draw();
+            _visualLog.Draw();
             _badge.Draw();
             _gui.EndLayout();
             return;
@@ -328,6 +331,7 @@ public sealed class DevTools : IDisposable
         DrawViewport();
         _console.Draw();
         _stats.Draw();
+        _visualLog.Draw();
         _badge.Draw();
         _gui.EndLayout();
     }
@@ -350,6 +354,7 @@ public sealed class DevTools : IDisposable
         _console.Draw();
         DrawViewport();
         _stats.Draw();
+        _visualLog.Draw();
         _layout.DrawStatusBar(StatusLine());
         _palette?.HandleViewport();
         if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);

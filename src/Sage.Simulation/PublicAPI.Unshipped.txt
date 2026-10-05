@@ -100,6 +100,7 @@ const Sage.Simulation.Viewmodel.DefaultFar = 10 -> float
 const Sage.Simulation.Viewmodel.DefaultFovY = 54 -> float
 const Sage.Simulation.Viewmodel.DefaultNear = 0.01 -> float
 const Sage.Simulation.Viewmodels.SystemId = "sage.camera.viewmodel" -> string!
+const Sage.Simulation.VisualLog.DefaultHistoryTicks = 600 -> int
 const Sage.Simulation.WorldClock.HoursPerDay = 24 -> double
 const Sage.Simulation.WorldTime.MaxScale = 16 -> double
 const Sage.Simulation.WorldTime.MaxStepsPerTick = 16 -> int
@@ -1621,6 +1622,67 @@ Sage.Simulation.ViewmodelRecord.ViewmodelRecord() -> void
 Sage.Simulation.ViewmodelRecord.Weapon -> Sage.Core.AssetPath
 Sage.Simulation.ViewmodelRecord.WeaponMaterial -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
 Sage.Simulation.Viewmodels
+Sage.Simulation.VisualLog
+Sage.Simulation.VisualLog.Arrow(string! category, System.Numerics.Vector3 from, System.Numerics.Vector3 to, uint colour = 4294967295, string? text = null, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.VisualLog.BeginTick(long tick) -> void
+Sage.Simulation.VisualLog.Box(string! category, System.Numerics.Vector3 center, System.Numerics.Vector3 halfExtents, uint colour = 4294967295, string? text = null, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.VisualLog.Capsule(string! category, System.Numerics.Vector3 feet, float radius, float height, uint colour = 4294967295, string? text = null, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.VisualLog.Categories.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.VisualLog.Circle(string! category, System.Numerics.Vector3 center, float radius, uint colour = 4294967295, string? text = null, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.VisualLog.Clear() -> void
+Sage.Simulation.VisualLog.CollectAt(long tick, System.Collections.Generic.List<Sage.Simulation.VisualLogEntry>! into, bool all = false) -> void
+Sage.Simulation.VisualLog.Cone(string! category, System.Numerics.Vector3 at, float yaw, float degrees, float range, uint colour = 4294967295, string? text = null, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.VisualLog.Count.get -> int
+Sage.Simulation.VisualLog.CountAt(long tick) -> int
+Sage.Simulation.VisualLog.DrawShown(System.Collections.Generic.List<Sage.Simulation.DebugLine>! into) -> void
+Sage.Simulation.VisualLog.HistoryTicks.get -> int
+Sage.Simulation.VisualLog.HistoryTicks.set -> void
+Sage.Simulation.VisualLog.IsShown(string! category) -> bool
+Sage.Simulation.VisualLog.Line(string! category, System.Numerics.Vector3 from, System.Numerics.Vector3 to, uint colour = 4294967295, string? text = null, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.VisualLog.NewestTick.get -> long
+Sage.Simulation.VisualLog.OldestTick.get -> long
+Sage.Simulation.VisualLog.Point(string! category, System.Numerics.Vector3 at, string? text = null, uint colour = 4294967295, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity), float size = 0.2) -> void
+Sage.Simulation.VisualLog.Recording.get -> bool
+Sage.Simulation.VisualLog.Recording.set -> void
+Sage.Simulation.VisualLog.ScrubTick.get -> long?
+Sage.Simulation.VisualLog.ScrubTick.set -> void
+Sage.Simulation.VisualLog.Show(string! categories) -> void
+Sage.Simulation.VisualLog.ShownTick.get -> long
+Sage.Simulation.VisualLog.Sphere(string! category, System.Numerics.Vector3 center, float radius, uint colour = 4294967295, string? text = null, Sage.Simulation.Entity entity = default(Sage.Simulation.Entity)) -> void
+Sage.Simulation.VisualLog.VisualLog() -> void
+Sage.Simulation.VisualLogEntry
+Sage.Simulation.VisualLogEntry.A.get -> System.Numerics.Vector3
+Sage.Simulation.VisualLogEntry.A.init -> void
+Sage.Simulation.VisualLogEntry.B.get -> System.Numerics.Vector3
+Sage.Simulation.VisualLogEntry.B.init -> void
+Sage.Simulation.VisualLogEntry.Category.get -> string!
+Sage.Simulation.VisualLogEntry.Category.init -> void
+Sage.Simulation.VisualLogEntry.Colour.get -> uint
+Sage.Simulation.VisualLogEntry.Colour.init -> void
+Sage.Simulation.VisualLogEntry.Entity.get -> Sage.Simulation.Entity
+Sage.Simulation.VisualLogEntry.Entity.init -> void
+Sage.Simulation.VisualLogEntry.Extra.get -> float
+Sage.Simulation.VisualLogEntry.Extra.init -> void
+Sage.Simulation.VisualLogEntry.Shape.get -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualLogEntry.Shape.init -> void
+Sage.Simulation.VisualLogEntry.Size.get -> float
+Sage.Simulation.VisualLogEntry.Size.init -> void
+Sage.Simulation.VisualLogEntry.Text.get -> string?
+Sage.Simulation.VisualLogEntry.Text.init -> void
+Sage.Simulation.VisualLogEntry.Tick.get -> long
+Sage.Simulation.VisualLogEntry.Tick.init -> void
+Sage.Simulation.VisualLogEntry.VisualLogEntry() -> void
+Sage.Simulation.VisualLogEntry.VisualLogEntry(long Tick, string! Category, Sage.Simulation.VisualShape Shape, System.Numerics.Vector3 A, System.Numerics.Vector3 B, float Size, float Extra, uint Colour, string? Text, Sage.Simulation.Entity Entity) -> void
+Sage.Simulation.VisualLogExtensions
+Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Arrow = 1 -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Box = 3 -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Capsule = 5 -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Circle = 6 -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Cone = 7 -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Cross = 2 -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Line = 0 -> Sage.Simulation.VisualShape
+Sage.Simulation.VisualShape.Sphere = 4 -> Sage.Simulation.VisualShape
 Sage.Simulation.WaterPart
 Sage.Simulation.WaterPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Simulation.WaterPart.Buoyancy -> float
@@ -1879,6 +1941,7 @@ static Sage.Simulation.Viewmodels.Show(Sage.Simulation.World! world, Sage.Simula
 static Sage.Simulation.Viewmodels.WeaponOf(Sage.Simulation.World! world, Sage.Simulation.Entity camera) -> Sage.Simulation.Entity
 Sage.Simulation.LayerMatrix.QueryOnly.get -> Sage.Simulation.LayerMask
 Sage.Simulation.LayerMatrix.Sees(Sage.Simulation.LayerMask mask, int layer) -> bool
+static Sage.Simulation.VisualLogExtensions.VisualLog(this Sage.Simulation.World! world) -> Sage.Simulation.VisualLog!
 static Sage.Simulation.WorldClock.Between(double hour, double from, double to) -> bool
 static Sage.Simulation.WorldClock.Format(double hour) -> string!
 static Sage.Simulation.WorldClock.Of(Sage.Simulation.World! world) -> Sage.Simulation.WorldClock!

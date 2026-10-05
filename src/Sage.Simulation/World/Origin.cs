@@ -109,6 +109,8 @@ public static class OriginExtensions
         // queued them, and they hold positions in the old frame. Dropping them costs a second of
         // visualisation once per kilometre travelled; keeping them draws a sector-wide lie.
         if (world.Resources.TryGet<DebugDraw>(out var debug)) debug!.Clear();
+        // The visual log's history likewise (#300): every shape in it is in the old frame.
+        if (world.Resources.TryGet<VisualLog>(out var vlog)) vlog!.Clear();
         // The camera too: a rig rewrites it from the pawn next frame, but the *editor* camera holds its
         // own position and would otherwise be left a sector behind whatever it was looking at.
         if (world.Resources.TryGet<ActiveCamera>(out var camera) && camera != null) camera.Position += offset;

@@ -133,10 +133,11 @@ internal sealed class ShaderRecompiler : IDisposable
 
         Interlocked.Exchange(ref _running, 1);
         var snapshot = jobs;
+        WorkStats.JobStarted();   // `stat render`'s jobs (issue #300)
         Task.Run(() =>
         {
             try { foreach (var (source, name) in snapshot) Compile(source, name); }
-            finally { Volatile.Write(ref _running, 0); }
+            finally { Volatile.Write(ref _running, 0); WorkStats.JobFinished(); }
         });
     }
 

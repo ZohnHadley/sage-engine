@@ -37,6 +37,7 @@ public sealed class World : IDisposable
     private readonly StructuralEvents _structural;
     private readonly PhaseContracts _contracts;
     private readonly DebugDraw _debugDraw;
+    private readonly VisualLog _visualLog;
     private readonly MessageLog _messages;
     private TickTime _lastTick;
     private long _frame;
@@ -96,6 +97,8 @@ public sealed class World : IDisposable
         Resources.Add(_events);
         _debugDraw = new DebugDraw();        // always there, so `world.Debug()` needs no null check (06 §3.2)
         Resources.Add(_debugDraw);
+        _visualLog = new VisualLog { Settings = engine?.VisualLogSettings };   // and `world.VisualLog()` (#300)
+        Resources.Add(_visualLog);
         _messages = new MessageLog(_events); // and `world.Say(...)` works with or without a HUD (13 §3)
         Resources.Add(_messages);
     }
@@ -484,6 +487,7 @@ public sealed class World : IDisposable
         if (step) _propagation.BeginTick();
         _events.NowTick = _lastTick.Tick;
         _debugDraw.BeginTick();                   // momentary debug shapes are this tick's (06 §3.2)
+        _visualLog.BeginTick(_lastTick.Tick);     // and kept ones are stamped with it (#300)
 
         var frame = new FrameTime(_frame, 0, 1, 0);
         for (var phase = Phase.Commands; phase < PhaseInfo.FirstFrame; phase++)

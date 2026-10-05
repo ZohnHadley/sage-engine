@@ -53,7 +53,9 @@ internal sealed class SystemRun
         catch (Exception ex) { Error = ex; }
         finally
         {
-            Ticks = Stopwatch.GetTimestamp() - start;
+            long end = Stopwatch.GetTimestamp();
+            Ticks = end - start;
+            Profiler.TraceSpan(Info.ProfileName, start, end);   // on the thread it ran on (issue #300)
             Bytes = onWorker ? GC.GetAllocatedBytesForCurrentThread() - bytes : 0;
             AccessCheck.Current = previous;
             OnWorker = false;
