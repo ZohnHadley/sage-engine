@@ -35,6 +35,7 @@ public sealed class DevTools : IDisposable
     private readonly DevCamera _camera;
     private readonly DevConsoleWindow _console;
     private readonly StatOverlay _stats;
+    private readonly ProblemsBadge _badge;
     private readonly CVar<bool> _camFree;
     private readonly CVar<bool> _viewport;
     private readonly CVar<bool> _showEntities;
@@ -84,6 +85,7 @@ public sealed class DevTools : IDisposable
         _console = new DevConsoleWindow(cvars, engine.Core);
         _records = new RecordsPanel(new RecordEditor(engine));
         _stats = new StatOverlay(cvars, engine.Core);
+        _badge = new ProblemsBadge(engine);
 
         _camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
             "Fly the editor camera even while a player pawn owns the view (16 §3.2): it overrides every camera until turned off.");
@@ -306,6 +308,7 @@ public sealed class DevTools : IDisposable
             _console.Draw();
             _playBar.DrawPlaying();
             _stats.Draw();
+            _badge.Draw();
             _gui.EndLayout();
             return;
         }
@@ -324,6 +327,7 @@ public sealed class DevTools : IDisposable
         DrawViewport();
         _console.Draw();
         _stats.Draw();
+        _badge.Draw();
         _gui.EndLayout();
     }
 
