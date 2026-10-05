@@ -1,6 +1,6 @@
 # 04 · ECS, scenes and prefabs
 
-> Status: mostly built. Worlds, entities, components with stable ids, tags, typed queries, command buffers, the hierarchy, transforms with interpolation and large-world rebasing, per-world resources, prefabs with parts, children and per-placement overrides, scenes, placements and persistent ids all work and are tested. Queued add and remove events (#282) and overrides surviving a sector handoff (#279) are built; revert-to-prefab beyond the editor and parallel systems are open. Owning assembly: `Sage.Simulation` (`ECS/`, `Content/`), with the declarations in `Sage.Core` and the generators in `Sage.Generators`. Design docs: [03 world and ECS](../../design/03-world-and-ecs.md), [09 serialization and saves](../../design/09-serialization-and-saves.md), [05 assets and VFS](../../design/05-assets-and-vfs.md) (prefabs, scenes).
+> Status: mostly built. Worlds, entities, components with stable ids, tags, typed queries, command buffers, the hierarchy, transforms with interpolation and large-world rebasing, per-world resources, prefabs with parts, children and per-placement overrides, scenes, placements and persistent ids all work and are tested. Queued add and remove events (#282), overrides surviving a sector handoff (#279) and systems that declare their access running in parallel (#288) are built; revert-to-prefab beyond the editor is open. Owning assembly: `Sage.Simulation` (`ECS/`, `Content/`), with the declarations in `Sage.Core` and the generators in `Sage.Generators`. Design docs: [03 world and ECS](../../design/03-world-and-ecs.md), [09 serialization and saves](../../design/09-serialization-and-saves.md), [05 assets and VFS](../../design/05-assets-and-vfs.md) (prefabs, scenes).
 
 ## 1. Purpose and scope
 
@@ -102,14 +102,11 @@ Content problems are load errors with file and line, never play-time crashes: a 
 | REQ-ECS-14 | Let a placement override a part's state machine and ship an engine prefab for it. | Should | Done | a placement overrides `machine` (#279); the engine prefab `sage:logic_state_machine` (#280); test: AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing, TheEnginePrefabRunsTheMachineAPlacementNames_AndAStatesOutputsAreWirable |
 | REQ-ECS-15 | Publish queued `Added<T>` and `Removed<T>` events instead of immediate C# callbacks. | Should | Done | `src/Sage.Simulation/ECS/Events/StructuralEvents.cs`; test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, ReadingAddsAndRemovesAllocatesNothingPerTick |
 | REQ-ECS-16 | Apply a changed prefab to live unmodified instances, by a declared reload policy. | Could | Done (#287): changed fields, added components and tags follow; removed components, parts and children wait for the next spawn | `[Record(Reload = ReloadPolicy.Live)]` on `prefab` and `scene`, `src/Sage.Simulation/Content/PrefabReload.cs`; test: EditingAPrefabUpdatesTheFieldsNoOneChangedOnEveryLiveInstance, InTheSandboxEditingAPrefabUpdatesItsUnmodifiedInstances, RecordTypesDeclareTheirReloadPolicy, ASaveAfterAReloadDiffsAgainstTheNewPrefab, AValueALoadPutBackIsKeptByAReload, EachReloadFollowsFromTheLastOne |
-| REQ-ECS-17 | Run non-conflicting systems in parallel from declared access. | Could | Not started | #288 |
+| REQ-ECS-17 | Run non-conflicting systems in parallel from declared access. | Could | Done (#288): `IDeclaresAccess`; a dev build reports what a declared system touched without declaring it | test: DeclaredSystemsRunInParallelWithResultsIdenticalToSequential, AnExplicitOrderIsKeptAndAnExclusiveSystemRunsAlone, ADeclaredSystemTouchingWhatItDidNotDeclareIsReported, ASystemThatThrowsInAParallelStageThrowsOutOfTheTickAndLeavesTheWorldUsable |
 | REQ-ECS-18 | Cover hierarchy destruction during a query, two worlds with a save, and sleeping-entity references with tests. | Should | Done | test: DestroyingAParentInsideAQueryIsDeferred_AndTheLoopStillSeesItsChildren, TwoWorldsKeepTheirOwnClocksAndEntities_AcrossASaveAndALoad, AWireToASleepingEntityDoesNothing_ThenWorksOnceItWakes |
 | REQ-ECS-19 | Remove unsaved live entities on load so a load cannot leave strays. | Must | Done | test: ALoadRemovesTheUnsavedSpawnsItDoesNotName, ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves |
 
 ## 10. Open work
-
-Milestone 2, 4m (World, logic and saves):
-- #288 4m-14 Parallel scheduler and access declarations (P3)
 
 Milestone 8, 10b (Editor, part 2):
 - #368 10b-3 Inspector: nested objects, lists, and overrides of components the prefab does not name (P1)

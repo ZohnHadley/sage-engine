@@ -1,6 +1,6 @@
 # 15 · Saves
 
-> Status: built and heavily tested (format 4, four golden saves); thumbnails, compression, a background write, titled slots and a save-version report are built (#285), but the snapshot of a 10k-entity world still costs more than a frame on the tick. Owning assemblies: `Sage.Simulation` (`Content`), `Sage.Core` (declarations). Design doc: [09-serialization-and-saves](../../design/09-serialization-and-saves.md).
+> Status: built and heavily tested (format 4, four golden saves); thumbnails, compression, a background write, titled slots and a save-version report are built (#285), and the snapshot taken on the tick copies component columns, so a 10k-entity save costs the tick about 3 ms (Debug). Owning assemblies: `Sage.Simulation` (`Content`), `Sage.Core` (declarations). Design doc: [09-serialization-and-saves](../../design/09-serialization-and-saves.md).
 
 ## 1. Purpose and scope
 
@@ -25,7 +25,7 @@ Not responsible for: what a slot menu looks like (it is given each slot's title 
 
 ## 3. Placement and dependencies
 
-`SaveSystem` is a partial class in `src/Sage.Simulation/Content` (`SaveSystem.cs`, `SaveRequests.cs`, `SaveBackground.cs`, `SaveReport.cs`) and is owned by `Engine` (`Engine.Saves`). Companions are `SaveSerializer`, `SaveJson`, `SaveDiff`, `SaveAttributes`, `ContentBaseline` (ids and tombstones), `Cells` and `QuickSaveKeysSystem`. It is simulation-only and references nothing above `Sage.Simulation`. Declarations (`[Transient]`, `[Upgrade]`, `[SavedResource]`, `[Component(Version, FormerNames)]`) are in `Sage.Core`. Generated registration by `Sage.Generators` supplies the type lists. Most of the public surface is `[Experimental("SAGE0131")]`, the header's mod list is SAGE0132.
+`SaveSystem` is a partial class in `src/Sage.Simulation/Content` (`SaveSystem.cs`, `SaveRequests.cs`, `SaveBackground.cs`, `SaveCapture.cs`, `SaveReport.cs`) and is owned by `Engine` (`Engine.Saves`). Companions are `SaveSerializer`, `SaveJson`, `SaveDiff`, `SaveAttributes`, `ContentBaseline` (ids and tombstones), `Cells` and `QuickSaveKeysSystem`. It is simulation-only and references nothing above `Sage.Simulation`. Declarations (`[Transient]`, `[Upgrade]`, `[SavedResource]`, `[Component(Version, FormerNames)]`) are in `Sage.Core`. Generated registration by `Sage.Generators` supplies the type lists. Most of the public surface is `[Experimental("SAGE0131")]`, the header's mod list is SAGE0132.
 
 ## 4. Interfaces
 
@@ -66,7 +66,7 @@ Autosaves go to the first free `autosaveN`, then the oldest, never over a slot t
 
 ## 7. Threading, memory and performance
 
-Loading is synchronous on the main thread at a tick boundary. A save's snapshot is on the tick; its write is on a background thread (#285). The snapshot defers components that need nothing but their own value to the writer and skips one still bit for bit as its prefab spawned it; for 10k spawned entities that took the tick's share from about 190 ms to about 50 to 75 ms (Debug build), with about 140 to 220 ms of writing moved off it; the snapshot alone is still more than a frame (REQ-PERF-07 in the [SRS](../SRS.md); test: `ATenThousandEntitySaveDoesNotStallAFrame`; #285). The slot list is read once and cached because a menu reads it every frame (test: `SaveSlotsListTheHeadersNewestFirstAndAreReadAgainOnlyWhenTheyChange`). A save is not part of a steady-state tick, so the zero-allocation rule does not cover it.
+Loading is synchronous on the main thread at a tick boundary. A save's snapshot is on the tick; its write is on a background thread (#285). The snapshot copies, per archetype that holds persistent entities, every saved component column whole, with the ids, prefabs and names (`SaveCapture`); the writer builds each entity's JSON (ids, the diff against the prefab, tags) from the copies with the same code a save between ticks uses. What stays on the tick is what needs the world: components with entity references, lists or a plugin's converter (serialised per entity), content sources, parents, kept placements and a copy per prefab of the baseline. For 10k spawned crates (Debug build) the snapshot went from about 95 to 136 ms to about 2.3 to 3.1 ms, with 230 to 300 ms of writing off the tick (REQ-PERF-07 in the [SRS](../SRS.md); test: `ATenThousandEntitySaveDoesNotStallAFrame`, which asserts nothing is serialised on the tick); a background save is the file a save written there and then would be (test: `ABackgroundSaveIsTheTickItWasTakenOn`). The slot list is read once and cached because a menu reads it every frame (test: `SaveSlotsListTheHeadersNewestFirstAndAreReadAgainOnlyWhenTheyChange`). A save is not part of a steady-state tick, so the zero-allocation rule does not cover it.
 
 ## 8. Errors and diagnostics
 
@@ -100,16 +100,14 @@ Log category `Save`. `saves` lists slots with kind, time and entity count. Two p
 | REQ-SAVE-12 | Save, change a prefab and a record, load: nothing lost, nothing doubled, in a game with no C#. | Must | Done | test: `SavesExit_AQuickSaveSurvivesARebalanceWithNothingLostOrDoubled` |
 | REQ-SAVE-13 | A load shall remove live unsaved entities, make derived values follow placement changes, and resolve references to sleeping entities. | Must | Done | tests: `ALoadRemovesTheUnsavedSpawnsItDoesNotName`, `ALoadLeavesWhatTheEngineAndTheGameMadeForThemselves`, `AnUntouchedDoorFollowsItsPlacementAndARebalance`, `AReferenceToASleepingEntityIsKeptAndResolvesWhenItWakes` |
 | REQ-SAVE-14 | Nested prefabs and per-placement part overrides shall survive a save across sectors. | Should | Done | test: `AHouseWithAnOverriddenMachineRoundTripsTheEditorASaveAndASectorCrossing` |
-| REQ-SAVE-15 | Saves shall offer thumbnails, optional compression, an asynchronous write and named slots, and quick-save keys shall work while paused. | Should | Partial: all built; the write is off the tick, but a 10k-entity snapshot still costs about 50 to 75 ms on it (Debug) | test: `CompressedSavesRoundTripAndPlainOnesStillLoad`, `TheSlotListingShowsTheThumbnailPath`, `AThumbnailShrinksToAWidth`, `SlotsHaveTitlesAndConfigurableNames`, `QuickSaveKeysWorkWhilePaused`, `AQuickSaveIsWrittenOffTheTick`, `ATenThousandEntitySaveDoesNotStallAFrame`; #285 |
+| REQ-SAVE-15 | Saves shall offer thumbnails, optional compression, an asynchronous write and named slots, and quick-save keys shall work while paused. | Should | Done (#285): the tick copies component columns and the writer builds the JSON; a 10k-entity snapshot is about 3 ms (Debug) | test: `CompressedSavesRoundTripAndPlainOnesStillLoad`, `TheSlotListingShowsTheThumbnailPath`, `AThumbnailShrinksToAWidth`, `SlotsHaveTitlesAndConfigurableNames`, `QuickSaveKeysWorkWhilePaused`, `AQuickSaveIsWrittenOffTheTick`, `ATenThousandEntitySaveDoesNotStallAFrame`, `ABackgroundSaveIsTheTickItWasTakenOn` |
 | REQ-SAVE-16 | A save-version report shall say what a save would lose or change under the current content and mods. | Could | Done (#285) | test: `TheSaveVersionReportSaysWhatALoadWouldUpgrade`, `TheReportCountsUpgradeStepsForAnOlderComponent` |
 | REQ-SAVE-17 | A pre-release save-format window shall be closed: format 1 shall stop being read once the first release ships. | Could | Not started | #295 (first release) |
 | REQ-SAVE-18 | Tests shall cover timers and tweens across a save, and hierarchy and multi-world saves. | Should | Done | test: ARandomTimerIsDeterministic_AcrossRunsAndASave, TweensAreDeterministicAndSurviveASave, TwoWorldsKeepTheirOwnClocksAndEntities_AcrossASaveAndALoad, ATimeSkipWhileASectorSleeps_PassesOnceAndTheSectorWakesIntact |
 
 ## 10. Open work
 
-Milestone 2 (epic #274).
-
-- #285 4m-11 Saves: thumbnails, compression, async write, named slots and a save-version report (P2). Built except its no-stall criterion: the 10k-entity snapshot is still over a frame. Also open: the tagged binary format, thumbnails in the Sandbox's menu, and `Slots` blocking on writes in flight.
+Milestone 2 (epic #274): #285 is done. Left from it, with no issue yet: the tagged binary format, thumbnails in the Sandbox's menu, `Slots` blocking on writes in flight, and entity-reference and attribute components still serialised per entity on the tick.
 
 Related: #396 9-1 code mods (P1) changes what a save must survive; #398 9-3 namespaced mod assets (P1).
 
