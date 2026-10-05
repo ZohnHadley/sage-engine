@@ -29,12 +29,14 @@ In `Sage.Simulation` (data, terrain generation), with client parts for terrain m
   - **Interiors**: dungeons and buildings, each a separate space with its own origin, loaded as a unit.
 
   A world is in one space at a time for the player. Going through a door is a space transition (a short load).
+  *As built (#291):* a space the player leaves can stay live, held and simulated beside the next, in the same
+  world at its own coordinates ("As built (live spaces)" below).
 - **Coordinates** (the multiplayer-compatible form of the Daggerfall Unity model):
   - Root entities store `SectorCoord` + a local `Transform`. When a root crosses a sector edge, its sector is updated and its local position wrapped (`Late` phase).
   - The world resource `Origin { SectorCoord Sector }` defines origin space for `GlobalTransform`, physics and rendering.
   - **Rebasing:** when the player is more than 1.5 sectors from the origin sector (hysteresis), the origin moves to the player's sector. `GlobalTransform` (current and previous), physics bodies (10 `Rebase`) and any cached positions shift by the same offset, once, between ticks.
   - Rendering is additionally camera-relative (06 §3.3).
-- **Streaming rings** around each **streaming source** (the player; later others, such as a followed NPC):
+- **Streaming rings** around each **streaming source** (the player, and since #290 any entity tagged `streaming_source` or with a `streaming_ring` of its own: "As built (several streaming sources and followers)" below):
   - full detail within `stream_radius` sectors (default 1 → 3×3 sectors);
   - terrain-only LOD out to `stream_lod_radius` (default 3).
 
@@ -102,8 +104,8 @@ and the simulation carries on with small numbers, because the frame of reference
   `stream_enabled`, `warp`.
 - **Not yet:** ~~LOD past the ring, per-sector asset scopes~~ (built with #277: "As built (the far ring, asset scopes
   and jobs)" below), ~~dormancy per sector~~ (built with 4g-3, on 4g-1's cells: "As built (entities stream by
-  sector)" below), ~~generation on jobs~~ (#277), interiors as separate spaces (#291), and ~~seam-free normals across
-  sector edges~~ (#277).
+  sector)" below), ~~generation on jobs~~ (#277), ~~interiors as separate spaces~~ (#291: "As built (live spaces)" below), and
+  ~~seam-free normals across sector edges~~ (#277).
 - **Since 4g-1, a scene goes dormant with its state**: what it placed and the runtime spawns made in it
   are kept, with absolute positions, when the player leaves it, and come back when it is placed again
   (09 "As built (cells go dormant with their state)").
@@ -163,8 +165,8 @@ crossed with no spike (test: AFarRingFourSectorsOutCostsABoundedTickAndCrossingE
   `stream_far_radius`, `stream_load_budget`, `stream_jobs`.
 - **Limits.** Far looks are read when a sector enters the far ring: one that walked away or died since is
   still drawn there until the sector comes back. A mesh path changed in place on a live component is not
-  re-counted. Textures and sounds have no scopes yet (#308), and there is still one streaming source ring per
-  source with no priorities (#290). A scene change (not a sector leaving) does not release its meshes.
+  re-counted. Textures and sounds have no scopes yet (#308). ~~One ring per source with no priorities (#290)~~:
+  each source has rings of its own since #290; sources still have no priorities. A scene change (not a sector leaving) does not release its meshes.
 
 ### As built (the 4g exit game, issue 4g-8, 2026-10-01)
 Phase 4g's exit (REDESIGN §5, issue #190): walk from an exterior into a dungeon and back; an NPC keeps its
@@ -313,7 +315,8 @@ decision 1: an interior is a scene in the same world, swapped through dormancy (
   `travel <point>` (`Travel.ToPoint`) costs the straight-line distance from the player over `travel_speed`
   (metres per game hour, default 5000) and lands on the ground there, the ground generated first; a point
   not yet discovered cannot be travelled to (test: FastTravelAdvancesTheClockAndLandsOnTheGround).
-- **Limits.** Only the player travels: companions and followers stay (4g-6 moves NPCs between spaces).
+- **Limits.** ~~Only the player travels: companions and followers stay~~ (4g-6 moves NPCs between spaces;
+  since #290 followers come along on every journey in a scene and on a warp, and since #291 through doors).
   The distance of a journey is measured from where the player stands, so from an interior it is from the
   interior's coordinates. An entry in a streamed scene must be a placement (a map on the terrain is placed
   with its sector, after the player arrives). `warp` refuses inside an interior. The kit's rest screen and
@@ -368,10 +371,71 @@ the game's, and the base only passes time and travels. Code: `src/Sage.Kits.Rpg/
   apart by `Travel.ToPoint`'s first match. The map leaves a fast-travel journey open on the map, now around
   the destination (a view-model cannot close its own screen).
 
+### As built (several streaming sources and followers, issue #290, 2026-10-05)
+§3 planned rings around each streaming source, "the player; later others". Code:
+`src/Sage.Simulation/World/Streaming.cs` (`StreamingRing`, the ring per source), `World/Followers.cs`; tests:
+`tests/Sage.Tests/Streaming/StreamingSourcesTests.cs`. Experimental, SAGE0129.
+
+- **The player is always a source**, and anything tagged `streaming_source` is another, with the cvars' rings
+  (`stream_radius`, `stream_far_radius`). The `streaming_ring` part (`sage:streaming_ring`: `radius` 0 to 8,
+  default 1; `farRadius` 0 to 16, default 0, none) gives a source rings of its own, whether or not it has the
+  tag: a companion five sectors out keeps its own 3x3 next to the player's, a camera with radius 0 only the
+  sector it stands in, and a source that stops being one lets its ring go past the margin
+  (test: EachSourceKeepsItsOwnRing). A far radius is the source's own too (test: ASourcesFarRadiusIsItsOwn).
+- **Where rings meet, the larger wins**, and a sector two sources stand in is loaded once. On the player, a
+  `streaming_ring` replaces the cvars'. **The origin follows the player** (the primary source), not whichever
+  source is nearest it (test: ThePlayersOwnRingIsUsedAndTheOriginFollowsThePlayer).
+- **Followers**: the `follower` part (`sage:follower`: `distance`, metres, default 2) marks a companion. Every
+  journey (`Travel.To`, `Travel.ToPoint`, a load door, `warp`) puts each live follower behind the player once the
+  player is placed (`Followers.Bring`): in rows of three, 1.5 m apart, facing the same way, on the ground when
+  there is ground. Streaming does the rest: on the next Late the follower belongs to the sector it now stands
+  in, so the ring it left does not put it to sleep, and after a save and a load it is there once
+  (tests: AFollowerArrivesWithThePlayerAfterFastTravel, FollowersStandApartBehindThePlayerAndComeAlongOnAWarp).
+- **Limits.** Sources have no priorities: every ring loads, nearest sector first. A follower is always the
+  player's (there is no leader field); what makes it walk after the player between journeys is its AI's.
+  Followers through a scene change came with #291, below.
+
+### As built (live spaces, issue #291, 4m-17, 2026-10-05)
+4g-5 swapped scenes through dormancy: the scene the player left went to sleep, so a dungeon could not go on
+while the player was out of it, and its exterior stopped while the player was in. Code:
+`src/Sage.Simulation/World/Spaces.cs` (`LiveSpaces`, `SpaceGravity`), `Content/Scenes.cs`, `World/Travel.cs`
+(followers through doors), `src/Sage.Physics3D/PhysicsSpace.cs` and `Character/CharacterController.cs`
+(gravity per space); tests: `tests/Sage.Tests/Streaming/SpacesTests.cs`. Experimental, SAGE0129.
+
+- **`"live": true` on a scene holds it** when the player leaves: what it placed stays in the world and goes
+  on being simulated, its AI, physics and logic, at its own coordinates, and going back takes it up as it is,
+  never placed twice. Each space keeps its own light (the player's space lights the world, as in 4g-5). Two
+  interiors and their exterior are live at once: a crate dropped in the crypt falls while the player is in
+  the tower, and the village's ground and goblin stay (test: TwoInteriorsAreLiveAtOnceBesideTheirExterior).
+- **One ground.** A world has one terrain, so an exterior is held only while the player is inside an
+  interior: the ring stops following the player and keeps the sectors it had. Going to another exterior puts
+  every held exterior to sleep first.
+- **How many:** `space_live_max` (default 4, 0 to 32). One more puts the space left longest ago to sleep, which
+  comes back from its cell when visited; 0 holds none, the 4g-5 swap (test: HowManySpacesStayLiveIsBounded).
+- **Runtime spawns** made within the box a held space's things stand in (a skeleton's dropped sword) belong
+  to that space's cell, so they go and come with it; made in the player's scene, they are its
+  (test: ARuntimeSpawnAmongAHeldSpaceIsThatSpaces).
+- **Saves** keep the held spaces (the saved resource `spaces`): a load places each again beside the save's
+  scene, with the state the save had for it (test: ASaveKeepsTheSpacesHeldLive). A held streamed exterior is
+  the exception: it is dormant after the load until the player goes back.
+- **Gravity per space:** `environment.gravityScale` (default 1) on a scene. The player's scene's applies
+  everywhere, and a held scene's within the box its things stand in (`SpaceGravity`, `GravityRegion`); physics
+  bodies and the character controller read it by where they are (test: EachSpaceFallsAtItsOwnGravity).
+- **Companions come through doors:** when a journey changes the world's scene, every follower is released
+  from the scene being left (held live or gone to sleep) and restored into the cell the player arrives in,
+  with its state, before `Followers.Bring` stands it behind the player; coming back, it is there once
+  (test: CompanionsComeThroughTheDoor, with `space_live_max` 0 and 4).
+- **Console:** `spaces` (the scene each world is in and the scenes held beside it), `space_live_max`.
+- **Limits.** Spaces are one world and one physics simulation, apart only by their coordinates: there is no
+  collision or raycast filtering between them, and the renderer has no space filter (they are far apart).
+  A held exterior keeps terrain only around where the player left it. They are not separate `World`s
+  (several active worlds, 01 §11, stays later).
+
 ## 4. API sketch
 ```csharp
 public struct Origin { public SectorCoord Sector; }                     // world resource
 public struct StreamingSource { public int Radius; public int LodRadius; }   // component (on the player pawn)
+// As built (#290): StreamingSource is a tag; the rings are the StreamingRing component (Radius, FarRadius)
 
 public sealed class WorldStreamer                                       // world resource/system set
 {
@@ -394,7 +458,7 @@ public interface ITerrainGenerator { void Generate(SectorCoord s, Span<float> he
   - one interior space type;
   - `stream_debug` overlay (sector grid, loaded/loading, origin);
   - log category `Streaming`.
-- **Later:** ~~LOD rings, HLOD for distant objects~~ (the far ring, #277), splat texturing, several streaming sources, offline simulation, one-file-per-entity maps (09 §3.4).
+- **Later:** ~~LOD rings, HLOD for distant objects~~ (the far ring, #277), splat texturing, ~~several streaming sources~~ (#290), offline simulation, one-file-per-entity maps (09 §3.4).
 
 ## 12. Multiplayer-later notes
 The server tracks one streaming source per player. Origin space becomes per client (camera-relative only), and physics would need per-region simulations for players far apart (10 Later). That's why simulation positions are sector + local rather than a single floating origin.
@@ -403,4 +467,4 @@ The server tracks one streaming source per player. Origin space becomes per clie
 1. `SectorCoord`/`Origin` + propagation relative to the origin + rebasing (with 03; TODO R6).
 2. Sector load/unload with asset scopes and dormancy (TODO F14).
 3. ~~Heightfield terrain: generator interface, meshes, collision~~ **Done 2026-09-22** (TODO F13, "As built"): generator + meshes in step 6; collision (`TerrainCollisionSystem`, `src/Sage.Physics3D/PhysicsSystems.cs`) with physics (F6).
-4. Interiors as spaces + door transitions.
+4. ~~Interiors as spaces + door transitions~~ **Done**: door transitions in 4g-5, interiors held live as spaces in #291.

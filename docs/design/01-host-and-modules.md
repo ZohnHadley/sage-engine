@@ -240,7 +240,7 @@ each MonoGame Update/Draw pair:
 - Pausing (`pause`, `World.Paused`) skips `WhenNotPaused` systems; ticks keep counting and Frame systems (camera, UI, rendering) keep running.
 - **Time scale, pause and hit-stop are each world's** (`WorldTime`, `src/Sage.Simulation/World/WorldTime.cs`, issue #283; saved as the `time` resource). The host runs *real* ticks; a world's real tick adds `tickDt × Scale × host_timescale` to its own accumulator and runs one step of exactly `tickDt` for each whole `tickDt` in it (at most 16). So the step never changes length — physics keeps the constant step it is tuned for, and two runs at the same scales take the same steps (test: AScaledWorldIsDeterministic) — and 0.5 is a step every other real tick, 2 two a tick (test: HalfScaleHalvesTimerTweenAndClockProgress). Scaling `dt` instead was rejected: every integrator would see a different step at each speed. A real tick with no step due (paused, hit-stopped, between the steps of a slowed world) is a *held pass*: the Fixed phases run once with `Dt` 0 and only `RunCondition.Always` systems, which read `WorldTime.RealDt` (test: RealTimeTimersAndTweensIgnoreScalePauseAndHitStop). `HitStop(seconds)` holds the world for real seconds (test: AHitStopFreezesTheWorldForRealSeconds). The player's command is sampled before each *step*, so a slowed world keeps a press for its next step; a paused one is handed one each tick and drops it, as before (test: TheHostLoopsTimeScaleRoutesThroughWorldTime). Each world's frame alpha is how far it is between its own steps (test: ASlowedWorldInterpolatesBetweenItsOwnSteps). Console: `world_speed`, `hit_stop`, `pause`.
 - **Left after #283:** a real-time timer's outputs that fire during a pause are delivered when the world next runs a step (entity I/O's dispatch runs on steps); the Frame schedule's `FrameTime.Dt` is scaled by `host_timescale` but not by a world's speed, so frame-rate effects (particles, weather) do not slow with bullet time; there is no per-system speed factor (a system runs on the world's time, or on real time by `RunCondition.Always`). A pause raises `EngineSignals.PauseChanged` on the next tick (04 §3.5, PR #443).
-- Vsync is a cvar (`r_vsync`, Archive). `host_maxfps` (a frame cap with vsync off) is **not built yet**.
+- Vsync is a cvar (`r_vsync`, Archive). `host_maxfps` (0 to 1000, Archive; 0 uncapped) caps the frame rate with vsync off: the host sleeps out what is left of each frame (`FrameLimiter`, issue #299; test: FrameLimiter_WaitsOutTheRestOfTheFrame).
 - `host_exitafter <seconds>` (DevOnly) quits after that much real time and logs frame and tick counts, for automated smoke runs.
 
 ### 5.3 Worlds
@@ -248,13 +248,13 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
 
 ## 6. Threading and memory
 - Boot, module `Init`, and the loop run on the main thread. `GraphicsDevice` is main-thread only (MonoGame).
-- Worlds tick on the main thread in v1. Systems may use the job layer (02) internally.
+- Worlds tick on the main thread in v1. Systems may use the job layer (02) internally. *Since #288* a world runs the systems that declare their access in parallel stages on its own workers, inside its tick (03 §3.5).
 - Future pipelining (survey §2.8, Destiny/Bevy): simulation on a worker thread, rendering on the main thread, with `RenderSnapshot` as the hand-off. The loop above is shaped so that change touches only the host.
 
 ## 7. File formats
 - `game.json` (above).
 - `config.cfg`: text, one `cvar value` per line, written from `Archive` cvars on shutdown (02).
-- `autoexec.cfg` (optional): console commands run after boot, as in Quake/Source.
+- `autoexec.cfg` (optional): console commands run after boot, as in Quake/Source. *As built (#299):* `user://autoexec.cfg`, run right after `config.cfg`, so what it sets wins over saved values (test: Autoexec_RunsAfterConfigAndWinsOverIt); a missing one is not an error (test: Autoexec_MissingIsNotAnError). In Shipping, a name either file gives that the build does not have (a dev build's archived editor cvar, since `config.cfg` is shared by every build of a game) is an Info note, "X is not in this build; ignored", not a warning (#293).
 
 ## 8. Errors and fallbacks
 - Missing or invalid `game.json` → fatal, with a message naming the path.
@@ -263,7 +263,7 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
 - The game assembly fails to load → fatal, with the `AssemblyLoadContext` error and the probed path.
 
 ## 9. Debug and tooling hooks
-- **Cvars:** `sim_tickrate`, `sim_maxframetime`, `host_timescale` (DevOnly), `host_maxfps` (later), `r_vsync`, `host_exitafter` (DevOnly), `developer`.
+- **Cvars:** `sim_tickrate`, `sim_maxframetime`, `host_timescale` (DevOnly), `host_maxfps` (#299), `r_vsync`, `host_exitafter` (DevOnly), `developer`.
 - **Commands:** `modules` (list with lifecycle state and dependencies; **done, step 5**; per-module init time is logged at `Debug`), `worlds`, `quit`, `restart_world`.
 - **Overlay:** frame time, ticks this frame, alpha, and the ms per phase (from the profiler, 02).
 - **Log category:** `Host`, `Modules`.
@@ -287,8 +287,9 @@ Several worlds can exist (Warband's overworld and battle scene, the editor's edi
   - build configurations, `developer`, console availability rules;
   - `config.cfg`.
 - **Later:**
-  - several active worlds (Warband overworld/battle);
-  - `autoexec.cfg`;
+  - several active worlds (Warband overworld/battle); *the RPG case, interiors live beside their exterior, is
+    spaces in one world since #291 (14 "As built (live spaces)")*;
+  - ~~`autoexec.cfg`~~ (#299);
   - disabling modules on `Init` failure;
   - a pipelined sim thread;
   - game-assembly hot reload (serialize → reload → restore, as Flax does). .NET Hot Reload covers most edits until then.
