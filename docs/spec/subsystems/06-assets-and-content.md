@@ -101,14 +101,14 @@ Every content error carries `file:line:column` for the deepest part the file wro
 | Redefinition without `patch` | Error naming both places; applied as a patch. |
 | Patch of an unknown id | Skipped with a note in the content report. |
 
-Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` and `ERROR` lines and a summary, and exits 1 on errors. `rec_get` shows which file set each field. A problems list inside the running game is not built (#301); the editor has one.
+Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` and `ERROR` lines and a summary, and exits 1 on errors. `rec_get` shows which file set each field. Inside the running game, `problems` (every build) prints the same list with file and line, and mod conflicts as warnings, and a dev build's overlay shows a count badge (`ui_problems`); the editor's problems panel reads the same `ContentProblems` (#301).
 
 ## 9. Requirements
 
 | ID | Requirement (shall ...) | Priority | Status | Evidence or issue |
 |---|---|---|---|---|
 | REQ-ASSET-01 | The VFS shall layer mounts with the last mount winning, resolve paths case-insensitively and reject paths that escape a mount. | Must | Done | test: LaterMount_ShadowsEarlier_AndEnumerateIsInMountOrder |
-| REQ-ASSET-02 | The VFS shall read zip archives as mounts, with the same ordering rules, and hot reload shall skip them. | Must | Not started | #397 (with #293 for packaging) |
+| REQ-ASSET-02 | The VFS shall read zip archives as mounts, with the same ordering rules, and hot reload shall skip them. | Must | Not started (`sage package`, #293, copies mounts as folders) | #397 |
 | REQ-ASSET-03 | Records shall load definitions before patches within a mount, and merge patches field by field. | Must | Done | test: Patch_MergesFieldByField |
 | REQ-ASSET-04 | A patch shall append (`field+`) and remove (`field-`) list entries. | Must | Done | test: Patch_MergesFieldByField |
 | REQ-ASSET-05 | A patch shall edit one list entry by key, remove by key (`$remove`) and replace a whole list. | Should | Not started | #399 |
@@ -127,7 +127,7 @@ Log categories: `Records`, `Assets`, `Shaders`. `sage validate` prints `WARN` an
 | REQ-ASSET-18 | Textures shall load with mipmaps and optional compression, and the loader shall read the formats art tools write. | Should | Partial: PNG, JPG, BMP, TGA, GIF load; no mips | #317 |
 | REQ-ASSET-19 | A cook step shall produce binary meshes and compressed textures for Shipping, loaded when present. | Could | Not started | #302 |
 | REQ-ASSET-20 | Prefabs and scenes shall reload into running worlds. | Could | Done (#287): a scene is placed again; a prefab's live instances follow it field by field where the game did not change the field | `RecordStore.ReloadPolicyOf`; test: EditingAPrefabUpdatesTheFieldsNoOneChangedOnEveryLiveInstance, InTheSandboxEditingAPrefabUpdatesItsUnmodifiedInstances, RecordTypesDeclareTheirReloadPolicy, ASaveAfterAReloadDiffsAgainstTheNewPrefab, AValueALoadPutBackIsKeptByAReload, EachReloadFollowsFromTheLastOne |
-| REQ-ASSET-21 | The game shall offer a problems list of load errors without the editor. | Could | Not started | #301 |
+| REQ-ASSET-21 | The game shall offer a problems list of load errors without the editor. | Could | Done (#301): the `problems` command and the dev overlay's badge | test: ProblemsListsTheSameEntriesAsValidate, ProblemsListsTheLoadErrorsWithFileAndLine, ACleanLoadSaysSo_AndModConflictsAreWarnings |
 
 ## 10. Open work
 
@@ -146,9 +146,7 @@ Milestone 9, Code mods and packaging (epic #395):
 
 Milestone R1, Tooling and the first release (epic #292):
 
-- #293 R1-1 sage package: build a shippable game folder (P1)
 - #302 R1-10 Cooked asset formats and a cook step for Shipping (P3)
-- #301 R1-9 An in-game problems list without the editor (P3)
 
 Milestone 10b, Editor part 2: #366 10b-1 Asset browser and material preview (P1).
 

@@ -1,6 +1,6 @@
 # 02 · Core services
 
-> Status: mostly built. Logging, asserts, crash reports, cvars, the console script language, the profiler and the allocation counter work and are tested; Tab completion, history, a job system, a trace export and per-app (rather than per-process) logging are not built. Owning assembly: `Sage.Core`. Design doc: [02 core services and logging](../../design/02-core-services-and-logging.md).
+> Status: mostly built. Logging, asserts, crash reports, cvars, the console script language, the profiler and the allocation counter work and are tested, and the console has history and Tab completion (#299); a job system, a trace export and per-app (rather than per-process) logging are not built. Owning assembly: `Sage.Core`. Design doc: [02 core services and logging](../../design/02-core-services-and-logging.md).
 
 ## 1. Purpose and scope
 
@@ -37,15 +37,18 @@ The core cvars and commands are registered by `CoreCVars.Register`, called by `S
 | `Assert` | `src/Sage.Core/Diagnostics/Assert.cs` | The three asserts. `SageFatalException` is thrown by `Check` and `Log.Fatal`. |
 | `CrashReporter` | `src/Sage.Core/Diagnostics/CrashReporter.cs` | `Install`, `Write(exception, reason)`, `AddSection(name, provider)`, `LastReportPath`. |
 | `CVarRegistry`, `CVar<T>`, `CVarFlags` | `src/Sage.Core/Console/` | `Register`, `RegisterCommand`, `Execute`, `Pump`, `ExecFile`, `SaveArchived`, `Complete`, `Find`. Flags: `Archive`, `Cheat`, `DevOnly`, `ReadOnly`. |
+| `ConsoleInput` | `src/Sage.Core/Console/ConsoleInput.cs` | The console's line editor without the keys (#299): `Submit`, Up/Down history (`MaxHistory` 100 lines, a repeat kept once, the draft restored), and Tab completion of the first word against commands and cvars and of later words against a cvar's enum or bool values and record ids. |
+| `FrameLimiter` | `src/Sage.Core/Console/FrameLimiter.cs` | `host_maxfps` arithmetic (#299): how long the rest of a frame still has to wait. |
+| `ContentProblems`, `ContentProblem` | `src/Sage.Core/Content/ContentProblems.cs` | The content's errors and warnings from the last load, with file and line, and mod conflicts as warnings (#301): what `problems`, the dev overlay's badge and the editor's `ProblemList` read. |
 | `ConsoleArgs`, `LaunchArgs`, `ExecSource` | `src/Sage.Core/Console/CommandLine.cs` | Command arguments and launch parsing (`-option`, `+statement`). |
-| `Profiler` | `src/Sage.Core/Diagnostics/Profiler.cs` | `using (Profiler.Begin("name"))`, `EndFrame`, `All`, `Find`. Off in Shipping unless enabled. |
+| `Profiler` | `src/Sage.Core/Diagnostics/Profiler.cs` | `using (Profiler.Begin("name"))`, `Record(name, ticks)` (time measured elsewhere, such as a parallel system's on a worker, #288), `EndFrame`, `All`, `Find`. Off in Shipping unless enabled. |
 | `TickTime`, `FrameTime`, `FixedStepClock` | `src/Sage.Core/Time.cs` | Time as systems see it; the accumulator that decides how many ticks a frame pays for. |
 | `BuildInfo`, `BuildConfig`, `SemVersion` | `src/Sage.Core/BuildInfo.cs`, `Declarations/Plugins.cs` | Configuration (Debug, Development, Shipping), `IsDevBuild`, `EngineVersion`. |
 | `RegistrationSeal` | `src/Sage.Core/RegistrationSeal.cs` | `Seal(stage)` then `Check(name)` throws with what was missed and where to register. |
 
 **Core cvars** (`src/Sage.Core/Console/CoreCVars.cs`): `developer`, `sv_cheats`, `con_enable`, `log_keep`, `log_file_level`, `log_console_level`, `log_queue_size`, `mem_warn_bytes`, `ev_maxage`, `ev_trace`.
 
-**Core commands:** `help`, `cvarlist`, `cmdlist`, `find`, `echo`, `version`, `wait`, `wait_cancel`, `exec`, `log_level`, `log_list`, `mem`, `crash` (dev only). The stat overlays (`stat fps|mem|frame|all|none`) are registered by the editor assembly in dev builds; `sys_list`, `sys_toggle`, `ev_stats`, `plugins` and `modules` come from the simulation.
+**Core commands:** `help`, `cvarlist`, `cmdlist`, `find`, `echo`, `version`, `wait`, `wait_cancel`, `exec`, `log_level`, `log_list`, `mem`, `crash` (dev only); `problems` comes with the record store (#301). The stat overlays (`stat fps|mem|frame|all|none`) are registered by the editor assembly in dev builds; `sys_list`, `sys_toggle`, `ev_stats`, `plugins` and `modules` come from the simulation.
 
 The console is available when `BuildInfo.IsDevBuild` or `con_enable` is set (`CoreCVars.ConsoleAvailable`), so a Shipping game has no console unless the player opts in.
 
@@ -56,13 +59,14 @@ Core services own no records or components. Formats:
 | Format | Where | Notes |
 |---|---|---|
 | `config.cfg` | `user://config.cfg` | Archive cvars as `name value` statements, executed at `Configure`, written at shutdown. |
+| `autoexec.cfg` | `user://autoexec.cfg` | Optional console statements, executed right after `config.cfg`, so they win over saved values (#299). |
 | Log file | `user://logs/` | Timestamp, level, category, frame and tick, message, fields, caller; newest `log_keep` sessions kept. |
 | Crash report | `user://logs/crash-<stamp>.txt` | Plain text sections; extra sections are added by the host (non-default cvars, game and mounts, GPU, mods). |
 | `game.json` | game folder | Parsed by `GameManifest`; see [03 app and loop](03-app-and-loop.md). |
 
 ## 6. Lifecycle and data flow
 
-`Program.Main` initialises `UserPaths`, `Log` (file and stdout) and `CrashReporter` before anything can fail. `SageApp.Create` builds the `CVarRegistry` and registers the core cvars; every module registers its own in `Init`; `Configure` executes `config.cfg`, after which the cvar registry is sealed, so a cvar registered in `Start` is a build error (SAGE0020) and a runtime exception. Launch `+statements` run once the first world exists. The host calls `Log.SetFrame` each frame and the world calls `Log.SetTick` each tick, so every entry carries both. `Profiler.EndFrame` runs at the end of each frame.
+`Program.Main` initialises `UserPaths`, `Log` (file and stdout) and `CrashReporter` before anything can fail. `SageApp.Create` builds the `CVarRegistry` and registers the core cvars; every module registers its own in `Init`; `Configure` executes `config.cfg` and then `autoexec.cfg` when there is one (#299), after which the cvar registry is sealed, so a cvar registered in `Start` is a build error (SAGE0020) and a runtime exception. Launch `+statements` run once the first world exists. The host calls `Log.SetFrame` each frame and the world calls `Log.SetTick` each tick, so every entry carries both. `Profiler.EndFrame` runs at the end of each frame.
 
 `CVarRegistry.Pump(realDt)` runs once a frame in real time, so a console script that uses `wait` keeps running while the game is paused. That is what makes `+cmd` launch lines and `exec` files usable as automated checks.
 
@@ -78,7 +82,7 @@ Process-wide state (`Log`, `UserPaths`, `CrashReporter`) is static. Tests that c
 
 ## 8. Errors and diagnostics
 
-Errors go to the log with the category that owns them. Content mistakes are reported with file and line by the content layer, not here. An unknown command warns on `Console`. A cvar set from code out of range is clamped; a `Cheat` cvar needs `sv_cheats`; a `ReadOnly` cvar refuses the console. A crash report is written even when one of its sections throws (test: CrashReport_HasAllSections_EvenWhenOneFails). `Assert.Check` writes a report and throws `SageFatalException` (test: Check_ThrowsFatal_AndWritesCrashReport).
+Errors go to the log with the category that owns them. Content mistakes are reported with file and line by the content layer, not here. An unknown command warns on `Console`; in Shipping, an unknown name read from a config file (`config.cfg`, `autoexec.cfg`) is an Info note, "X is not in this build; ignored", because `config.cfg` is shared by every build of a game and a dev build archives cvars a Shipping host lacks (#293). A cvar set from code out of range is clamped; a `Cheat` cvar needs `sv_cheats`; a `ReadOnly` cvar refuses the console. A crash report is written even when one of its sections throws (test: CrashReport_HasAllSections_EvenWhenOneFails). `Assert.Check` writes a report and throws `SageFatalException` (test: Check_ThrowsFatal_AndWritesCrashReport).
 
 Debug commands: `log_list`, `log_level <cat> <level>`, `cvarlist [prefix]`, `find <text>`, `mem`, `crash`, `stat frame` (per-phase and per-system milliseconds).
 
@@ -98,11 +102,11 @@ Not built: `stat render` and `stat assets`, a Chrome-trace export of profiler sc
 | REQ-CORE-08 | Measure time per phase and per system and allocation per scope. | Must | Done | test: Profiler_RecordsPhasesAndSystems |
 | REQ-CORE-09 | Keep a steady-state tick and frame allocation-free for the core systems. | Must | Done | test: SteadyStateTicksAndFrames_DoNotAllocate; the physics step too since #273 (test: ASteadyStateStepAllocatesNothingOnAnyThread) |
 | REQ-CORE-10 | Give systems time only through their context (`TickTime`, `FrameTime`), never the wall clock. | Must | Done | `src/Sage.Core/Time.cs`; test: Clock_RunsWholeTicks_AndCarriesTheRemainder |
-| REQ-CORE-11 | Provide console history and Tab completion for commands, cvars and record ids. | Should | Partial (`CVarRegistry.Complete` exists, not wired) | #299 |
+| REQ-CORE-11 | Provide console history and Tab completion for commands, cvars and record ids. | Should | Done (#299): `ConsoleInput`, headless; the ImGui console forwards the keys | test: `History_WalksBackAndForthAndKeepsTheDraft`, `History_IsBounded`, `Tab_CompletesCommandsAndCVars`, `Tab_CompletesCVarValuesAndRecordIds` |
 | REQ-CORE-12 | Provide a visual logger, `stat render`, `stat assets` and a trace export. | Could | Not started | #300 |
 | REQ-CORE-13 | Give each app in a process its own log sinks, user folder and crash report. | Should | Not started | #49 |
 | REQ-CORE-14 | Offer a job system on the thread pool for decoding and generation, with main-thread completion. | Should | Partial: terrain generation on the thread pool with main-thread completion (test: `GenerationOnJobsIsTheSameGroundAsOnTheMainThread`); no general job API | design 02 §4.5 |
-| REQ-CORE-15 | Expose content errors in a shipped game without the editor (`problems` command and badge). | Should | Not started | #301 |
+| REQ-CORE-15 | Expose content errors in a shipped game without the editor (`problems` command and badge). | Should | Done (#301): `ContentProblems`; `problems` is in every build, the badge (`ui_problems`) in dev builds' overlay | test: `ProblemsListsTheSameEntriesAsValidate`, `ProblemsListsTheLoadErrorsWithFileAndLine`, `ACleanLoadSaysSo_AndModConflictsAreWarnings` |
 | REQ-CORE-16 | Offer world and per-system time scale, pause and hit-stop. | Should | Done | `src/Sage.Simulation/World/WorldTime.cs`; per system: the world's time, or real time by `RunCondition.Always` (no per-system factor); test: HalfScaleHalvesTimerTweenAndClockProgress, AHitStopFreezesTheWorldForRealSeconds |
 | REQ-CORE-17 | Version the engine from git tags and check plugin, kit and game ranges against it. | Must | Done | `BuildInfo.EngineSemVersion`; first tag pending (#295) |
 
@@ -110,9 +114,7 @@ Not built: `stat render` and `stat assets`, a Chrome-trace export of profiler sc
 
 R1, Tooling and the first release (milestone 3):
 - #295 R1-3 Push the v0.1.0 tag and cut a first real release (P1)
-- #299 R1-7 Dev console quality: history, Tab completion, host_maxfps, autoexec (P3)
 - #300 R1-8 Diagnostics gaps: visual logger, stat render, async load/job stats, trace dump (P3)
-- #301 R1-9 An in-game problems list without the editor (P3)
 - #303 R1-11 Docs: refresh stale status markers (P3)
 
 Existing: #49 per-app log, user folder and crash reporter (P2).

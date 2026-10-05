@@ -562,7 +562,8 @@ Three things a load or a save got quietly wrong after 4i and 4g-1.
 ### As built (thumbnails, compression and the background write, issue #285, 2026-10-03)
 
 What §6 planned, a save that does not stall the game, and what a load menu needs. Code:
-`src/Sage.Simulation/Content/SaveBackground.cs` (the writer, `SaveThumbnail`), `SaveReport.cs`
+`src/Sage.Simulation/Content/SaveBackground.cs` (the writer, `SaveThumbnail`), `SaveCapture.cs` (the snapshot's
+column copies, since PR #453), `SaveReport.cs`
 (`SaveVersionReport`), `SaveSerializer.cs` (deferred components), `SaveSystem.cs`, `SaveRequests.cs`,
 `QuickSaveKeysSystem.cs`, and the host's back-buffer capture in `src/Sage.Host/Game1.cs`. Tests:
 `tests/Sage.Tests/Content/SaveWriterTests.cs`. Experimental, SAGE0131.
@@ -583,10 +584,9 @@ What §6 planned, a save that does not stall the game, and what a load menu need
   without serialising anything (the spawn baseline keeps the spawn's values). What stays on the tick is
   walking the entities and what needs the world: entity references, attributes and tags by name.
 - **Measured** (Debug build, 10k spawned crates, compressed): a whole save on the tick was about 190 ms
-  before; now the tick pays about 50 to 75 ms for the snapshot and the writer about 140 to 220 ms. The
-  write is off the tick, but **the snapshot alone is still over a frame**, so issue #285's "does not stall a
-  frame" is not met (test: ATenThousandEntitySaveDoesNotStallAFrame asserts the snapshot is a part of the
-  whole save, and prints both).
+  before; with the first background write the tick paid about 50 to 75 ms for the snapshot and the writer
+  about 140 to 220 ms, ~~so the snapshot alone was still over a frame~~. Since PR #453 the snapshot copies
+  columns (next bullet): see "Measured, again" there.
 - **Compression:** `save_compress 1` writes `world_<name>.json.gz` (gzip, fastest) and the header says
   `"compression": "gzip"`; a load reads either kind, so old plain saves still load
   (test: CompressedSavesRoundTripAndPlainOnesStillLoad).
@@ -607,7 +607,28 @@ What §6 planned, a save that does not stall the game, and what a load menu need
   of `[Upgrade]` steps), `Newer` (skipped) or `Unknown` (kept as data) — and the plugin, content and mod
   mismatches a load would warn of (tests: TheSaveVersionReportSaysWhatALoadWouldUpgrade,
   TheReportCountsUpgradeStepsForAnOlderComponent).
-- **Not done here:** a snapshot under a frame at 10k entities; the tagged binary format; thumbnails in the
+- **The snapshot copies columns** (PR #453, 2026-10-05). The tick no longer builds JSON: for each archetype
+  that holds persistent entities, it copies every component column the save writes whole (Friflo keeps an
+  archetype's components in one array per type), with the entity ids, persistent ids, prefabs, names,
+  placeholders and unknown data (`SaveCapture`). The writer turns the copies into each entity's JSON (ids as
+  text, the diff against the prefab, tags) with the code a save between ticks uses (`BuildEntity`), so a save
+  written in the background is the file a save written there and then would be, and nothing the game does
+  after the snapshot reaches it (test: ABackgroundSaveIsTheTickItWasTakenOn). What stays on the tick is what
+  needs the world, and only where an entity has it: a component that is not values and strings all the way
+  down (an entity reference, a list the game may change, a plugin's converter: attributes and tags by name),
+  serialised per entity as before; where content placed an entity, its parent's id, its kept placement's
+  overrides and wires; and a copy per prefab of the baseline the diffs are taken against
+  (`SpawnBaseline.CopyForWriter`). The serialiser's write dialect is made once per world, so a save no longer
+  rebuilds its metadata on the tick.
+- **Measured, again** (Debug, 10k spawned crates, compressed, a shared machine): the snapshot was about 95 to
+  136 ms before PR #453 and is 2.3 to 3.1 ms now; the tick that takes it, about 8 to 9 ms; the write, 230 to
+  300 ms on the writer. Issue #285's "does not stall a frame" is met: the test asserts nothing is serialised
+  on the tick and the snapshot is under a fifth of the write, and prints both (test:
+  ATenThousandEntitySaveDoesNotStallAFrame).
+- **Limits of the column copy.** A component with entity references or attributes is still serialised per
+  entity on the tick; the per-world dialect assumes a plugin's converters keep no state of their own; and an
+  empty `SavePlaceholder` is now written as an ordinary entity.
+- **Not done here:** ~~a snapshot under a frame at 10k entities~~ (PR #453); the tagged binary format; thumbnails in the
   Sandbox's load menu; and `Slots`, which a menu reads every frame, blocks while a write is in flight.
 
 ### As built (saved resources, F21/F27, 2026-09-23)
@@ -680,7 +701,7 @@ load:  read header (check game, mods) → destroy worlds → create world → in
 ```
 
 ## 6. Threading and memory
-- Saving snapshots component data on the main thread at a tick boundary (fast: a copy into pooled buffers). Compression and disk writing then run as a background job, so the game doesn't hitch. *As built (#285): the snapshot is JSON trees, not pooled buffers, and the write runs on the thread pool; at 10k entities the snapshot is still over a frame ("As built (thumbnails, compression and the background write)").*
+- Saving snapshots component data on the main thread at a tick boundary (fast: a copy into pooled buffers). Compression and disk writing then run as a background job, so the game doesn't hitch. *As built (#285): the snapshot is a copy of each archetype's saved component columns (close to the pooled buffers planned; entity references and attributes are still serialised per entity), and building the JSON, compressing and writing run on the thread pool; at 10k entities the snapshot is about 3 ms ("As built (thumbnails, compression and the background write)").*
 - Loading happens behind a loading screen. Parsing can run in jobs; instantiation runs on the main thread.
 - Generated serializers don't allocate for primitive and struct fields. Strings allocate on read (acceptable at load time).
 
