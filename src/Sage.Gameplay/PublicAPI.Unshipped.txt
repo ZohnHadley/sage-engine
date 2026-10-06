@@ -34,3 +34,5 @@ Sage.Gameplay.FootstepsPart.LandSpeed -> float
 Sage.Gameplay.FootstepsPart.Left -> string!
 Sage.Gameplay.FootstepsPart.Right -> string!
 Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>
+Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
+Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>

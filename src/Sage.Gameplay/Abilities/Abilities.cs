@@ -109,6 +109,10 @@ public sealed class CueRecord
     // cue names with its `Normal` (an impact), or on what is below its point within the decal's `reach`.
     [Property(Tooltip = "The decal it leaves on the surface where it happened; empty = none")]
     public RecordRef<DecalRecord> Decal;
+
+    // And what it feels like (issue #331): a pad rumble for the player whose entity the cue came from.
+    [Property(Tooltip = "The rumble the cue makes the source player's pad do (the cue's source must be a player's pawn); empty = none")]
+    public RecordRef<RumbleRecord> Rumble;
 }
 
 // What an entity can cast, and what it is casting. `Known` is a list because a spellbook is a list;

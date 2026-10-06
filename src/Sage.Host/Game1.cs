@@ -39,6 +39,7 @@ public class Game1 : Game
     private InputDevices devices = null!;
     private InputActions actions = null!;
     private readonly CommandLatch latch = new CommandLatch();
+    private readonly CommandLatch[] otherLatches = { new(), new(), new() };   // local players 2..4 (#331)
     private ActionId moveAction, lookAction, menuAction, toggleConsoleAction;
     private PlayerInput playerInput = null!;
 
@@ -99,7 +100,7 @@ public class Game1 : Game
 
         // Input (08): devices, then actions (their bindings are built when the records load).
         var cvars = engine.CVars;
-        devices = new InputDevices();
+        devices = new InputDevices(engine.Pads, engine.LastDevice);
         // Typed characters come from the window, not from key states: the operating system owns the
         // keyboard layout, dead keys and modifiers (08 §3.1, 13 §3). ImGui subscribes to the same
         // event for its own fields; both get every character, and whoever has focus uses it.
@@ -369,6 +370,13 @@ public class Game1 : Game
         // Everything since the last tick goes into the next PlayerCommand; look applies at frame rate (08 §3.4).
         latch.AddFrame(actions.HeldMask, actions.PressedMask, actions.ReleasedMask, actions.Axis2(moveAction));
         latch.AddLook(actions.Axis2(lookAction));
+        for (int p = 1; p < actions.LocalPlayers; p++)
+        {
+            otherLatches[p - 1].AddFrame(actions.HeldMaskOf(p), actions.PressedMaskOf(p), actions.ReleasedMaskOf(p), actions.Axis2Of(p, moveAction));
+            otherLatches[p - 1].AddLook(actions.Axis2Of(p, lookAction));
+        }
+        // The pads' motors: whatever the player's world has mixed this tick, silenced when the window is not ours.
+        actions.ApplyRumble(inputWorld.Resources.TryGet<RumbleMixer>(out var rumble) ? rumble : null);
 
         // Something in the simulation asked the player to face a particular way (a teleport, a map's
         // player start). It goes in here rather than on the pawn, because this is where the view angles
@@ -450,6 +458,8 @@ public class Game1 : Game
         if (ticking != inputWorld) return;
         playerInput.Command = latch.Sample(ticking.Tick + 1);   // the tick this command is for
         playerInput.HasCommand = true;
+        for (int p = 1; p < actions.LocalPlayers; p++)
+            playerInput.SetCommand(p, otherLatches[p - 1].Sample(ticking.Tick + 1));
     }
 
     protected override void UnloadContent()

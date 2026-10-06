@@ -77,6 +77,14 @@
           "$ref": "ids.schema.json#/definitions/record:decal"
         }
       ]
+    },
+    "rumble": {
+      "description": "The rumble the cue makes the source player's pad do (the cue's source must be a player's pawn); empty = none. Names a rumble record. (RecordRef<RumbleRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:rumble"
+        }
+      ]
     }
   },
   "additionalProperties": false

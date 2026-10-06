@@ -22,15 +22,21 @@ internal interface IInputVocabulary
     bool TryPadButton(string name, out int bit, out int trigger);
 }
 
-// What the devices say this frame (docs/design/08 §3.1), as the mapper reads it. The client implements it over
-// its listeners; tests implement it with plain fields.
-internal interface IInputState
+// One gamepad, as the mapper reads it: the first player's pad is part of `IInputState`, each other local player's pad
+// is one of these (issue #331).
+internal interface IPadInput
 {
-    bool KeyDown(int key);
-    bool MouseDown(MouseInput button);
     bool PadDown(int bit);
     float Trigger(bool right);
     Vector2 Stick(bool right);        // +Y = up
+}
+
+// What the devices say this frame (docs/design/08 §3.1), as the mapper reads it. The client implements it over
+// its listeners; tests implement it with plain fields.
+internal interface IInputState : IPadInput
+{
+    bool KeyDown(int key);
+    bool MouseDown(MouseInput button);
     float WheelDelta { get; }         // in notches * 120
     Vector2 MouseDelta { get; }       // pixels, +Y = down
 }
@@ -63,6 +69,7 @@ internal sealed class ActionMapper
         // Whether this binding's analogue trigger counted as down last frame, for the hysteresis in
         // `InputEdges.TriggerDown` (#60). Per binding, because two actions may read the same trigger.
         public bool TriggerWasDown;
+        public readonly bool[] TriggerWasDownOthers = new bool[PadAssignment.MaxPads];   // the same, for each other player's pad (#331)
 
         // What the device said this frame, read once in the raw pass and used again when the contexts decide who
         // hears it. Reading it twice would tick the trigger hysteresis twice.
@@ -91,6 +98,81 @@ internal sealed class ActionMapper
     private bool[] _held = Array.Empty<bool>();
     private Vector2[] _axis = Array.Empty<Vector2>();
     private ActionMask _heldBits, _pressedBits, _releasedBits;
+
+    // `joy_deadzone` and `joy_curve` (issue #331): a floor under every binding's own dead zone, and the exponent of the
+    // response curve on sticks. 0 and 1 leave a binding exactly as it was written.
+    public float JoyDeadzone { get; set; }
+    public float JoyCurve { get; set; } = 1f;
+
+    // The other local players (issue #331): player 1.. read their own pad against the gameplay context's pad bindings.
+    private sealed class PlayerFrame
+    {
+        public bool[] RawHeld = Array.Empty<bool>(), WasRawHeld = Array.Empty<bool>(), Held = Array.Empty<bool>();
+        public Vector2[] Axis = Array.Empty<Vector2>();
+        public ActionMask HeldBits, PressedBits, ReleasedBits;
+    }
+    private readonly PlayerFrame[] _frames = Enumerable.Range(0, PadAssignment.MaxPads).Select(_ => new PlayerFrame()).ToArray();
+
+    public ActionMask HeldMaskOf(int player) => player == 0 ? _heldBits : _frames[player].HeldBits;
+    public ActionMask PressedMaskOf(int player) => player == 0 ? _pressedBits : _frames[player].PressedBits;
+    public ActionMask ReleasedMaskOf(int player) => player == 0 ? _releasedBits : _frames[player].ReleasedBits;
+    public Vector2 Axis2Of(int player, ActionId a)
+    {
+        if (player == 0) return Axis2(a);
+        var axis = _frames[player].Axis;
+        return a.IsValid && a.Index < axis.Length ? axis[a.Index] : Vector2.Zero;
+    }
+
+    // Scripts for the first player, applied between `Update` and `Finish`.
+    public void ApplyScripts(ScriptedInput script, float dt) => script.Apply(0, dt, _registry, _held, _rawHeld, _axis);
+
+    // Player `p`'s frame: their pad against the gameplay context's pad bindings, then their scripts. Held back (`open`
+    // false) while a console, a screen or the dev UI has the input: a second person's pad must not walk their pawn
+    // behind an open inventory. Scripts are not held back, as for the first player.
+    public void UpdateOther(int p, float dt, IPadInput pad, bool open, ScriptedInput? script)
+    {
+        var f = _frames[p];
+        int n = _registry.All.Count;
+        if (f.Held.Length != n)
+        {
+            Array.Resize(ref f.Held, n); Array.Resize(ref f.RawHeld, n); Array.Resize(ref f.WasRawHeld, n); Array.Resize(ref f.Axis, n);
+        }
+        Array.Copy(f.RawHeld, f.WasRawHeld, n);
+        Array.Clear(f.Held); Array.Clear(f.RawHeld); Array.Clear(f.Axis);
+
+        if (open)
+        {
+            foreach (var b in _bindings[(int)InputContext.Gameplay])
+            {
+                if (b.Source is not (Source.PadButton or Source.PadTrigger or Source.PadStick)) continue;
+                int i = b.Action.Id.Index;
+                if (b.Action.Kind == ActionKind.Button)
+                {
+                    bool down = b.IsTrigger
+                        ? InputEdges.TriggerDown(pad.Trigger(b.RightSide), b.TriggerWasDownOthers[p])
+                        : pad.PadDown(b.PadButton);
+                    if (b.IsTrigger) b.TriggerWasDownOthers[p] = down;
+                    f.Held[i] |= down;
+                    f.RawHeld[i] |= down;
+                }
+                else f.Axis[i] += Shape(b, ReadPadAxis(b, pad), dt);
+            }
+        }
+        script?.Apply(p, dt, _registry, f.Held, f.RawHeld, f.Axis);
+
+        f.HeldBits = f.PressedBits = f.ReleasedBits = default;
+        var all = _registry.All;
+        for (int a = 0; a < all.Count; a++)
+        {
+            var info = all[a];
+            if (info.Kind != ActionKind.Button) continue;
+            int i = info.Id.Index;
+            bool swallowed = f.RawHeld[i] && !f.Held[i];
+            if (InputEdges.Held(f.RawHeld[i], swallowed)) f.HeldBits = f.HeldBits.With(info.Id);
+            if (InputEdges.Pressed(f.RawHeld[i], f.WasRawHeld[i], swallowed)) f.PressedBits = f.PressedBits.With(info.Id);
+            if (InputEdges.Released(f.RawHeld[i], f.WasRawHeld[i])) f.ReleasedBits = f.ReleasedBits.With(info.Id);
+        }
+    }
 
     public ActionMapper(ActionRegistry registry, IInputVocabulary vocabulary)
     {
@@ -241,20 +323,38 @@ internal sealed class ActionMapper
         {
             Source.Key => new Vector2(input.KeyDown(b.Key) ? 1 : 0, 0),
             Source.MouseButton => new Vector2(input.MouseDown(b.MouseButton) ? 1 : 0, 0),
-            Source.PadButton => new Vector2(input.PadDown(b.PadButton) ? 1 : 0, 0),
-            Source.PadTrigger => new Vector2(DeadZone(input.Trigger(b.RightSide), d.Deadzone), 0),
+            Source.PadButton or Source.PadTrigger or Source.PadStick => ReadPadAxis(b, input),
             Source.MouseWheel => new Vector2(input.WheelDelta / 120f, 0),
             Source.MouseDelta => new Vector2(input.MouseDelta.X, -input.MouseDelta.Y * (invertY ? -1 : 1)) * sensitivity,
-            Source.PadStick => DeadZone(input.Stick(b.RightSide), d.Deadzone),
             Source.Composite => new Vector2(
                 (input.KeyDown(b.Composite[3]) ? 1 : 0) - (input.KeyDown(b.Composite[2]) ? 1 : 0),
                 (input.KeyDown(b.Composite[0]) ? 1 : 0) - (input.KeyDown(b.Composite[1]) ? 1 : 0)),
             _ => Vector2.Zero,
         };
+        _axis[i] += Shape(b, v, dt);
+    }
+
+    private static Vector2 Shape(Binding b, Vector2 v, float dt)
+    {
+        var d = b.Desc;
         v *= d.Scale;
         if (d.Invert) v = b.Action.Kind == ActionKind.Axis1D ? -v : new Vector2(v.X, -v.Y);
         if (d.Rate) v *= dt;
-        _axis[i] += v;
+        return v;
+    }
+
+    // A pad binding's value as an axis, from whichever pad is asked. `joy_deadzone` is a floor under the binding's own dead
+    // zone; the curve shapes sticks (a trigger's travel stays linear). Radial, in `StickResponse`.
+    private Vector2 ReadPadAxis(Binding b, IPadInput pad)
+    {
+        float deadzone = MathF.Max(b.Desc.Deadzone, JoyDeadzone);
+        return b.Source switch
+        {
+            Source.PadButton => new Vector2(pad.PadDown(b.PadButton) ? 1 : 0, 0),
+            Source.PadTrigger => new Vector2(StickResponse.Apply(pad.Trigger(b.RightSide), deadzone), 0),
+            Source.PadStick => StickResponse.Apply(pad.Stick(b.RightSide), deadzone, JoyCurve),
+            _ => Vector2.Zero,
+        };
     }
 
     internal static float DeadZone(float value, float deadzone) =>
