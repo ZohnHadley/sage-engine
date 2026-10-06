@@ -31,6 +31,9 @@ public class Label : Widget
 
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text) =>
         _text.Length == 0 ? new Vector2(0f, text.LineHeight * _textScale) : text.Measure(_text, _textScale);
+
+    // Where the renderer places the text: the content rect, less a checkbox's box or a dropdown's arrow.
+    internal virtual Rect TextArea => ContentRect;
 }
 
 // A label that takes focus and does something when confirmed or clicked (Pressed). Disabled, it keeps
