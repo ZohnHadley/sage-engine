@@ -71,7 +71,7 @@ internal sealed class ShadowPass : IRenderPass
         view.Hidden = 0;                   // a first-person body still casts
         view.DepthOnly = false;
         view.ShadowCaster = true;
-        view.LightStart = view.LightCount = 0;
+        view.LightStart = view.LightCount = view.DynamicLightCount = 0;
         view.DebugStart = view.DebugCount = 0;
         view.Culled = 0;
         view.ItemStart = view.ItemCount = 0;

@@ -25,9 +25,13 @@ internal sealed class MapMeshSystem : ISystem
     // Reused across builds, like the terrain builder's: a level loads rarely, but it loads while the
     // game is running and a hitch is a hitch (02 §4.6).
     private readonly List<VertexPositionNormalTexture> _vertices = new();
+    private readonly List<VertexLightmapped> _lightmapped = new();
     private readonly List<int> _indices = new();
     private readonly Dictionary<string, List<LevelFace>> _byTexture = new();
     private readonly List<Entity> _built = new();
+
+    // Each level's lightmap texture (issue #313), shared by its meshes and freed with it.
+    private readonly Dictionary<MapLevel, Texture2D> _lightmaps = new(ReferenceEqualityComparer.Instance);
 
     public MapMeshSystem(World world, Renderer renderer)
     {
@@ -48,6 +52,7 @@ internal sealed class MapMeshSystem : ISystem
                 _world.Destroy(entity);     // its own entities, so the buffers are freed before they go
             }
             level.MeshBuilt = false;
+            if (_lightmaps.Remove(level, out var lightmap)) lightmap.Dispose();
         };
     }
 
@@ -57,6 +62,7 @@ internal sealed class MapMeshSystem : ISystem
         {
             var level = _levels.Loaded[i];
             if (level.MeshBuilt || !level.Placed) continue;   // placed by the simulation half first
+            if (level.LightmapPending) continue;               // and baked, when it asks for a lightmap (#313)
             level.MeshBuilt = true;
             Build(level);
         }
@@ -73,10 +79,21 @@ internal sealed class MapMeshSystem : ISystem
                 faces.Add(face);
             }
 
+        // The lightmap, when the level has one: one texture for the level, its UVs on each face (issue #313).
+        Texture2D? lightmap = null;
+        if (level.Lightmap is { } baked)
+        {
+            lightmap = new Texture2D(_renderer.Device, baked.Width, baked.Height, false, SurfaceFormat.Color);
+            lightmap.SetData(baked.Rgba);
+            _lightmaps[level] = lightmap;
+        }
+
         _built.Clear();
         foreach (var (texture, faces) in _byTexture)
         {
-            var handle = BuildGroup(faces, $"{level.Record} {texture}", out var bounds);
+            var handle = lightmap != null
+                ? BuildLightmapped(faces, $"{level.Record} {texture}", level.Lightmap!, lightmap)
+                : BuildGroup(faces, $"{level.Record} {texture}", out _);
             if (handle.IsEmpty) continue;
 
             var material = MaterialFor(level, texture);
@@ -142,6 +159,40 @@ internal sealed class MapMeshSystem : ISystem
         return MaterialRecord.Default;
     }
 
+    // The same as BuildGroup, with each corner's lightmap coordinates beside its texture's.
+    private MeshHandle BuildLightmapped(List<LevelFace> faces, string name, LevelLightmap baked, Texture2D lightmap)
+    {
+        _lightmapped.Clear();
+        _indices.Clear();
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+
+        foreach (var face in faces)
+        {
+            int first = _lightmapped.Count;
+            var normal = new Vector3(face.Normal.X, face.Normal.Y, face.Normal.Z);
+            baked.Uvs.TryGetValue(face, out var uvs);
+            for (int i = 0; i < face.Positions.Length; i++)
+            {
+                var p = new Vector3(face.Positions[i].X, face.Positions[i].Y, face.Positions[i].Z);
+                var lm = uvs != null ? new Vector2(uvs[i].X, uvs[i].Y) : Vector2.Zero;
+                _lightmapped.Add(new VertexLightmapped(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y), lm));
+                min = Vector3.Min(min, p);
+                max = Vector3.Max(max, p);
+            }
+
+            int before = _indices.Count;
+            BrushGeometry.Triangulate(face.Positions.Length, first, _indices);
+            for (int i = before; i + 2 < _indices.Count; i += 3)
+                (_indices[i + 1], _indices[i + 2]) = (_indices[i + 2], _indices[i + 1]);   // as BuildGroup
+        }
+
+        if (_indices.Count == 0) return default;
+        var centre = (min + max) * 0.5f;
+        var bounds = new BoundingSphere(centre, Vector3.Distance(centre, max));
+        return _renderer.CreateMesh(CollectionsMarshal.AsSpan(_lightmapped), CollectionsMarshal.AsSpan(_indices), bounds, name, lightmap);
+    }
+
     private MeshHandle BuildGroup(List<LevelFace> faces, string name, out BoundingSphere bounds) =>
         BuildGroup(faces, name, System.Numerics.Vector3.Zero, out bounds);
 
@@ -188,4 +239,31 @@ internal sealed class MapMeshSystem : ISystem
     // Texture names come from a mapper's folders: "brick/wall_01" is one material, named `brick_wall_01`,
     // because a record id has no slashes in it.
     private static string Sanitise(string texture) => texture.Replace('/', '_').Replace('\\', '_').ToLowerInvariant();
+}
+
+// A brush vertex with a second set of coordinates, into the level's lightmap (issue #313): lit.fx's
+// `Lightmapped` reads it as TEXCOORD1. The first three elements are VertexPositionNormalTexture's, so every
+// other technique (a shadow caster, a material that is not Default) draws the same buffer.
+internal readonly struct VertexLightmapped : IVertexType
+{
+    public readonly Vector3 Position;
+    public readonly Vector3 Normal;
+    public readonly Vector2 TextureCoordinate;
+    public readonly Vector2 LightmapCoordinate;
+
+    public VertexLightmapped(Vector3 position, Vector3 normal, Vector2 uv, Vector2 lightmap)
+    {
+        Position = position;
+        Normal = normal;
+        TextureCoordinate = uv;
+        LightmapCoordinate = lightmap;
+    }
+
+    public static readonly VertexDeclaration VertexDeclaration = new(
+        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
+        new VertexElement(12, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0),
+        new VertexElement(24, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0),
+        new VertexElement(32, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 1));
+
+    VertexDeclaration IVertexType.VertexDeclaration => VertexDeclaration;
 }

@@ -9,3 +9,4 @@ Sage.Gameplay.CueTriggered.Normal.init -> void
 Sage.Gameplay.DamageTypeRecord.Decal -> Sage.Core.RecordRef<Sage.Simulation.DecalRecord!>
 Sage.Gameplay.HitResult.Surface.get -> Sage.Core.RecordId
 Sage.Gameplay.HitResult.Surface.init -> void
+Sage.Gameplay.LightPart.Baked -> bool

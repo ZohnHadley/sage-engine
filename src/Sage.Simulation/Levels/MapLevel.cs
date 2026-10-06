@@ -54,6 +54,11 @@ public sealed class MapRecord
     // What a face is made of when no physics_material's "textures" names its texture (issue #270).
     [RecordRef("physics_material"), Property(Tooltip = "The surface of a brush face no physics_material's textures name; empty = none")]
     public RecordId Surface;
+
+    // Bake a lightmap for the level's brushes at load (issue #313, Lightmap.cs): texels per metre, 0 = none.
+    // Its lamps with `"baked": true` go into it with their shadows, and the sky each face can see.
+    [Property(Min = 0, Max = 32, Unit = "texels/m", Tooltip = "Bake a lightmap at load: texels per metre (4 is a good start); 0 = none, the brushes are lit dynamically only")]
+    public float Lightmap;
 }
 
 // One loaded level: geometry in metres relative to the map's own origin, and the entities that were
@@ -98,6 +103,13 @@ public sealed class MapLevel
 
     // Brushes that enclosed nothing and were left out, for the load's log line.
     internal int Skipped;
+
+    // The lightmap (issue #313): texels per metre asked for (0 = none), the bake once it is made, and
+    // whether it has been tried. The client builds the level's meshes after it, so they carry its UVs.
+    internal float LightmapDensity;
+    internal LevelLightmap? Lightmap;
+    internal bool LightmapDone;
+    internal bool LightmapPending => LightmapDensity > 0f && !LightmapDone;
 
     // Reads a level's file and builds its brushes without putting it in a world: for a content check that
     // needs the geometry, such as the navmesh's unreachable markers (#264). Says nothing and returns null
@@ -405,6 +417,7 @@ internal static class MapLoader
             Surface = record.Surface,
             Space = space,
             Skipped = skipped,
+            LightmapDensity = record.Lightmap,
         };
     }
 
@@ -910,6 +923,7 @@ internal sealed class MapCollisionSystem : ISystem
             if (!MapLoader.TryPlace(_world, level)) continue;    // waiting for the ground under it
 
             MapLoader.EnsureEntities(_world, level);
+            MapLightmaps.Ensure(_world, level);   // after its lamps are in the world (issue #313)
             level.CollisionBuilt = true;
             Build(level, space);
         }
