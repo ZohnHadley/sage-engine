@@ -22,7 +22,7 @@ public abstract class Widget
 {
     private List<Widget>? _children;
     private bool _visible = true, _enabled = true, _focusable, _focusScope;
-    private int _tabIndex;
+    private int _tabIndex, _columnSpan = 1, _rowSpan = 1;
     private Vector2 _minSize;
     private Thickness _margin, _padding;
     private Align _hAlign, _vAlign;
@@ -126,6 +126,17 @@ public abstract class Widget
     // Whether the pointer can land on it. Leaves and Scroll do; Box, Stack and Grid are see-through by
     // default, so a click on the empty part of a screen is not "on the UI" unless a window says it is.
     public bool HitTestable { get; set; } = true;
+
+    // In a Grid, how many cells across and down it takes (issue #346): an item's picture over the
+    // squares of its footprint. At least 1; the cells it covers are not given to the children after it.
+    public int ColumnSpan { get => _columnSpan; set { value = Math.Max(value, 1); if (_columnSpan == value) return; _columnSpan = value; InvalidateMeasure(); } }
+    public int RowSpan { get => _rowSpan; set { value = Math.Max(value, 1); if (_rowSpan == value) return; _rowSpan = value; InvalidateMeasure(); } }
+
+    // The pointer can drag it (issue #346): held on it and moved past UiRoot.DragThreshold, it is lifted —
+    // UiRoot.Drag, a ghost of it follows the pointer — and let go, it is dropped on what is under the
+    // pointer (UiResult.Dropped). A click on it (pressed and let go without moving) still activates it,
+    // on the release rather than the press, so a drag never activates what it started on.
+    public bool Draggable { get; set; }
 
     // ---- Results of layout ----------------------------------------------------------------------------
 
