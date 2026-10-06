@@ -193,10 +193,13 @@ public sealed class CalendarRecord
     };
 
     // How far through its cycle the moon is on a day, in [0, 1): 0 new, 0.5 full.
-    public double MoonAge(int day)
+    public double MoonAge(int day) => MoonAgeAt(day);
+
+    // The same at a fractional day count (the hour is the fraction), so the moon moves through the day.
+    internal double MoonAgeAt(double days)
     {
         double cycle = MoonCycle > 0 && double.IsFinite(MoonCycle) ? MoonCycle : 29.53;
-        double pos = (day + (double.IsFinite(MoonStart) ? MoonStart : 0)) / cycle;
+        double pos = (days + (double.IsFinite(MoonStart) ? MoonStart : 0)) / cycle;
         pos -= Math.Floor(pos);
         return pos >= 1.0 ? 0.0 : pos;
     }
