@@ -18,7 +18,8 @@ public enum TextOverflow { Visible, Clip, Ellipsis }
 internal readonly record struct TextLine(int Start, int Length, float Width, bool Ellipsis);
 
 // Breaks text into lines (issue #338): at each '\n', and with `wrap` at the last space that keeps a line
-// within `maxWidth` (a word longer than the whole width is broken between characters); then, for
+// within `maxWidth`, or in Chinese, Japanese and Korean between two characters (#345,
+// Scripts.CanBreakBetween); a word longer than the whole width is broken between characters. Then, for
 // Ellipsis, shortens what still does not fit. Widths are ITextMeasure's at `scale`, so a TTF's advances
 // and kerning, or the engine font's cells. Reuses `lines`; allocates nothing once it has grown.
 internal static class TextLayout
@@ -91,7 +92,7 @@ internal static class TextLayout
                 if (width > maxWidth + 0.001f) break;
                 fit = i + 1;
                 fitWidth = width;
-                if (i + 1 < end && text[i + 1] == ' ') lastBreak = i + 1;
+                if (i + 1 < end && (text[i + 1] == ' ' || text[i] != ' ' && Scripts.CanBreakBetween(text[i], text[i + 1]))) lastBreak = i + 1;
             }
 
             int lineEnd;

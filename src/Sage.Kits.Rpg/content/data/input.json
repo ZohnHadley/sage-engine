@@ -1,0 +1,29 @@
+[
+  // The kit's default keys (issue #354): the buttons that open its screens, bound in the UI and the Gameplay
+  // contexts so the key that opened a screen also closes it. Maps add up per context, so a game rebinds with
+  // its own `input_map` (a patch of `rpg:ui` / `rpg:gameplay`, or its own map for another key; the player's
+  // `bind` and the controls screen write `user://input.json` over both). The kit's client half binds
+  // Spellmaker, Journal and Rest to their screens; Spellbook is a button the game gives a screen.
+  {
+    "type": "input_map",
+    "id": "ui",
+    "context": "UI",
+    "actions": {
+      "Spellbook":  [ { "key": "B" } ],
+      "Spellmaker": [ { "key": "M" } ],
+      "Journal":    [ { "key": "J" } ],
+      "Rest":       [ { "key": "T" } ]
+    }
+  },
+  {
+    "type": "input_map",
+    "id": "gameplay",
+    "context": "Gameplay",
+    "actions": {
+      "Spellbook":  [ { "key": "B" } ],
+      "Spellmaker": [ { "key": "M" } ],
+      "Journal":    [ { "key": "J" } ],
+      "Rest":       [ { "key": "T" } ]
+    }
+  }
+]

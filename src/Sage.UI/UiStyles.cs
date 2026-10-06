@@ -59,13 +59,17 @@ public sealed class UiStyle
         state.Fill ?? normal.Fill, state.Tint ?? normal.Tint);
 }
 
-// Every ui_style, by id. Rebuilt when content (re)loads; Version moves then.
+// Every ui_style, by id. Rebuilt when content (re)loads; Version moves then. A style set (issue #351:
+// high contrast, colour-blind palettes) swaps styles for others while it is in use: Get("rpg:button")
+// is then the set's replacement, so every widget, open screen and renderer picks it up by the same id.
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class UiStyles
 {
     private readonly Dictionary<string, UiStyle> _byText = new(StringComparer.Ordinal);
     private readonly Dictionary<RecordId, UiStyle> _byId = new();
     private readonly HashSet<string> _warned = new(StringComparer.Ordinal);
+    private readonly List<RecordId> _sets = new();
+    private RecordStore? _records;
 
     // White text on nothing: what a widget with no style, or a style that does not exist, looks like.
     public static UiStyle Default { get; } = new(default, new UiStyleRecord());
@@ -73,6 +77,21 @@ public sealed class UiStyles
     public int Version { get; private set; }
 
     public int Count => _byId.Count;
+
+    // The ui_style_set in use (the `ui_style_set` cvar), or empty: every style as written.
+    public RecordId ActiveSet { get; private set; }
+
+    // Every ui_style_set content has, for an options screen to offer.
+    public IReadOnlyList<RecordId> Sets => _sets;
+
+    // Puts a style set in use (empty: none) and rebuilds; Version moves. One that does not exist is
+    // said and ignored.
+    public void UseSet(RecordId set)
+    {
+        if (set == ActiveSet) return;
+        ActiveSet = set;
+        if (_records != null) Rebuild(_records);
+    }
 
     // A style by the id a widget carries ("ns:name", as the layout builder writes it). Null or empty is
     // the default; one that does not exist is the default too, said once. Allocates nothing.
@@ -103,9 +122,11 @@ public sealed class UiStyles
 
     internal void Rebuild(RecordStore records)
     {
+        _records = records;
         _byText.Clear();
         _byId.Clear();
         _warned.Clear();
+        _sets.Clear();
         foreach (var id in records.Ids("ui_style"))
             if (records.TryGet(id, out UiStyleRecord record))
             {
@@ -113,6 +134,25 @@ public sealed class UiStyles
                 _byId[id] = style;
                 _byText[id.ToString()] = style;
             }
+        _sets.AddRange(records.Ids("ui_style_set"));
+        if (!ActiveSet.IsEmpty)
+        {
+            if (!records.TryGet(ActiveSet, out UiStyleSetRecord set))
+                Log.Warn(LogCat.UI, $"no ui_style_set '{ActiveSet}'; every style is drawn as written");
+            else
+            {
+                // Looked up in what was built above, not in what the swaps have made so far: a set that
+                // swaps a for b and b for a trades them, rather than drawing both as one.
+                var swapped = new List<(RecordId From, UiStyle To)>();
+                foreach (var swap in set.Swaps)
+                    if (!swap.From.IsEmpty && _byId.TryGetValue(swap.To.Id, out var to)) swapped.Add((swap.From.Id, to));
+                foreach (var (from, to) in swapped)
+                {
+                    _byId[from] = to;
+                    _byText[from.ToString()] = to;
+                }
+            }
+        }
         Version++;
     }
 }

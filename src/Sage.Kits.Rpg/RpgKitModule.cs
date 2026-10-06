@@ -58,8 +58,9 @@ public sealed class RpgKitModule : IModule
     public static readonly RecordId SaveScreen = new(ContentNamespace, "save");
     public static readonly RecordId LoadScreen = new(ContentNamespace, "load");
 
-    // The options screen the title and pause menus open (issue #339); their Options button is hidden while
-    // no `screen` of this id exists.
+    // The options screen (issue #339): graphics, audio, controls and gameplay, its settings ui_option
+    // records over cvars (Sage.UI's OptionsView); the controls page opens ControlsScreen. The title and pause menus
+    // open it (#342).
     public static readonly RecordId OptionsScreen = new(ContentNamespace, "options");
 
     // The kit's experimental id for what it adds to phase 4g's open world (MAKING_A_GAME §10b): the base's own.
@@ -86,6 +87,13 @@ public sealed class RpgKitModule : IModule
         // here, and rpg_conventions `castAction` picks it (or a game's own).
         _actions = ctx.Engine.Actions;
         _actions.Register("Cast", ActionKind.Button);
+        // The buttons that open the kit's screens (08 §3.2, issue #354), with their default keys in the kit's
+        // content (`rpg:ui`, `rpg:gameplay`): a game that wants other keys patches those maps. Registered here,
+        // not in the client half, so a headless run validates the kit's input map against them.
+        _actions.Register("Spellbook", ActionKind.Button);
+        _actions.Register("Spellmaker", ActionKind.Button);
+        _actions.Register("Journal", ActionKind.Button);
+        _actions.Register("Rest", ActionKind.Button);
         var actions = _actions;
         ctx.Engine.Records.AddCheck<RpgConventionsRecord>((conventions, check) => RpgConventions.Check(actions, conventions, check));
 
@@ -141,6 +149,10 @@ public sealed class RpgKitModule : IModule
         world.AddSystem(new UseScreenSystem(world));
         // Walking lifts the map's fog (issue #349).
         world.AddSystem(new MapDiscoverySystem());
+        // The rest screen opens with its button (the key is the kit's default map's, issue #354).
+#pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
+        if (world.Resources.TryGet<UiScreenStack>(out var widgets) && widgets != null) widgets.Bind(_actions!.Get("Rest"), RestScreen);
+#pragma warning restore SAGE0125
         // The equipment screen lists the slots there are.
         if (!world.Resources.TryGet<EquipSlots>(out _)) world.Resources.Add(_slots!);
     }

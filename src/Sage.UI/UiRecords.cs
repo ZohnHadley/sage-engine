@@ -110,6 +110,9 @@ public sealed class UiLayoutRecord
 
     [Property(Tooltip = "The widgets, by name: each has a widget type and names its parent (none: the layout's root)")]
     public Dictionary<string, UiNode> Nodes = new();
+
+    [Property(Tooltip = "When another layout includes this one: what `{$name}` in its nodes' text and paths is unless the including node's `params` say otherwise")]
+    public Dictionary<string, string> Params = new();
 }
 
 // One widget of a layout. Fields a widget type does not have are errors at load (a label has no
@@ -129,6 +132,18 @@ public sealed class UiNode
 
     [Property(Tooltip = "Its style; empty: its parent's")]
     public RecordRef<UiStyleRecord> Style;
+
+    // ---- a reusable part (issue #347)
+
+    [Property(Tooltip = "Another layout whose nodes go inside this one, before its own children, named 'this/inner': a part made once and used " +
+                        "anywhere (a titled window, a labelled bar); with no widget, this node is a stack")]
+    public RecordRef<UiLayoutRecord> Include;
+
+    [Property(Tooltip = "For an include: what `{$name}` in the included layout's text and paths is")]
+    public Dictionary<string, string> Params = new();
+
+    [Property(Tooltip = "A path into the view-model (or the row) that this node and everything inside it read from; '$parent.' reaches back out")]
+    public string Scope = "";
 
     // ---- what it shows
 
@@ -301,11 +316,22 @@ public sealed class UiNode
 
     // ---- bindings
 
-    [Property(Tooltip = "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to")]
+    [Property(Tooltip = "A path into the view-model for its main value (`name`, `items[0].name`, `stats[health]`; in a row, `$parent.` or `$root.` for the view-model): a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to")]
     public string Bind = "";
 
     [Property(Tooltip = "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options, icon, iconTurned, columnSpan, rowSpan")]
     public Dictionary<string, string> Bindings = new();
+
+    // A copy whose collections are its own (LayoutTree, for an included layout's node).
+    internal UiNode Copy()
+    {
+        var copy = (UiNode)MemberwiseClone();
+        copy.Args = new(Args);
+        copy.Bindings = new(Bindings);
+        copy.Params = new(Params);
+        copy.Options = new(Options);
+        return copy;
+    }
 }
 
 // ---- screen ---------------------------------------------------------------------------------------

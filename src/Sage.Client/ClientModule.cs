@@ -22,6 +22,7 @@ public sealed class ClientModule : IModule
 {
     private ContentService? _content;
     private ClientHost? _host;
+    private DropDownConsole? _console;
     private UiResources? _ui;
     private Renderer? _renderer;
     private RendererCVars? _rendererCVars;
@@ -94,6 +95,17 @@ public sealed class ClientModule : IModule
         // Which screen is which, by id (issue #27). In Init, so a module that depends on this one can
         // register its screens in its own Init.
         ctx.Provide(Screens);
+        // The registry dump lists them with the plugin that registered each (issue #354), so check_docs and
+        // tooling see which screen ids a game can ask for.
+        Screens.Ledger = ctx.Engine.Registrations;
+        var ledger = ctx.Engine.Registrations;
+        ctx.Engine.DumpSections.Add("screens", () =>
+        {
+            var array = new System.Text.Json.Nodes.JsonArray();
+            foreach (string id in Screens.Ids)
+                array.Add(new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["owner"] = ledger.OwnerOf("screen", id) });
+            return array;
+        });
 
         // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
         // registered in Start does not exist yet when the saved value is read — the line is dropped
@@ -441,6 +453,9 @@ public sealed class ClientModule : IModule
         _audioDevice = HasAudioDevice();
         _actionIds = ctx.Engine.Actions;
         _devices = ctx.Get<InputDevices>();   // typed characters for a screen's field (13 §3)
+        // The Shipping console the host drives (#353); a host without one (a tool) has no drop-down.
+        try { _console = ctx.Get<DropDownConsole>(); }
+        catch (InvalidOperationException) { _console = null; }
     }
 
     public void OnWorldCreated(World world)
@@ -510,6 +525,7 @@ public sealed class ClientModule : IModule
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
         world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!));
+        if (_console != null) world.AddSystem(new ConsoleSystem(world, _console));
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _shaders!, _assetHotReload!));
     }
 

@@ -86,10 +86,11 @@ internal static class WidgetRenderer
     {
         float em = (command.FontSize > 0f ? command.FontSize : UiFonts.DefaultSize) * command.Size;
         string text = command.Text!;
-        if (fonts != null && UiFonts.IsTrueType(command.Font) && fonts.Get(command.Font) is { } font)
+        // A TTF, or any font while the language names fonts of its own (#345): drawn through the chain.
+        if (fonts != null && (UiFonts.IsTrueType(command.Font) || fonts.Fallbacks.Count > 0) && fonts.Chain(command.Font) is { } chain)
         {
-            truetype.Draw(ui, font, em, text, command.Start, command.Length, x, y, colour);
-            if (command.Ellipsis) truetype.Draw(ui, font, em, TextLayout.Ellipsis, 0, 1, x + command.EllipsisAt, y, colour);
+            truetype.Draw(ui, chain, em, text, command.Start, command.Length, x, y, colour);
+            if (command.Ellipsis) truetype.Draw(ui, chain, em, TextLayout.Ellipsis, 0, 1, x + command.EllipsisAt, y, colour);
             return;
         }
         // A cell font: Size is pixels per font pixel at the engine font's size, and the font itself

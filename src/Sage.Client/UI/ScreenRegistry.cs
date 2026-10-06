@@ -23,6 +23,9 @@ public sealed class ScreenRegistry
     // Closed when the client starts: worlds made after that must all see the same screens.
     public RegistrationSeal Seal { get; } = new("screen", "a world created before it has already looked for it and found nothing");
 
+    // Who registered each screen, for the registry dump (issue #354); set by ClientModule.
+    public RegistrationLedger? Ledger { get; set; }
+
     public IEnumerable<string> Ids => _screens.Keys.OrderBy(id => id, StringComparer.OrdinalIgnoreCase);
 
     public void Register(string id, Func<Screen> create)
@@ -30,6 +33,7 @@ public sealed class ScreenRegistry
         Seal.Check(id);
         if (!_screens.TryAdd(id, create))
             throw new InvalidOperationException($"Two screens claim the id '{id}'.");
+        Ledger?.Record("screen", id);
     }
 
     public bool Has(string id) => _screens.ContainsKey(id);

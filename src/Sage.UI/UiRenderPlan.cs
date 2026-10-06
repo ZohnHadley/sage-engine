@@ -148,15 +148,18 @@ internal sealed class UiRenderPlan
                 bar.Colour = bar.From = highlight;
             }
             if (options[i].Length == 0) continue;
-            var size = dropdown.MeasureOf(root.Text).Measure(options[i], dropdown.TextScale);   // in the dropdown's font (#338)
-            var at = new Rect(row.X + padding.Left, row.Y + (row.Height - size.Y) * 0.5f, size.X, size.Y);
+            string option = Scripts.Shape(options[i]);   // joined, and in the order it is seen (#345)
+            var size = dropdown.MeasureOf(root.Text).Measure(option, dropdown.EffectiveTextScale);   // in the dropdown's font (#338)
+            if (Scripts.HasRightToLeft(option)) option = Scripts.Reorder(option, Scripts.ParagraphIsRightToLeft(option, root.RightToLeft));
+            float left = root.RightToLeft ? row.Right - padding.Right - size.X : row.X + padding.Left;
+            var at = new Rect(left, row.Y + (row.Height - size.Y) * 0.5f, size.X, size.Y);
             ref var text = ref Add(UiDrawKind.Text, dropdown, root.ToPixels(at));
             text.Colour = text.From = lit ? focused.Text : normal.Text;
-            text.Text = options[i];
-            text.Length = options[i].Length;
+            text.Text = option;
+            text.Length = option.Length;
             text.Font = dropdown.Font;
             text.FontSize = dropdown.FontSize;
-            text.Size = dropdown.TextScale * scale;
+            text.Size = dropdown.EffectiveTextScale * scale;
         }
     }
 
@@ -371,11 +374,11 @@ internal sealed class UiRenderPlan
             }
             if (label is Dropdown dropdown) Text(label, Dropdown.Arrow, dropdown.ArrowRect, Align.Center, to.Text, from.Text, blend, scale, fit: false);
 
-            string shown = label.Text;
+            string shown = label.Shown;
             uint colour = to.Text, was = from.Text;
             if (shown.Length == 0 && label is TextBox { Placeholder.Length: > 0 } empty)
             {
-                shown = empty.Placeholder;
+                shown = Scripts.Shape(empty.Placeholder);
                 colour = UiColour.Fade(colour, 0.5f);
                 was = UiColour.Fade(was, 0.5f);
             }
@@ -387,9 +390,9 @@ internal sealed class UiRenderPlan
                 // typed, not the placeholder, which it sits in front of).
                 var measure = field.MeasureOf(_root.Text);   // in the field's own font (#338)
                 var at = field.Text.Length == 0 ? Vector2.Zero : field.CaretOffset(measure);
-                float line = measure.LineHeight * field.TextScale;
+                float line = measure.LineHeight * field.EffectiveTextScale;
                 if (field.Text.Length == 0) origin = Placed(label, label.TextArea, new Vector2(0f, line), Align.Start);
-                var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.TextScale, 1f), line);
+                var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.EffectiveTextScale, 1f), line);
                 Colour(ref _plan.Add(UiDrawKind.Rect, label, _root.ToPixels(caret)), to.Text, from.Text, blend);
             }
         }
@@ -404,14 +407,21 @@ internal sealed class UiRenderPlan
             var lines = _plan._lines;
             Vector2 size;
             fit &= label.Fitted;
+            // Text with Arabic or Hebrew in it is drawn a line at a time, each in the order it is seen (#345).
+            bool bidi = Scripts.HasRightToLeft(text);
             if (fit)
             {
                 float height = label.Overflow == TextOverflow.Visible ? float.PositiveInfinity : area.Height;
-                size = TextLayout.Break(text, measure, label.TextScale, label.FitWidth(area.Width), height, label.Wrap, label.Overflow, lines);
+                size = TextLayout.Break(text, measure, label.EffectiveTextScale, label.FitWidth(area.Width), height, label.Wrap, label.Overflow, lines);
+            }
+            else if (bidi)
+            {
+                size = TextLayout.Break(text, measure, label.EffectiveTextScale, float.PositiveInfinity, float.PositiveInfinity, false, TextOverflow.Visible, lines);
+                fit = true;   // a command per line, so each is reordered on its own
             }
             else
             {
-                size = measure.Measure(text, label.TextScale);
+                size = measure.Measure(text, label.EffectiveTextScale);
                 lines.Clear();
                 lines.Add(new TextLine(0, text.Length, size.X, false));
             }
@@ -423,11 +433,11 @@ internal sealed class UiRenderPlan
             // what does not fit is what is cut. Not fitted, the text is one command whatever its '\n's.
             var origin = Placed(label, area, size, align);
             if (size.Y > area.Height) origin.Y = area.Y;
-            float lineHeight = fit ? measure.LineHeight * label.TextScale : size.Y;
+            float lineHeight = fit ? measure.LineHeight * label.EffectiveTextScale : size.Y;
             float y = origin.Y, ellipsis = 0f;
             foreach (var line in lines)
             {
-                if (line.Ellipsis && ellipsis == 0f) ellipsis = measure.Width(TextLayout.Ellipsis, label.TextScale);
+                if (line.Ellipsis && ellipsis == 0f) ellipsis = measure.Width(TextLayout.Ellipsis, label.EffectiveTextScale);
                 if (line.Length > 0 || line.Ellipsis)
                 {
                     float x = Placed(label, area, new Vector2(line.Width, 0f), align).X;
@@ -436,11 +446,23 @@ internal sealed class UiRenderPlan
                     command.Text = text;
                     command.Start = line.Start;
                     command.Length = line.Length;
-                    command.Size = label.TextScale * scale;
+                    command.Size = label.EffectiveTextScale * scale;
                     command.Font = label.Font;
                     command.FontSize = label.FontSize;
                     command.Ellipsis = line.Ellipsis;
                     command.EllipsisAt = line.Ellipsis ? (line.Width - ellipsis) * scale : 0f;
+                    var span = text.AsSpan(line.Start, line.Length);
+                    if (bidi && Scripts.HasRightToLeft(span))
+                    {
+                        // The line as it is seen, a string of its own; a right-to-left line ends at its
+                        // left, so its "…" goes there, in the string.
+                        bool rtl = Scripts.ParagraphIsRightToLeft(span, _root.RightToLeft);
+                        string visual = Scripts.Reorder(span, rtl);
+                        if (rtl && line.Ellipsis) { visual = TextLayout.Ellipsis + visual; command.Ellipsis = false; command.EllipsisAt = 0f; }
+                        command.Text = visual;
+                        command.Start = 0;
+                        command.Length = visual.Length;
+                    }
                 }
                 y += lineHeight;
             }
@@ -449,8 +471,10 @@ internal sealed class UiRenderPlan
             return origin;
         }
 
+        // Start is the left, or in a right-to-left tree the right (#345); End the other side.
         private static Vector2 Placed(Label label, Rect area, Vector2 size, Align align)
         {
+            if (label.IsRightToLeft) align = align switch { Align.Start => Align.End, Align.End => Align.Start, _ => align };
             float x = align switch
             {
                 Align.Center => area.X + (area.Width - size.X) * 0.5f,

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace Sage.UI;
@@ -25,7 +26,9 @@ public sealed class UiModule : IModule
     public const string Id = "sage.ui";
 
     private Engine? _engine;
-    private CVar<string>? _lang;
+    private CVar<string>? _lang, _styleSet;
+    private CVar<float>? _uiScale, _textScale;
+    private CVar<bool>? _subtitles, _captions;
 
     public Localisation Localisation { get; } = new();
     public UiStyles Styles { get; } = new();
@@ -68,7 +71,7 @@ public sealed class UiModule : IModule
         _lang.Changed += _ =>
         {
             if (!_started) return;
-            Localisation.Load(ctx.Engine.Vfs, _lang.Value);
+            LoadLanguage();
             Screens.RebuildAll();
         };
 
@@ -102,8 +105,30 @@ public sealed class UiModule : IModule
                 }
         });
 
+        // Accessibility (issue #351): the player's scale, text size, style set and subtitles, live.
+        _uiScale = ctx.Engine.CVars.Register("ui_scale", 1f, CVarFlags.Archive,
+            "How big the game's UI is drawn, 1 = as designed (0.5 to 3); the layout reflows to fit.", UiRoot.MinUiScale, UiRoot.MaxUiScale);
+        _textScale = ctx.Engine.CVars.Register("ui_text_scale", 1f, CVarFlags.Archive,
+            "How big the UI's text is, 1 = as designed (0.5 to 3), on top of ui_scale.", UiRoot.MinUiScale, UiRoot.MaxUiScale);
+        _styleSet = ctx.Engine.CVars.Register("ui_style_set", "", CVarFlags.Archive,
+            "The ui_style_set the UI is drawn with (high contrast, a colour-blind palette), by id; empty: the styles as written.");
+        _subtitles = ctx.Engine.CVars.Register("subtitles", true, CVarFlags.Archive, "Show lines of dialogue that are heard as subtitles.");
+        _captions = ctx.Engine.CVars.Register("captions", false, CVarFlags.Archive, "Show captions of sounds (\"[door creaks]\") that have one.");
+        _uiScale.Changed += _ => EachStack(stack => stack.UiScale = _uiScale.Value);
+        _textScale.Changed += _ => EachStack(stack => stack.TextScale = _textScale.Value);
+        _subtitles.Changed += _ => EachWorld(world => { if (world.Resources.TryGet<Subtitles>(out var s) && s != null) s.ShowDialogue = _subtitles.Value; });
+        _captions.Changed += _ => EachWorld(world => { if (world.Resources.TryGet<Subtitles>(out var s) && s != null) s.ShowCaptions = _captions.Value; });
+        _styleSet.Changed += _ =>
+        {
+            if (!_started) return;
+            Styles.UseSet(ActiveSet());
+            Screens.RebuildAll();
+        };
+
         ctx.Engine.Records.AddCheck<UiLayoutRecord>(UiContentChecks.Layout);
+        ctx.Engine.Records.AddCheck<UiStyleSetRecord>(UiAccessibilityChecks.StyleSet);
         ctx.Engine.Records.AddCheck<ScreenRecord>((screen, check) => UiContentChecks.ScreenViewModel(screen, check, viewModels));
+        ctx.Engine.Records.AddCheck<OptionRecord>(OptionChecks.Check);   // the options screen's settings (issue #339)
 
         ctx.Engine.CVars.RegisterCommand("loc", CVarFlags.None,
             "loc <@ns.key> [count]: what a localisation key shows in the current language; loc alone: the language and how many keys it has.", a =>
@@ -118,6 +143,22 @@ public sealed class UiModule : IModule
                 ? Localisation.Text(key, n) : Localisation.Text(key);
             Log.Info(LogCat.Console, $"{key} = \"{text}\"");
         });
+        ctx.Engine.CVars.RegisterCommand("loc_check", CVarFlags.None,
+            "loc_check: every language's tables against English's (missing and stray keys, placeholders, plural forms) and its characters against the fonts that draw them, as `sage validate` does.", _ =>
+        {
+            int problems = UiContentChecks.Languages(ctx.Engine.Records, ctx.Engine.Vfs, Fonts);
+            Log.Info(LogCat.Console, $"loc_check: {problems} problem(s) in {Localisation.LanguagesIn(ctx.Engine.Vfs).Count} language(s)");
+        });
+    }
+
+    // The `lang` cvar's tables, and what its `language` record says: direction and fonts (#345).
+    private void LoadLanguage()
+    {
+        var engine = _engine!;
+        Localisation.Load(engine.Vfs, _lang!.Value);
+        var record = UiContentChecks.FindLanguage(engine.Records, Localisation.Language)?.Record;
+        Localisation.Describe(record?.Direction ?? TextDirection.Auto, record?.Fonts.ToArray() ?? Array.Empty<AssetPath>());
+        Fonts.SetFallbacks(Localisation.Fonts);
     }
 
     private bool _started, _fontsRead;
@@ -152,8 +193,28 @@ public sealed class UiModule : IModule
         world.Resources.Add(Screens);
         world.Resources.Add(Fonts);
         // The widget screens this world has open (#97): headless here, drawn and fed by the client.
-        world.Resources.Add(new UiScreenStack(Screens, Styles, world, Fonts));
+        var subtitles = new Subtitles(Localisation) { ShowDialogue = _subtitles!.Value, ShowCaptions = _captions!.Value };
+        world.Resources.Add(subtitles);
+        world.Resources.Add(new UiScreenStack(Screens, Styles, world, Fonts)
+        {
+            UiScale = _uiScale!.Value,
+            TextScale = _textScale!.Value,
+            Subtitles = subtitles,
+        });
+        world.AddSystem(new SubtitleSystem(world));
     }
+
+    private void EachWorld(Action<World> act)
+    {
+        if (_engine == null) return;
+        foreach (var world in _engine.Worlds) act(world);
+    }
+
+    private void EachStack(Action<UiScreenStack> act) =>
+        EachWorld(world => { if (world.Resources.TryGet<UiScreenStack>(out var stack) && stack != null) act(stack); });
+
+    // The style set the cvar names, by id ("high_contrast" finds it in any namespace); empty when none.
+    private RecordId ActiveSet() => _styleSet!.Value.Length == 0 ? default : _engine!.Records.Resolve("ui_style_set", _styleSet.Value);
 
     // The entity a screen opened from the console is about: the first player-controlled one.
     private static Entity LocalPlayer(World world)
@@ -165,12 +226,18 @@ public sealed class UiModule : IModule
     private void ContentChanged()
     {
         var engine = _engine!;
+        Styles.UseSet(ActiveSet());
         if (_fontsRead) Fonts.Clear();   // a font file may have changed with the rest: read again on next use
         _fontsRead = true;
         Styles.Rebuild(engine.Records);
-        Localisation.Load(engine.Vfs, _lang!.Value);
+        LoadLanguage();
+        UiContentChecks.Includes(engine.Records);
         UiContentChecks.Screens(engine.Records, engine.Vocabularies.Of<IViewModel>());
         if (BuildInfo.IsDevBuild) UiContentChecks.Keys(engine.Records, Localisation);
+        // Every translation's completeness (#345): `sage validate` (and loc_check) only, as it reads
+        // every language's tables and fonts.
+        if (engine.Records.MissingAssetsAreErrors) UiContentChecks.Languages(engine.Records, engine.Vfs, Fonts);
+        if (BuildInfo.IsDevBuild) UiAccessibilityChecks.Contrast(engine.Records);
         Screens.RebuildAll();
     }
 }
@@ -187,7 +254,11 @@ internal static class UiContentChecks
         foreach (var (name, node) in layout.Nodes)
         {
             string at = $"Nodes['{name}']";
-            if (node.Widget.Length == 0) check.Error(at, $"node '{name}' needs a widget: one of {string.Join(", ", WidgetTypes.Names)}");
+            if (node.Widget.Length == 0 && node.Include.IsEmpty) check.Error(at, $"node '{name}' needs a widget: one of {string.Join(", ", WidgetTypes.Names)}");
+            if (!node.Include.IsEmpty && Array.IndexOf(Leaves, node.Widget) >= 0)
+                check.Error($"{at}.Include", $"node '{name}' is a {node.Widget}, which holds no children, so it cannot include a layout");
+            if (node.Params.Count > 0 && node.Include.IsEmpty)
+                check.Error($"{at}.Params", $"node '{name}' has params but includes no layout to fill in");
 
             if (node.Parent.Length > 0)
             {
@@ -212,9 +283,11 @@ internal static class UiContentChecks
                     check.Error($"{at}.Bindings['{target}']", $"no property '{target}' to bind" + Spelling.Suggest(target, UiBindings.All) + $" (there are: {string.Join(", ", UiBindings.All)})");
                 else if (!UiBindings.Applies(node.Widget, key))
                     check.Error($"{at}.Bindings['{target}']", $"a {node.Widget} has no '{key}'");
-                if (path.Split('.').Any(s => s.Length == 0) && !BindingPaths.IsSelf(path))
-                    check.Error($"{at}.Bindings['{target}']", $"'{path}' is not a path: names separated by '.', or '.' for the object itself");
+                if (!IsPath(path, out string? problem))
+                    check.Error($"{at}.Bindings['{target}']", problem!);
             }
+            foreach (var (field, path) in new[] { ("Bind", node.Bind), ("Scope", node.Scope) })
+                if (path.Length > 0 && !IsPath(path, out string? problem)) check.Error($"{at}.{field}", problem!);
 
             if (UiBindings.Of(node).Any(b => b.Target == UiBindings.Rows) && children != 1)
                 check.Error(at, $"'{name}' binds its rows, so it holds one node, the template each row is made from; it has {children}");
@@ -227,6 +300,63 @@ internal static class UiContentChecks
                     check.Error($"{at}.{field}", $"node '{name}' goes to '{neighbour}', which is not a node of this layout" + Spelling.Suggest(neighbour, layout.Nodes.Keys));
         }
     }
+
+    // A path as content writes it (issue #347): `$root.`/`$parent.` first, then names separated by '.',
+    // each with any [index]es; a `{$param}` of an included layout is put in before it is read.
+    private static bool IsPath(string path, out string? problem)
+    {
+        problem = null;
+        if (path.Contains("{$", StringComparison.Ordinal)) return true;
+        if (BindingPaths.TryParse(BindingScope.Split(path, out _), out _, out string? why)) return true;
+        problem = $"{why}: a path is names separated by '.', each with any [index], '$parent.' or '$root.' first, or '.' for the object itself";
+        return false;
+    }
+
+    // Every node's `include` (issue #347), which reads two records: the layout is there, does not include
+    // itself through others, is given only params it has, and is given every `{$name}` it says that it
+    // has no default for. After the load, like Screens.
+    public static void Includes(RecordStore records)
+    {
+        foreach (var id in records.Ids("ui_layout"))
+        {
+            if (!records.TryGet(id, out UiLayoutRecord layout)) continue;
+            foreach (var (name, node) in layout.Nodes)
+            {
+                if (node.Include.IsEmpty || !records.TryGet(node.Include.Id, out UiLayoutRecord included)) continue;
+                string where = records.Where("ui_layout", id, $"Nodes['{name}'].Include");
+                if (Loops(records, id, node.Include.Id, new HashSet<RecordId>()))
+                {
+                    Log.Error(LogCat.Records, $"{where}: ui_layout {id}: node '{name}' includes {node.Include.Id}, which includes {id} again: a layout cannot be inside itself");
+                    continue;
+                }
+                var said = included.Nodes.Values.SelectMany(Texts).SelectMany(UiParams.Named).ToHashSet(StringComparer.Ordinal);
+                foreach (var param in node.Params.Keys)
+                    if (!said.Contains(param) && !included.Params.ContainsKey(param))
+                        Log.Error(LogCat.Records, $"{records.Where("ui_layout", id, $"Nodes['{name}'].Params")}: ui_layout {id}: node '{name}' gives {node.Include.Id} " +
+                                                  $"a param '{param}' it has not got" + Spelling.Suggest(param, said.Concat(included.Params.Keys)));
+                foreach (var param in said)
+                    if (!node.Params.ContainsKey(param) && !included.Params.ContainsKey(param))
+                        Log.Error(LogCat.Records, $"{where}: ui_layout {id}: node '{name}' includes {node.Include.Id}, which says {{${param}}}, " +
+                                                  $"and neither its params nor the layout's own give '{param}'");
+            }
+        }
+    }
+
+    // Whether `layout`, through the layouts it includes, comes back to `start`.
+    private static bool Loops(RecordStore records, RecordId start, RecordId layout, HashSet<RecordId> seen)
+    {
+        if (layout == start) return true;
+        if (!seen.Add(layout) || !records.TryGet(layout, out UiLayoutRecord record)) return false;
+        foreach (var node in record.Nodes.Values)
+            if (!node.Include.IsEmpty && Loops(records, start, node.Include.Id, seen)) return true;
+        return false;
+    }
+
+    // The text and paths of a node that `{$name}` is put into, and its actions' text.
+    private static IEnumerable<string> Texts(UiNode node) =>
+        new[] { node.Text, node.Tooltip, node.Title, node.Placeholder, node.Bind, node.Scope }
+            .Concat(node.Options).Concat(node.Args.Values).Concat(node.Bindings.Values).Concat(node.Params.Values)
+            .Concat(node.Actions.SelectMany(UiParams.Texts));
 
     private static bool Cycles(UiLayoutRecord layout, string start)
     {
@@ -255,27 +385,50 @@ internal static class UiContentChecks
             if (!records.TryGet(id, out ScreenRecord screen) || !records.TryGet(screen.Layout.Id, out UiLayoutRecord layout)) continue;
             Type? type = screen.ViewModel.Length > 0 && viewModels.TryFind(screen.ViewModel, out var entry) ? entry.Type : null;
             if (screen.ViewModel.Length > 0 && type == null) continue;   // the screen check said so
-            var tree = new LayoutTree(layout);
-            CheckPaths(records, id, screen, layout, tree, "", type);
+            var tree = new LayoutTree(layout, records);
+            CheckPaths(records, id, screen, tree, "", type, new List<Type?>());
         }
     }
 
-    private static void CheckPaths(RecordStore records, RecordId id, ScreenRecord screen, UiLayoutRecord layout, LayoutTree tree, string parent, Type? source)
+    // `outer`: the types of the scopes around `source` (`$parent.`, `$root.`; issue #347), outermost first.
+    private static void CheckPaths(RecordStore records, RecordId id, ScreenRecord screen, LayoutTree tree, string parent, Type? source, List<Type?> outer)
     {
-        foreach (var (name, node) in tree.ChildrenOf(parent))
+        foreach (var (name, written) in tree.ChildrenOf(parent))
         {
+            var node = written;
             Type? rows = null;
+            // A `scope`: the node and what is inside it read from there.
+            Type? nodeSource = source;
+            bool scoped = node.Scope.Length > 0 && source != null;
+            if (scoped)
+            {
+                if (!Walk(source, outer, node.Scope, out var leaf, out string? problem))
+                {
+                    Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' reads its scope from '{node.Scope}': {problem}");
+                    continue;
+                }
+                if (leaf == null) continue;   // read from a scope that cannot be told: nothing below is checked
+                if (leaf.IsValueType || leaf == typeof(string))
+                {
+                    Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' reads its scope from '{node.Scope}', " +
+                                              $"a {leaf.Name}: a scope is an object whose members its paths name");
+                    continue;
+                }
+                outer.Add(source);
+                nodeSource = leaf;
+            }
             foreach (var (target, path) in UiBindings.Of(node).Concat(node.Args.Select(a => ("arg " + a.Key, a.Value))))
             {
-                if (source == null)
+                if (nodeSource == null)
                 {
                     Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                               $"{target} to '{path}', and the screen names no view-model");
                     continue;
                 }
-                if (!BindingPaths.TryWalk(source, path, out _, out var leaf, out string? problem))
+                if (!Walk(nodeSource, outer, path, out var leaf, out string? problem))
                     Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                               $"{target} to '{path}': {problem}");
+                else if (leaf == null) { if (target == UiBindings.Rows) rows = typeof(object); }
                 else if (target == UiBindings.Rows)
                 {
                     if (!typeof(IList).IsAssignableFrom(leaf))
@@ -288,14 +441,58 @@ internal static class UiContentChecks
                                               $"{target} to '{path}', a {leaf.Name}: a binding reads a number, a flag, text or an object");
                 // A form widget writes what the player sets back to its binding (issue #340): a path
                 // that cannot be written shows the value and forgets every change, which is a warning.
-                else if (target == UiBindings.Written(node.Widget) && !BindingPaths.IsWritable(source, path, out string? readOnly))
+                else if (target == UiBindings.Written(node.Widget) && !IsWritable(nodeSource, outer, path, out string? readOnly))
                     Log.Warn(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                              $"{target} to '{path}': {readOnly}, so what the player changes is not kept");
             }
-            // A row template's paths are into its row, not the view-model; a plain IList's rows can't be told.
-            if (rows != null) { if (rows != typeof(object)) CheckPaths(records, id, screen, layout, tree, name, rows); }
-            else CheckPaths(records, id, screen, layout, tree, name, source);
+            // A row template's paths are into its row, not the view-model, with the view-model around it;
+            // a plain IList's rows can't be told.
+            if (rows != null)
+            {
+                if (rows != typeof(object))
+                {
+                    outer.Add(nodeSource);
+                    CheckPaths(records, id, screen, tree, name, rows, outer);
+                    outer.RemoveAt(outer.Count - 1);
+                }
+            }
+            else CheckPaths(records, id, screen, tree, name, nodeSource, outer);
+            if (scoped) outer.RemoveAt(outer.Count - 1);
         }
+    }
+
+    // The type `path` starts from — this scope's, one further out per `$parent.`, the view-model's for
+    // `$root.` — and where it ends. A scope that cannot be told (a plain IList's rows) passes.
+    private static bool Walk(Type? source, List<Type?> outer, string path, out Type? leaf, out string? problem)
+    {
+        leaf = null;
+        problem = null;
+        string rest = BindingScope.Split(path, out int up);
+        if (!From(source, outer, up, out var start, out problem)) return false;
+        if (start == null) return true;   // leaf null: not known
+        bool found = BindingPaths.TryWalk(start, rest, out _, out var end, out problem);
+        leaf = end;
+        return found;
+    }
+
+    private static bool IsWritable(Type? source, List<Type?> outer, string path, out string? problem)
+    {
+        string rest = BindingScope.Split(path, out int up);
+        if (!From(source, outer, up, out var start, out problem)) return false;
+        return start == null || BindingPaths.IsWritable(start, rest, out problem);
+    }
+
+    private static bool From(Type? source, List<Type?> outer, int up, out Type? start, out string? problem)
+    {
+        problem = null;
+        start = up == 0 ? source : up < 0 ? (outer.Count == 0 ? source : outer[0]) : up <= outer.Count ? outer[^up] : null;
+        if (up > outer.Count)
+        {
+            problem = up == 1 ? "there is no scope around this one: '$parent.' reaches out of a list's rows or a `scope`"
+                              : $"there are not {up} scopes around this one";
+            return false;
+        }
+        return true;
     }
 
     // Every '@key' any record says that no string table has: a warning each, at its line (issue #96,
@@ -350,6 +547,113 @@ internal static class UiContentChecks
         type == typeof(string) || typeof(IEnumerable).IsAssignableFrom(type) || (!type.IsValueType && !type.IsPrimitive) ;
 
     private static string Join(string path, string name) => path.Length == 0 ? name : path + "." + name;
+
+    // The `language` record for a language code, if content has one.
+    public static (RecordId Id, LanguageRecord Record)? FindLanguage(RecordStore records, string code)
+    {
+        foreach (var id in records.Ids("language"))
+            if (records.TryGet(id, out LanguageRecord record) && LanguageRecord.SameCode(record.CodeFor(id), code)) return (id, record);
+        return null;
+    }
+
+    // How complete each translation is (issue #345), as warnings: for every language with tables but
+    // English, the English keys it lacks (shown in English), keys only it has (no content can name
+    // them), placeholders it adds or leaves out, plural forms its counts need and it lacks, and the
+    // characters none of the fonts that would draw it has. Also a `language` record no tables are for.
+    // Returns how many problems it said.
+    public static int Languages(RecordStore records, VirtualFileSystem vfs, UiFonts fonts)
+    {
+        int problems = 0;
+        void Warn(string message) { Log.Warn(LogCat.UI, message); problems++; }
+        var languages = Localisation.LanguagesIn(vfs);
+
+        foreach (var id in records.Ids("language"))
+        {
+            if (!records.TryGet(id, out LanguageRecord record)) continue;
+            string code = record.CodeFor(id);
+            if (!languages.Any(l => LanguageRecord.SameCode(l, code)))
+                Warn($"{records.Where("language", id)}: language {id}: no mount has strings/{code}/, so nothing is shown in it");
+        }
+
+        var english = Localisation.Read(vfs, Localisation.DefaultLanguage);
+        // The fonts any text may be drawn in, whatever the language: the styles' and the engine's own.
+        var common = new List<TrueTypeFont>();
+        foreach (var id in records.Ids("ui_style"))
+            if (records.TryGet(id, out UiStyleRecord style) && UiFonts.IsTrueType(style.Font) && fonts.Get(style.Font) is { } font) common.Add(font);
+        if (fonts.Quiet(UiFonts.EngineFont) is { } engineFont) common.Add(engineFont);
+
+        foreach (string language in languages)
+        {
+            if (language == Localisation.DefaultLanguage) continue;
+            var texts = Localisation.Read(vfs, language);
+            var missing = english.Keys.Where(k => !texts.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+            if (missing.Count > 0)
+                Warn($"strings/{language}: {missing.Count} of {english.Count} key(s) have no '{language}' text and show in English: " +
+                     string.Join(", ", missing.Take(10)) + (missing.Count > 10 ? $", and {missing.Count - 10} more" : ""));
+
+            var uses = PluralRules.Uses(language);
+            foreach (var (key, entry) in texts.OrderBy(t => t.Key, StringComparer.Ordinal))
+            {
+                if (!english.TryGetValue(key, out var source))
+                {
+                    Warn($"{entry.File}: '{key[1..]}' is in strings/{language} but not strings/{Localisation.DefaultLanguage}, so no content names it" +
+                         Spelling.Suggest(key, english.Keys));
+                    continue;
+                }
+                var theirs = Placeholders(source);
+                var ours = Placeholders(entry);
+                foreach (string name in ours.Except(theirs).OrderBy(n => n, StringComparer.Ordinal))
+                    Warn($"{entry.File}: '{key[1..]}' names {{{name}}}, which the English text does not, so nothing fills it");
+                foreach (string name in theirs.Except(ours).OrderBy(n => n, StringComparer.Ordinal))
+                    Warn($"{entry.File}: '{key[1..]}' leaves out {{{name}}}, which the English text shows");
+                if (source.IsPlural && !entry.IsPlural)
+                    Warn($"{entry.File}: '{key[1..]}' has plural forms in English and one text in '{language}': give it the forms {string.Join(", ", uses.Select(Name))}");
+                else if (entry.IsPlural)
+                {
+                    var lacking = uses.Where(c => c != PluralCategory.Other && !entry.HasForm(c)).ToList();
+                    if (lacking.Count > 0)
+                        Warn($"{entry.File}: '{key[1..]}' has no {string.Join(", ", lacking.Select(Name))} form(s), which counts in '{language}' take; they show its 'other'");
+                }
+            }
+
+            // Characters no font that could draw them has: the language's own fonts, the styles' and the engine's.
+            var chainFonts = (FindLanguage(records, language)?.Record.Fonts ?? new List<AssetPath>())
+                .Select(fonts.Get).Where(f => f != null).Select(f => f!).Concat(common).ToList();
+            if (chainFonts.Count == 0) continue;
+            var chain = new FontChain(chainFonts[0], chainFonts.Skip(1));
+            var lacked = new SortedSet<int>();
+            foreach (var entry in texts.Values)
+                foreach (string text in entry.Texts)
+                    foreach (var rune in Scripts.Shape(text).EnumerateRunes())
+                        if (!Rune.IsWhiteSpace(rune) && !Rune.IsControl(rune) && !chain.Covers(rune.Value)) lacked.Add(rune.Value);
+            if (lacked.Count > 0)
+                Warn($"strings/{language}: {lacked.Count} character(s) no font has, drawn as boxes: " +
+                     string.Join(" ", lacked.Take(20).Select(c => $"{char.ConvertFromUtf32(c)} U+{c:X4}")) + (lacked.Count > 20 ? " ..." : "") +
+                     $"; name a font that has them in a `language` record for '{language}'");
+        }
+        return problems;
+    }
+
+    private static string Name(PluralCategory category) => category.ToString().ToLowerInvariant();
+
+    // The {placeholders} a text (every form of it) names, without their formats.
+    private static HashSet<string> Placeholders(LocalisedText entry)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string text in entry.Texts)
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] != '{') continue;
+                if (i + 1 < text.Length && text[i + 1] == '{') { i++; continue; }
+                int close = text.IndexOf('}', i + 1);
+                if (close < 0) break;
+                string name = text[(i + 1)..close];
+                int colon = name.IndexOf(':');
+                names.Add(colon < 0 ? name : name[..colon]);
+                i = close;
+            }
+        return names;
+    }
 
     // "@ns.key": a namespace and at least one more part, names only — so "@" in an e-mail address or a
     // prose line starting with it is not taken for a key.

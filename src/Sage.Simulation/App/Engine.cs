@@ -127,6 +127,7 @@ public sealed class Engine : IDisposable
     // world without them uses the defaults.
     internal SchedulingCVars? Scheduling { get; set; }
     internal VisualLogCVars? VisualLogSettings { get; set; }   // vlog_record, vlog_ticks, vlog_show (#300)
+    internal CVar<float>? PlayerFov { get; set; }              // `fov`: the player camera's field of view (#339)
 
     // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).
     public RegistrationLedger Registrations { get; } = new();
@@ -143,6 +144,10 @@ public sealed class Engine : IDisposable
     // game declares. Entries are declared ([AICondition("is_night")] …) and registered by generated
     // code for their plugin; sealed when content loads.
     public Vocabularies Vocabularies { get; } = new();
+
+    // Sections a layer above the simulation adds to the registry dump (issue #354): the client's screens by id,
+    // which this assembly cannot name. A module adds one in Init; the dump calls it when it is written.
+    public RegistryDumpSections DumpSections { get; } = new();
 
     // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
     public ActionRegistry Actions { get; } = new();
