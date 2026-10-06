@@ -252,7 +252,8 @@ internal static class AnimatorStepper
         }
         for (int c = 0; c < g.ClipNames.Length; c++)
         {
-            instance.Clips[c] = set.FindClip(g.ClipNames[c]);
+            // A clip the model has not got may come from a clip library's rig through a skeleton_map (#360).
+            instance.Clips[c] = set.FindClip(g.ClipNames[c]) ?? SkeletonMaps.Find(world, a.Model, set, g.ClipNames[c]);
             if (instance.Clips[c] == null)
                 Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-clip:{a.Graph}:{a.Model}:{g.ClipNames[c]}",
                     $"Animator {a.Graph} at {World.Describe(entity)}: {set.Source} has no clip '{g.ClipNames[c]}'; states that play it stand at rest");

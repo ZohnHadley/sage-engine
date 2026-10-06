@@ -694,3 +694,13 @@ Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void
 *REMOVED*virtual Sage.Simulation.Screen.Width.get -> float
 Sage.Simulation.IAnimDebugSource
 Sage.Simulation.IAnimDebugSource.Describe(Sage.Simulation.World! world, string! filter, System.Collections.Generic.List<string!>! lines) -> void
+const Sage.Simulation.ClipRetargeter.DefaultSampleRate = 30 -> float
+Sage.Simulation.ClipRetargeter
+Sage.Simulation.SkeletonMapRecord
+Sage.Simulation.SkeletonMapRecord.Bones -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.Simulation.SkeletonMapRecord.SampleRate -> float
+Sage.Simulation.SkeletonMapRecord.Scale -> float
+Sage.Simulation.SkeletonMapRecord.SkeletonMapRecord() -> void
+Sage.Simulation.SkeletonMapRecord.Source -> Sage.Core.AssetPath
+Sage.Simulation.SkeletonMapRecord.Target -> Sage.Core.AssetPath
+static Sage.Simulation.ClipRetargeter.Retarget(Sage.Simulation.AnimationClip! clip, Sage.Simulation.Skeleton! source, Sage.Simulation.Skeleton! target, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! bones, float scale = 0, float sampleRate = 30) -> Sage.Simulation.AnimationClip!
