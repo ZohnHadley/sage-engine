@@ -45,6 +45,7 @@ float Wrap(float3 n, float3 toLight)
     return saturate(dot(n, toLight) * 0.5 + 0.5);
 }
 
+// The lamps near a sprite (issue #314: spot lights too), wrapped: `LightRules.Sum(..., wrapped: true)`.
 float3 SpritePointLights(float3 n, float3 relative)
 {
     float3 sum = float3(0, 0, 0);
@@ -59,7 +60,8 @@ float3 SpritePointLights(float3 n, float3 relative)
         if (distance >= range) continue;
 
         float falloff = 1.0 - distance / max(range, 0.001);
-        sum += LightColors[i].rgb * (falloff * falloff * Wrap(n, toLight / max(distance, 0.001)));
+        float3 l = toLight / max(distance, 0.001);
+        sum += LightColors[i].rgb * (falloff * falloff * Wrap(n, l) * SpotCone(i, -l));
     }
 
     return sum;
