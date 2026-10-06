@@ -443,6 +443,10 @@ public enum AnimParamSource
     // The character controller is on the ground / crouched (bools).
     Grounded,
     Crouching,
+    // The fighter's AttackStance (issue #359): its direction as a number (0 none, 1 overhead, 2 right,
+    // 3 thrust, 4 left), and whether it holds its guard up (a bool).
+    AttackDirection,
+    Blocking,
 }
 
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
@@ -452,6 +456,6 @@ public sealed class AnimParam
     public AnimParamKind Kind = AnimParamKind.Float;
     [Property(Tooltip = "Its value until something sets it")]
     public float Default;
-    [Property(Tooltip = "Set every tick from the body: Speed, VerticalSpeed, MoveX, MoveY, AimPitch, Grounded, Crouching")]
+    [Property(Tooltip = "Set every tick from the body: Speed, VerticalSpeed, MoveX, MoveY, AimPitch, Grounded, Crouching, AttackDirection, Blocking")]
     public AnimParamSource From = AnimParamSource.None;
 }

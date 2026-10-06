@@ -656,6 +656,8 @@ internal static class AnimatorStepper
                 case AnimParamSource.AimPitch: v = intent.Pitch * RadToDeg; break;
                 case AnimParamSource.Grounded: v = grounded ? 1f : 0f; break;
                 case AnimParamSource.Crouching: v = crouching ? 1f : 0f; break;
+                case AnimParamSource.AttackDirection: v = world.TryGet<AttackStance>(entity, out var aim) ? (float)aim.Direction : 0f; break;
+                case AnimParamSource.Blocking: v = world.TryGet<AttackStance>(entity, out var guard) && guard.Blocking ? 1f : 0f; break;
                 default: continue;
             }
             if (!float.IsFinite(v)) v = 0f;

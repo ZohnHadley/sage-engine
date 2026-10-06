@@ -291,6 +291,9 @@ public struct Melee : IComponent
     [Property(Min = 0, Unit = "s", Tooltip = "Time until the next swing may start")]
     public float Cooldown;                 // seconds until the next swing may start (relative)
     [Transient] public bool Swung;         // this swing has landed (or missed): don't resolve it twice
+    // The direction of the swing under way (issue #359): the fighter's AttackStance.Direction when it
+    // started, kept while the stance goes on choosing the next one. None without a stance.
+    [Transient] public AttackDirection Direction;
 
     public static Melee With(RecordId attack) => new() { Attack = attack, Natural = attack };
 }
@@ -381,6 +384,7 @@ internal sealed class MeleeCombatSystem : ISystem
                             m[n].Phase = MeleePhase.Windup;
                             m[n].Timer = 0f;
                             m[n].Swung = false;
+                            m[n].Direction = AttackStances.Of(world, entity);   // the graph reads the same (AttackDirection)
                             // The animator's graph picks the clip (issue #119): combat names none.
                             _swings.Add((entity, string.IsNullOrEmpty(attack.Trigger) ? conventions.Animations.AttackTrigger : attack.Trigger));
                             // The swing, not the hit: a blow that misses still made a noise, and a

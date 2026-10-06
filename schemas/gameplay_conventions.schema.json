@@ -206,6 +206,10 @@
         "reload": {
           "description": "The button that reloads: plays the first-person arms' reload and refills the magazine of an attack with `ammo` (issue #135) (string)",
           "type": "string"
+        },
+        "block": {
+          "description": "The button held to guard: sets the fighter's AttackStance.Blocking, which an anim_graph reads (`from: Blocking`) to pick its block (issue #359) (string)",
+          "type": "string"
         }
       },
       "additionalProperties": false
