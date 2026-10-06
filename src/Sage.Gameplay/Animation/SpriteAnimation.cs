@@ -50,6 +50,47 @@ internal sealed class AnimationEventBus : IAnimationEventSink
     public void Raise(World world, Entity entity, string name) => world.Events.Send(new AnimationEvent(entity, name));
 }
 
+// anim_debug for sprites: the entity's sheet, clip, step and sheet frame (direction 0), time and speed.
+// One line per sprite with a SpriteAnimator, whoever advances it (its own clip or its graph).
+internal sealed class SpriteAnimDebug : IAnimDebugSource
+{
+    private readonly RecordStore _records;
+    public SpriteAnimDebug(RecordStore records) { _records = records; }
+
+    public void Describe(World world, string filter, List<string> lines)
+    {
+        foreach (var e in world.Query<SpriteAnimator, SpriteRenderer>().Entities)
+        {
+            string label = World.Describe(e);
+            if (filter.Length > 0 && !label.Contains(filter, StringComparison.OrdinalIgnoreCase)) continue;
+            lines.Add(Describe(world, e, _records));
+        }
+    }
+
+    internal static string Describe(World world, Entity entity, RecordStore records)
+    {
+        var sb = new System.Text.StringBuilder(World.Describe(entity));
+        if (!world.IsAlive(entity) || !world.TryGet<SpriteAnimator>(entity, out var a) || !world.TryGet<SpriteRenderer>(entity, out var r))
+            return sb.Append(": no sprite animator").ToString();
+        sb.Append(": sprite ").Append(r.Sheet);
+        if (!records.TryGet(r.Sheet, out SpriteSheetRecord sheet)) return sb.Append(" (no such sprite_sheet)").ToString();
+        var clip = sheet.Clip(a.Clip);
+        sb.Append(", clip ").Append(clip == null ? $"#{a.Clip} (none)" : sheet.ClipNames[a.Clip]);
+        if (clip != null)
+        {
+            int steps = clip.Dirs.Count > 0 ? clip.Dirs[0].Count : 0;
+            int step = (int)MathF.Floor(MathF.Max(a.Time, 0f) * MathF.Max(clip.Fps, 0.0001f));
+            step = clip.Loop && steps > 0 ? step % steps : Math.Min(step, Math.Max(steps - 1, 0));
+            sb.Append(System.Globalization.CultureInfo.InvariantCulture,
+                $" step {step}/{steps} (sheet frame {SpriteMath.FrameAt(clip, 0, a.Time)}), {clip.Fps:0.##} fps, {(clip.Loop ? "loops" : "once")}");
+        }
+        sb.Append(System.Globalization.CultureInfo.InvariantCulture, $", t={a.Time:F2}s speed {(a.Speed == 0f ? 1f : a.Speed):0.##}")
+          .Append(a.Playing ? ", playing" : ", stopped");
+        if (world.TryGet<Animator>(entity, out var anim)) sb.Append(", driven by graph ").Append(anim.Graph);
+        return sb.ToString();
+    }
+}
+
 // Animation phase (Fixed): advances every playing clip and raises the events its frames carry. A sprite
 // with an animator is not its business: its graph plays it (SpriteGraphSystem).
 [System("sage.animation.sprites", Phase.Animation)]
