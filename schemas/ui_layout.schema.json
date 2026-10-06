@@ -59,7 +59,7 @@
         "type": "object",
         "properties": {
           "widget": {
-            "description": "What it is: box, stack, grid, label, image, button, item_list, bar or scroll. (string)",
+            "description": "What it is: box, stack, grid, label, image, button, item_list, bar, scroll, slider, checkbox, dropdown, text_field or tabs. (string)",
             "type": "string",
             "enum": [
               "box",
@@ -70,7 +70,12 @@
               "button",
               "item_list",
               "bar",
-              "scroll"
+              "scroll",
+              "slider",
+              "checkbox",
+              "dropdown",
+              "text_field",
+              "tabs"
             ]
           },
           "parent": {
@@ -90,7 +95,7 @@
             ]
           },
           "text": {
-            "description": "A label's or button's text; '@ns.key' is a localisation key. (string)",
+            "description": "A label's, button's or checkbox's text, or what a text field starts with; '@ns.key' is a localisation key. (string)",
             "type": "string"
           },
           "args": {
@@ -368,6 +373,87 @@
               }
             ]
           },
+          "step": {
+            "description": "A slider's step: the values it snaps to from min, and what a press moves it; empty: a twentieth of the range, unsnapped. At least 0. (float?)",
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checked": {
+            "description": "A checkbox starts ticked. (bool?)",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "options": {
+            "description": "A dropdown's options, in order; '@ns.key' is a localisation key. (List<string>)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "options+": {
+            "description": "Adds to \"options\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "options-": {
+            "description": "Removes these from \"options\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selected": {
+            "description": "The dropdown option or tab shown at first, from 0. At least -1. (int?)",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "placeholder": {
+            "description": "What an empty text field shows, faded; '@ns.key' is a localisation key. (string)",
+            "type": "string"
+          },
+          "maxLength": {
+            "description": "The most characters a text field takes; 0: 256. At least 0. (int)",
+            "type": "integer",
+            "minimum": 0
+          },
+          "multiline": {
+            "description": "A text field takes Enter as a new line. (bool)",
+            "type": "boolean"
+          },
+          "title": {
+            "description": "Its tab's title, when it is a page of tabs; '@ns.key' is a localisation key. (string)",
+            "type": "string"
+          },
+          "tabStyle": {
+            "description": "The style of a tabs' tab buttons; the open one is drawn in its `selected` state. Names a ui_style record. (RecordRef<UiStyleRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ui_style"
+              }
+            ]
+          },
           "visible": {
             "description": "Hidden, it takes no room (default true) (bool)",
             "type": "boolean"
@@ -408,11 +494,11 @@
             ]
           },
           "bind": {
-            "description": "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows. (string)",
+            "description": "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to. (string)",
             "type": "string"
           },
           "bindings": {
-            "description": "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows. (Dictionary<string, string>)",
+            "description": "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options. (Dictionary<string, string>)",
             "type": "object",
             "additionalProperties": {
               "type": "string"
