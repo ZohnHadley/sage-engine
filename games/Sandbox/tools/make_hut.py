@@ -117,6 +117,13 @@ def write_map(path):
     lines += box((-48, -120, 0), (48, -72, 96), 'door', 1)
     lines.append('}')
 
+    # The room's sound (engine issue #329): a trigger brush filling the inside, whose classname is the
+    # Sandbox's `hut_room` prefab - a `reverb_zone` that takes its box from these brushes. Inside, what you
+    # hear rings like a small room (`sage:room`); step out of the door and it is dry again.
+    lines += ['{', '"classname" "hut_room"', '"trigger" "1"']
+    lines += box((-128, -128, 0), (128, 128, 128), 'door', 1)
+    lines.append('}')
+
     text = '\n'.join(lines) + '\n'
     open(path, 'w', newline='\n').write(text)
     brushes = text.count('\n{\n(') + text.count('{\n(')

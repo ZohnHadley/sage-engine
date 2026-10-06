@@ -69,6 +69,12 @@ def write_map(path):
         lines += ['{', '"classname" "%s"' % classname,
                   '"origin" "%d %d %d"' % origin, '"angle" "%d"' % angle, '}']
 
+    # The crypt's sound (engine issue #329): a trigger brush over the corridor and the chamber, whose
+    # classname is the Sandbox's `crypt_echo` prefab - a `reverb_zone` with the engine's `sage:cave`.
+    lines += ['{', '"classname" "crypt_echo"', '"trigger" "1"']
+    lines += box((-192, -320, 0), (192, 384, 128), 'wall', 1)
+    lines.append('}')
+
     text = '\n'.join(lines) + '\n'
     open(path, 'w', newline='\n').write(text)
     print('%-14s %5d bytes' % (os.path.basename(path), len(text)))
