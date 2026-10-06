@@ -24,6 +24,9 @@ internal struct SpriteInstance
     // width and height run along. Zero (every billboard) means the camera decides, as Mode says.
     public Vector3 Right;
     public Vector3 Up;
+    // A soft particle's fade distance in metres (issue 4n-6, SoftParticles): drawn with its material's soft
+    // technique when the frame has the scene's depth. 0 (every other sprite) is hard.
+    public float Soft;
     public ulong SortKey;
     public int View;              // index into RenderSnapshot.Views: Center is relative to that camera
 }

@@ -541,7 +541,10 @@
     "shape": "Sphere",
     "gravity": 1.5, "drag": 2,
     "sizeStart": 0.35, "sizeEnd": 0.02,
-    "colourStart": "#FFA700", "colourEnd": "#FF000000"
+    "colourStart": "#FFA700", "colourEnd": "#FF000000",
+    // Big puffs that burst on the floor: soft (issue 4n-6), so where one cuts the ground it fades out over
+    // the last thirty centimetres instead of showing the hard line along the cut.
+    "soft": 0.3
   },
   {
     // A steady stream rather than a burst: `rate` instead of `burst`, and that is the only difference
