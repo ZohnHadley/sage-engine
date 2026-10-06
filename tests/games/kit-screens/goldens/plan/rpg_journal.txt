@@ -1,0 +1,10 @@
+# rpg:journal: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on nothing
+rect 340,157.75 600x404.5 #141414e0 @window
+border 340,157.75 600x404.5 #5a4a30ff width 1 @window
+text 348,167.75 63x13.5 #f0e0b0ff scale 1.5 "Journal" @title
+text 348,189.25 150x9 #908878ff scale 1 "Nothing on the go, 0 done" @summary
+text 348,204.25 78x9 #908878ff scale 1 "(nothing yet)" @empty
+pushclip 348,219.25 584x320 @page
+popclip 0,0 0x0 @page
+text 348,545.25 252x9 #908878ff scale 1 "A on a quest: track it or stop    B: close" @hint

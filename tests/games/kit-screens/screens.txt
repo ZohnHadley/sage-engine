@@ -25,6 +25,8 @@ rpg:loot          ui    chest
 rpg:shop          ui    trader
 rpg:topics        ui    ferryman
 rpg:rest          ui
+rpg:map           ui
+rpg:journal       ui
 dialogue          use
 journal           tap   Journal
 spellmaker        tap   Spellmaker
