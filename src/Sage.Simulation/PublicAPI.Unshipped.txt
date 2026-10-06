@@ -373,3 +373,46 @@ Sage.Simulation.PointLight.Shadows -> bool
 Sage.Simulation.PhysicsMaterialRecord.Jump -> Sage.Core.RecordId
 Sage.Simulation.PhysicsMaterialRecord.Land -> Sage.Core.RecordId
 Sage.Simulation.SoundRecord.Stream -> bool
+const Sage.Simulation.MusicRules.DefaultFade = 2 -> float
+const Sage.Simulation.MusicRules.IntensityInput = "SetMusicIntensity" -> string!
+const Sage.Simulation.MusicRules.PlayInput = "PlayMusic" -> string!
+const Sage.Simulation.MusicRules.StopInput = "StopMusic" -> string!
+Sage.Simulation.Music
+Sage.Simulation.Music.Advance(float dt) -> void
+Sage.Simulation.Music.Blend.get -> float
+Sage.Simulation.Music.Blend.set -> void
+Sage.Simulation.Music.BlendRate.get -> float
+Sage.Simulation.Music.BlendRate.set -> void
+Sage.Simulation.Music.GainOf(Sage.Core.RecordId track) -> float
+Sage.Simulation.Music.Intensity.get -> float
+Sage.Simulation.Music.Intensity.set -> void
+Sage.Simulation.Music.Music() -> void
+Sage.Simulation.Music.Play(Sage.Core.RecordId track, float seconds) -> void
+Sage.Simulation.Music.Previous.get -> Sage.Core.RecordId
+Sage.Simulation.Music.Previous.set -> void
+Sage.Simulation.Music.Settled.get -> bool
+Sage.Simulation.Music.Stop(float seconds) -> void
+Sage.Simulation.Music.Track.get -> Sage.Core.RecordId
+Sage.Simulation.Music.Track.set -> void
+Sage.Simulation.MusicLayer
+Sage.Simulation.MusicLayer.Asset -> Sage.Core.AssetPath
+Sage.Simulation.MusicLayer.Fade -> float
+Sage.Simulation.MusicLayer.Intensity -> float
+Sage.Simulation.MusicLayer.MusicLayer() -> void
+Sage.Simulation.MusicLayer.Volume -> float
+Sage.Simulation.MusicRecord
+Sage.Simulation.MusicRecord.FadeIn -> float
+Sage.Simulation.MusicRecord.FadeOut -> float
+Sage.Simulation.MusicRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.MusicLayer!>!
+Sage.Simulation.MusicRecord.Loop -> bool
+Sage.Simulation.MusicRecord.LoopEnd -> long
+Sage.Simulation.MusicRecord.LoopStart -> long
+Sage.Simulation.MusicRecord.MusicRecord() -> void
+Sage.Simulation.MusicRecord.Track -> Sage.Core.AssetPath
+Sage.Simulation.MusicRecord.Volume -> float
+Sage.Simulation.MusicRules
+Sage.Simulation.SceneEnvironment.Music -> Sage.Core.RecordRef<Sage.Simulation.MusicRecord!>
+static Sage.Simulation.MusicRules.Of(Sage.Simulation.World! world) -> Sage.Simulation.Music!
+static Sage.Simulation.MusicRules.Play(Sage.Simulation.World! world, Sage.Core.RecordId track, float? seconds = null) -> void
+static Sage.Simulation.MusicRules.SetIntensity(Sage.Simulation.World! world, float intensity) -> void
+static Sage.Simulation.MusicRules.Stop(Sage.Simulation.World! world, float? seconds = null) -> void
