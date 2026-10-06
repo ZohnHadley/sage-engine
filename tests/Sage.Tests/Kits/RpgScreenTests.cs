@@ -389,13 +389,20 @@ public class RpgScreenAllocationTests
         Assert.True(world.Systems.Disable("sage.physics.step"));   // Bepu's own bytes a tick are not the screens'
         WorldClock.Of(world).Scale = 0;   // the rest screen says the time again when the minute turns, and only then
 
-        // All six on the world's screen stack (#97), the topics screen on top taking the (idle) input.
+        // All nine on the world's screen stack (#97), the topics screen on top taking the (idle) input.
         var stack = world.Resources.Get<UiScreenStack>();
         stack.Open(RpgKitModule.InventoryScreen, new UiBindContext(world, hero));
         stack.Open(RpgKitModule.EquipmentScreen, new UiBindContext(world, hero));
         stack.Open(RpgKitModule.LootScreen, new UiBindContext(world, hero, bandit));
         stack.Open(RpgKitModule.RestScreen, new UiBindContext(world, hero));   // the rest screen (4g-7): its rule asked every frame
         stack.Open(RpgKitModule.ModsScreen, new UiBindContext(world));   // the mods screen (4j-6): rows made on opening, not per frame
+        // The menus (issue #342): the pause menu and the slot screens over a save of their own, read from
+        // the headers once and again only when they change.
+        app.Engine.Saves.Root = Path.Combine(TestEnv.NewTempDir(), "saves");
+        Assert.True(app.Engine.Saves.Save("one"));
+        stack.Open(RpgKitModule.PauseScreen, new UiBindContext(world));
+        stack.Open(RpgKitModule.SaveScreen, new UiBindContext(world));
+        stack.Open(RpgKitModule.LoadScreen, new UiBindContext(world));
         stack.Open(RpgKitModule.TopicsScreen, new UiBindContext(world, hero, guard));
 
         void Frame()

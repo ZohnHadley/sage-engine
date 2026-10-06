@@ -157,6 +157,10 @@ public static class StickResponse
 // Which family of device the player last touched, for the prompts: a hint says "E" or "A" by this.
 public enum InputDeviceKind { KeyboardMouse, Gamepad }
 
+// Whose names a pad's buttons go by in a prompt (issue #352): the bottom face button is "A" on an Xbox pad
+// and "Cross" on a PlayStation one. Every other pad is shown as an Xbox one, as MonoGame names its buttons.
+public enum PadFamily { Xbox, PlayStation }
+
 // What happened on the devices this frame, as the host gathers it.
 public readonly record struct DeviceActivity
 {
@@ -178,6 +182,13 @@ public sealed class LastUsedDevice
 
     public InputDeviceKind Current { get; private set; } = InputDeviceKind.KeyboardMouse;
 
+    // The family of the pad last used (issue #352): the client says which, from the pad's name
+    // (InputGlyphs.FamilyOf). Kept while the keyboard is in use, so picking the pad up again shows its names.
+    public PadFamily Pad { get; private set; } = PadFamily.Xbox;
+
+    // Moves whenever `Current` or `Pad` changes, so a prompt is worked out again only then.
+    public int Version { get; private set; }
+
     // Raised once per change.
     public event Action<InputDeviceKind>? Changed;
 
@@ -194,7 +205,15 @@ public sealed class LastUsedDevice
     {
         if (kind == Current) return;
         Current = kind;
+        Version++;
         Changed?.Invoke(kind);
+    }
+
+    public void SetPad(PadFamily pad)
+    {
+        if (pad == Pad) return;
+        Pad = pad;
+        Version++;
     }
 }
 
@@ -215,4 +234,80 @@ public static class InputGlyphs
         }
         return other;
     }
+
+    // The family a pad belongs to, from the name its driver gives it ("Xbox 360 Controller",
+    // "PS4 Controller", "Sony DualSense"): PlayStation for Sony's, Xbox for everything else.
+    public static PadFamily FamilyOf(string? padName)
+    {
+        if (string.IsNullOrEmpty(padName)) return PadFamily.Xbox;
+        foreach (string word in PlayStationWords)
+            if (padName.Contains(word, StringComparison.OrdinalIgnoreCase)) return PadFamily.PlayStation;
+        // "PS3", "PS4", "PS5" as a word of their own (not "GPS5000")
+        for (int i = 0; i + 2 < padName.Length; i++)
+            if ((padName[i] == 'P' || padName[i] == 'p') && (padName[i + 1] == 'S' || padName[i + 1] == 's') && padName[i + 2] is >= '3' and <= '5'
+                && (i == 0 || !char.IsLetterOrDigit(padName[i - 1])) && (i + 3 == padName.Length || !char.IsLetterOrDigit(padName[i + 3])))
+                return PadFamily.PlayStation;
+        return PadFamily.Xbox;
+    }
+
+    private static readonly string[] PlayStationWords = { "PlayStation", "DualShock", "DualSense", "Sony" };
+
+    // The registry key of a binding's glyph, for a string table to name it: `key.E`, `mouse.Left`,
+    // `xbox.A`, `playstation.A`, `composite.WASD`. A pad button's key is MonoGame's name in either family.
+    public static string GlyphKey(InputBinding binding, PadFamily pad) =>
+        binding.Key != null ? "key." + binding.Key
+        : binding.Mouse != null ? "mouse." + binding.Mouse
+        : binding.Gamepad != null ? (pad == PadFamily.PlayStation ? "playstation." : "xbox.") + binding.Gamepad
+        : "composite." + (binding.Composite ?? "");
+
+    // The built-in name of a binding's glyph, what a prompt shows when no string table names it: "E",
+    // "Space", "Left click", "A" or "Cross", "RB" or "R1".
+    public static string DefaultName(InputBinding binding, PadFamily pad)
+    {
+        if (binding.Key != null) return KeyNames.TryGetValue(binding.Key, out var key) ? key
+                                      : binding.Key.Length == 2 && binding.Key[0] == 'D' && char.IsDigit(binding.Key[1]) ? binding.Key[1..]   // D1 -> 1
+                                      : binding.Key;
+        if (binding.Mouse != null) return MouseNames.TryGetValue(binding.Mouse, out var mouse) ? mouse : "Mouse " + binding.Mouse;
+        if (binding.Gamepad != null)
+        {
+            var names = pad == PadFamily.PlayStation ? PlayStationNames : XboxNames;
+            return names.TryGetValue(binding.Gamepad, out var button) ? button : binding.Gamepad;
+        }
+        return binding.Composite ?? "";
+    }
+
+    private static readonly System.Collections.Generic.Dictionary<string, string> KeyNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Escape"] = "Esc", ["Enter"] = "Enter", ["Space"] = "Space", ["Back"] = "Backspace", ["Tab"] = "Tab",
+        ["LeftShift"] = "Shift", ["RightShift"] = "Right Shift", ["LeftControl"] = "Ctrl", ["RightControl"] = "Right Ctrl",
+        ["LeftAlt"] = "Alt", ["RightAlt"] = "Right Alt", ["Delete"] = "Del", ["Insert"] = "Ins",
+        ["PageUp"] = "Page Up", ["PageDown"] = "Page Down", ["CapsLock"] = "Caps Lock",
+        ["OemTilde"] = "~", ["OemMinus"] = "-", ["OemPlus"] = "=", ["OemComma"] = ",", ["OemPeriod"] = ".",
+        ["OemQuestion"] = "/", ["OemSemicolon"] = ";", ["OemQuotes"] = "'", ["OemOpenBrackets"] = "[",
+        ["OemCloseBrackets"] = "]", ["OemPipe"] = "\\",
+    };
+
+    private static readonly System.Collections.Generic.Dictionary<string, string> MouseNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Left"] = "Left click", ["Right"] = "Right click", ["Middle"] = "Middle click", ["Wheel"] = "Wheel", ["Delta"] = "Mouse",
+        ["XButton1"] = "Mouse 4", ["XButton2"] = "Mouse 5",
+    };
+
+    private static readonly System.Collections.Generic.Dictionary<string, string> XboxNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["A"] = "A", ["B"] = "B", ["X"] = "X", ["Y"] = "Y",
+        ["LeftShoulder"] = "LB", ["RightShoulder"] = "RB", ["LeftTrigger"] = "LT", ["RightTrigger"] = "RT",
+        ["LeftStick"] = "Left stick", ["RightStick"] = "Right stick", ["LeftStickButton"] = "LS", ["RightStickButton"] = "RS",
+        ["Start"] = "Menu", ["Back"] = "View", ["BigButton"] = "Guide",
+        ["DPadUp"] = "D-pad up", ["DPadDown"] = "D-pad down", ["DPadLeft"] = "D-pad left", ["DPadRight"] = "D-pad right",
+    };
+
+    private static readonly System.Collections.Generic.Dictionary<string, string> PlayStationNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["A"] = "Cross", ["B"] = "Circle", ["X"] = "Square", ["Y"] = "Triangle",
+        ["LeftShoulder"] = "L1", ["RightShoulder"] = "R1", ["LeftTrigger"] = "L2", ["RightTrigger"] = "R2",
+        ["LeftStick"] = "Left stick", ["RightStick"] = "Right stick", ["LeftStickButton"] = "L3", ["RightStickButton"] = "R3",
+        ["Start"] = "Options", ["Back"] = "Share", ["BigButton"] = "PS",
+        ["DPadUp"] = "D-pad up", ["DPadDown"] = "D-pad down", ["DPadLeft"] = "D-pad left", ["DPadRight"] = "D-pad right",
+    };
 }

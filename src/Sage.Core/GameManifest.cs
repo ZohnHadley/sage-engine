@@ -15,6 +15,7 @@ namespace Sage.Core;
 //     "modules": { "disable": [] },
 //     "kits": ["sage.kits.rpg"],                       // kits the game is built on (issue #27)
 //     "scene": "main",                                 // the scene every world starts in (issue #29)
+//     "title": "rpg:title",                            // the screen shown before it starts (issue #342)
 //     "sage": "^0.1",                                  // the engine versions it was made for (issue #31)
 //     "version": "1.0.0",                              // the game's own version, for a mod's "gameVersion" (4j)
 //     "cook": { "uncompressed": ["textures/ui/**"] }   // what `sage cook` leaves uncompressed (issue #302)
@@ -43,6 +44,11 @@ public sealed class GameManifest
     // The `scene` record every world starts in: "main" (this game's namespace) or "ns:main". Left out,
     // worlds start empty and the game's rules place what they want (issue #29).
     public string? Scene { get; set; }
+
+    // The `screen` record a game shows before its world starts (issue #342): "rpg:title" or "title" (this
+    // game's namespace). A host with a window opens it over a world that waits, paused and with no scene
+    // placed, until the player chooses a new game or a save to load. Left out, the world starts at once.
+    public string? Title { get; set; }
 
     // The engine versions this game was made for, as a range: "^0.1", ">=0.1 <0.3" (VersionRange; issue
     // #31). Checked when the manifest loads, against BuildInfo.EngineSemVersion, so a game run on an engine

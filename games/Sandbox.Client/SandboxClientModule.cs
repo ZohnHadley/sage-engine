@@ -76,7 +76,9 @@ public sealed class SandboxClientModule : IModule
         widgets.Bind(_actions!.Get("Status"), new RecordId("sandbox", "status"));
         widgets.Bind(_actions!.Get("Journal"), new RecordId("sandbox", "journal"));
         widgets.Bind(_actions!.Get("Map"), new RecordId("sandbox", "map"));
-        widgets.Bind(_actions!.Get("MainMenu"), new RecordId("sandbox", "main_menu"));
+        // F10 is the RPG kit's pause menu (issue #342): Resume, Save, Load, Options, Quit, the world stood
+        // still while it is open. The Sandbox's own menu of #99 is still `ui_open main_menu`.
+        widgets.Bind(_actions!.Get("MainMenu"), RpgKitModule.PauseScreen);
         // The RPG kit's rest screen (4g-7), its own layout from the kit's content: T.
         widgets.Bind(_actions!.Get("Rest"), RpgKitModule.RestScreen);
         widgets.TooltipStyle = "sandbox:ui_tooltip";

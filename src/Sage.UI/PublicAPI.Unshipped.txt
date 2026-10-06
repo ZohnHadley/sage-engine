@@ -1,4 +1,16 @@
 #nullable enable
+const Sage.UI.InputPrompts.GlyphTablePrefix = "@input." -> string!
+const Sage.UI.InputPrompts.Placeholder = "action:" -> string!
+Sage.UI.InputPrompts
+Sage.UI.InputPrompts.Binding(string! action) -> Sage.Simulation.InputBinding?
+Sage.UI.InputPrompts.Device.get -> Sage.Simulation.InputDeviceKind
+Sage.UI.InputPrompts.ForcedPad.get -> Sage.Simulation.PadFamily?
+Sage.UI.InputPrompts.ForcedPad.set -> void
+Sage.UI.InputPrompts.Glyph(string! action) -> string!
+Sage.UI.InputPrompts.Name(Sage.Simulation.InputBinding! binding) -> string!
+Sage.UI.InputPrompts.Pad.get -> Sage.Simulation.PadFamily
+Sage.UI.InputPrompts.Version.get -> int
+Sage.UI.Localisation.Prompts.get -> Sage.UI.InputPrompts?
 const Sage.UI.UiFonts.DefaultSize = 9 -> float
 override Sage.UI.TrueTypeFont.ToString() -> string!
 Sage.UI.FontTextMeasure
@@ -157,6 +169,7 @@ Sage.UI.UiDialogResult.Cancelled = 2 -> Sage.UI.UiDialogResult
 Sage.UI.UiDialogResult.Confirmed = 1 -> Sage.UI.UiDialogResult
 Sage.UI.UiDialogResult.Open = 0 -> Sage.UI.UiDialogResult
 Sage.UI.UiLayer.Dialog.get -> Sage.UI.UiDialog?
+Sage.UI.UiModule.Prompts.get -> Sage.UI.InputPrompts!
 Sage.UI.UiNode.FocusDown -> string!
 Sage.UI.UiNode.FocusLeft -> string!
 Sage.UI.UiNode.FocusRight -> string!
@@ -225,6 +238,9 @@ Sage.UI.ControlsView.Row.RebindLabel.get -> string!
 Sage.UI.ControlsView.Row.Row() -> void
 Sage.UI.ControlsView.RowCount.get -> int
 Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!
+Sage.UI.ScreenRecord.Pauses -> bool
+Sage.UI.UiScreenStack.HoldsPause.get -> bool
+Sage.UI.UiScreenStack.PausesWorld.get -> bool
 Sage.UI.UiNode.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.UI.UiScreenActions
 static Sage.UI.UiScreenActions.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen, Sage.Simulation.Entity subject, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> Sage.UI.UiLayer?
