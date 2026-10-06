@@ -262,11 +262,11 @@ internal static class AnimatorStepper
     // step does — so a trigger set in Gameplay and a clip played there start on the same tick. `Time`
     // (what `after` reads) and the cross-fade still start at 0, as #118 has them.
     public static void Step(World world, Entity entity, ref Animator a, AnimGraphRecord.Compiled g, AnimatorPoses.Instance instance, float dt,
-                            List<(Entity, StateTransition)>? then, IAnimationEventSink? sink = null)
+                            List<(Entity, StateTransition)>? then, IAnimationEventSink? sink = null, bool drive = true)
     {
         Resolve(entity, ref a, g);
         var values = a.Params!;
-        if (g.HasSources) Drive(world, entity, g, values, instance, dt);
+        if (drive && g.HasSources) Drive(world, entity, g, values, instance, dt);
         var events = new EventContext(world, entity, g, values, instance, sink, dt);
 
         for (int l = 0; l < g.Layers.Length; l++)
@@ -753,12 +753,14 @@ internal sealed class AnimatorSystem : ISystem
     private readonly GltfAnimationReader? _reader;
     private readonly RecordStore? _records;
     private readonly CVar<float>? _lodDistance;
+    private readonly bool _drive;   // params read from the body (false: an editor's preview sets them all, #362)
     private readonly List<Entity> _step = new();
     private readonly List<(Entity, StateTransition)> _then = new();
     private readonly Dictionary<Skeleton, AnimatorScratch> _scratch = new(ReferenceEqualityComparer.Instance);
 
-    public AnimatorSystem(World world)
+    public AnimatorSystem(World world, bool driveParams = true)
     {
+        _drive = driveParams;
         _world = world;
         _animators = world.Query<Animator>();
         _poses = world.Resources.GetOrAdd(static () => new AnimatorPoses());
@@ -820,7 +822,7 @@ internal sealed class AnimatorSystem : ISystem
                 }
                 continue;
             }
-            AnimatorStepper.Step(_world, entity, ref a, g, instance, dt, _then, sink);
+            AnimatorStepper.Step(_world, entity, ref a, g, instance, dt, _then, sink, _drive);
             // A snapshot whose fade ended (or was replaced by a state's) goes back to the pool.
             for (int l = 0; l < instance.Snapshots.Length; l++)
                 if (instance.Snapshots[l] != null && (l >= a.Layers!.Length || !a.Layers[l].FromSnapshot)) _poses.ReturnSnapshots(instance, l);

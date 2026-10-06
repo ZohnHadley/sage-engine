@@ -1,1 +1,130 @@
 #nullable enable
+const Sage.Editing.AnimationPreview.TickSeconds = 0.016666668 -> float
+Sage.Editing.AnimationPreview
+Sage.Editing.AnimationPreview.Advance(float seconds) -> void
+Sage.Editing.AnimationPreview.AnimationPreview(Sage.Simulation.Engine! engine) -> void
+Sage.Editing.AnimationPreview.Clip.get -> string?
+Sage.Editing.AnimationPreview.ClipDuration.get -> float
+Sage.Editing.AnimationPreview.ClipLoops.get -> bool
+Sage.Editing.AnimationPreview.ClipLoops.set -> void
+Sage.Editing.AnimationPreview.ClipMarkers.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewMarker>!
+Sage.Editing.AnimationPreview.Clips.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AnimationPreview.ClipTime.get -> float
+Sage.Editing.AnimationPreview.Close() -> void
+Sage.Editing.AnimationPreview.Describe() -> string!
+Sage.Editing.AnimationPreview.DescribeLayers() -> string!
+Sage.Editing.AnimationPreview.Dispose() -> void
+Sage.Editing.AnimationPreview.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.AnimationPreview.Error.get -> string!
+Sage.Editing.AnimationPreview.Events.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewEvent>!
+Sage.Editing.AnimationPreview.Graph.get -> Sage.Core.RecordId
+Sage.Editing.AnimationPreview.IsOpen.get -> bool
+Sage.Editing.AnimationPreview.Joints.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewJoint>!
+Sage.Editing.AnimationPreview.Layers.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewLayer!>!
+Sage.Editing.AnimationPreview.MarkersOf(string! clip) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewMarker>!
+Sage.Editing.AnimationPreview.Mode.get -> Sage.Editing.AnimationPreviewMode
+Sage.Editing.AnimationPreview.Model.get -> Sage.Core.AssetPath
+Sage.Editing.AnimationPreview.Open(Sage.Core.RecordId graph, Sage.Core.AssetPath model = default(Sage.Core.AssetPath)) -> bool
+Sage.Editing.AnimationPreview.OpenModel(Sage.Core.AssetPath model) -> bool
+Sage.Editing.AnimationPreview.Params.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewParam>!
+Sage.Editing.AnimationPreview.Playing.get -> bool
+Sage.Editing.AnimationPreview.Playing.set -> void
+Sage.Editing.AnimationPreview.PlayState(string! state, string? layer = null) -> bool
+Sage.Editing.AnimationPreview.Scrub(float time) -> void
+Sage.Editing.AnimationPreview.Set.get -> Sage.Simulation.AnimationSet?
+Sage.Editing.AnimationPreview.SetParam(string! name, float value) -> bool
+Sage.Editing.AnimationPreview.ShowClip(string! clip, float time = 0) -> bool
+Sage.Editing.AnimationPreview.ShowGraph() -> bool
+Sage.Editing.AnimationPreview.Sockets.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewSocket>!
+Sage.Editing.AnimationPreview.Speed.get -> float
+Sage.Editing.AnimationPreview.Speed.set -> void
+Sage.Editing.AnimationPreview.Step(float seconds = 0.016666668) -> void
+Sage.Editing.AnimationPreview.Time.get -> float
+Sage.Editing.AnimationPreview.Trigger(string! name) -> bool
+Sage.Editing.AnimationPreviewCommands
+Sage.Editing.AnimationPreviewMode
+Sage.Editing.AnimationPreviewMode.Clip = 1 -> Sage.Editing.AnimationPreviewMode
+Sage.Editing.AnimationPreviewMode.Graph = 2 -> Sage.Editing.AnimationPreviewMode
+Sage.Editing.AnimationPreviewMode.None = 0 -> Sage.Editing.AnimationPreviewMode
+Sage.Editing.AnimationSubject
+Sage.Editing.AnimationSubject.AnimationSubject() -> void
+Sage.Editing.AnimationSubject.AnimationSubject(Sage.Core.RecordId Graph, Sage.Core.AssetPath Model) -> void
+Sage.Editing.AnimationSubject.Graph.get -> Sage.Core.RecordId
+Sage.Editing.AnimationSubject.Graph.init -> void
+Sage.Editing.AnimationSubject.Model.get -> Sage.Core.AssetPath
+Sage.Editing.AnimationSubject.Model.init -> void
+Sage.Editing.PreviewEvent
+Sage.Editing.PreviewEvent.Name.get -> string!
+Sage.Editing.PreviewEvent.Name.init -> void
+Sage.Editing.PreviewEvent.PreviewEvent() -> void
+Sage.Editing.PreviewEvent.PreviewEvent(float Time, string! Name) -> void
+Sage.Editing.PreviewEvent.Time.get -> float
+Sage.Editing.PreviewEvent.Time.init -> void
+Sage.Editing.PreviewJoint
+Sage.Editing.PreviewJoint.Name.get -> string!
+Sage.Editing.PreviewJoint.Name.init -> void
+Sage.Editing.PreviewJoint.Parent.get -> int
+Sage.Editing.PreviewJoint.Parent.init -> void
+Sage.Editing.PreviewJoint.Position.get -> System.Numerics.Vector3
+Sage.Editing.PreviewJoint.Position.init -> void
+Sage.Editing.PreviewJoint.PreviewJoint() -> void
+Sage.Editing.PreviewJoint.PreviewJoint(string! Name, int Parent, System.Numerics.Vector3 Position) -> void
+Sage.Editing.PreviewLayer
+Sage.Editing.PreviewLayer.Clip.get -> string?
+Sage.Editing.PreviewLayer.Clip.init -> void
+Sage.Editing.PreviewLayer.ClipDuration.get -> float
+Sage.Editing.PreviewLayer.ClipDuration.init -> void
+Sage.Editing.PreviewLayer.ClipTime.get -> float
+Sage.Editing.PreviewLayer.ClipTime.init -> void
+Sage.Editing.PreviewLayer.FadingFrom.get -> string?
+Sage.Editing.PreviewLayer.FadingFrom.init -> void
+Sage.Editing.PreviewLayer.Markers.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewMarker>!
+Sage.Editing.PreviewLayer.Markers.init -> void
+Sage.Editing.PreviewLayer.Name.get -> string!
+Sage.Editing.PreviewLayer.Name.init -> void
+Sage.Editing.PreviewLayer.Phase.get -> float
+Sage.Editing.PreviewLayer.Phase.init -> void
+Sage.Editing.PreviewLayer.PreviewLayer(string! Name, System.Collections.Generic.IReadOnlyList<string!>! States, string? State, float Time, float Phase, string? FadingFrom, string? Clip, float ClipTime, float ClipDuration, System.Collections.Generic.IReadOnlyList<Sage.Editing.PreviewMarker>! Markers, System.Collections.Generic.IReadOnlyList<(string! Clip, float Weight)>! Weights) -> void
+Sage.Editing.PreviewLayer.State.get -> string?
+Sage.Editing.PreviewLayer.State.init -> void
+Sage.Editing.PreviewLayer.States.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.PreviewLayer.States.init -> void
+Sage.Editing.PreviewLayer.Time.get -> float
+Sage.Editing.PreviewLayer.Time.init -> void
+Sage.Editing.PreviewLayer.Weights.get -> System.Collections.Generic.IReadOnlyList<(string! Clip, float Weight)>!
+Sage.Editing.PreviewLayer.Weights.init -> void
+Sage.Editing.PreviewMarker
+Sage.Editing.PreviewMarker.Fraction.get -> float
+Sage.Editing.PreviewMarker.Fraction.init -> void
+Sage.Editing.PreviewMarker.Name.get -> string!
+Sage.Editing.PreviewMarker.Name.init -> void
+Sage.Editing.PreviewMarker.PreviewMarker() -> void
+Sage.Editing.PreviewMarker.PreviewMarker(string! Name, float Time, float Fraction) -> void
+Sage.Editing.PreviewMarker.Time.get -> float
+Sage.Editing.PreviewMarker.Time.init -> void
+Sage.Editing.PreviewParam
+Sage.Editing.PreviewParam.From.get -> Sage.Simulation.AnimParamSource
+Sage.Editing.PreviewParam.From.init -> void
+Sage.Editing.PreviewParam.Kind.get -> Sage.Simulation.AnimParamKind
+Sage.Editing.PreviewParam.Kind.init -> void
+Sage.Editing.PreviewParam.Name.get -> string!
+Sage.Editing.PreviewParam.Name.init -> void
+Sage.Editing.PreviewParam.PreviewParam() -> void
+Sage.Editing.PreviewParam.PreviewParam(string! Name, Sage.Simulation.AnimParamKind Kind, float Value, Sage.Simulation.AnimParamSource From) -> void
+Sage.Editing.PreviewParam.Value.get -> float
+Sage.Editing.PreviewParam.Value.init -> void
+Sage.Editing.PreviewSocket
+Sage.Editing.PreviewSocket.Joint.get -> string!
+Sage.Editing.PreviewSocket.Joint.init -> void
+Sage.Editing.PreviewSocket.Name.get -> string!
+Sage.Editing.PreviewSocket.Name.init -> void
+Sage.Editing.PreviewSocket.Position.get -> System.Numerics.Vector3
+Sage.Editing.PreviewSocket.Position.init -> void
+Sage.Editing.PreviewSocket.PreviewSocket() -> void
+Sage.Editing.PreviewSocket.PreviewSocket(string! Name, string! Joint, System.Numerics.Vector3 Position, System.Numerics.Quaternion Rotation) -> void
+Sage.Editing.PreviewSocket.Rotation.get -> System.Numerics.Quaternion
+Sage.Editing.PreviewSocket.Rotation.init -> void
+static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
+static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
+static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
+Sage.Editing.AnimationPreview.Opened -> System.Action?

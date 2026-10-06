@@ -54,8 +54,10 @@
       "type": "string",
       "enum": [
         "arms",
+        "brute",
         "mannequin",
         "sandbox:arms",
+        "sandbox:brute",
         "sandbox:mannequin",
         "skeletal:mannequin"
       ]
@@ -65,10 +67,12 @@
       "type": "string",
       "enum": [
         "arms",
+        "brute",
         "creature",
         "dummy",
         "npc",
         "sandbox:arms",
+        "sandbox:brute",
         "sandbox:creature",
         "sandbox:walker",
         "skeletal:npc",
@@ -414,6 +418,7 @@
         "arms_skin",
         "brass",
         "brick_wall",
+        "brute",
         "bunny",
         "crate",
         "crypt_floor",
@@ -471,6 +476,7 @@
         "sandbox:arms_skin",
         "sandbox:brass",
         "sandbox:brick_wall",
+        "sandbox:brute",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
@@ -619,6 +625,7 @@
         "bolt_flight",
         "bolts_pickup",
         "brick_wall",
+        "brute",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -732,6 +739,7 @@
         "sandbox:bolt_flight",
         "sandbox:bolts_pickup",
         "sandbox:brick_wall",
+        "sandbox:brute",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
@@ -1015,7 +1023,9 @@
       "type": "string",
       "enum": [
         "arms",
-        "sandbox:arms"
+        "mannequin",
+        "sandbox:arms",
+        "sandbox:mannequin"
       ]
     },
     "record:sky": {
@@ -1102,12 +1112,14 @@
         "patrol_armed",
         "sandbox:hut_walker",
         "sandbox:lamp",
+        "sandbox:spar",
         "sentry",
         "skeletal:doomed",
         "skeletal:patrol",
         "skeletal:patrol_armed",
         "skeletal:sentry",
         "skeletal:tumble",
+        "spar",
         "tumble"
       ]
     },
@@ -1472,8 +1484,10 @@
       "type": "string",
       "enum": [
         "arms",
+        "brute",
         "mannequin",
         "sandbox:arms",
+        "sandbox:brute",
         "sandbox:mannequin",
         "skeletal:mannequin"
       ]
@@ -1483,10 +1497,12 @@
       "type": "string",
       "enum": [
         "arms",
+        "brute",
         "creature",
         "dummy",
         "npc",
         "sandbox:arms",
+        "sandbox:brute",
         "sandbox:creature",
         "sandbox:walker",
         "skeletal:npc",
@@ -1832,6 +1848,7 @@
         "arms_skin",
         "brass",
         "brick_wall",
+        "brute",
         "bunny",
         "crate",
         "crypt_floor",
@@ -1889,6 +1906,7 @@
         "sandbox:arms_skin",
         "sandbox:brass",
         "sandbox:brick_wall",
+        "sandbox:brute",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
@@ -2037,6 +2055,7 @@
         "bolt_flight",
         "bolts_pickup",
         "brick_wall",
+        "brute",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -2151,6 +2170,7 @@
         "sandbox:bolt_flight",
         "sandbox:bolts_pickup",
         "sandbox:brick_wall",
+        "sandbox:brute",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
@@ -2435,7 +2455,9 @@
       "type": "string",
       "enum": [
         "arms",
-        "sandbox:arms"
+        "mannequin",
+        "sandbox:arms",
+        "sandbox:mannequin"
       ]
     },
     "base:sky": {
@@ -2522,12 +2544,14 @@
         "patrol_armed",
         "sandbox:hut_walker",
         "sandbox:lamp",
+        "sandbox:spar",
         "sentry",
         "skeletal:doomed",
         "skeletal:patrol",
         "skeletal:patrol_armed",
         "skeletal:sentry",
         "skeletal:tumble",
+        "spar",
         "tumble"
       ]
     },

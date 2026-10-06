@@ -74,6 +74,8 @@ public sealed class DevTools : IDisposable
     private PlaySession? _play;       // play-in-editor (#226): ed_play, ed_stop
     private PlayBar? _playBar;
     private WiringPanel? _wiring;     // #225
+    private readonly AnimationPreview _animation;   // the animation preview (#362): anim_preview*, and its panel
+    private AnimationPanel? _animationPanel;
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -90,6 +92,7 @@ public sealed class DevTools : IDisposable
         _stats = new StatOverlay(cvars, engine.Core, () => _renderer, () => _world);
         _visualLog = new VisualLogWindow(cvars, () => _world);
         _badge = new ProblemsBadge(engine);
+        _animation = new AnimationPreview(engine);
 
         _camFree = cvars.Register("cam_free", false, CVarFlags.DevOnly,
             "Fly the editor camera even while a player pawn owns the view (16 §3.2): it overrides every camera until turned off.");
@@ -234,6 +237,7 @@ public sealed class DevTools : IDisposable
         PlayCommands.Register(cvars, () => _play);   // ed_play, ed_stop (#226)
         _gizmo = new ViewportGizmo(_tools, cvars);
         ProblemCommands.Register(cvars, _engine, () => _document);   // ed_problems (#227)
+        AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
         {
@@ -319,7 +323,7 @@ public sealed class DevTools : IDisposable
         }
         if (_editing)
         {
-            DrawEditor();
+            DrawEditor((float)time.ElapsedGameTime.TotalSeconds);
             _gui.EndLayout();
             return;
         }
@@ -338,7 +342,7 @@ public sealed class DevTools : IDisposable
     }
 
     // The editor mode's frame (issue #219): the menu, the dock space, its panels, the status bar.
-    private void DrawEditor()
+    private void DrawEditor(float frameSeconds)
     {
         _menu?.Draw(_game);
         _layout.BeginFrame();
@@ -353,6 +357,7 @@ public sealed class DevTools : IDisposable
         _log.Draw();
         _problems?.Draw();
         (_audioPanel ??= new AudioPanel(_engine, () => _world)).Draw();
+        (_animationPanel ??= new AnimationPanel(_engine, _animation)).Draw(frameSeconds);
         _console.Draw();
         DrawViewport();
         _stats.Draw();
@@ -408,6 +413,7 @@ public sealed class DevTools : IDisposable
 
     public void Dispose()
     {
+        _animation.Dispose();
         if (_boundTarget != null) _gui.UnbindTexture(_viewportTexture);
         _boundTarget = null;
     }

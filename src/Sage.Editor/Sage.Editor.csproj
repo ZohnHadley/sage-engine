@@ -14,6 +14,8 @@
     <NoWarn>$(NoWarn);SAGE0133</NoWarn>
     <!-- The inspector's placement form edits a placement's fields (scenes and placements, SAGE0121; #223). -->
     <NoWarn>$(NoWarn);SAGE0121</NoWarn>
+    <!-- The animation panel names a graph's params and layers (skeletal animation, SAGE0126; #362). -->
+    <NoWarn>$(NoWarn);SAGE0126</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

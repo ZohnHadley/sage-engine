@@ -695,3 +695,4 @@ Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void
 *REMOVED*virtual Sage.Simulation.Screen.Width.get -> float
 Sage.Simulation.IAnimDebugSource
 Sage.Simulation.IAnimDebugSource.Describe(Sage.Simulation.World! world, string! filter, System.Collections.Generic.List<string!>! lines) -> void
+static Sage.Simulation.Animators.CreatePreviewWorld(Sage.Simulation.Engine! engine, string! name = "anim_preview") -> Sage.Simulation.World!
