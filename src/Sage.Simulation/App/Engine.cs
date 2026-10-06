@@ -182,6 +182,11 @@ public sealed class Engine : IDisposable
     // controls screen changes. It keeps nothing when the app has no user folder.
     public InputRebinds Rebinds { get; internal set; }
 
+    // Which pad drives which local player, and which family of device the player last used (issue #331). The
+    // client keeps both current; a screen asks `LastDevice` whether to draw "E" or "Pad A".
+    public PadAssignment Pads { get; } = new();
+    public LastUsedDevice LastDevice { get; } = new();
+
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }
     public CoreCVars Core { get; }

@@ -38,6 +38,7 @@ public sealed class InputActions
         // Whether this binding's analogue trigger counted as down last frame, for the hysteresis in
         // `InputEdges.TriggerDown` (#60). Per binding, because two actions may read the same trigger.
         public bool TriggerWasDown;
+        public readonly bool[] TriggerWasDownOthers = new bool[PadAssignment.MaxPads];   // the same, for each other player's pad
 
         // What the device said this frame, read once in the raw pass and used again when the contexts
         // decide who hears it. Reading it twice would tick the trigger hysteresis twice.
@@ -76,16 +77,21 @@ public sealed class InputActions
     // checks and for repeating a bug without a person at the keyboard. Injected *after* the bindings
     // are evaluated, so a script goes through the same PlayerCommand path a keyboard does — what it
     // exercises is the real chain, not a shortcut into the simulation.
-    private readonly List<Scripted> _scripted = new();
+    private readonly ScriptedInput _script = new();
 
-    private struct Scripted
+    // The other local players (issue #331): player 1.. read their own pad, and only the gameplay context's
+    // pad bindings (a keyboard has one owner). Player 0 is the state above, unchanged.
+    private sealed class PlayerFrame
     {
-        public ActionId Action;
-        public Vector2 Value;      // buttons: held when Remaining > 0; axes: the value to report
-        public float Remaining;    // seconds; <= 0 after this frame's use, so 0 means "one frame"
-        public bool OneFrame;
-        public bool Rate;          // Value is per *second*, scaled by dt (turning, not a stick position)
+        public bool[] RawHeld = Array.Empty<bool>(), WasRawHeld = Array.Empty<bool>(), Held = Array.Empty<bool>();
+        public Vector2[] Axis = Array.Empty<Vector2>();
+        public ActionMask HeldBits, PressedBits, ReleasedBits;
     }
+    private readonly PlayerFrame[] _frames = Enumerable.Range(0, PadAssignment.MaxPads).Select(_ => new PlayerFrame()).ToArray();
+    private readonly CVar<float> _joyDeadzone, _joyRumble;
+    private readonly CVar<string> _joyCurve;
+    private readonly CVar<int> _joyPlayers;
+    private float _curve = 1f;
 
     public InputActions(ActionRegistry registry, RecordStore records, InputDevices devices, CVarRegistry cvars)
         : this(registry, records, devices, cvars, null) { }
@@ -101,6 +107,33 @@ public sealed class InputActions
         _devices = devices;
         _sensitivity = cvars.Register("m_sensitivity", 1f, CVarFlags.Archive, "Mouse look speed multiplier (Look action and the editor camera).", 0.01f, 20f);
         _invertY = cvars.Register("m_invert_y", false, CVarFlags.Archive, "Invert mouse look up/down.");
+        // Sticks (issue #331): a floor under every binding's own dead zone (a drifting pad), and the response
+        // curve of the whole stick. Radial, and the output still reaches 1.
+        _joyDeadzone = cvars.Register("joy_deadzone", 0f, CVarFlags.Archive,
+            "Dead zone every stick and trigger has at least, 0..0.9 (radial; a binding's own `deadzone` still applies if it is larger).", 0f, 0.9f);
+        _joyCurve = cvars.Register("joy_curve", "linear", CVarFlags.Archive,
+            "Stick response: linear, quadratic, cubic, or an exponent 0.1..8 (higher is finer near the centre).");
+        _joyCurve.Changed += _ => ParseCurve();
+        ParseCurve();
+        _joyRumble = cvars.Register("joy_rumble", 1f, CVarFlags.Archive, "Strength of controller rumble, 0 (off) to 1.", 0f, 1f);
+        _joyPlayers = cvars.Register("joy_players", 1, CVarFlags.None, "How many local players have a pad (1-4): the pads are handed out in order, and a pad that is unplugged and replugged returns to its player.", 1, 4);
+        _joyPlayers.Changed += _ => _devices.Pads.Players = _joyPlayers.Value;
+        _devices.Pads.Players = _joyPlayers.Value;
+        cvars.RegisterCommand("pad_list", CVarFlags.None, "Show which pad drives which player.", _ =>
+        {
+            for (int pad = 0; pad < PadAssignment.MaxPads; pad++)
+            {
+                int player = _devices.Pads.PlayerOf(pad);
+                Log.Info(LogCat.Console, $"  pad {pad + 1}: {(_devices.Pads.IsConnected(pad) ? "connected" : "absent")}, " +
+                                         (player >= 0 ? $"player {player + 1}" : "no player"));
+            }
+            Log.Info(LogCat.Console, $"  last used: {_devices.LastDevice.Current}; {_devices.Pads.Players} local player(s)");
+        });
+        cvars.RegisterCommand("pad_assign", CVarFlags.None, "pad_assign <player> <pad>: give a connected pad to a player (both from 1).", a =>
+        {
+            if (a.Count < 2 || !int.TryParse(a[0], out int player) || !int.TryParse(a[1], out int pad) || !_devices.Pads.Assign(player - 1, pad - 1))
+                Log.Warn(LogCat.Console, "pad_assign <player> <pad>: both from 1, the pad must be connected and the player within joy_players");
+        });
         cvars.RegisterCommand("bindlist", CVarFlags.None, "List input bindings per context.", _ => ListBindings());
         cvars.RegisterCommand("in_contexts", CVarFlags.None, "Show which input contexts are active.", _ =>
             Log.Info(LogCat.Console, $"  {string.Join(", ", ContextOrder.Select(c => $"{c}={(IsActive(c) ? "on" : "off")}"))}; " +
@@ -131,82 +164,82 @@ public sealed class InputActions
             Microsoft.Xna.Framework.Input.Mouse.SetPosition(x, y);
         });
 
-        cvars.RegisterCommand("in_tap", CVarFlags.DevOnly, "in_tap <action>: press a button action for one frame (automated tests).", a =>
+        // Every in_* command takes a trailing `@N` to aim at the Nth local player (`in_tap Attack @2`); with none it
+        // is the first player's (issue #331).
+        cvars.RegisterCommand("in_tap", CVarFlags.DevOnly, "in_tap <action> [@player]: press a button action for one frame (automated tests).", a =>
         {
-            if (a.Count == 0 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)
-                Log.Warn(LogCat.Console, "in_tap <button action>");
-            else Inject(info.Id, Vector2.One, 0f, oneFrame: true);
+            if (!ScriptedInput.TakePlayer(a.Args, out int player, out int n) || n == 0 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)
+                Log.Warn(LogCat.Console, "in_tap <button action> [@player]");
+            else _script.Inject(player, info.Id, Vector2.One, 0f, oneFrame: true);
         });
 
         cvars.RegisterCommand("in_hold", CVarFlags.DevOnly,
-            "in_hold <action> <seconds>: hold a button action down for a while (0 releases it).", a =>
+            "in_hold <action> <seconds> [@player]: hold a button action down for a while (0 releases it).", a =>
         {
-            if (a.Count < 1 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)
+            if (!ScriptedInput.TakePlayer(a.Args, out int player, out int n) || n < 1 || !_registry.TryGet(a[0], out var info) || info.Kind != ActionKind.Button)
             {
-                Log.Warn(LogCat.Console, "in_hold <button action> <seconds>");
+                Log.Warn(LogCat.Console, "in_hold <button action> <seconds> [@player]");
                 return;
             }
-            float seconds = a.Count > 1 ? Number(a[1]) : 1f;
-            if (seconds <= 0f) Release(info.Id);
-            else Inject(info.Id, Vector2.One, seconds, oneFrame: false);
+            float seconds = n > 1 ? Number(a[1]) : 1f;
+            if (seconds <= 0f) _script.Release(player, info.Id);
+            else _script.Inject(player, info.Id, Vector2.One, seconds);
         });
 
         cvars.RegisterCommand("in_axis", CVarFlags.DevOnly,
-            "in_axis <action> <x> [y] [seconds]: drive an axis action (no seconds = until in_axis 0 or in_clear).", a =>
+            "in_axis <action> <x> [y] [seconds] [@player]: drive an axis action (no seconds = until in_axis 0 or in_clear).", a =>
         {
-            if (a.Count < 2 || !_registry.TryGet(a[0], out var info) || info.Kind == ActionKind.Button)
+            if (!ScriptedInput.TakePlayer(a.Args, out int player, out int n) || n < 2 || !_registry.TryGet(a[0], out var info) || info.Kind == ActionKind.Button)
             {
-                Log.Warn(LogCat.Console, "in_axis <axis action> <x> [y] [seconds]");
+                Log.Warn(LogCat.Console, "in_axis <axis action> <x> [y] [seconds] [@player]");
                 return;
             }
-            var value = new Vector2(Number(a[1]), a.Count > 2 ? Number(a[2]) : 0f);
-            float seconds = a.Count > 3 ? Number(a[3]) : float.PositiveInfinity;
-            if (value == Vector2.Zero) Release(info.Id);
-            else Inject(info.Id, value, seconds, oneFrame: false);
+            var value = new Vector2(Number(a[1]), n > 2 ? Number(a[2]) : 0f);
+            float seconds = n > 3 ? Number(a[3]) : float.PositiveInfinity;
+            if (value == Vector2.Zero) _script.Release(player, info.Id);
+            else _script.Inject(player, info.Id, value, seconds);
         });
 
         cvars.RegisterCommand("in_look", CVarFlags.DevOnly,
-            "in_look <yaw°/s> [pitch°/s] [seconds]: turn the view at a steady rate (0 stops).", a =>
+            "in_look <yaw°/s> [pitch°/s] [seconds] [@player]: turn the view at a steady rate (0 stops).", a =>
         {
-            if (!_registry.TryGet("Look", out var look) || look.Kind != ActionKind.Axis2D)
+            if (!ScriptedInput.TakePlayer(a.Args, out int player, out int n) || !_registry.TryGet("Look", out var look) || look.Kind != ActionKind.Axis2D)
             {
-                Log.Warn(LogCat.Console, "in_look: there is no Look axis action");
+                Log.Warn(LogCat.Console, "in_look: there is no Look axis action, or a bad @player");
                 return;
             }
             // Degrees per second, not the raw axis: Look is a per-frame delta in radians (the client
             // has already scaled the mouse), so a script that wrote it directly would turn at a rate
             // that depended on the frame rate — and an automated check that is not reproducible is
             // not a check. The rate is converted here and multiplied by dt where it is applied.
-            float yaw = a.Count > 0 ? Number(a[0]) : 0f;
-            float pitch = a.Count > 1 ? Number(a[1]) : 0f;
-            float seconds = a.Count > 2 ? Number(a[2]) : float.PositiveInfinity;
+            float yaw = n > 0 ? Number(a[0]) : 0f;
+            float pitch = n > 1 ? Number(a[1]) : 0f;
+            float seconds = n > 2 ? Number(a[2]) : float.PositiveInfinity;
             const float ToRadians = MathF.PI / 180f;
             // +x turns right, and AddLook subtracts it (yaw is counter-clockwise), so a positive
             // "yaw" here means "turn right" the way a player would describe it.
-            if (yaw == 0f && pitch == 0f) Release(look.Id);
-            else Inject(look.Id, new Vector2(yaw * ToRadians, pitch * ToRadians), seconds, oneFrame: false, rate: true);
+            if (yaw == 0f && pitch == 0f) _script.Release(player, look.Id);
+            else _script.Inject(player, look.Id, new Vector2(yaw * ToRadians, pitch * ToRadians), seconds, rate: true);
         });
 
-        cvars.RegisterCommand("in_release", CVarFlags.DevOnly, "in_release <action>: stop driving one action from a script.", a =>
+        cvars.RegisterCommand("in_release", CVarFlags.DevOnly, "in_release <action> [@player]: stop driving one action from a script.", a =>
         {
-            if (a.Count == 0 || !_registry.TryGet(a[0], out var info)) Log.Warn(LogCat.Console, "in_release <action>");
-            else Release(info.Id);
+            if (!ScriptedInput.TakePlayer(a.Args, out int player, out int n) || n == 0 || !_registry.TryGet(a[0], out var info))
+                Log.Warn(LogCat.Console, "in_release <action> [@player]");
+            else _script.Release(player, info.Id);
         });
 
-        cvars.RegisterCommand("in_clear", CVarFlags.DevOnly, "Stop driving every action from a script (hands control back).", _ =>
+        cvars.RegisterCommand("in_clear", CVarFlags.DevOnly, "in_clear [@player]: stop driving every action from a script (hands control back).", a =>
         {
-            _scripted.Clear();
+            if (!ScriptedInput.TakePlayer(a.Args, out int player, out int n)) { Log.Warn(LogCat.Console, "in_clear [@player]"); return; }
+            if (a.Count > 0) _script.Clear(player); else _script.Clear();
             Log.Info(LogCat.Console, "scripted input cleared");
         });
 
         cvars.RegisterCommand("in_scripted", CVarFlags.DevOnly, "What a script is currently holding down.", _ =>
         {
-            if (_scripted.Count == 0) { Log.Info(LogCat.Console, "  nothing scripted"); return; }
-            foreach (var s in _scripted)
-            {
-                string left = float.IsPositiveInfinity(s.Remaining) ? "held" : $"{s.Remaining:F2}s left";
-                Log.Info(LogCat.Console, $"  {_registry.All[s.Action.Index].Name} = [{s.Value.X:F2}, {s.Value.Y:F2}] ({left})");
-            }
+            if (_script.Count == 0) { Log.Info(LogCat.Console, "  nothing scripted"); return; }
+            foreach (string line in _script.Describe(_registry)) Log.Info(LogCat.Console, "  " + line);
         });
         _records.Reloaded += Rebuild;   // the first record load builds the bindings
         _active[(int)InputContext.Gameplay] = true;
@@ -240,43 +273,6 @@ public sealed class InputActions
     private static float Number(string text) =>
         float.TryParse(text, System.Globalization.NumberStyles.Float,
                        System.Globalization.CultureInfo.InvariantCulture, out float value) ? value : 0f;
-
-    private void Inject(ActionId action, Vector2 value, float seconds, bool oneFrame, bool rate = false)
-    {
-        Release(action);   // driving an action twice is a script contradicting itself; the last wins
-        _scripted.Add(new Scripted { Action = action, Value = value, Remaining = seconds, OneFrame = oneFrame, Rate = rate });
-    }
-
-    private void Release(ActionId action)
-    {
-        for (int i = _scripted.Count - 1; i >= 0; i--)
-            if (_scripted[i].Action == action) _scripted.RemoveAt(i);
-    }
-
-    // After the bindings, so a script adds to a device rather than fighting it: holding W while a
-    // script drives Move forward is still forward, and releasing the script hands control straight
-    // back. Ages in real time, like the console's `wait`, so a paused game still runs its script.
-    private void ApplyScripted(float dt)
-    {
-        for (int i = _scripted.Count - 1; i >= 0; i--)
-        {
-            var s = _scripted[i];
-            int index = s.Action.Index;
-            if (index >= _held.Length) { _scripted.RemoveAt(i); continue; }
-
-            // Both: a script *is* the device as far as edges are concerned, and consumption does not
-            // apply to it — a script drives the game rather than playing it.
-            if (_registry.All[index].Kind == ActionKind.Button) _held[index] = _rawHeld[index] = true;
-            else _axis[index] = s.Rate ? s.Value * dt : s.Value;
-
-            if (s.OneFrame) { _scripted.RemoveAt(i); continue; }
-            if (float.IsPositiveInfinity(s.Remaining)) continue;
-
-            s.Remaining -= dt;
-            if (s.Remaining <= 0f) _scripted.RemoveAt(i);
-            else _scripted[i] = s;
-        }
-    }
 
     public ActionMask HeldMask => _heldBits;
     public ActionMask PressedMask => _pressedBits;
@@ -324,7 +320,7 @@ public sealed class InputActions
                 _consumed[MouseDeltaSlot] = true;
             }
         }
-        ApplyScripted(dt);
+        _script.Apply(0, dt, _registry, _held, _rawHeld, _axis);
 
         _heldBits = _pressedBits = _releasedBits = default;
         var all = _registry.All;
@@ -340,6 +336,8 @@ public sealed class InputActions
             if (InputEdges.Pressed(_rawHeld[i], _wasRawHeld[i], swallowed)) _pressedBits = _pressedBits.With(info.Id);
             if (InputEdges.Released(_rawHeld[i], _wasRawHeld[i])) _releasedBits = _releasedBits.With(info.Id);
         }
+
+        for (int p = 1; p < _devices.Pads.Players; p++) UpdateSecondary(p, dt);
     }
 
     // Capture-next-input (the controls screen, #328): while the rebinds are waiting for a press, the first
@@ -431,31 +429,113 @@ public sealed class InputActions
         {
             Source.Key => new Vector2(kb.IsKeyDown(b.Key) ? 1 : 0, 0),
             Source.MouseButton => new Vector2(mouse.IsButtonDown(b.MouseButton) ? 1 : 0, 0),
-            Source.PadButton => new Vector2(pad.IsDown(b.PadButton) ? 1 : 0, 0),
-            Source.PadTrigger => new Vector2(DeadZone(b.RightSide ? pad.RightTrigger : pad.LeftTrigger, d.Deadzone), 0),
+            Source.PadButton or Source.PadTrigger or Source.PadStick => ReadPadAxis(b, pad),
             Source.MouseWheel => new Vector2(mouse.ScrollWheelDelta / 120f, 0),
             Source.MouseDelta => new Vector2(mouse.PositionDelta.X, -mouse.PositionDelta.Y * (_invertY.Value ? -1 : 1)) * _sensitivity.Value,
-            Source.PadStick => DeadZone(b.RightSide ? pad.RightStick.ToNumerics() : pad.LeftStick.ToNumerics(), d.Deadzone),
             Source.Composite => new Vector2(
                 (kb.IsKeyDown(b.Composite[3]) ? 1 : 0) - (kb.IsKeyDown(b.Composite[2]) ? 1 : 0),
                 (kb.IsKeyDown(b.Composite[0]) ? 1 : 0) - (kb.IsKeyDown(b.Composite[1]) ? 1 : 0)),
             _ => Vector2.Zero,
         };
+        _axis[i] += Shape(b, v, dt);
+    }
+
+    private static Vector2 Shape(Binding b, Vector2 v, float dt)
+    {
+        var d = b.Desc;
         v *= d.Scale;
         if (d.Invert) v = b.Action.Kind == ActionKind.Axis1D ? -v : new Vector2(v.X, -v.Y);
         if (d.Rate) v *= dt;
-        _axis[i] += v;
+        return v;
     }
 
-    private static float DeadZone(float value, float deadzone) =>
-        value <= deadzone ? 0f : (value - deadzone) / (1f - deadzone);
-
-    // Radial dead zone, rescaled so the output still reaches 1.
-    private static Vector2 DeadZone(Vector2 value, float deadzone)
+    // A pad binding's value as an axis, from whichever pad is asked. `joy_deadzone` is a floor under the binding's
+    // own dead zone; the curve shapes sticks (a trigger's travel stays linear). Radial, in `StickResponse`.
+    private Vector2 ReadPadAxis(Binding b, GamepadListener pad)
     {
-        float length = value.Length();
-        if (length <= deadzone) return Vector2.Zero;
-        return value / length * MathF.Min(1f, (length - deadzone) / (1f - deadzone));
+        float deadzone = MathF.Max(b.Desc.Deadzone, _joyDeadzone.Value);
+        return b.Source switch
+        {
+            Source.PadButton => new Vector2(pad.IsDown(b.PadButton) ? 1 : 0, 0),
+            Source.PadTrigger => new Vector2(StickResponse.Apply(b.RightSide ? pad.RightTrigger : pad.LeftTrigger, deadzone), 0),
+            Source.PadStick => StickResponse.Apply(b.RightSide ? pad.RightStick.ToNumerics() : pad.LeftStick.ToNumerics(), deadzone, _curve),
+            _ => Vector2.Zero,
+        };
+    }
+
+    private void ParseCurve()
+    {
+        if (StickResponse.TryParseCurve(_joyCurve.Value, out float exponent)) _curve = exponent;
+        else Log.Warn(LogCat.Input, $"joy_curve '{_joyCurve.Value}': use linear, quadratic, cubic or a number from 0.1 to 8");
+    }
+
+    // ---- The other local players (issue #331) ----------------------------------------------------------
+
+    public int LocalPlayers => _devices.Pads.Players;
+    public ActionMask HeldMaskOf(int player) => player == 0 ? _heldBits : _frames[player].HeldBits;
+    public ActionMask PressedMaskOf(int player) => player == 0 ? _pressedBits : _frames[player].PressedBits;
+    public ActionMask ReleasedMaskOf(int player) => player == 0 ? _releasedBits : _frames[player].ReleasedBits;
+    public Vector2 Axis2Of(int player, ActionId a)
+    {
+        if (player == 0) return Axis2(a);
+        var axis = _frames[player].Axis;
+        return a.IsValid && a.Index < axis.Length ? axis[a.Index] : Vector2.Zero;
+    }
+
+    // Player `p`'s frame: their pad against the gameplay context's pad bindings, then their scripts. Held back
+    // while a console, a screen or the dev UI has the input (the first player's keyboard is theirs; a second
+    // person's pad must not walk their pawn behind an open inventory). Scripts are not held back, as for the first.
+    private void UpdateSecondary(int p, float dt)
+    {
+        var f = _frames[p];
+        int n = _registry.All.Count;
+        if (f.Held.Length != n)
+        {
+            Array.Resize(ref f.Held, n); Array.Resize(ref f.RawHeld, n); Array.Resize(ref f.WasRawHeld, n); Array.Resize(ref f.Axis, n);
+        }
+        Array.Copy(f.RawHeld, f.WasRawHeld, n);
+        Array.Clear(f.Held); Array.Clear(f.RawHeld); Array.Clear(f.Axis);
+
+        if (!IsActive(InputContext.Console) && !IsActive(InputContext.UI) && !IsActive(InputContext.Editor))
+        {
+            var pad = _devices.PadFor(p);
+            foreach (var b in _bindings[(int)InputContext.Gameplay])
+            {
+                if (b.Source is not (Source.PadButton or Source.PadTrigger or Source.PadStick)) continue;
+                int i = b.Action.Id.Index;
+                if (b.Action.Kind == ActionKind.Button)
+                {
+                    bool down = b.IsTrigger
+                        ? InputEdges.TriggerDown(b.RightSide ? pad.RightTrigger : pad.LeftTrigger, b.TriggerWasDownOthers[p])
+                        : pad.IsDown(b.PadButton);
+                    if (b.IsTrigger) b.TriggerWasDownOthers[p] = down;
+                    f.Held[i] |= down;
+                    f.RawHeld[i] |= down;
+                }
+                else f.Axis[i] += Shape(b, ReadPadAxis(b, pad), dt);
+            }
+        }
+        _script.Apply(p, dt, _registry, f.Held, f.RawHeld, f.Axis);
+
+        f.HeldBits = f.PressedBits = f.ReleasedBits = default;
+        var all = _registry.All;
+        for (int a = 0; a < all.Count; a++)
+        {
+            var info = all[a];
+            if (info.Kind != ActionKind.Button) continue;
+            int i = info.Id.Index;
+            bool swallowed = f.RawHeld[i] && !f.Held[i];
+            if (InputEdges.Held(f.RawHeld[i], swallowed)) f.HeldBits = f.HeldBits.With(info.Id);
+            if (InputEdges.Pressed(f.RawHeld[i], f.WasRawHeld[i], swallowed)) f.PressedBits = f.PressedBits.With(info.Id);
+            if (InputEdges.Released(f.RawHeld[i], f.WasRawHeld[i])) f.ReleasedBits = f.ReleasedBits.With(info.Id);
+        }
+    }
+
+    // The mixer's motors go to the pads (`joy_rumble` is its gain). The host calls this once a frame.
+    public void ApplyRumble(RumbleMixer? mixer)
+    {
+        if (mixer != null) mixer.Gain = _joyRumble.Value;
+        _devices.ApplyRumble(mixer, _devices.Focused);
     }
 
     private void EnsureCapacity()

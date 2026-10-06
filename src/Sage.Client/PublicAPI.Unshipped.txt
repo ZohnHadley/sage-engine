@@ -1,5 +1,20 @@
 #nullable enable
+Sage.Client.GamepadListener.AnyButtonPressed.get -> bool
+Sage.Client.GamepadListener.GamepadListener(int index) -> void
+Sage.Client.GamepadListener.MaxAxis.get -> float
+Sage.Client.InputActions.ApplyRumble(Sage.Simulation.RumbleMixer? mixer) -> void
+Sage.Client.InputActions.Axis2Of(int player, Sage.Simulation.ActionId a) -> System.Numerics.Vector2
+Sage.Client.InputActions.HeldMaskOf(int player) -> Sage.Simulation.ActionMask
 Sage.Client.InputActions.InputActions(Sage.Simulation.ActionRegistry! registry, Sage.Core.RecordStore! records, Sage.Client.InputDevices! devices, Sage.Core.CVarRegistry! cvars, Sage.Simulation.InputRebinds? rebinds) -> void
+Sage.Client.InputActions.LocalPlayers.get -> int
+Sage.Client.InputActions.PressedMaskOf(int player) -> Sage.Simulation.ActionMask
+Sage.Client.InputActions.ReleasedMaskOf(int player) -> Sage.Simulation.ActionMask
+Sage.Client.InputDevices.AllPads.get -> Sage.Client.GamepadListener![]!
+Sage.Client.InputDevices.ApplyRumble(Sage.Simulation.RumbleMixer? mixer, bool focused) -> void
+Sage.Client.InputDevices.InputDevices(Sage.Simulation.PadAssignment? pads, Sage.Simulation.LastUsedDevice? last) -> void
+Sage.Client.InputDevices.LastDevice.get -> Sage.Simulation.LastUsedDevice!
+Sage.Client.InputDevices.PadFor(int player) -> Sage.Client.GamepadListener!
+Sage.Client.InputDevices.Pads.get -> Sage.Simulation.PadAssignment!
 Sage.Client.MouseListener.ApplyCapture(bool want, Microsoft.Xna.Framework.Point centre) -> Sage.Simulation.MouseCaptureFrame
 Sage.Client.MouseListener.Captured.get -> bool
 Sage.Client.RenderStats.LodCulled -> int
@@ -9,3 +24,4 @@ Sage.Client.RenderStats.Instanced -> int
 Sage.Client.RenderStats.InstancedDraws -> int
 Sage.Client.RenderStats.InstancedSprites -> int
 Sage.Client.RenderStats.ShadowMaps -> int
+static readonly Sage.Client.GamepadListener.None -> Sage.Client.GamepadListener!

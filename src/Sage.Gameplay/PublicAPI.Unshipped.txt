@@ -1,4 +1,6 @@
 #nullable enable
+Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
+Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
 Sage.Gameplay.LightPart.Cone -> float
 Sage.Gameplay.LightPart.InnerCone -> float
 Sage.Gameplay.LightPart.Pattern -> string!

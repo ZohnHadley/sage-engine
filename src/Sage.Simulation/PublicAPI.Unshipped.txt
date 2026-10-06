@@ -1,5 +1,10 @@
 #nullable enable
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
+const Sage.Simulation.LastUsedDevice.MouseThreshold = 3 -> float
+const Sage.Simulation.LastUsedDevice.StickThreshold = 0.5 -> float
+const Sage.Simulation.PadAssignment.MaxPads = 4 -> int
+const Sage.Simulation.RumbleMixer.MaxEffects = 32 -> int
+const Sage.Simulation.RumbleMixer.MaxPlayers = 4 -> int
 const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
 const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
 *REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
@@ -41,8 +46,26 @@ Sage.Simulation.Decals.Place(Sage.Core.RecordId effect, Sage.Simulation.DecalRec
 Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
+Sage.Simulation.DeviceActivity
+Sage.Simulation.DeviceActivity.DeviceActivity() -> void
+Sage.Simulation.DeviceActivity.Key.get -> bool
+Sage.Simulation.DeviceActivity.Key.init -> void
+Sage.Simulation.DeviceActivity.MouseButton.get -> bool
+Sage.Simulation.DeviceActivity.MouseButton.init -> void
+Sage.Simulation.DeviceActivity.MouseMoved.get -> float
+Sage.Simulation.DeviceActivity.MouseMoved.init -> void
+Sage.Simulation.DeviceActivity.PadButton.get -> bool
+Sage.Simulation.DeviceActivity.PadButton.init -> void
+Sage.Simulation.DeviceActivity.PadStick.get -> float
+Sage.Simulation.DeviceActivity.PadStick.init -> void
+Sage.Simulation.Engine.LastDevice.get -> Sage.Simulation.LastUsedDevice!
+Sage.Simulation.Engine.Pads.get -> Sage.Simulation.PadAssignment!
 Sage.Simulation.Engine.Rebinds.get -> Sage.Simulation.InputRebinds!
 Sage.Simulation.InputBinding.DisplayName.get -> string!
+Sage.Simulation.InputDeviceKind
+Sage.Simulation.InputDeviceKind.Gamepad = 1 -> Sage.Simulation.InputDeviceKind
+Sage.Simulation.InputDeviceKind.KeyboardMouse = 0 -> Sage.Simulation.InputDeviceKind
+Sage.Simulation.InputGlyphs
 Sage.Simulation.InputRebinds
 Sage.Simulation.InputRebinds.ActionsFor(Sage.Simulation.InputContext context, Sage.Simulation.InputBinding! input) -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.InputRebinds.ActionsIn(Sage.Simulation.InputContext context) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionInfo!>!
@@ -68,6 +91,12 @@ Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string
 Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
 Sage.Simulation.InputRebinds.Validator.set -> void
 Sage.Simulation.InputRebinds.Version.get -> int
+Sage.Simulation.LastUsedDevice
+Sage.Simulation.LastUsedDevice.Changed -> System.Action<Sage.Simulation.InputDeviceKind>?
+Sage.Simulation.LastUsedDevice.Current.get -> Sage.Simulation.InputDeviceKind
+Sage.Simulation.LastUsedDevice.LastUsedDevice() -> void
+Sage.Simulation.LastUsedDevice.Observe(in Sage.Simulation.DeviceActivity a) -> void
+Sage.Simulation.LastUsedDevice.Set(Sage.Simulation.InputDeviceKind kind) -> void
 Sage.Simulation.MouseCaptureFrame
 Sage.Simulation.MouseCaptureFrame.Captured.get -> bool
 Sage.Simulation.MouseCaptureFrame.Captured.init -> void
@@ -104,6 +133,24 @@ Sage.Simulation.MouseCaptureTracker
 Sage.Simulation.MouseCaptureTracker.Captured.get -> bool
 Sage.Simulation.MouseCaptureTracker.MouseCaptureTracker() -> void
 Sage.Simulation.MouseCaptureTracker.Step(bool want, int x, int y, int centreX, int centreY) -> Sage.Simulation.MouseCaptureFrame
+Sage.Simulation.PadAssignment
+Sage.Simulation.PadAssignment.Assign(int player, int pad) -> bool
+Sage.Simulation.PadAssignment.Change
+Sage.Simulation.PadAssignment.Change.Change() -> void
+Sage.Simulation.PadAssignment.Change.Change(int Pad, int Player, bool Gained) -> void
+Sage.Simulation.PadAssignment.Change.Gained.get -> bool
+Sage.Simulation.PadAssignment.Change.Gained.init -> void
+Sage.Simulation.PadAssignment.Change.Pad.get -> int
+Sage.Simulation.PadAssignment.Change.Pad.init -> void
+Sage.Simulation.PadAssignment.Change.Player.get -> int
+Sage.Simulation.PadAssignment.Change.Player.init -> void
+Sage.Simulation.PadAssignment.IsConnected(int pad) -> bool
+Sage.Simulation.PadAssignment.PadAssignment() -> void
+Sage.Simulation.PadAssignment.PadOf(int player) -> int
+Sage.Simulation.PadAssignment.PlayerOf(int pad) -> int
+Sage.Simulation.PadAssignment.Players.get -> int
+Sage.Simulation.PadAssignment.Players.set -> void
+Sage.Simulation.PadAssignment.Update(System.ReadOnlySpan<bool> connected) -> System.ReadOnlySpan<Sage.Simulation.PadAssignment.Change>
 Sage.Simulation.PendingRebind
 Sage.Simulation.PendingRebind.Action.get -> string!
 Sage.Simulation.PendingRebind.Action.init -> void
@@ -116,6 +163,11 @@ Sage.Simulation.PendingRebind.Context.init -> void
 Sage.Simulation.PendingRebind.Input.get -> Sage.Simulation.InputBinding!
 Sage.Simulation.PendingRebind.Input.init -> void
 Sage.Simulation.PendingRebind.PendingRebind(Sage.Simulation.InputContext Context, string! Action, Sage.Simulation.InputBinding! Input, System.Collections.Generic.IReadOnlyList<string!>! Conflicts, bool CanReplace) -> void
+Sage.Simulation.PlayerInput.SetCommand(int player, in Sage.Simulation.PlayerCommand command) -> void
+Sage.Simulation.PlayerInput.TryGetCommand(int player, out Sage.Simulation.PlayerCommand command) -> bool
+Sage.Simulation.PlayerSlot
+Sage.Simulation.PlayerSlot.Index -> int
+Sage.Simulation.PlayerSlot.PlayerSlot() -> void
 Sage.Simulation.RebindResult
 Sage.Simulation.RebindResult.CanReplace.get -> bool
 Sage.Simulation.RebindResult.CanReplace.init -> void
@@ -134,8 +186,36 @@ Sage.Simulation.RebindStatus.CannotSave = 4 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Conflict = 2 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Invalid = 3 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Unchanged = 1 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RumbleMixer
+Sage.Simulation.RumbleMixer.Clear() -> void
+Sage.Simulation.RumbleMixer.Count.get -> int
+Sage.Simulation.RumbleMixer.Gain.get -> float
+Sage.Simulation.RumbleMixer.Gain.set -> void
+Sage.Simulation.RumbleMixer.High(int player) -> float
+Sage.Simulation.RumbleMixer.Low(int player) -> float
+Sage.Simulation.RumbleMixer.RumbleMixer() -> void
+Sage.Simulation.RumbleMixer.Start(int player, float low, float high, float duration, float attack = 0, float release = 0) -> void
+Sage.Simulation.RumbleMixer.Start(int player, Sage.Simulation.RumbleRecord! record, float scale = 1) -> void
+Sage.Simulation.RumbleMixer.Stop(int player) -> void
+Sage.Simulation.RumbleMixer.Update(float dt) -> void
+Sage.Simulation.RumbleRecord
+Sage.Simulation.RumbleRecord.Attack -> float
+Sage.Simulation.RumbleRecord.Duration -> float
+Sage.Simulation.RumbleRecord.High -> float
+Sage.Simulation.RumbleRecord.Low -> float
+Sage.Simulation.RumbleRecord.Release -> float
+Sage.Simulation.RumbleRecord.RumbleRecord() -> void
 Sage.Simulation.SageAppOptions.InputFile.get -> string?
 Sage.Simulation.SageAppOptions.InputFile.init -> void
+Sage.Simulation.ScriptedInput
+Sage.Simulation.ScriptedInput.Apply(int player, float dt, Sage.Simulation.ActionRegistry! registry, bool[]! held, bool[]! rawHeld, System.Numerics.Vector2[]! axis) -> void
+Sage.Simulation.ScriptedInput.Clear() -> void
+Sage.Simulation.ScriptedInput.Clear(int player) -> void
+Sage.Simulation.ScriptedInput.Count.get -> int
+Sage.Simulation.ScriptedInput.Describe(Sage.Simulation.ActionRegistry! registry) -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Simulation.ScriptedInput.Inject(int player, Sage.Simulation.ActionId action, System.Numerics.Vector2 value, float seconds, bool oneFrame = false, bool rate = false) -> void
+Sage.Simulation.ScriptedInput.Release(int player, Sage.Simulation.ActionId action) -> void
+Sage.Simulation.ScriptedInput.ScriptedInput() -> void
 Sage.Simulation.ShadowAtlas
 Sage.Simulation.ShadowAtlas.Cascades.get -> int
 Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
@@ -145,6 +225,7 @@ Sage.Simulation.ShadowAtlas.Height.get -> int
 Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
+Sage.Simulation.StickResponse
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
@@ -170,6 +251,7 @@ Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
 static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
+static Sage.Simulation.InputGlyphs.Pick(System.Collections.Generic.IReadOnlyList<Sage.Simulation.InputBinding!>? bindings, Sage.Simulation.InputDeviceKind device) -> Sage.Simulation.InputBinding?
 static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
 static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
 static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float
@@ -195,6 +277,8 @@ Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
 static Sage.Simulation.MouseCapturePolicy.ShouldCapture(in Sage.Simulation.MouseCaptureInputs i) -> bool
 static Sage.Simulation.MouseCapturePolicy.Why(in Sage.Simulation.MouseCaptureInputs i) -> string?
+static Sage.Simulation.Players.PlayerIndexOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> int
+static Sage.Simulation.ScriptedInput.TakePlayer(System.Collections.Generic.IReadOnlyList<string!>! args, out int player, out int count) -> bool
 static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
 static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
 static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int
@@ -231,6 +315,10 @@ Sage.Simulation.WeatherRecord.LightningRate -> float
 Sage.Simulation.WeatherRecord.ShelteredVolume -> float
 Sage.Simulation.WeatherRecord.Thunder -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Simulation.WeatherRecord.ThunderVolume -> float
+static Sage.Simulation.StickResponse.Apply(float value, float deadzone, float exponent = 1) -> float
+static Sage.Simulation.StickResponse.Apply(System.Numerics.Vector2 value, float deadzone, float exponent = 1) -> System.Numerics.Vector2
+static Sage.Simulation.StickResponse.Curve(float t, float exponent) -> float
+static Sage.Simulation.StickResponse.TryParseCurve(string! text, out float exponent) -> bool
 static Sage.Simulation.WeatherRules.LightningRateNow(Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather) -> float
 const Sage.Simulation.LightStyles.DefaultRate = 10 -> float
 Sage.Simulation.LightSample.ConeAt(System.Numerics.Vector3 at) -> float

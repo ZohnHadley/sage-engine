@@ -851,6 +851,11 @@
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
+    "record:rumble": {
+      "description": "The id of a rumble record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:scene": {
       "description": "The id of a scene record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -2062,6 +2067,11 @@
     },
     "base:rpg_item": {
       "description": "The id of a rpg_item record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "base:rumble": {
+      "description": "The id of a rumble record (none is loaded).",
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },

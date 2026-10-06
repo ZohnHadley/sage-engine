@@ -468,6 +468,8 @@ public sealed class ClientModule : IModule
         world.Resources.Add(new FloatingTexts());
         world.AddSystem(new ParticleSystem(world, _records!, _particlesOn!, _damageNumbers!));
         world.AddSystem(new ParticleExtract(world, _renderer!));
+        // Pad rumble (issue #331): the mixer is the world's, fed by gameplay's RumbleSystem, applied to the pads by the host.
+        world.Resources.Add(new RumbleMixer());
         // Marks that stay (issue #306): the pool is the world's, placed by gameplay's DecalSystem.
         world.Resources.Add(new Decals { Ceiling = _decalCeiling!.Value });
         world.AddSystem(new DecalExtract(world, _renderer!, _decalCeiling!));

@@ -548,6 +548,14 @@
         }
       ]
     },
+    "player_slot": {
+      "description": "The component sage:player_slot (PlayerSlot), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:player_slot"
+        }
+      ]
+    },
     "point_light": {
       "description": "The component sage:point_light (PointLight), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -1145,6 +1153,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:pickup"
+        }
+      ]
+    },
+    "sage:player_slot": {
+      "description": "Component sage:player_slot (PlayerSlot).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:player_slot"
         }
       ]
     },
@@ -4962,6 +4978,20 @@
       },
       "additionalProperties": false,
       "description": "Component sage:pickup (Pickup)."
+    },
+    "sage:player_slot": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "description": "Which local player drives this pawn: 0 is the first, 1 the second. Range: 0 to 3. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:player_slot (PlayerSlot)."
     },
     "sage:point_light": {
       "type": "object",
