@@ -1,0 +1,74 @@
+[
+  // The options screen's settings (issue #339, rpg:options over Sage.UI's `ui_options`): each a slider, a
+  // toggle or a choice over a cvar, on one of four pages, in `order`. What the player changes is written to
+  // the cvar on Apply, and an Archive cvar is saved in config.cfg when the game closes. A setting whose cvar
+  // the host does not have is left off (a headless host has no video or sound). A game adds its own with a
+  // record of its own, changes one with a patch, and takes one away with `"disabled": true`:
+  //   { "type": "ui_option", "id": "rpg:fov", "patch": true, "max": 120 }
+
+  // ---- graphics -----------------------------------------------------------------------------------
+  { "type": "ui_option", "id": "resolution", "page": "graphics", "order": 10, "label": "@rpg.options.resolution", "kind": "choice",
+    "choices": [
+      { "label": "1280 x 720",  "set": { "vid_width": "1280", "vid_height": "720" } },
+      { "label": "1366 x 768",  "set": { "vid_width": "1366", "vid_height": "768" } },
+      { "label": "1600 x 900",  "set": { "vid_width": "1600", "vid_height": "900" } },
+      { "label": "1920 x 1080", "set": { "vid_width": "1920", "vid_height": "1080" } },
+      { "label": "2560 x 1440", "set": { "vid_width": "2560", "vid_height": "1440" } },
+      { "label": "3840 x 2160", "set": { "vid_width": "3840", "vid_height": "2160" } }
+    ] },
+  { "type": "ui_option", "id": "fullscreen", "page": "graphics", "order": 20, "label": "@rpg.options.fullscreen", "kind": "toggle", "cvar": "vid_fullscreen" },
+  { "type": "ui_option", "id": "vsync", "page": "graphics", "order": 30, "label": "@rpg.options.vsync", "kind": "toggle", "cvar": "r_vsync" },
+  { "type": "ui_option", "id": "max_fps", "page": "graphics", "order": 40, "label": "@rpg.options.max_fps", "kind": "choice", "cvar": "host_maxfps",
+    "choices": [
+      { "label": "@rpg.options.unlimited", "value": "0" }, { "label": "30", "value": "30" }, { "label": "60", "value": "60" },
+      { "label": "120", "value": "120" }, { "label": "144", "value": "144" }, { "label": "240", "value": "240" }
+    ] },
+  // A preset: each choice sets several cvars, and the one shown is the one they all match ("Custom" if none).
+  // Medium is the engine's defaults.
+  { "type": "ui_option", "id": "quality", "page": "graphics", "order": 50, "label": "@rpg.options.quality", "kind": "choice",
+    "choices": [
+      { "label": "@rpg.options.quality_low",
+        "set": { "r_post": "0", "r_bloom": "0", "r_hdr": "0", "r_aa": "off", "r_anisotropy": "1", "r_particles": "0", "r_water": "0" } },
+      { "label": "@rpg.options.quality_medium",
+        "set": { "r_post": "0", "r_bloom": "0", "r_hdr": "0", "r_aa": "off", "r_anisotropy": "4", "r_particles": "1", "r_water": "1" } },
+      { "label": "@rpg.options.quality_high",
+        "set": { "r_post": "1", "r_bloom": "1", "r_hdr": "1", "r_aa": "fxaa", "r_anisotropy": "8", "r_particles": "1", "r_water": "1" } },
+      { "label": "@rpg.options.quality_ultra",
+        "set": { "r_post": "1", "r_bloom": "1", "r_hdr": "1", "r_aa": "msaa4", "r_anisotropy": "16", "r_particles": "1", "r_water": "1" } }
+    ] },
+  { "type": "ui_option", "id": "render_scale", "page": "graphics", "order": 60, "label": "@rpg.options.render_scale", "kind": "slider",
+    "cvar": "r_scale", "min": 0.25, "max": 1, "step": 0.05, "percent": true },
+
+  // ---- audio --------------------------------------------------------------------------------------
+  { "type": "ui_option", "id": "sound", "page": "audio", "order": 5, "label": "@rpg.options.sound", "kind": "toggle", "cvar": "snd_enabled" },
+  { "type": "ui_option", "id": "master_volume", "page": "audio", "order": 10, "label": "@rpg.options.master", "kind": "slider",
+    "cvar": "snd_volume", "min": 0, "max": 1, "step": 0.05, "percent": true },
+  { "type": "ui_option", "id": "music_volume", "page": "audio", "order": 20, "label": "@rpg.options.music", "kind": "slider",
+    "cvar": "snd_music", "min": 0, "max": 1, "step": 0.05, "percent": true },
+  { "type": "ui_option", "id": "sfx_volume", "page": "audio", "order": 30, "label": "@rpg.options.sfx", "kind": "slider",
+    "cvar": "snd_sfx", "min": 0, "max": 1, "step": 0.05, "percent": true },
+  { "type": "ui_option", "id": "voice_volume", "page": "audio", "order": 40, "label": "@rpg.options.voice", "kind": "slider",
+    "cvar": "snd_voice", "min": 0, "max": 1, "step": 0.05, "percent": true },
+  { "type": "ui_option", "id": "ambient_volume", "page": "audio", "order": 50, "label": "@rpg.options.ambient", "kind": "slider",
+    "cvar": "snd_ambient", "min": 0, "max": 1, "step": 0.05, "percent": true },
+  { "type": "ui_option", "id": "ui_volume", "page": "audio", "order": 60, "label": "@rpg.options.ui", "kind": "slider",
+    "cvar": "snd_ui", "min": 0, "max": 1, "step": 0.05, "percent": true },
+
+  // ---- controls (the key bindings are the rpg:controls screen, opened from this page) --------------
+  { "type": "ui_option", "id": "sensitivity", "page": "controls", "order": 10, "label": "@rpg.options.sensitivity", "kind": "slider",
+    "cvar": "m_sensitivity", "min": 0.1, "max": 5, "step": 0.05, "decimals": 2 },
+  { "type": "ui_option", "id": "invert_y", "page": "controls", "order": 20, "label": "@rpg.options.invert_y", "kind": "toggle", "cvar": "m_invert_y" },
+  { "type": "ui_option", "id": "pad_deadzone", "page": "controls", "order": 30, "label": "@rpg.options.deadzone", "kind": "slider",
+    "cvar": "joy_deadzone", "min": 0, "max": 0.5, "step": 0.05, "percent": true },
+  { "type": "ui_option", "id": "rumble", "page": "controls", "order": 40, "label": "@rpg.options.rumble", "kind": "slider",
+    "cvar": "joy_rumble", "min": 0, "max": 1, "step": 0.1, "percent": true },
+
+  // ---- gameplay -----------------------------------------------------------------------------------
+  { "type": "ui_option", "id": "fov", "page": "gameplay", "order": 10, "label": "@rpg.options.fov", "kind": "slider",
+    "cvar": "fov", "min": 0, "max": 110, "step": 5, "defaultLabel": "@rpg.options.fov_default" },
+  { "type": "ui_option", "id": "language", "page": "gameplay", "order": 20, "label": "@rpg.options.language", "kind": "choice",
+    "cvar": "lang", "choicesFrom": "languages" },
+  { "type": "ui_option", "id": "crosshair", "page": "gameplay", "order": 30, "label": "@rpg.options.crosshair", "kind": "toggle", "cvar": "ui_crosshair" },
+  { "type": "ui_option", "id": "damage_numbers", "page": "gameplay", "order": 40, "label": "@rpg.options.damage_numbers", "kind": "toggle", "cvar": "ui_damagenumbers" },
+  { "type": "ui_option", "id": "autosave", "page": "gameplay", "order": 50, "label": "@rpg.options.autosave", "kind": "toggle", "cvar": "save_autosave" }
+]

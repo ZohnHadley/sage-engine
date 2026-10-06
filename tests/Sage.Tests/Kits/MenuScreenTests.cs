@@ -309,8 +309,8 @@ public class MenuScreenTests
         stack.Open(RpgKitModule.PauseScreen, new UiBindContext(world));
         stack.Update(UiInput.Wait(1f));
         var pause = Top<PauseView>(stack, RpgKitModule.PauseScreen);
-        Assert.False(pause.HasOptions);                                          // no options screen in this content
-        Assert.False(stack.Top!.Content.Find("options")!.Visible);
+        Assert.True(pause.HasOptions);                                           // the kit's options screen (#339)
+        Assert.True(stack.Top!.Content.Find("options")!.Visible);
         Assert.True(pause.HasMods);
 
         Press(stack, RpgMenus.QuitButton);

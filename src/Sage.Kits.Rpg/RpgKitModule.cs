@@ -53,8 +53,9 @@ public sealed class RpgKitModule : IModule
     public static readonly RecordId SaveScreen = new(ContentNamespace, "save");
     public static readonly RecordId LoadScreen = new(ContentNamespace, "load");
 
-    // The options screen the title and pause menus open (issue #339); their Options button is hidden while
-    // no `screen` of this id exists.
+    // The options screen (issue #339): graphics, audio, controls and gameplay, its settings ui_option
+    // records over cvars (Sage.UI's OptionsView); the controls page opens ControlsScreen. The title and pause menus
+    // open it (#342).
     public static readonly RecordId OptionsScreen = new(ContentNamespace, "options");
 
     // The kit's experimental id for what it adds to phase 4g's open world (MAKING_A_GAME §10b): the base's own.

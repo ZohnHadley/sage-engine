@@ -127,6 +127,7 @@ public sealed class UiModule : IModule
         ctx.Engine.Records.AddCheck<UiLayoutRecord>(UiContentChecks.Layout);
         ctx.Engine.Records.AddCheck<UiStyleSetRecord>(UiAccessibilityChecks.StyleSet);
         ctx.Engine.Records.AddCheck<ScreenRecord>((screen, check) => UiContentChecks.ScreenViewModel(screen, check, viewModels));
+        ctx.Engine.Records.AddCheck<OptionRecord>(OptionChecks.Check);   // the options screen's settings (issue #339)
 
         ctx.Engine.CVars.RegisterCommand("loc", CVarFlags.None,
             "loc <@ns.key> [count]: what a localisation key shows in the current language; loc alone: the language and how many keys it has.", a =>
