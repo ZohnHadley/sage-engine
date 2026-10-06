@@ -41,6 +41,10 @@ public sealed class DamageTypeRecord
     // the blow within the decal's `reach`, then straight down.
     [Property(Tooltip = "The decal a hit leaves on the surface behind or below what it hurt; empty = none")]
     public RecordRef<DecalRecord> Decal;
+    // And what it feels like to be hit by it (issue #331): the rumble on the victim's pad, if the victim is
+    // a player. Only a blow that cost them something is felt (`god` and a full resist are not).
+    [Property(Tooltip = "The rumble a player's pad does when this damage lands on them; empty = none")]
+    public RecordRef<RumbleRecord> Rumble;
     [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
     public uint Colour;                     // the damage number's colour: "#RRGGBB(AA)"; 0 = the engine's default
 

@@ -115,6 +115,65 @@
       "default": 40,
       "type": "number"
     },
+    "rolloff": {
+      "description": "How the sound fades from MinDistance to MaxDistance: linear, log (inverse distance) or custom (rolloffCurve) (Rolloff, default \"Linear\")",
+      "default": "Linear",
+      "type": "string",
+      "enum": [
+        "Linear",
+        "Log",
+        "Custom"
+      ]
+    },
+    "rolloffCurve": {
+      "description": "Custom rolloff: gains from 1 at MinDistance to 0 at MaxDistance, evenly spaced, e.g. [1, 0.6, 0.2, 0]. (List<float>)",
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "rolloffCurve+": {
+      "description": "Adds to \"rolloffCurve\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "rolloffCurve-": {
+      "description": "Removes these from \"rolloffCurve\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "coneInner": {
+      "description": "Inner cone, full angle about the emitter's forward: full volume inside. 360 = omnidirectional. Unit: deg. Range: 0 to 360. (float, default 360)",
+      "default": 360,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360
+    },
+    "coneOuter": {
+      "description": "Outer cone, full angle: OuterGain beyond it. Unit: deg. Range: 0 to 360. (float, default 360)",
+      "default": 360,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360
+    },
+    "coneOuterGain": {
+      "description": "Gain outside the outer cone. Range: 0 to 1. (float, default 0.25)",
+      "default": 0.25,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "doppler": {
+      "description": "Doppler scale for this sound; 0 = never shifts. Range: 0 to 4. (float, default 1)",
+      "default": 1,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 4
+    },
     "priority": {
       "description": "(int, default 0)",
       "default": 0,

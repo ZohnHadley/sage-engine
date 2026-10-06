@@ -248,6 +248,7 @@ public sealed class CombatModule : IModule
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
         world.AddSystem(new HitboxCleanupSystem(world));    // a hitbox goes with its owner (issue #137)
         world.AddSystem(new HitboxBudgetSystem(world, _records!));   // far creatures' hitboxes off (issue #273)
+        world.AddSystem(new RumbleSystem(world, _records!));   // pad rumble from cues and hits, in a world with a mixer (issue #331)
         world.AddSystem(new DecalSystem(world, _records!));   // marks that stay, in a world with a Decals pool (issue #306)
         // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);
         // their clip events are the animator's, like everyone's (issue #119).

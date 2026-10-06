@@ -65,6 +65,7 @@
             "routine",
             "rpg_conventions",
             "rpg_item",
+            "rumble",
             "scene",
             "screen",
             "skeleton_sockets",
@@ -700,6 +701,21 @@
           },
           "then": {
             "$ref": "rpg_item.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "rumble"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "rumble.schema.json"
           }
         },
         {

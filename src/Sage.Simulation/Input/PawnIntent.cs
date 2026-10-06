@@ -16,6 +16,15 @@ public struct Pawn : IComponent { }
 [Tag("sage:player_controlled")]
 public struct PlayerControlled : ITag { }
 
+// Which local player drives a pawn that is `PlayerControlled` (issue #331). A pawn without it is the first
+// player's, so every existing game and save is unchanged; the second player's pawn carries `Index = 1`.
+[Component("sage:player_slot")]
+public struct PlayerSlot : IComponent
+{
+    [Property(Min = 0, Max = 3, Tooltip = "Which local player drives this pawn: 0 is the first, 1 the second")]
+    public int Index;
+}
+
 // What a controller wants the pawn to do this tick: written by controllers in the Commands phase,
 // read by movement, combat and interaction later in the same tick. Written by controllers only.
 // `IEquatable` is not decoration: this component is under a phase contract (03 §3.5), and the check
@@ -47,29 +56,41 @@ public struct PawnIntent : IComponent, IEquatable<PawnIntent>
 public sealed class PlayerControlSystem : ISystem
 {
     private readonly Query<PawnIntent> _pawns;
+    private readonly Query<PawnIntent, PlayerSlot> _slotted;
 
     public PlayerControlSystem(World world)
     {
-        _pawns = world.Query<PawnIntent>().AllTags(Tags.Get<PlayerControlled>());
+        _pawns = world.Query<PawnIntent>().AllTags(Tags.Get<PlayerControlled>()).WithoutComponent<PlayerSlot>();
+        _slotted = world.Query<PawnIntent, PlayerSlot>().AllTags(Tags.Get<PlayerControlled>());
     }
 
     public void Run(in SystemContext ctx)
     {
         var input = ctx.World.Resources.Get<PlayerInput>();
-        if (!input.HasCommand) return;
-        ref readonly var command = ref input.Command;
-
-        foreach (var (intents, _) in _pawns.Chunks)
+        if (input.HasCommand)
         {
-            var intent = intents.Span;
-            for (int n = 0; n < intent.Length; n++)
+            foreach (var (intents, _) in _pawns.Chunks)
             {
-                intent[n].Move = command.Move;
-                intent[n].Yaw = command.ViewYaw;
-                intent[n].Pitch = command.ViewPitch;
-                intent[n].Held = command.Held;
-                intent[n].Pressed = command.Pressed;
+                var intent = intents.Span;
+                for (int n = 0; n < intent.Length; n++) Drive(ref intent[n], in input.Command);
             }
         }
+
+        foreach (var (intents, slots, _) in _slotted.Chunks)
+        {
+            var intent = intents.Span;
+            var slot = slots.Span;
+            for (int n = 0; n < intent.Length; n++)
+                if (input.TryGetCommand(slot[n].Index, out var command)) Drive(ref intent[n], in command);
+        }
+    }
+
+    private static void Drive(ref PawnIntent intent, in PlayerCommand command)
+    {
+        intent.Move = command.Move;
+        intent.Yaw = command.ViewYaw;
+        intent.Pitch = command.ViewPitch;
+        intent.Held = command.Held;
+        intent.Pressed = command.Pressed;
     }
 }

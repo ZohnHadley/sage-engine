@@ -444,3 +444,153 @@ static Sage.Simulation.MusicRules.Of(Sage.Simulation.World! world) -> Sage.Simul
 static Sage.Simulation.MusicRules.Play(Sage.Simulation.World! world, Sage.Core.RecordId track, float? seconds = null) -> void
 static Sage.Simulation.MusicRules.SetIntensity(Sage.Simulation.World! world, float intensity) -> void
 static Sage.Simulation.MusicRules.Stop(Sage.Simulation.World! world, float? seconds = null) -> void
+Sage.Simulation.DeviceActivity
+Sage.Simulation.DeviceActivity.DeviceActivity() -> void
+Sage.Simulation.DeviceActivity.Key.get -> bool
+Sage.Simulation.DeviceActivity.Key.init -> void
+Sage.Simulation.DeviceActivity.MouseButton.get -> bool
+Sage.Simulation.DeviceActivity.MouseButton.init -> void
+Sage.Simulation.DeviceActivity.MouseMoved.get -> float
+Sage.Simulation.DeviceActivity.MouseMoved.init -> void
+Sage.Simulation.DeviceActivity.PadButton.get -> bool
+Sage.Simulation.DeviceActivity.PadButton.init -> void
+Sage.Simulation.DeviceActivity.PadStick.get -> float
+Sage.Simulation.DeviceActivity.PadStick.init -> void
+Sage.Simulation.Engine.LastDevice.get -> Sage.Simulation.LastUsedDevice!
+Sage.Simulation.Engine.Pads.get -> Sage.Simulation.PadAssignment!
+Sage.Simulation.InputDeviceKind
+Sage.Simulation.InputDeviceKind.Gamepad = 1 -> Sage.Simulation.InputDeviceKind
+Sage.Simulation.InputDeviceKind.KeyboardMouse = 0 -> Sage.Simulation.InputDeviceKind
+Sage.Simulation.InputGlyphs
+Sage.Simulation.LastUsedDevice
+Sage.Simulation.LastUsedDevice.Changed -> System.Action<Sage.Simulation.InputDeviceKind>?
+Sage.Simulation.LastUsedDevice.Current.get -> Sage.Simulation.InputDeviceKind
+Sage.Simulation.LastUsedDevice.LastUsedDevice() -> void
+Sage.Simulation.LastUsedDevice.Observe(in Sage.Simulation.DeviceActivity a) -> void
+Sage.Simulation.LastUsedDevice.Set(Sage.Simulation.InputDeviceKind kind) -> void
+Sage.Simulation.PadAssignment
+Sage.Simulation.PadAssignment.Assign(int player, int pad) -> bool
+Sage.Simulation.PadAssignment.Change
+Sage.Simulation.PadAssignment.Change.Change() -> void
+Sage.Simulation.PadAssignment.Change.Change(int Pad, int Player, bool Gained) -> void
+Sage.Simulation.PadAssignment.Change.Gained.get -> bool
+Sage.Simulation.PadAssignment.Change.Gained.init -> void
+Sage.Simulation.PadAssignment.Change.Pad.get -> int
+Sage.Simulation.PadAssignment.Change.Pad.init -> void
+Sage.Simulation.PadAssignment.Change.Player.get -> int
+Sage.Simulation.PadAssignment.Change.Player.init -> void
+Sage.Simulation.PadAssignment.IsConnected(int pad) -> bool
+Sage.Simulation.PadAssignment.PadAssignment() -> void
+Sage.Simulation.PadAssignment.PadOf(int player) -> int
+Sage.Simulation.PadAssignment.PlayerOf(int pad) -> int
+Sage.Simulation.PadAssignment.Players.get -> int
+Sage.Simulation.PadAssignment.Players.set -> void
+Sage.Simulation.PadAssignment.Update(System.ReadOnlySpan<bool> connected) -> System.ReadOnlySpan<Sage.Simulation.PadAssignment.Change>
+Sage.Simulation.PlayerInput.SetCommand(int player, in Sage.Simulation.PlayerCommand command) -> void
+Sage.Simulation.PlayerInput.TryGetCommand(int player, out Sage.Simulation.PlayerCommand command) -> bool
+Sage.Simulation.PlayerSlot
+Sage.Simulation.PlayerSlot.Index -> int
+Sage.Simulation.PlayerSlot.PlayerSlot() -> void
+Sage.Simulation.RumbleMixer
+Sage.Simulation.RumbleMixer.Clear() -> void
+Sage.Simulation.RumbleMixer.Count.get -> int
+Sage.Simulation.RumbleMixer.Gain.get -> float
+Sage.Simulation.RumbleMixer.Gain.set -> void
+Sage.Simulation.RumbleMixer.High(int player) -> float
+Sage.Simulation.RumbleMixer.Low(int player) -> float
+Sage.Simulation.RumbleMixer.RumbleMixer() -> void
+Sage.Simulation.RumbleMixer.Start(int player, Sage.Simulation.RumbleRecord! record, float scale = 1) -> void
+Sage.Simulation.RumbleMixer.Start(int player, float low, float high, float duration, float attack = 0, float release = 0) -> void
+Sage.Simulation.RumbleMixer.Stop(int player) -> void
+Sage.Simulation.RumbleMixer.Update(float dt) -> void
+Sage.Simulation.RumbleRecord
+Sage.Simulation.RumbleRecord.Attack -> float
+Sage.Simulation.RumbleRecord.Duration -> float
+Sage.Simulation.RumbleRecord.High -> float
+Sage.Simulation.RumbleRecord.Low -> float
+Sage.Simulation.RumbleRecord.Release -> float
+Sage.Simulation.RumbleRecord.RumbleRecord() -> void
+Sage.Simulation.ScriptedInput
+Sage.Simulation.ScriptedInput.Apply(int player, float dt, Sage.Simulation.ActionRegistry! registry, bool[]! held, bool[]! rawHeld, System.Numerics.Vector2[]! axis) -> void
+Sage.Simulation.ScriptedInput.Clear() -> void
+Sage.Simulation.ScriptedInput.Clear(int player) -> void
+Sage.Simulation.ScriptedInput.Count.get -> int
+Sage.Simulation.ScriptedInput.Describe(Sage.Simulation.ActionRegistry! registry) -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Simulation.ScriptedInput.Inject(int player, Sage.Simulation.ActionId action, System.Numerics.Vector2 value, float seconds, bool oneFrame = false, bool rate = false) -> void
+Sage.Simulation.ScriptedInput.Release(int player, Sage.Simulation.ActionId action) -> void
+Sage.Simulation.ScriptedInput.ScriptedInput() -> void
+Sage.Simulation.StickResponse
+const Sage.Simulation.LastUsedDevice.MouseThreshold = 3 -> float
+const Sage.Simulation.LastUsedDevice.StickThreshold = 0.5 -> float
+const Sage.Simulation.PadAssignment.MaxPads = 4 -> int
+const Sage.Simulation.RumbleMixer.MaxEffects = 32 -> int
+const Sage.Simulation.RumbleMixer.MaxPlayers = 4 -> int
+static Sage.Simulation.InputGlyphs.Pick(System.Collections.Generic.IReadOnlyList<Sage.Simulation.InputBinding!>? bindings, Sage.Simulation.InputDeviceKind device) -> Sage.Simulation.InputBinding?
+static Sage.Simulation.Players.PlayerIndexOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> int
+static Sage.Simulation.ScriptedInput.TakePlayer(System.Collections.Generic.IReadOnlyList<string!>! args, out int player, out int count) -> bool
+static Sage.Simulation.StickResponse.Apply(System.Numerics.Vector2 value, float deadzone, float exponent = 1) -> System.Numerics.Vector2
+static Sage.Simulation.StickResponse.Apply(float value, float deadzone, float exponent = 1) -> float
+static Sage.Simulation.StickResponse.Curve(float t, float exponent) -> float
+static Sage.Simulation.StickResponse.TryParseCurve(string! text, out float exponent) -> bool
+Sage.Simulation.AudioMixer.Aim(Sage.Simulation.VoiceHandle handle, System.Numerics.Vector3 direction) -> void
+Sage.Simulation.AudioMixer.ListenerVelocity.get -> System.Numerics.Vector3
+Sage.Simulation.AudioMixer.SetListenerVelocity(System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.AudioMixer.SetVelocity(Sage.Simulation.VoiceHandle handle, System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.AudioSettings.DopplerScale.get -> float
+Sage.Simulation.AudioSettings.DopplerScale.set -> void
+Sage.Simulation.AudioSettings.SpeedOfSound.get -> float
+Sage.Simulation.AudioSettings.SpeedOfSound.set -> void
+Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Custom = 2 -> Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Linear = 0 -> Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Log = 1 -> Sage.Simulation.Rolloff
+Sage.Simulation.SoundRecord.ConeInner -> float
+Sage.Simulation.SoundRecord.ConeOuter -> float
+Sage.Simulation.SoundRecord.ConeOuterGain -> float
+Sage.Simulation.SoundRecord.Doppler -> float
+Sage.Simulation.SoundRecord.Rolloff -> Sage.Simulation.Rolloff
+Sage.Simulation.SoundRecord.RolloffCurve -> System.Collections.Generic.List<float>!
+Sage.Simulation.Voice.Direction -> System.Numerics.Vector3
+Sage.Simulation.Voice.Velocity -> System.Numerics.Vector3
+Sage.Simulation.BusLevel
+Sage.Simulation.BusLevel.Bus.get -> Sage.Simulation.AudioBus
+Sage.Simulation.BusLevel.Bus.init -> void
+Sage.Simulation.BusLevel.BusLevel() -> void
+Sage.Simulation.BusLevel.BusLevel(Sage.Simulation.AudioBus Bus, int Voices, float Peak, float Level, float Setting) -> void
+Sage.Simulation.BusLevel.Level.get -> float
+Sage.Simulation.BusLevel.Level.init -> void
+Sage.Simulation.BusLevel.Peak.get -> float
+Sage.Simulation.BusLevel.Peak.init -> void
+Sage.Simulation.BusLevel.Setting.get -> float
+Sage.Simulation.BusLevel.Setting.init -> void
+Sage.Simulation.BusLevel.Voices.get -> int
+Sage.Simulation.BusLevel.Voices.init -> void
+Sage.Simulation.VoiceRow
+Sage.Simulation.VoiceRow.Asset.get -> Sage.Core.AssetPath
+Sage.Simulation.VoiceRow.Asset.init -> void
+Sage.Simulation.VoiceRow.Bus.get -> Sage.Simulation.AudioBus
+Sage.Simulation.VoiceRow.Bus.init -> void
+Sage.Simulation.VoiceRow.Distance.get -> float
+Sage.Simulation.VoiceRow.Distance.init -> void
+Sage.Simulation.VoiceRow.Gain.get -> float
+Sage.Simulation.VoiceRow.Gain.init -> void
+Sage.Simulation.VoiceRow.Loop.get -> bool
+Sage.Simulation.VoiceRow.Loop.init -> void
+Sage.Simulation.VoiceRow.Pan.get -> float
+Sage.Simulation.VoiceRow.Pan.init -> void
+Sage.Simulation.VoiceRow.Positional.get -> bool
+Sage.Simulation.VoiceRow.Positional.init -> void
+Sage.Simulation.VoiceRow.Sound.get -> Sage.Core.RecordId
+Sage.Simulation.VoiceRow.Sound.init -> void
+Sage.Simulation.VoiceRow.Stopping.get -> bool
+Sage.Simulation.VoiceRow.Stopping.init -> void
+Sage.Simulation.VoiceRow.VoiceRow() -> void
+Sage.Simulation.VoiceRow.VoiceRow(Sage.Core.RecordId Sound, Sage.Core.AssetPath Asset, Sage.Simulation.AudioBus Bus, float Distance, float Gain, float Pan, bool Positional, bool Loop, bool Stopping) -> void
+Sage.Simulation.AudioMonitor
+Sage.Simulation.AudioMonitor.AudioMonitor() -> void
+Sage.Simulation.AudioMonitor.Bus(Sage.Simulation.AudioBus bus) -> Sage.Simulation.BusLevel
+Sage.Simulation.AudioMonitor.Buses.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.BusLevel>!
+Sage.Simulation.AudioMonitor.Refresh(Sage.Simulation.AudioMixer! mixer) -> void
+Sage.Simulation.AudioMonitor.Voices.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.VoiceRow>!
+Sage.Simulation.AudioMixer.BusVolume(Sage.Simulation.AudioBus bus) -> float
+Sage.Simulation.AudioMixer.Preview(Sage.Core.RecordId sound, Sage.Simulation.SoundRecord? record) -> Sage.Simulation.VoiceHandle

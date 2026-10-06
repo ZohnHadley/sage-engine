@@ -12,7 +12,35 @@ public sealed class InputDevices
 {
     public KeyboardListener Keyboard { get; } = new();
     public MouseListener Mouse { get; } = new();
-    public GamepadListener Gamepad { get; } = new();
+
+    // Every physical pad (0..3) is read; which of them is a player's is `Pads` (issue #331). `Gamepad` is
+    // the first player's pad — a neutral, unplugged one when that player has none — so code that has only
+    // ever known one pad is unchanged.
+    public GamepadListener[] AllPads { get; } = { new(0), new(1), new(2), new(3) };
+    public PadAssignment Pads { get; }
+    public LastUsedDevice LastDevice { get; }
+    public GamepadListener Gamepad => PadFor(0);
+
+    public InputDevices() : this(null, null) { }
+
+    public InputDevices(PadAssignment? pads, LastUsedDevice? last)
+    {
+        Pads = pads ?? new PadAssignment();
+        LastDevice = last ?? new LastUsedDevice();
+        Keyboard.OnKeyPressed += _ => _keyThisFrame = true;
+        Mouse.OnButtonPressed += _ => _mouseButtonThisFrame = true;
+    }
+
+    // The pad a local player holds, or a neutral one.
+    public GamepadListener PadFor(int player)
+    {
+        int pad = Pads.PadOf(player);
+        return pad >= 0 ? AllPads[pad] : GamepadListener.None;
+    }
+
+    private bool _keyThisFrame, _mouseButtonThisFrame;
+    private readonly bool[] _connected = new bool[PadAssignment.MaxPads];
+    private readonly float[] _sentLow = new float[PadAssignment.MaxPads], _sentHigh = new float[PadAssignment.MaxPads];
 
     // What was *typed* this frame, in order, as the operating system decided it: the host feeds this
     // from the window's text-input event (08 §3.1). Keys are not characters — a keyboard layout, a
@@ -51,16 +79,72 @@ public sealed class InputDevices
         Focused = focused;
         Mouse.update(focused);
         Keyboard.Update(focused);
-        Gamepad.Update(focused);
+        for (int i = 0; i < AllPads.Length; i++)
+        {
+            AllPads[i].Update(focused);
+            _connected[i] = AllPads[i].IsConnected;
+        }
+
+        // Hot-swap: who has which pad is re-decided every frame from what is plugged in (`PadAssignment`).
+        foreach (var change in Pads.Update(_connected))
+        {
+            Log.Info(LogCat.Input, change.Gained ? $"Pad {change.Pad + 1} now drives player {change.Player + 1}"
+                                                  : $"Pad {change.Pad + 1} lost: player {change.Player + 1} has no pad");
+            if (!change.Gained) { _sentLow[change.Pad] = _sentHigh[change.Pad] = 0f; }
+        }
+
+        // What the player touched, for the prompts. Events from the listeners flag key and button presses;
+        // the axes are measured.
+        float stick = 0f;
+        bool padButton = false;
+        foreach (var pad in AllPads)
+        {
+            padButton |= pad.AnyButtonPressed;
+            stick = MathF.Max(stick, pad.MaxAxis);
+        }
+        var delta = Mouse.PositionDelta;
+        LastDevice.Observe(new DeviceActivity
+        {
+            Key = _keyThisFrame, MouseButton = _mouseButtonThisFrame,
+            MouseMoved = focused ? MathF.Sqrt(delta.X * delta.X + delta.Y * delta.Y) : 0f,
+            PadButton = padButton, PadStick = stick,
+        });
+        _keyThisFrame = _mouseButtonThisFrame = false;
+    }
+
+    // Applies the mixer's motors to the pads, once a frame. Only a changed value is sent, and the motors
+    // are silenced while the window is not ours (a game must not buzz a pad in the background).
+    public void ApplyRumble(RumbleMixer? mixer, bool focused)
+    {
+        for (int player = 0; player < PadAssignment.MaxPads; player++)
+        {
+            int pad = Pads.PadOf(player);
+            if (pad < 0) continue;
+            float low = focused && mixer != null ? mixer.Low(player) : 0f;
+            float high = focused && mixer != null ? mixer.High(player) : 0f;
+            if (low == _sentLow[pad] && high == _sentHigh[pad]) continue;
+            _sentLow[pad] = low;
+            _sentHigh[pad] = high;
+            GamePad.SetVibration((PlayerIndex)pad, low, high);
+        }
     }
 
     // For `in_contexts`, so "why is nothing responding?" has a visible answer.
     public bool Focused { get; private set; } = true;
 }
 
-// Player one's gamepad (08 §3.1). Raw values: dead zones are per binding (InputActions).
+// One physical gamepad (08 §3.1, issue #331). Raw values: dead zones are per binding and `joy_deadzone` (InputActions).
 public sealed class GamepadListener
 {
+    // A pad that is not there: reads neutral, never connects. What a player with no pad is handed.
+    public static readonly GamepadListener None = new(-1);
+
+    private readonly int _index;
+
+    public GamepadListener() : this(0) { }
+
+    public GamepadListener(int index) => _index = index;
+
     private GamePadState _current;
     private GamePadState _previous;
 
@@ -70,17 +154,18 @@ public sealed class GamepadListener
 
     public void Update(bool focused)
     {
+        if (_index < 0) return;
         var step = _focus.Step(focused);
 
         // Read every frame whatever the focus, because **being plugged in is hardware, not input**: a
         // pad connected while the player is reading a wiki in another window is known about by the time
         // they come back, and `IsConnected` does not flicker every time they alt-tab. What the game must
         // not see while the window is not ours is the *buttons* (#60).
-        var real = GamePad.GetState(PlayerIndex.One, GamePadDeadZone.None);
+        var real = GamePad.GetState((PlayerIndex)_index, GamePadDeadZone.None);
         if (real.IsConnected != _connected)
         {
             _connected = real.IsConnected;
-            Log.Info(LogCat.Input, _connected ? "Gamepad connected" : "Gamepad disconnected");
+            Log.Info(LogCat.Input, _connected ? $"Gamepad {_index + 1} connected" : $"Gamepad {_index + 1} disconnected");
             ConnectionChanged?.Invoke(_connected);
         }
 
@@ -107,6 +192,20 @@ public sealed class GamepadListener
     public bool IsDown(Buttons button) => _current.IsButtonDown(button);
     public bool IsPressed(Buttons button) => _current.IsButtonDown(button) && !_previous.IsButtonDown(button);
     public bool IsReleased(Buttons button) => !_current.IsButtonDown(button) && _previous.IsButtonDown(button);
+
+    // For the last-used-device signal: a button went down this frame, and how far the furthest stick or trigger is pushed.
+    public bool AnyButtonPressed
+    {
+        get
+        {
+            foreach (var button in AllButtons)
+                if (_current.IsButtonDown(button) && !_previous.IsButtonDown(button)) return true;
+            return false;
+        }
+    }
+    private static readonly Buttons[] AllButtons = (Buttons[])Enum.GetValues(typeof(Buttons));
+    public float MaxAxis => MathF.Max(MathF.Max(_current.ThumbSticks.Left.Length(), _current.ThumbSticks.Right.Length()),
+                                      MathF.Max(_current.Triggers.Left, _current.Triggers.Right));
 
     public Vector2 LeftStick => _current.ThumbSticks.Left;     // +Y = up
     public Vector2 RightStick => _current.ThumbSticks.Right;

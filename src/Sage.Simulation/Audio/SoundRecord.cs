@@ -16,6 +16,14 @@ namespace Sage.Simulation;
 
 public enum AudioBus { Master, Music, Sfx, Voice, Ui, Ambient }
 
+// How a positional sound fades between its MinDistance and MaxDistance (issue #335).
+public enum Rolloff
+{
+    Linear,   // a straight line from full to silent: the default, predictable from two numbers
+    Log,      // inverse distance (Min / d), rescaled to reach silence at Max: loud close up, long tail
+    Custom,   // the record's own `rolloffCurve`, gains evenly spaced from Min to Max
+}
+
 [Record("sound", Plugin = "sage.client")]
 public sealed class SoundRecord
 {
@@ -38,6 +46,30 @@ public sealed class SoundRecord
     // Full volume within Min, silent past Max, and 2D (no attenuation, no pan) when Max is 0.
     public float MinDistance = 3f;
     public float MaxDistance = 40f;
+
+    [Property(Tooltip = "How the sound fades from MinDistance to MaxDistance: linear, log (inverse distance) or custom (rolloffCurve)")]
+    public Rolloff Rolloff = Rolloff.Linear;
+
+    // For `custom`: gains (0..1) at evenly spaced distances from Min to Max, linearly interpolated.
+    // Empty falls back to linear.
+    [Property(Tooltip = "Custom rolloff: gains from 1 at MinDistance to 0 at MaxDistance, evenly spaced, e.g. [1, 0.6, 0.2, 0]")]
+    public List<float> RolloffCurve = new();
+
+    // A directional emitter (a megaphone, a speaker): full volume inside the inner cone, OuterGain
+    // outside the outer one, a blend between. Full angles in degrees about the emitter's forward; 360
+    // is no cone. Needs a direction: an AudioSource's entity forward.
+    [Property(Min = 0, Max = 360, Unit = "deg", Tooltip = "Inner cone, full angle about the emitter's forward: full volume inside. 360 = omnidirectional")]
+    public float ConeInner = 360f;
+
+    [Property(Min = 0, Max = 360, Unit = "deg", Tooltip = "Outer cone, full angle: OuterGain beyond it")]
+    public float ConeOuter = 360f;
+
+    [Property(Min = 0, Max = 1, Tooltip = "Gain outside the outer cone")]
+    public float ConeOuterGain = 0.25f;
+
+    // Scales the doppler shift for this sound: 0 makes it immune (music-like), 1 is the world's.
+    [Property(Min = 0, Max = 4, Tooltip = "Doppler scale for this sound; 0 = never shifts")]
+    public float Doppler = 1f;
 
     // Higher wins when voices are stolen. A death rattle outranks a footstep.
     public int Priority;

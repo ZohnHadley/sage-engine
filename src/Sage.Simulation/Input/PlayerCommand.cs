@@ -112,6 +112,27 @@ public sealed class PlayerInput
     public PlayerCommand Command;
     public bool HasCommand;
 
+    // The other local players' commands (issue #331): player 0 is `Command`; players 1..3 are here, set by
+    // the host for each tick the way the first is. A pawn names its player with `PlayerSlot`.
+    private readonly PlayerCommand[] _others = new PlayerCommand[PadAssignment.MaxPads - 1];
+    private readonly bool[] _hasOthers = new bool[PadAssignment.MaxPads - 1];
+
+    public void SetCommand(int player, in PlayerCommand command)
+    {
+        if (player == 0) { Command = command; HasCommand = true; return; }
+        if ((uint)player >= PadAssignment.MaxPads) return;
+        _others[player - 1] = command;
+        _hasOthers[player - 1] = true;
+    }
+
+    public bool TryGetCommand(int player, out PlayerCommand command)
+    {
+        if (player == 0) { command = Command; return HasCommand; }
+        if ((uint)player < PadAssignment.MaxPads && _hasOthers[player - 1]) { command = _others[player - 1]; return true; }
+        command = default;
+        return false;
+    }
+
     // A request to point the player somewhere: a teleport, a respawn, a map's `info_player_start`.
     //
     // The engine cannot just turn the view. The angles are accumulated in the host's `CommandLatch` at

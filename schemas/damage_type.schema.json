@@ -68,6 +68,14 @@
         }
       ]
     },
+    "rumble": {
+      "description": "The rumble a player's pad does when this damage lands on them; empty = none. Names a rumble record. (RecordRef<RumbleRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:rumble"
+        }
+      ]
+    },
     "colour": {
       "description": "(uint, default \"#00000000\")",
       "default": "#00000000",
