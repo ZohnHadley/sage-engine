@@ -90,6 +90,8 @@ public sealed class HeadlessAppBuilder
     private string? _modReport;
     private string? _inputFile;
     private string? _configFile;
+    private bool _showTitle;
+    private string? _title;
 
     internal HeadlessAppBuilder(bool includeSimulation, GameManifest? game)
     {
@@ -181,6 +183,15 @@ public sealed class HeadlessAppBuilder
         return this;
     }
 
+    // Worlds wait at the title screen (issue #342), as a host with a window has them: game.json's
+    // `"title"`, or `screen` ("ns:name") in its place. Without it a headless world starts at once.
+    public HeadlessAppBuilder AtTitle(string? screen = null)
+    {
+        _showTitle = true;
+        _title = screen;
+        return this;
+    }
+
     public HeadlessAppBuilder InHost(HostKind host)
     {
         _host = host;
@@ -213,6 +224,8 @@ public sealed class HeadlessAppBuilder
             ModReportFile = _modReport,
             InputFile = _inputFile,
             ConfigFile = _configFile,
+            ShowTitle = _showTitle,
+            Title = _title,
         });
         foreach (var fixture in _fixtures.Append(_files).OfType<MountFixture>())
             foreach (var mount in fixture.Mounts)

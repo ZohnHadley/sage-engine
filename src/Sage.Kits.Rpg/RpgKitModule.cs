@@ -45,8 +45,17 @@ public sealed class RpgKitModule : IModule
     // The controls screen (issue #328): rebind by pressing the key (Sage.UI's ControlsView).
     public static readonly RecordId ControlsScreen = new(ContentNamespace, "controls");
 
+    // The menus round a playthrough (issue #342): the title before the world starts (game.json's
+    // `"title": "rpg:title"`), the pause menu, which stands the world still, and the save and load slot
+    // screens (TitleView, PauseView, SaveGameView, LoadGameView).
+    public static readonly RecordId TitleScreen = new(ContentNamespace, "title");
+    public static readonly RecordId PauseScreen = new(ContentNamespace, "pause");
+    public static readonly RecordId SaveScreen = new(ContentNamespace, "save");
+    public static readonly RecordId LoadScreen = new(ContentNamespace, "load");
+
     // The options screen (issue #339): graphics, audio, controls and gameplay, its settings ui_option
-    // records over cvars (Sage.UI's OptionsView); the controls page opens ControlsScreen.
+    // records over cvars (Sage.UI's OptionsView); the controls page opens ControlsScreen. The title and pause menus
+    // open it (#342).
     public static readonly RecordId OptionsScreen = new(ContentNamespace, "options");
 
     // The kit's experimental id for what it adds to phase 4g's open world (MAKING_A_GAME §10b): the base's own.

@@ -317,4 +317,74 @@
                       "args": { "problems": "messageDetail" }, "bindings": { "visible": "hasMessage" } },
       "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.options.hint" }
     } }
+,
+  // ---- the title, the pause menu, and the save and load slots (issue #342) --------------------------
+  // `rpg:title` is what game.json's `"title": "rpg:title"` opens over a world that waits (Scenes.Title)
+  // until New game or a save starts it. `rpg:pause` stands the world still while it is open (`pauses`).
+  // `rpg:save` and `rpg:load` share one layout over SaveGameView and LoadGameView: every slot, newest
+  // first, with when, where, the mods and the kind; overwrite, delete and load-over-a-game ask first.
+  { "type": "screen", "id": "title", "layout": "title", "viewModel": "rpg_title" },
+  { "type": "ui_layout", "id": "title", "style": "panel",
+    "nodes": {
+      "window":   { "widget": "stack", "anchors": "center", "spacing": 8, "minSize": [320, 0] },
+      "title":    { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.menu.game_title" },
+      "new_game": { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.new_game" },
+      "continue": { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.continue",
+                    "args": { "slot": "continueSlot" }, "bindings": { "visible": "canContinue" } },
+      "load":     { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.load" },
+      "options":  { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.options",
+                    "bindings": { "visible": "hasOptions" } },
+      "mods":     { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.mods",
+                    "bindings": { "visible": "hasMods" } },
+      "quit":     { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.quit" },
+      "message":  { "widget": "label", "parent": "window", "style": "warning", "bind": "message", "args": { "slot": "messageSlot" } }
+    } },
+
+  { "type": "screen", "id": "pause", "layout": "pause", "viewModel": "rpg_pause", "pauses": true },
+  { "type": "ui_layout", "id": "pause", "style": "panel",
+    "nodes": {
+      "window":   { "widget": "stack", "anchors": "center", "spacing": 8, "minSize": [320, 0] },
+      "title":    { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.menu.paused" },
+      "resume":   { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.resume" },
+      "save":     { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.save" },
+      "load":     { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.load" },
+      "options":  { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.options",
+                    "bindings": { "visible": "hasOptions" } },
+      "mods":     { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.mods",
+                    "bindings": { "visible": "hasMods" } },
+      "quit":     { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.menu.quit" },
+      "hint":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.menu.hint" }
+    } },
+
+  { "type": "screen", "id": "save", "layout": "saves", "viewModel": "rpg_save", "pauses": true },
+  { "type": "screen", "id": "load", "layout": "saves", "viewModel": "rpg_load", "pauses": true },
+  { "type": "ui_layout", "id": "saves", "style": "panel",
+    "nodes": {
+      "window":   { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [600, 0] },
+      "title":    { "widget": "label", "parent": "window", "style": "title", "bind": "heading" },
+      "new":      { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.saves.new",
+                    "bindings": { "visible": "saving" } },
+      "count":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.saves.count", "args": { "count": "slotCount" },
+                    "bindings": { "visible": "hasSaves" } },
+      "none":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.saves.none",
+                    "bindings": { "visible": "noSaves" } },
+      "list":     { "widget": "scroll", "parent": "window", "minSize": [0, 260], "bindings": { "visible": "hasSaves" } },
+      "slots":    { "widget": "item_list", "parent": "list", "bind": "slots", "spacing": 4 },
+      "slot":     { "widget": "stack", "parent": "slots", "spacing": 2 },
+      "top":      { "widget": "stack", "parent": "slot", "direction": "row", "spacing": 8 },
+      "slotTitle": { "widget": "label", "parent": "top", "style": "text", "bind": "title", "expand": 1 },
+      "slotKind": { "widget": "label", "parent": "top", "style": "hint", "bind": "kind" },
+      "use":      { "widget": "button", "parent": "top", "style": "button", "bind": "use", "bindings": { "enabled": "canUse" } },
+      "delete":   { "widget": "button", "parent": "top", "style": "button", "text": "@rpg.saves.delete" },
+      "details":  { "widget": "stack", "parent": "slot", "direction": "row", "spacing": 8 },
+      "slotWhen": { "widget": "label", "parent": "details", "style": "hint", "bind": "when" },
+      "slotWhere": { "widget": "label", "parent": "details", "style": "hint", "bind": "location" },
+      "slotMods": { "widget": "label", "parent": "details", "style": "hint", "text": "@rpg.saves.mods", "args": { "mods": "mods" },
+                    "bindings": { "visible": "hasMods" } },
+      "unreadable": { "widget": "label", "parent": "slot", "style": "warning", "text": "@rpg.saves.unreadable",
+                    "bindings": { "visible": "cannotLoad" } },
+      "mismatch": { "widget": "label", "parent": "slot", "style": "warning", "bind": "mismatch", "bindings": { "visible": "hasMismatch" } },
+      "message":  { "widget": "label", "parent": "window", "style": "text", "bind": "message", "args": { "slot": "messageSlot" } },
+      "hint":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.saves.hint" }
+    } }
 ]
