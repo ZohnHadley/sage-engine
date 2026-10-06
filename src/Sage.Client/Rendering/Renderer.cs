@@ -48,6 +48,9 @@ public struct RenderStats
     // What the renderer holds (`stat assets`, issue #300): mesh slots (an unloaded one counts until it is
     // reused), textures and materials, the placeholders not counted.
     public int Meshes, Textures, Materials;
+
+    // Draws this frame with a baked lightmap (issue #313, `Lightmapped`).
+    public int Lightmapped;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -59,6 +62,7 @@ internal sealed class MeshPart
     public Matrix Bone = Matrix.Identity;      // mesh space → model space
     public BoundingSphere Bounds;              // model space
     public bool Skinned;                       // VertexSkinned, in the skin's bind space (issue #117)
+    public Texture2D? Lightmap;                // VertexLightmapped, drawn with `Lightmapped` (issue #313); not owned
 }
 
 internal sealed class MeshData
@@ -171,7 +175,7 @@ public sealed partial class Renderer : IDisposable
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  views {LastFrame.Views} ({LastFrame.TargetViews} into render targets, {_targets.Count} target(s)), items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
-                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), " +
+                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), lightmapped {LastFrame.Lightmapped}, " +
                                      $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}, " +
                                       $"fog culled {LastFrame.FogCulled}, lod culled {LastFrame.LodCulled}, lod lowered {LastFrame.LodLowered}, skies {LastFrame.Skies}, " +
                                       InstancingStats() + "; " +
@@ -457,6 +461,15 @@ public sealed partial class Renderer : IDisposable
     // hands back a handle (06 §4). Destroy it with DestroyMesh when the chunk goes away.
     public MeshHandle CreateMesh(ReadOnlySpan<VertexPositionNormalTexture> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name = "(procedural)") =>
         CreateMesh(vertices, VertexPositionNormalTexture.VertexDeclaration, indices, bounds, name);
+
+    // A lightmapped brush mesh (issue #313): the same, with each vertex's lightmap coordinates, drawn with the
+    // material's effect's `Lightmapped` technique and `lightmap` (which the caller owns and disposes).
+    internal MeshHandle CreateMesh(ReadOnlySpan<VertexLightmapped> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name, Texture2D lightmap)
+    {
+        var handle = CreateMesh(vertices, VertexLightmapped.VertexDeclaration, indices, bounds, name);
+        Mesh(handle.Id).Parts[0].Lightmap = lightmap;
+        return handle;
+    }
 
     // Splat terrain (issue #307): the same, with each vertex's four layer weights.
     internal MeshHandle CreateMesh(ReadOnlySpan<VertexTerrain> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name) =>
@@ -852,6 +865,8 @@ public sealed partial class Renderer : IDisposable
         ref var view = ref s.Views[ctx.View];
         // The view's lights, bucketed by cell (issue #314): each draw looks at the lamps that reach it.
         _lightGrid.Build(s.Lights.AsSpan().Slice(view.LightStart, view.LightCount));
+        // A lightmapped draw's lamps are the ones not baked into its lightmap (issue #313): the view's first run.
+        _dynamicGrid.Build(s.Lights.AsSpan().Slice(view.LightStart, view.DynamicLightCount));
         DrawItems(s, view, _lightGrid, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
         DrawSprites(s, view, _lightGrid, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
     }
@@ -1030,6 +1045,12 @@ public sealed partial class Renderer : IDisposable
     }
 
     private readonly LightGrid _lightGrid = new();
+    private readonly LightGrid _dynamicGrid = new();
+
+    // Whether an item is drawn with its lightmap (issue #313): a mesh part with one, a material whose effect has
+    // `Lightmapped` (MaterialRuntime.Lightmapped), and not skinned.
+    private bool Lightmapped(in RenderItem item, MaterialRuntime? m) =>
+        m is { Lightmapped: not null, Effect.Lightmap: not null } && item.BoneCount == 0 && Mesh(item.Mesh).Parts[item.Part].Lightmap != null;
 
     private void DrawItems(RenderSnapshot s, in RenderView view, LightGrid lights, int from, int to, bool wire, ref RenderStats stats)
     {
@@ -1041,7 +1062,8 @@ public sealed partial class Renderer : IDisposable
                 ref var item = ref s.Items[s.Order[k]];
                 // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
                 // translation is where it is relative to the camera — the same frame the view's lights are in.
-                int lit = lights.Nearest(LitAt(item), _lights);
+                var grid = Lightmapped(item, Materials.Get(item.Material)) ? _dynamicGrid : lights;
+                int lit = grid.Nearest(LitAt(item), _lights);
                 DrawItem(s, item, view, _lights.AsSpan(0, lit), wire, ref stats);
             }
             return;
@@ -1055,15 +1077,17 @@ public sealed partial class Renderer : IDisposable
         {
             ref var item = ref s.Items[s.Order[from + i]];
             var chosen = _itemLights.AsSpan(i * LightRules.PerObject, LightRules.PerObject);
-            int lit = _itemLightCounts[i] = lights.Nearest(LitAt(item), chosen);
+            var m = Materials.Get(item.Material);
+            bool lightmapped = Lightmapped(item, m);
+            int lit = _itemLightCounts[i] = (lightmapped ? _dynamicGrid : lights).Nearest(LitAt(item), chosen);
             if (i > 0)
             {
                 ref var previous = ref s.Items[s.Order[from + i - 1]];
                 var before = _itemLights.AsSpan((i - 1) * LightRules.PerObject, _itemLightCounts[i - 1]);
                 if (previous.Tint != item.Tint || !LightRules.SameSet(before, chosen[..lit])) state++;
             }
-            var m = Materials.Get(item.Material);
-            bool eligible = m is { Instanced: not null, IsError: false } && item.BoneCount == 0;
+            // Not a lightmapped part: each has its own lightmap texture, and the instanced techniques read none.
+            bool eligible = m is { Instanced: not null, IsError: false } && item.BoneCount == 0 && !lightmapped;
             _candidates[i] = new InstanceCandidate(item.Material, item.Mesh, item.Part, state, eligible);
         }
 
@@ -1089,10 +1113,18 @@ public sealed partial class Renderer : IDisposable
         m.Effect.World?.SetValue(item.World);
         m.Effect.Tint?.SetValue(item.Tint);
         var technique = item.BoneCount > 0 ? Skin(s, item, m, ref stats) : m.Technique;
+        var part = Mesh(item.Mesh).Parts[item.Part];
+
+        // A lightmapped face (issue #313): its baked lamps are in the texture, and `chosen` holds only the others.
+        if (Lightmapped(item, m))
+        {
+            technique = m.Lightmapped!;
+            m.Effect.Lightmap!.SetValue(part.Lightmap);
+            stats.Lightmapped++;
+        }
 
         m.Effect.SetLights(chosen);
         if (chosen.Length > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = chosen.Length;
-        var part = Mesh(item.Mesh).Parts[item.Part];
         _device.SetVertexBuffer(part.VertexBuffer);
         _device.Indices = part.IndexBuffer;
         foreach (var pass in technique.Passes)

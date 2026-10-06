@@ -4948,6 +4948,11 @@
           "default": false,
           "type": "boolean"
         },
+        "baked": {
+          "description": "Static: baked into the lightmap of the level that places it (with shadows); still lights what is not lightmapped. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
         "pattern": {
           "description": "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. (string)",
           "type": "string"
