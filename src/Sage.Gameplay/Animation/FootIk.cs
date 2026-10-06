@@ -258,7 +258,7 @@ internal sealed class FootIkSystem : ISystem
 
     // The entity's world pose from its transform chain, as of now (GlobalTransform is refreshed only at
     // the end of PostPhysics and Late).
-    private static Pose WorldPose(Entity entity)
+    internal static Pose WorldPose(Entity entity)
     {
         var local = entity.TryGetComponent<Transform>(out var t) ? Pose.FromLocal(t) : Pose.Identity;
         var parent = entity.Parent;

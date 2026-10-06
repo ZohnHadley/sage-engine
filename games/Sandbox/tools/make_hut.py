@@ -88,6 +88,14 @@ def write_map(path):
         lines += ['{', '"classname" "%s"' % classname,
                   '"origin" "%d %d %d"' % origin, '"angle" "%d"' % angle, '}']
 
+    # Somebody pacing the floor (engine issue #327): the Sandbox's skinned mannequin, walking a 6 m lane
+    # along the north wall and back, its footsteps on the planks from its walk clip's foot events. (Along
+    # the north wall because the hillside comes up through the floor across the middle of the room.) The
+    # lane is its `hut_walker` machine's tweens; each leg ends when the tween does, which this wire tells it.
+    lines += ['{', '"classname" "hut_walker"', '"targetname" "hut_walker"',
+              '"origin" "-80 104 0"', '"angle" "0"',
+              '"OnTweenDone" "!self,Arrived"', '}']
+
     # The door: a *solid entity*, which is brushes with a classname on them (F17). `door` is a prefab,
     # so what the door does - slide up three metres and shut itself again - lives in the prefab, and the
     # map only says where it is and what using it does.

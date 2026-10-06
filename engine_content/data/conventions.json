@@ -20,6 +20,9 @@
     "aiProfile": "default_ai",
     "playerFaction": "player",
     "costAttribute": "mana",
+    // What a footstep, a landing or a jump on ground with no surface (or a surface with no cue) sounds
+    // like: this physics_material's cues (physics.json; a game patches either, issue #327).
+    "surface": "default",
     "schedules": {
       "idle": "idle",
       "chase": "chase",
