@@ -147,3 +147,66 @@ technique ShadowCasterSkinned
 {
     pass P0 { VertexShader = compile vs_3_0 VSShadowSkinned(); PixelShader = compile ps_3_0 PSShadow(); }
 }
+
+// ---- Instanced meshes (issue 4n-5) ----
+//
+// With `r_instancing 1` a run of items sharing a mesh part, a material, a tint and their lamps is one
+// draw: each instance's camera-relative world matrix comes in a second vertex stream (InstanceTransform,
+// a row per TEXCOORD4..7) in place of `World`; Tint and the lights are the run's, set once. Each
+// technique is its twin above with these vertex shaders (Instancing.TechniqueFor: Default's is
+// `Instanced`, any other's `<name>Instanced`).
+struct VSInstanceInput
+{
+    float4 Position : POSITION0;
+    float3 Normal   : NORMAL0;
+    float2 UV       : TEXCOORD0;
+    float4 World0   : TEXCOORD4;
+    float4 World1   : TEXCOORD5;
+    float4 World2   : TEXCOORD6;
+    float4 World3   : TEXCOORD7;
+};
+
+float4x4 InstanceWorld(VSInstanceInput input)
+{
+    return float4x4(input.World0, input.World1, input.World2, input.World3);
+}
+
+VSOutput VSInstanced(VSInstanceInput input)
+{
+    VSOutput output;
+    float4x4 world = InstanceWorld(input);
+    float4 relative = mul(input.Position, world);
+    output.Position = mul(relative, ViewProj);
+    output.Normal = mul(input.Normal, (float3x3)world);
+    output.UV = input.UV;
+    output.Relative = relative.xyz;
+    return output;
+}
+
+VSShadowOutput VSShadowInstanced(VSInstanceInput input)
+{
+    VSShadowOutput output;
+    output.Position = mul(mul(input.Position, InstanceWorld(input)), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    return output;
+}
+
+technique Instanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSInstanced(); PixelShader = compile ps_3_0 PSDefault(); }
+}
+
+technique AlphaTestInstanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSInstanced(); PixelShader = compile ps_3_0 PSAlphaTest(); }
+}
+
+technique UnlitInstanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSInstanced(); PixelShader = compile ps_3_0 PSUnlit(); }
+}
+
+technique ShadowCasterInstanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadowInstanced(); PixelShader = compile ps_3_0 PSShadow(); }
+}

@@ -33,6 +33,7 @@ internal sealed class EffectBinding
         ShadowViewProj = P("ShadowViewProj"); ShadowParams = P("ShadowParams"); ShadowMap = P("ShadowMap");
         ShadowCaster = effect.Techniques["ShadowCaster"];
         ShadowCasterSkinned = effect.Techniques["ShadowCasterSkinned"];
+        ShadowCasterInstanced = effect.Techniques[Instancing.TechniqueFor("ShadowCaster")];
     }
 
     public Effect Effect { get; }
@@ -42,6 +43,7 @@ internal sealed class EffectBinding
     public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
     public readonly EffectParameter? ShadowViewProj, ShadowParams, ShadowMap;   // issue 4h-4
     public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
+    public readonly EffectTechnique? ShadowCasterInstanced;                      // a run of one mesh's casters in one draw (issue 4n-5)
 
     // The four lights this draw is lit by (06 §3.9). Reused arrays: this is set per item, and a frame
     // with a thousand items would otherwise allocate two arrays a thousand times (02 §4.6).
@@ -104,6 +106,7 @@ internal sealed class MaterialRuntime
     public required EffectBinding Effect;
     public required EffectTechnique Technique;
     public EffectTechnique? Skinned;   // the effect's `Skinned` technique, for skinned meshes (issue #117)
+    public EffectTechnique? Instanced; // the technique's instanced twin (Instancing.TechniqueFor, issue 4n-5), if the effect has one
     public bool WarnedNoSkin;
     public bool CastShadows;           // the record's `castShadows` (issue 4h-4; ShadowMath.Casts)
     public required (EffectParameter Parameter, MaterialParam Value, Texture2D? Texture)[] Params;
@@ -338,6 +341,7 @@ internal sealed class MaterialCache : IDisposable
             Effect = binding,
             Technique = technique,
             Skinned = effect.Techniques["Skinned"],
+            Instanced = effect.Techniques[Instancing.TechniqueFor(record.Technique)],
             Params = values.ToArray(),
             Pass = record.Pass,
             Blend = record.Blend switch { MaterialBlend.AlphaBlend => BlendState.AlphaBlend, MaterialBlend.Additive => BlendState.Additive, _ => BlendState.Opaque },

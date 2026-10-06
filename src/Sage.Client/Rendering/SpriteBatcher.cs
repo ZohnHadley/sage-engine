@@ -41,8 +41,47 @@ internal struct SpriteVertex : IVertexType
     readonly VertexDeclaration IVertexType.VertexDeclaration => Declaration;
 }
 
+// A corner of the unit quad instanced sprites are drawn from (issue 4n-5): x across, y down, 0..1.
+[StructLayout(LayoutKind.Sequential)]
+internal struct SpriteCorner : IVertexType
+{
+    public Vector3 Corner;
+
+    public SpriteCorner(Vector3 corner) { Corner = corner; }
+
+    public static readonly VertexDeclaration Declaration = new(
+        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0));
+
+    readonly VertexDeclaration IVertexType.VertexDeclaration => Declaration;
+}
+
+// One instanced sprite (issue 4n-5), read by sprite.fx's instanced vertex shader: the quad's top-left
+// corner (camera-relative), its left-to-right and top-to-bottom edges, its facing, the frame's UVs and
+// the premultiplied tint.
+[StructLayout(LayoutKind.Sequential)]
+internal struct SpriteInstanceVertex : IVertexType
+{
+    public Vector3 Origin;
+    public Vector3 AxisX;
+    public Vector3 AxisY;
+    public Vector3 Normal;
+    public Vector4 Uv;
+    public Color Color;
+
+    public static readonly VertexDeclaration Declaration = new(
+        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.TextureCoordinate, 4),
+        new VertexElement(12, VertexElementFormat.Vector3, VertexElementUsage.TextureCoordinate, 5),
+        new VertexElement(24, VertexElementFormat.Vector3, VertexElementUsage.TextureCoordinate, 6),
+        new VertexElement(36, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0),
+        new VertexElement(48, VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 7),
+        new VertexElement(64, VertexElementFormat.Color, VertexElementUsage.Color, 0));
+
+    readonly VertexDeclaration IVertexType.VertexDeclaration => Declaration;
+}
+
 // CPU-expanded billboard quads in one dynamic vertex buffer (06 §3.7): one draw per run of sprites
-// that share a material and a texture. Works on every GL driver; instancing is a later experiment.
+// that share a material and a texture. Works on every GL driver. With `r_instancing 1` a long enough run
+// is drawn as instanced quads instead (`DrawInstanced`, issue 4n-5).
 internal sealed class SpriteBatcher : IDisposable
 {
     private readonly GraphicsDevice _device;
@@ -113,9 +152,26 @@ internal sealed class SpriteBatcher : IDisposable
 
     private void Append(ref SpriteInstance s)
     {
+        Basis(s, out var right, out var up, out var normal);
+
+        // The pivot sits at the entity position: the quad spans left/right and up/down around it.
+        float left = -s.Pivot.X * s.Size.X, rightEdge = (1f - s.Pivot.X) * s.Size.X;
+        float top = s.Pivot.Y * s.Size.Y, bottom = -(1f - s.Pivot.Y) * s.Size.Y;
+        var color = new Color(s.Tint.X, s.Tint.Y, s.Tint.Z, s.Tint.W);
+
+        int v = _quads * 4;
+        Set(v + 0, s.Center + right * left + up * top, normal, new Vector2(s.Uv.X, s.Uv.Y), color);
+        Set(v + 1, s.Center + right * rightEdge + up * top, normal, new Vector2(s.Uv.Z, s.Uv.Y), color);
+        Set(v + 2, s.Center + right * rightEdge + up * bottom, normal, new Vector2(s.Uv.Z, s.Uv.W), color);
+        Set(v + 3, s.Center + right * left + up * bottom, normal, new Vector2(s.Uv.X, s.Uv.W), color);
+        _quads++;
+    }
+
+    // The quad's right, up and facing for this view (06 §3.8), its roll applied.
+    private void Basis(in SpriteInstance s, out Vector3 right, out Vector3 up, out Vector3 normal)
+    {
         // Cylindrical turns about Y only, so characters and trees stay upright when the camera looks
         // up or down; Spherical uses the full camera basis (effects, item pickups).
-        Vector3 right, up, normal;
         if (!FaceCameraPosition)
         {
             // Parallel to the view plane: every quad in the frame shares the camera's own basis, so
@@ -161,19 +217,62 @@ internal sealed class SpriteBatcher : IDisposable
             float cos = MathF.Cos(s.Roll), sin = MathF.Sin(s.Roll);
             (right, up) = (right * cos + up * sin, up * cos - right * sin);
         }
-
-        // The pivot sits at the entity position: the quad spans left/right and up/down around it.
-        float left = -s.Pivot.X * s.Size.X, rightEdge = (1f - s.Pivot.X) * s.Size.X;
-        float top = s.Pivot.Y * s.Size.Y, bottom = -(1f - s.Pivot.Y) * s.Size.Y;
-        var color = new Color(s.Tint.X, s.Tint.Y, s.Tint.Z, s.Tint.W);
-
-        int v = _quads * 4;
-        Set(v + 0, s.Center + right * left + up * top, normal, new Vector2(s.Uv.X, s.Uv.Y), color);
-        Set(v + 1, s.Center + right * rightEdge + up * top, normal, new Vector2(s.Uv.Z, s.Uv.Y), color);
-        Set(v + 2, s.Center + right * rightEdge + up * bottom, normal, new Vector2(s.Uv.Z, s.Uv.W), color);
-        Set(v + 3, s.Center + right * left + up * bottom, normal, new Vector2(s.Uv.X, s.Uv.W), color);
-        _quads++;
     }
+
+    // ---- Instanced quads (issue 4n-5, 06 §3.7 "Sprites (later)") ----
+    //
+    // The same run as `Draw`, as one unit quad drawn once per sprite: each sprite is one 68-byte instance
+    // (its top-left corner, its two edges, its facing, its frame's UVs and tint) instead of four 36-byte
+    // vertices, and sprite.fx's instanced techniques place the corners. The basis is the CPU's, so a
+    // sprite turns exactly as it does without instancing. Throws NotSupportedException where the device
+    // cannot instance (the renderer then draws runs with `Draw`).
+    public int DrawInstanced(PooledList<SpriteInstance> sprites, int[] order, int start, int count, Texture2D texture, EffectPass pass, EffectParameter? albedo)
+    {
+        _instances ??= new InstanceStream<SpriteInstanceVertex>(_device, SpriteInstanceVertex.Declaration, _maxQuads);
+        if (_quad == null)
+        {
+            _quad = new VertexBuffer(_device, SpriteCorner.Declaration, 4, BufferUsage.WriteOnly);
+            _quad.SetData(new[]
+            {
+                new SpriteCorner(new Vector3(0, 0, 0)), new SpriteCorner(new Vector3(1, 0, 0)),
+                new SpriteCorner(new Vector3(1, 1, 0)), new SpriteCorner(new Vector3(0, 1, 0)),
+            });
+        }
+
+        int draws = 0;
+        var data = _instances.Data;
+        for (int offset = 0; offset < count; offset += _maxQuads)
+        {
+            int batch = Math.Min(_maxQuads, count - offset);
+            for (int i = 0; i < batch; i++)
+            {
+                ref var s = ref sprites[order[start + offset + i]];
+                Basis(s, out var right, out var up, out var normal);
+                ref var instance = ref data[i];
+                instance.Origin = s.Center - right * (s.Pivot.X * s.Size.X) + up * (s.Pivot.Y * s.Size.Y);
+                instance.AxisX = right * s.Size.X;
+                instance.AxisY = -up * s.Size.Y;
+                instance.Normal = normal;
+                instance.Uv = s.Uv;
+                instance.Color = new Color(s.Tint.X, s.Tint.Y, s.Tint.Z, s.Tint.W);
+            }
+
+            int at = _instances.Upload(batch);
+            albedo?.SetValue(texture);
+            pass.Apply();
+            _bindings[0] = new VertexBufferBinding(_quad, 0, 0);
+            _bindings[1] = new VertexBufferBinding(_instances.Buffer, at, 1);
+            _device.SetVertexBuffers(_bindings);
+            _device.Indices = _indexBuffer;   // its first six indices are one quad's
+            _device.DrawInstancedPrimitives(PrimitiveType.TriangleList, 0, 0, 2, batch);
+            draws++;
+        }
+        return draws;
+    }
+
+    private InstanceStream<SpriteInstanceVertex>? _instances;
+    private VertexBuffer? _quad;
+    private readonly VertexBufferBinding[] _bindings = new VertexBufferBinding[2];
 
     private Vector3 FlattenedViewNormal()
     {
@@ -194,5 +293,7 @@ internal sealed class SpriteBatcher : IDisposable
     {
         _vertexBuffer.Dispose();
         _indexBuffer.Dispose();
+        _instances?.Dispose();
+        _quad?.Dispose();
     }
 }
