@@ -41,6 +41,26 @@ public interface IViewModel
     // text field, the tab shown — and its binding has already written the value here: apply it (set the
     // volume cvar) or check it. The screen reads the view-model again after.
     void Changed(Widget widget, in UiBindContext context) { }
+
+    // ---- drag and drop, and commands (issue #346) -----------------------------------------------------
+
+    // A widget of the screen began to be dragged (a Draggable one, UiRoot.Drag): true takes the drag,
+    // false refuses it (an empty square) and the drag ends there.
+    bool DragStart(in UiDrag drag, in UiBindContext context) => false;
+
+    // The pointer moved with the drag: show where it would land.
+    void DragMove(in UiDrag drag, in UiBindContext context) { }
+
+    // The drag ended: let go over drag.Target (null: over nothing of the screen — the world), or
+    // cancelled by Back (drag.Cancelled). Returns whether it did something.
+    bool Drop(in UiDrag drag, in UiBindContext context) => false;
+
+    // A command for `target` — the focused widget, or the one being dragged (UiInput.Command): drop it,
+    // turn it, split it. Returns whether it did something.
+    bool Command(UiCommand command, Widget? target, in UiBindContext context) => false;
+
+    // Focus moved to `widget` (or to nothing): a hand shows where what it holds would go.
+    void Focused(Widget? widget, in UiBindContext context) { }
 }
 
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
@@ -106,6 +126,16 @@ public sealed class UiScreen
             changed = true;
         }
         if (result.Activated is { } widget && Root.Contains(widget)) used = ViewModel.Activate(widget, in context);
+        if (result.DragStarted && Root.Contains(result.Drag.Source))
+        {
+            if (ViewModel.DragStart(in result.Drag, in context)) used = true;
+            else Root.Root?.CancelDrag();
+        }
+        if (result.DragMoved && Root.Contains(result.Drag.Source)) { ViewModel.DragMove(in result.Drag, in context); changed = true; }
+        if (result.Dropped && Root.Contains(result.Drag.Source)) used |= ViewModel.Drop(in result.Drag, in context);
+        if (result.Command != UiCommand.None && (result.CommandTarget == null || Root.Contains(result.CommandTarget)))
+            used |= ViewModel.Command(result.Command, result.CommandTarget, in context);
+        if (result.FocusChanged) { ViewModel.Focused(Root.Root?.Focused, in context); changed = true; }
         if (result.Back) used |= ViewModel.Back(in context);
         if (used || changed) Refresh();
         return used;

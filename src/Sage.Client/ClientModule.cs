@@ -86,6 +86,9 @@ public sealed class ClientModule : IModule
         actions.Register("MenuTab", ActionKind.Button);
         actions.Register("MenuConfirm", ActionKind.Button);
         actions.Register("MenuAlternate", ActionKind.Button);
+        // An item on a widget grid turned on its side and a stack halved (issue #346).
+        actions.Register("MenuRotate", ActionKind.Button);
+        actions.Register("MenuSplit", ActionKind.Button);
         actions.Register("MenuBack", ActionKind.Button);
         actions.Register("Inventory", ActionKind.Button);
         // Which screen is which, by id (issue #27). In Init, so a module that depends on this one can

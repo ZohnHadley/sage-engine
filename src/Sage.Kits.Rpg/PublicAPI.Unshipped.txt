@@ -1,2 +1,31 @@
 #nullable enable
+const Sage.Kits.Rpg.GridCell.BlockedStyle = "rpg:cell_blocked" -> string!
+const Sage.Kits.Rpg.GridCell.TargetStyle = "rpg:cell_target" -> string!
+Sage.Kits.Rpg.GridCell.ColumnSpan.get -> int
+Sage.Kits.Rpg.GridCell.Icon.get -> string?
+Sage.Kits.Rpg.GridCell.IconTurned.get -> bool
+Sage.Kits.Rpg.GridCell.RowSpan.get -> int
+Sage.Kits.Rpg.GridCell.Shown.get -> bool
+Sage.Kits.Rpg.GridItem.FootprintIf(bool rotated) -> (int Width, int Height)
+Sage.Kits.Rpg.GridItem.Icon.get -> string?
+Sage.Kits.Rpg.GridItem.Rotated.get -> bool
+Sage.Kits.Rpg.GridPlacement.Rotated -> bool
+Sage.Kits.Rpg.ItemGrid.Drop(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, out string! reason) -> bool
+Sage.Kits.Rpg.ItemGrid.Move(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, int x, int y, bool rotated) -> bool
+Sage.Kits.Rpg.ItemGrid.Preview(int x, int y, int width, int height, Sage.Kits.Rpg.GridItem? moving) -> bool
+Sage.Kits.Rpg.ItemGrid.Restyle(Sage.Kits.Rpg.GridItem? held, bool spread) -> void
+Sage.Kits.Rpg.ItemGrid.Rotate(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item) -> bool
+Sage.Kits.Rpg.ItemGrid.Split(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, out string! reason) -> bool
+Sage.Kits.Rpg.ItemGridView.Dragging.get -> bool
+Sage.Kits.Rpg.ItemGridView.HeldTurned.get -> bool
+Sage.Kits.Rpg.RpgItemRecord.Icon -> Sage.Core.AssetPath
 static readonly Sage.Kits.Rpg.RpgKitModule.ControlsScreen -> Sage.Core.RecordId
+static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, bool rotated, out string! reason) -> bool
+static Sage.Kits.Rpg.RpgItemRecord.IconOf(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> string?
+virtual Sage.Kits.Rpg.ItemGridView.CanDrop(int grid, in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.Command(Sage.UI.UiCommand command, Sage.UI.Widget? target, in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.DragMove(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> void
+virtual Sage.Kits.Rpg.ItemGridView.DragStart(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.Drop(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.ItemGridView.Focused(Sage.UI.Widget? widget, in Sage.UI.UiBindContext context) -> void
+virtual Sage.Kits.Rpg.ItemGridView.Moved(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, Sage.Kits.Rpg.ItemGrid! from, Sage.Kits.Rpg.ItemGrid! to) -> void

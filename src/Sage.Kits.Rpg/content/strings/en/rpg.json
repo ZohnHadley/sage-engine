@@ -5,7 +5,7 @@
     "title": "Inventory",
     "weight": "Weight {current} / {max} kg",
     "weight_unlimited": "Weight {current} kg",
-    "hint": "D-pad: move    A: pick up / put down    B: put back, close"
+    "hint": "D-pad: move    A: pick up / put down    LB / R: turn    LT / F: split    X / Del: drop    B: put back, close"
   },
   "grid": {
     "stack": "{item} ×{count}",
@@ -14,7 +14,10 @@
     "no_room": "There is no room for {item} there.",
     "too_heavy": "{item} is too heavy: that would be {total} of {capacity} kg.",
     "cannot_hold": "{who} cannot carry anything.",
-    "gone": "{item} is not there any more."
+    "gone": "{item} is not there any more.",
+    "no_room_to_turn": "There is no room to turn {item} there.",
+    "cannot_split": "{item} cannot be split.",
+    "cannot_drop": "{item} cannot be dropped here."
   },
   "loot": {
     "title": "{who}",

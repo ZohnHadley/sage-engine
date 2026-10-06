@@ -43,6 +43,8 @@
       "MenuTab":       [ { "key": "Tab" }, { "gamepad": "RightShoulder" } ],
       "MenuConfirm":   [ { "key": "Enter" }, { "gamepad": "A" } ],
       "MenuAlternate": [ { "key": "Delete" }, { "gamepad": "X" } ],
+      "MenuRotate":    [ { "key": "R" }, { "gamepad": "LeftShoulder" } ],
+      "MenuSplit":     [ { "key": "F" }, { "gamepad": "LeftTrigger" } ],
       "MenuBack":      [ { "key": "Escape" }, { "gamepad": "B" } ],
       "Inventory":     [ { "key": "I" }, { "gamepad": "Y" } ],
       "QuickSave":     [ { "key": "F5" } ],
