@@ -127,6 +127,55 @@ Sage.UI.OptionsView.Row.Value.get -> float
 Sage.UI.OptionsView.Row.Value.set -> void
 Sage.UI.OptionsView.Row.ValueText.get -> string!
 Sage.UI.ScreenRecord.Sounds -> Sage.Core.RecordRef<Sage.UI.UiSoundsRecord!>
+const Sage.UI.UiFonts.DefaultSize = 9 -> float
+override Sage.UI.TrueTypeFont.ToString() -> string!
+Sage.UI.FontTextMeasure
+Sage.UI.FontTextMeasure.Font.get -> Sage.UI.TrueTypeFont!
+Sage.UI.FontTextMeasure.FontTextMeasure(Sage.UI.TrueTypeFont! font, float size) -> void
+Sage.UI.FontTextMeasure.LineHeight.get -> float
+Sage.UI.FontTextMeasure.Measure(string! text, float scale) -> System.Numerics.Vector2
+Sage.UI.FontTextMeasure.Size.get -> float
+Sage.UI.FontTextMeasure.Width(System.ReadOnlySpan<char> text, float scale) -> float
+Sage.UI.ITextMeasure.Width(System.ReadOnlySpan<char> text, float scale) -> float
+Sage.UI.Label.Font.get -> Sage.Core.AssetPath
+Sage.UI.Label.Font.set -> void
+Sage.UI.Label.FontSize.get -> float
+Sage.UI.Label.FontSize.set -> void
+Sage.UI.Label.MaxWidth.get -> float
+Sage.UI.Label.MaxWidth.set -> void
+Sage.UI.Label.Overflow.get -> Sage.UI.TextOverflow
+Sage.UI.Label.Overflow.set -> void
+Sage.UI.Label.Wrap.get -> bool
+Sage.UI.Label.Wrap.set -> void
+Sage.UI.MonospaceTextMeasure.Width(System.ReadOnlySpan<char> text, float scale) -> float
+Sage.UI.TextOverflow
+Sage.UI.TextOverflow.Clip = 1 -> Sage.UI.TextOverflow
+Sage.UI.TextOverflow.Ellipsis = 2 -> Sage.UI.TextOverflow
+Sage.UI.TextOverflow.Visible = 0 -> Sage.UI.TextOverflow
+Sage.UI.TrueTypeFont
+Sage.UI.TrueTypeFont.Advance(int codepoint, float size) -> float
+Sage.UI.TrueTypeFont.Ascent(float size) -> float
+Sage.UI.TrueTypeFont.Descent(float size) -> float
+Sage.UI.TrueTypeFont.Dispose() -> void
+Sage.UI.TrueTypeFont.GlyphCount.get -> int
+Sage.UI.TrueTypeFont.HasGlyph(int codepoint) -> bool
+Sage.UI.TrueTypeFont.Kerning(int left, int right, float size) -> float
+Sage.UI.TrueTypeFont.LineHeight(float size) -> float
+Sage.UI.TrueTypeFont.Name.get -> string!
+Sage.UI.UiFonts
+Sage.UI.UiFonts.Clear() -> void
+Sage.UI.UiFonts.Get(Sage.Core.AssetPath path) -> Sage.UI.TrueTypeFont?
+Sage.UI.UiFonts.Measure(Sage.Core.AssetPath font, float size, Sage.UI.ITextMeasure! engine) -> Sage.UI.ITextMeasure!
+Sage.UI.UiFonts.UiFonts(Sage.Core.VirtualFileSystem! vfs) -> void
+Sage.UI.UiFonts.UiFonts(System.Func<Sage.Core.AssetPath, byte[]?>! read) -> void
+Sage.UI.UiFonts.Version.get -> int
+Sage.UI.UiModule.Fonts.get -> Sage.UI.UiFonts!
+Sage.UI.UiNode.MaxWidth -> float
+Sage.UI.UiNode.Overflow -> Sage.UI.TextOverflow?
+Sage.UI.UiNode.Wrap -> bool
+Sage.UI.UiRoot.Fonts.get -> Sage.UI.UiFonts?
+Sage.UI.UiRoot.Fonts.set -> void
+Sage.UI.UiScreenStack.Fonts.get -> Sage.UI.UiFonts?
 Sage.UI.Slider
 Sage.UI.Slider.Increment.get -> float
 Sage.UI.Slider.KnobRect.get -> Sage.Simulation.Rect
@@ -207,6 +256,8 @@ Sage.UI.UiSoundsRecord.Move -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.Open -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.Select -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.UiSoundsRecord() -> void
+Sage.UI.UiStyle.FontSize.get -> float
+Sage.UI.UiStyleRecord.FontSize -> float
 Sage.UI.UiState.Selected = 5 -> Sage.UI.UiState
 Sage.UI.UiStyleStates.Selected -> Sage.UI.UiStyleState?
 Sage.UI.Widget.NotifyValueChanged() -> void
@@ -254,6 +305,9 @@ Sage.UI.ControlsView.Row.RebindLabel.get -> string!
 Sage.UI.ControlsView.Row.Row() -> void
 Sage.UI.ControlsView.RowCount.get -> int
 Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!
+static Sage.UI.TrueTypeFont.Load(byte[]! data, string! name) -> Sage.UI.TrueTypeFont!
+static Sage.UI.UiFonts.IsAtlas(Sage.Core.AssetPath path) -> bool
+static Sage.UI.UiFonts.IsTrueType(Sage.Core.AssetPath path) -> bool
 static Sage.UI.UiInput.Drag(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
 static Sage.UI.UiInput.Type(string! text) -> Sage.UI.UiInput
 virtual Sage.UI.Widget.IsSelected.get -> bool

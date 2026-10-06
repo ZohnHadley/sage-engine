@@ -14,13 +14,14 @@ namespace Sage.Client;
 // one comparison and a loop over structs, and allocates nothing.
 internal static class WidgetRenderer
 {
-    public static void Draw(UiDraw ui, UiScreenStack stack, UiStyles styles, Localisation text, ContentService content)
+    public static void Draw(UiDraw ui, UiScreenStack stack, UiStyles styles, Localisation text, ContentService content, TrueTypeText fonts)
     {
+        fonts.BeginFrame(stack.Fonts);
         var layers = stack.Layers;
-        for (int i = 0; i < layers.Count; i++) DrawLayer(ui, layers[i], styles, text, content);
+        for (int i = 0; i < layers.Count; i++) DrawLayer(ui, layers[i], styles, text, content, stack.Fonts, fonts);
     }
 
-    private static void DrawLayer(UiDraw ui, UiLayer layer, UiStyles styles, Localisation text, ContentService content)
+    private static void DrawLayer(UiDraw ui, UiLayer layer, UiStyles styles, Localisation text, ContentService content, UiFonts? fonts, TrueTypeText truetype)
     {
         var root = layer.Root;
         var plan = layer.Plan;
@@ -50,7 +51,7 @@ internal static class WidgetRenderer
                     ui.Frame(r.X, y, r.Width, r.Height, Colour(command, blend, opacity), MathF.Max(MathF.Round(command.Size), 1f));
                     break;
                 case UiDrawKind.Text:
-                    ui.Text(r.X, y, command.Text!, Colour(command, blend, opacity), command.Size / fontPixel);
+                    DrawText(ui, command, r.X, y, Colour(command, blend, opacity), fontPixel, content, fonts, truetype);
                     break;
                 case UiDrawKind.Image:
                     // Asked every frame, as the font is: a hot reload disposes the texture under a
@@ -73,6 +74,27 @@ internal static class WidgetRenderer
             }
         }
         while (ui.ClipDepth > depth) ui.PopClip();   // the plan balances; a layer never leaks a clip into the next
+    }
+
+    // A line of a label (#338): in its style's TrueType font, through the glyph atlases; else in a grid
+    // atlas the style names, or the engine font. The em is FontSize × Size pixels either way.
+    private static void DrawText(UiDraw ui, in UiDrawCommand command, float x, float y, Color colour, float fontPixel,
+                                 ContentService content, UiFonts? fonts, TrueTypeText truetype)
+    {
+        float em = (command.FontSize > 0f ? command.FontSize : UiFonts.DefaultSize) * command.Size;
+        string text = command.Text!;
+        if (fonts != null && UiFonts.IsTrueType(command.Font) && fonts.Get(command.Font) is { } font)
+        {
+            truetype.Draw(ui, font, em, text, command.Start, command.Length, x, y, colour);
+            if (command.Ellipsis) truetype.Draw(ui, font, em, TextLayout.Ellipsis, 0, 1, x + command.EllipsisAt, y, colour);
+            return;
+        }
+        // A cell font: Size is pixels per font pixel at the engine font's size, and the font itself
+        // multiplies by its PixelSize.
+        var atlas = UiFonts.IsAtlas(command.Font) ? content.LoadFont(command.Font) : null;
+        float scale = em / UiFonts.DefaultSize / (atlas?.PixelSize ?? fontPixel);
+        ui.Text(x, y, text, command.Start, command.Length, colour, scale, atlas);
+        if (command.Ellipsis) ui.Text(x + command.EllipsisAt, y, TextLayout.Ellipsis, 0, 1, colour, scale, atlas);
     }
 
     private static Color Colour(in UiDrawCommand command, float blend, float opacity) =>
@@ -101,5 +123,12 @@ internal sealed class BitmapFontMeasure : ITextMeasure
         }
         longest = Math.Max(longest, width);
         return new System.Numerics.Vector2(longest * (BitmapFont.GlyphWidth + 1f) * scale, lines * LineHeight * scale);
+    }
+
+    public float Width(ReadOnlySpan<char> text, float scale)
+    {
+        int count = 0;
+        foreach (char c in text) if (c != '\n') count++;
+        return count * (BitmapFont.GlyphWidth + 1f) * scale;
     }
 }
