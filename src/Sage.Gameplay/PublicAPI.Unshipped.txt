@@ -1,17 +1,24 @@
 #nullable enable
-*REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
-Sage.Gameplay.CueRecord.Decal -> Sage.Core.RecordRef<Sage.Simulation.DecalRecord!>
-Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
-Sage.Gameplay.CueTriggered.Normal.get -> System.Numerics.Vector3
-Sage.Gameplay.CueTriggered.Normal.init -> void
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
-Sage.Gameplay.DamageTypeRecord.Decal -> Sage.Core.RecordRef<Sage.Simulation.DecalRecord!>
-Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
 Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.TickCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
+Sage.Gameplay.LightPart.Cone -> float
+Sage.Gameplay.LightPart.InnerCone -> float
+Sage.Gameplay.LightPart.Pattern -> string!
+Sage.Gameplay.LightPart.PatternRate -> float
+Sage.Gameplay.CueRecord.Decal -> Sage.Core.RecordRef<Sage.Simulation.DecalRecord!>
+Sage.Gameplay.CueTriggered.Normal.get -> System.Numerics.Vector3
+Sage.Gameplay.CueTriggered.Normal.init -> void
+Sage.Gameplay.DamageTypeRecord.Decal -> Sage.Core.RecordRef<Sage.Simulation.DecalRecord!>
+Sage.Gameplay.HitResult.Surface.get -> Sage.Core.RecordId
+Sage.Gameplay.HitResult.Surface.init -> void
+Sage.Gameplay.LightPart.Baked -> bool
+Sage.Gameplay.LightPart.Shadows -> bool
+static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
+*REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.Footstep.Kind.get -> Sage.Gameplay.FootstepKind
 Sage.Gameplay.Footstep.Kind.init -> void
 Sage.Gameplay.FootstepKind
@@ -27,12 +34,5 @@ Sage.Gameplay.FootstepsPart.LandSpeed -> float
 Sage.Gameplay.FootstepsPart.Left -> string!
 Sage.Gameplay.FootstepsPart.Right -> string!
 Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>
-Sage.Gameplay.HitResult.Surface.get -> Sage.Core.RecordId
-Sage.Gameplay.HitResult.Surface.init -> void
-Sage.Gameplay.LightPart.Baked -> bool
-Sage.Gameplay.LightPart.Cone -> float
-Sage.Gameplay.LightPart.InnerCone -> float
-Sage.Gameplay.LightPart.Pattern -> string!
-Sage.Gameplay.LightPart.PatternRate -> float
-Sage.Gameplay.LightPart.Shadows -> bool
-static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
+Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
+Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
