@@ -147,7 +147,7 @@ Milestone 9, Code mods and packaging (epic #395):
 
 Milestone R1, Tooling and the first release (epic #292):
 
-- ~~#302 R1-10 Cooked asset formats and a cook step for Shipping (P3)~~ done. Left from it: no OGG streaming and no WAV-to-OGG step (#326), mipmaps came with #317, `Content/` and a game's `mods/` are not cooked, loose files stay in a package, staleness on a folder mount is by length only, and only `.glb`, `.png`, `.jpg`, `.jpeg` and (since #317) `.tga` are cooked.
+- ~~#302 R1-10 Cooked asset formats and a cook step for Shipping (P3)~~ done. Left from it: no WAV-to-OGG step (an `.ogg` streams since #326), mipmaps came with #317, `Content/` and a game's `mods/` are not cooked, loose files stay in a package, staleness on a folder mount is by length only, and only `.glb`, `.png`, `.jpg`, `.jpeg` and (since #317) `.tga` are cooked.
 
 Milestone 10b, Editor part 2: #366 10b-1 Asset browser and material preview (P1).
 

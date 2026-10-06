@@ -163,6 +163,16 @@ and the feature. Since phase 4n a mod can patch a game's look the same way as an
 can add a `normalMap` or an `emissive` glow, a `light` part patch can make a lamp flicker (`pattern`), and new
 `decal`, `mesh_lod`, `water_surface`, `terrain_material` and `weather_pattern` records are records like any other.
 
+Phase 4o added sound and controls the same way. A mod can add `music` records (an `.ogg` track with optional
+layers and loop points, streamed as it plays) and switch the world's music with a `play_music` action, a
+`PlayMusic` wire or a scene's `environment.music`; a `sound` patch can give a sound a `rolloff`, a cone or
+`"stream": true`; `reverb` records and `reverb_zone` parts re-room a place; a `cue` or `damage_type` patch can add
+a `rumble` or a `sound`, an `effect` patch can add `appliedCues`, `tickCues` and `removedCues`, and a
+`physics_material` patch can add a `land` or a `jump` cue. A mod's `input_map` adds bindings like any other map. The
+player's own rebinds (`user://input.json`) are patches mounted after every mod, so a player's choice wins over a
+mod's binding, and a rebound action is emptied in your map too; `bind_reset` brings the mod's own back (MAKING_A_GAME
+"Sound, music and controls").
+
 ## 6. Conflicts and the report
 
 When two mods change the same thing, the later wins and the game tells you. A **conflict** is:

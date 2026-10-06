@@ -79,7 +79,7 @@ developer tools.
 | Operating systems | Windows x64 and Linux x64 for development and CI. The first release's shipping platforms are an open decision (§10). |
 | Graphics | OpenGL 3.x class GPUs through DesktopGL. Shaders are HLSL `.fx` compiled by `mgfxc` (Wine on Linux). |
 | Input | Keyboard, mouse and XInput-style gamepads through MonoGame. |
-| Audio | MonoGame `SoundEffect` (WAV today; OGG streaming is planned in #326). |
+| Audio | MonoGame `SoundEffect` (WAV and OGG; OGG streams as it plays, #326, and occlusion and reverb use OpenAL's EFX extension, #329). |
 
 ### 2.4 Constraints
 

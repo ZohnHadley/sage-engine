@@ -59,7 +59,7 @@ The optional, genre-generic gameplay layer (`Sage.Framework`, plus `Sage.Framewo
 - **`ActiveEffects`** component: running effect instances (record, source `EntityRef`, remaining time, stacks). An `EffectSystem` (Gameplay phase) ticks them and recomputes current attribute values.
 - **`ability` records:** cost (attribute), cooldown (an effect granting a cooldown tag), targeting (self / projectile / area / touch), effects to apply, cue ids, and the animation to play.
 - **Cues:** presentation-only reactions (sound, particles, screen flash), played by Frame-schedule systems from `CueTriggered` events (04, 11).
-  **A cue names a moment as well as a reaction**, so the ids come in more than one list: an ability has `castCues` (where the spell leaves the caster) and `cues` (where it does its work), and an `attack` has `swingCue` (raised on the windup, hit or miss) while the *hit* takes the damage type's sound. One list raised at every moment puts a burst in the caster's hand — see 11 §11.
+  **A cue names a moment as well as a reaction**, so the ids come in more than one list: an ability has `castCues` (where the spell leaves the caster) and `cues` (where it does its work), and an `attack` has `swingCue` (raised on the windup, hit or miss) while the *hit* takes the damage type's sound (an attack may name its own `sound` instead, #330). An `effect` has three lists, `appliedCues`, `tickCues` and `removedCues`, raised at the target as the effect is applied, ticks and ends (#330). One list raised at every moment puts a burst in the caster's hand — see 11 §11.
 - **Spellmaker:** composing effect records into a *new* `ability` record at runtime. It's saved as data in the save game (09 saved resource), exactly as Daggerfall's custom spells were. **Built 2026-09-23** — see "As built (the spellmaker)".
 
 ### 3.4 AI (HL1-style first)
@@ -223,8 +223,8 @@ Phase 4e's exit (#132): `tests/games/weapons` is a game with no C#, where a swor
 - **Only things that can hold an effect are targets.** A blast lands on the world and most of the
   world is scenery; a fireball bursting against a tree is a normal Tuesday, not a mis-configured
   entity.
-- **Cues** (`CueTriggered`) are raised and nothing listens yet: audio (11) and particles are later
-  phases. The event is already on the bus, so the day something listens the spell needs no change.
+- **Cues** (`CueTriggered`) are raised, and since then audio (11), particles and decals (06) and pad rumble (08)
+  listen to them. The event was already on the bus, so the spell needed no change.
 - **Console:** `cast <ability>`, `learn <ability>`, `spells`, and `cast_debug 1` to draw where a cast
   reached and what it caught.
 - **Not done here:** projectiles that bounce or stick (they stop at the first thing; arcs and piercing
@@ -871,7 +871,7 @@ public struct PawnIntent { public Vector2 Move; public float Yaw, Pitch; public 
 public struct PlayerControlled { }                             // tag: PlayerController reads PlayerCommand into PawnIntent
 public struct AIState { public RecordId Profile, Schedule; public int TaskIndex; public ulong Conditions; public RecordId Spell; public Entity Target; public float NextThink, TaskTime; public bool TaskStarted; }
 
-[Record("effect")]  public sealed class EffectRecord { public List<AttributeModifier> Modifiers; public EffectDuration Duration; public float Period; public EffectStacking Stacking; public List<RecordId> GrantTags, RequireTags, BlockTags, Cues; }
+[Record("effect")]  public sealed class EffectRecord { public List<AttributeModifier> Modifiers; public EffectDuration Duration; public float Period; public EffectStacking Stacking; public List<RecordId> GrantTags, RequireTags, BlockTags, AppliedCues, TickCues, RemovedCues; }
 [Record("ability")] public sealed class AbilityRecord { public RecordId CostAttribute; public float Cost; public RecordId Cooldown; public AbilityTargeting Targeting; public float Range, Radius, Width, CastTime, Damage, Magnitude; public RecordId DamageType; public List<RecordId> Effects, RequireTags, BlockTags, Cues; public string Animation; public RecordId Projectile; public float ProjectileSpeed; }
 
 public interface IAITask { AITaskStatus Start(ref AITaskContext c) => AITaskStatus.Running; AITaskStatus Run(ref AITaskContext c); }   // registered by name

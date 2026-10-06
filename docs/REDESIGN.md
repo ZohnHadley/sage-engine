@@ -76,11 +76,11 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | Meshes, materials, lights, particles, weather | ● | ● | ● | ○ | ● | ○ | ● | ✅ |
 | **Render pass registry**, render targets, post-processing | ● | ● | ○ | ○ | ○ | ○ | ● | ❌ `Passes` is a private static array |
 | **UI toolkit**: widgets, layout, focus and gamepad navigation, styling, localisation | ● | ● | ● | ● | ● | ●● | ● | ◐ list-style `Screen`/`Panel` only; HUD hand-drawn |
-| Input: actions, gamepad, mouse picking, rebinding | ● | ● | ● | ● | ●● | ● | ● | ◐ actions and scripted input done; picking and rebinding UI missing |
+| Input: actions, gamepad, mouse picking, rebinding | ● | ● | ● | ● | ●● | ● | ● | ◐ actions, scripted input, rebinding (`bind`, `user://input.json`, a controls screen), several pads with rumble, mouse capture and `.sagedemo` replay done (4o); picking missing |
 | Navigation: grid now, navmesh later, groups | ● | ● | ● | | ●● | | ● | ◐ navmesh (#264) and grid A* inside Gameplay; groups missing |
 | Timers, tweens, state machines, conditions/actions | ● | ● | ● | ● | ● | ●● | ● | ❌ (only I/O `delay`) |
 | Large worlds and streaming | | | ○ | | ○ | | ● | ✅ (keep as an optional plugin) |
-| Audio (mixer, 3D, music) | ● | ● | ● | ● | ● | ● | ● | ✅ one-shots and loops; music streaming missing |
+| Audio (mixer, 3D, music) | ● | ● | ● | ● | ● | ● | ● | ✅ one-shots and loops, streamed OGG, music with crossfades, footsteps by surface, occlusion and reverb, doppler and cones, an audio panel (4o) |
 | Stats, effects, damage, inventory, factions, AI (BT) | ● | ● | ● | ○ | ● | ○ | ● | ◐ built but RPG-shaped and closed (§4.3) |
 | Dialogue and quest *models* | ○ | ○ | ● | | ○ | | ● | ◐ closed enums; screens in engine |
 | Spellmaker, readied spell, journal, Daggerfall sprite rules | | | | | | | ● | ✅ in `Sage.Kits.Rpg` since #27 (the sprite clip names are `gameplay_conventions`) |
@@ -1250,6 +1250,17 @@ sheets [06](spec/subsystems/06-assets-and-content.md) and [07](spec/subsystems/0
 07 "As built", [`history/handoff-2026-10-06.md`](history/handoff-2026-10-06.md)); the second pack finished
 #310 (soft particles), #311 (wet ground and puddles) and #315 (point and spot light shadows), so 4n is
 complete. #312 was already built. Then 4o (#324) and 4q (#337).
+
+**4o (#324) as of 2026-10-06:** #325–#336 are built (spec sheets [11](spec/subsystems/11-audio.md) and
+[12](spec/subsystems/12-input.md), design 11 and 08 "As built",
+[`history/handoff-2026-10-06-4o.md`](history/handoff-2026-10-06-4o.md)): streamed OGG (#326), `music` records that
+crossfade with layers and loop points (#325), footsteps by surface with landings and jumps (#327), rebinding with
+`user://input.json` and a controls screen (#328, which delivered #341), effect, attack and screen sounds (#330),
+occlusion and reverb zones on OpenAL's EFX (#329), mouse capture (#334), the binding layer tested headlessly with
+`in_showactions` (#332), `.sagedemo` recording and replay (#333), gamepads, rumble and the last-used device (#331),
+doppler, rolloff and cones (#335) and the audio panel and `snd_debug` (#336). 4o is complete; the next phase is
+4q (#337). What is left is in each sheet's "Open work" and the handoff's §2: replays are not exact in the real
+Sandbox client, there is no rumble content, axis actions cannot be rebound.
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,

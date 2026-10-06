@@ -814,13 +814,13 @@ Extensions a file may mark required and still load: `KHR_materials_unlit`, `KHR_
   - localization keys (English table only) — **built** (§3.7, issue #96).
 - **Done since:** cooked formats, a cook tool (`sage cook`, not MonoGame's builder) and texture compression (BC1/BC3), and `.ogg` sounds decoded whole (issue #302, §7, 11 §3).
 - **Done in 4n (2026-10-06):** asset scopes, release and an upload budget (#308), mipmaps and `.tga` (#317), the glTF subset (#321).
-- **Later:** `.pak` mounts (zip mounts, #397), `.uid` sidecars (if needed), OGG music streaming (#326).
+- **Later:** `.pak` mounts (zip mounts, #397), `.uid` sidecars (if needed). (OGG streaming is built: #326, 11 "As built (OGG streaming)".)
 
 ## 12. Multiplayer-later notes
 A server needs the same records and simulation assets. The mod list plus record hashes will be compared on connect (as Quake 3's `sv_pure` checks paks). Only data and asset mods may be auto-downloaded; code mods never are (17).
 
 ## 13. Open questions
-- ~~OGG decoding~~ **Decided and built (issue #302):** NVorbis decodes an `.ogg` whole to PCM for `SoundEffect` (11 §3). Still open: *streaming* long music (#326), where MonoGame's `Song`/`SoundEffect` support differs per platform.
+- ~~OGG decoding~~ **Decided and built (issue #302):** NVorbis decodes an `.ogg` whole to PCM for `SoundEffect` (11 §3). *Streaming* long music is built too (#326): our own `PcmStreamer` feeds a `DynamicSoundEffectInstance`, so MonoGame's per-platform `Song` support does not matter (11 "As built (OGG streaming)").
 - JSON library: `System.Text.Json` source-generated readers vs a custom reader that keeps line numbers for error messages. Leaning towards **`Utf8JsonReader` + a generated per-type reader** (fast, with position info for errors).
 
 ### Namespaces and inheritance

@@ -72,11 +72,22 @@ tabbed and re-docked; **View → Reset layout** (`ed_layout`) puts them back.
 | Bottom | **Log** | The log, filtered by level and category |
 | Bottom (tab) | **Problems** | What is wrong with the content and the open document, by file |
 | Bottom (tab) | **Console** | Every editor action as a typed command (§9) |
+| Floating | **Audio** | A meter for each bus (its voices, the level and the peak) and a list of every `sound` record with a **Play** button (issue #336; below) |
 | Bottom edge | **Status bar** | The document and whether it is saved, the selection, the world, the camera, and the problem count |
 
 The menus: **File** (New, Open, Save, Close, Exit), **Edit** (Undo and Redo, each saying what it will undo),
 **View** (Free camera, Viewport, Reset layout). `ed_viewport 1` (View → Viewport) opens a second view of
 the free camera in a window of its own.
+
+### The Audio panel
+
+**Audio** floats: it has no dock slot, so drag it where you like. The bars are the
+buses (`Master` is the total of everything playing), each with its voice count and its peak. Pick a sound and press
+**Play** to hear it, in 2D at the listener, whatever its cooldown or instance limit says. The panel remembers the
+sound it played: save a changed `.wav` or `.ogg` under a folder mount and the sound plays again, so you can edit a
+file and hear it without leaving the editor. The same preview is the `snd_play <sound>` command. `snd_debug 1`
+puts the voices (loudest first, with their distances and gains) and the bus levels in the stat overlay. The numbers
+are `AudioMonitor`'s; the panel only draws them.
 
 ### The viewport and gizmos
 

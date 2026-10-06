@@ -161,7 +161,7 @@ AGameNotBuiltInTheConfigurationOrAnOutputFolderInTheWayIsAnErrorThatWritesNothin
 - #295 R1-3 Push the v0.1.0 tag and cut a first real release (P1): the API is frozen and the workflow is built; the owner pushes the tag
 - #296 R1-4 Publish a package feed and ship `sage` as a dotnet tool (P2)
 
-Done in this milestone: #293, #294, #297, #298, #299, #300, #301, #302 and #303 (the status markers of REDESIGN §4.8 and design 08 and 10). Left from them: `sage-mod-code` (#396), no cooked OGG streaming (#326), a Windows run of a package (CI packages on Windows but runs the package only on Linux).
+Done in this milestone: #293, #294, #297, #298, #299, #300, #301, #302 and #303 (the status markers of REDESIGN §4.8 and design 08 and 10). Left from them: `sage-mod-code` (#396), a Windows run of a package (CI packages on Windows but runs the package only on Linux).
 
 **Existing issues kept**
 

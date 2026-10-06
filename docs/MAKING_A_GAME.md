@@ -360,8 +360,9 @@ loose), any other format, and no mipmaps are made. The Sandbox sets no `"cook"` 
 block-compressed (BC3); say `"uncompressed": ["textures/**"]` there if that shows.
 
 A `sound` asset may be a `.ogg` as well as a `.wav`: it is decoded whole to PCM when it loads (mono or stereo, up
-to ten minutes), so a package can ship the smaller file; streaming long music is not built yet (tests:
-AnOggFileDecodesToPcmMonoOrStereo, AFileThatIsNotOggVorbisIsRefusedWithInvalidData). There is no WAV-to-OGG step.
+to ten minutes), so a package can ship the smaller file, or read as it plays when the sound says `"stream": true`
+(§4, "Sound, music and controls"; tests: AnOggFileDecodesToPcmMonoOrStereo,
+AFileThatIsNotOggVorbisIsRefusedWithInvalidData). There is no WAV-to-OGG step.
 
 Only a Shipping host packages: one with the editor or ImGui in it (Debug, Development) is refused, and so is
 a game not built in that configuration or an output folder already in the way, before anything is written
@@ -541,7 +542,7 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 |---|---|
 | **Things that exist** (05) | `prefab` — components and parts; `scene` — where things start; `tag` |
 | **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows; `mesh_lod` — coarser meshes by distance or screen size, and where a mesh stops drawing, named by a mesh renderer's `lod` (issue #305); `decal` — a mark a cue or a damage type leaves on a surface (issue #306); `terrain_material` — up to four ground textures laid by height and slope (issue #307); `water_surface` — how the top of a water volume looks (issue #411). A `material` can name surface maps too: `normalMap`, `specularMap`, `specular`, `gloss`, `emissiveMap`, `emissive`, `vertexColors`, `environmentMap`, `reflectivity` (issue #410) |
-| **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
+| **Sound** (11) | `sound` — the file, gain, limits, rolloff, cone, doppler, whether it streams; `cue` — the moment a sound is asked for; `music` — a streamed track with layers and loop points; `reverb` — a room's sound; `ui_sounds` — what a screen's actions sound like |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
 | **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming, crouch (`crouchTime`, seconds to go down; the character's collider shrinks with it) and its `mode`: `Walk`, `AirStrafe` (GoldSrc bunny-hopping, tuned by `airStrafeSpeed` and `airStrafeAccelerate`), `Fly` or `Noclip` (`flySpeed`; a character's own `mode` overrides its profile's, and the `noclip` and `fly` cheats toggle the player's, issue #267); `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues (the impact cue is raised where a shot or a swing meets the surface, issue #306), a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest; `hit_location` and `hitboxes` — where a strike lands on a body; `hitbox_budget` — which creatures' hitboxes are on: those within its `distance` (m, 50) of a player and among the nearest `maxCreatures` (32); the others' are off and a strike there lands on the body; the conventions' `hitboxBudget` names it (`sage:default_hitbox_budget`; patch it, 0 turns a limit off, and naming none keeps every creature's on; issue #273) |
@@ -550,8 +551,8 @@ beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usua
 | **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs, as `[{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]`; `routine` — what it does when and where, `{ "from": 8, "to": 20, "schedule": "work", "at": "forge" }`, named by the profile's `routine` or a `routine` part, walked with `MoveToAnchor`, `FaceAnchor` and `StayAt` (issue 4g-4); `at` is a placement's `name` or a `.map`'s `targetname`, and an anchor not in the world (a far sector, a map target with no prefab) is walked to where the content has it, one in another scene to the door there; a creature with the `offscreen` part keeps its routine while it is unloaded, round the content's walls (static solid boxes taller than a step; a `mover` is a door unless its `nav_door` is `locked`; a `nav_link` is a way across), from the start in sectors nobody has visited, and through a door (a `load_door`, or a map entity with `load_door.scene` and `load_door.entry` keys) when its anchor is in another scene (issue #284); `nav_area` — ground that costs more or less to cross (`cost` per metre, 1 is ordinary ground), the `forbidden` factions that never path through it, and what makes ground this area: its `surfaces` (physics_materials: a road's gravel, a bog's mud) and `water` (every water volume), or a `nav_area` part's box (issue #271) |
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `dialogue_topic` — a keyword and its answers; `quest` — stages and objectives |
 | **Weather and effects** (06) | `weather` — what falls, wind, fog, light, lightning (issue #311); `weather_pattern` — which weather when, by the clock and the region (issue #311); `particle` — emitters (colliding and running a sprite sheet over a life since issue #310), with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
-| **Controls** (08) | `input_map` — actions bound to keys and buttons |
-| **Screens** (13, §7) | `ui_style` — colours, padding, a font, colours per state, a nine-sliced `image`; `ui_layout` — widgets by name, each naming its parent, with bindings; `screen` — a layout and its view-model |
+| **Controls** (08) | `input_map` — actions bound to keys and buttons; `rumble` — a pad's vibration |
+| **Screens** (13, §7) | `ui_style` — colours, padding, a font, colours per state, a nine-sliced `image`; `ui_layout` — widgets by name, each naming its parent, with bindings; `screen` — a layout, its view-model and its `sounds` |
 | **Your game's words** (§3, below) | `gameplay_conventions` — which attribute is life, which tag is death, the default attack, damage type, profiles and AI schedules, the player's faction, what spells cost, the action names |
 
 ### Your game's words: `gameplay_conventions`
@@ -732,7 +733,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `bone_attachment` | follows a socket of its parent's skeleton — `socket` (a bare value: `"bone_attachment": "hand_r"`), or `bone` (a joint by name), `offset`, `angles`; sockets are `skeleton_sockets` records (issue #120) |
 | `aim_ik` | turns the spine, neck and head toward `AimIk.Pitch`/`Yaw` after the animation — `joints` (hips up: `joint`, `weight`, `pitchLimit`, `yawLimit` in degrees), `weight` (issue #120) |
 | `foot_ik` | plants the feet on the ground under them and lowers the hips — `pelvis`, `left`/`right` (`hip`, `knee`, `foot`), `footHeight`, `rayAbove`, `rayBelow`, `maxPelvisDrop`, `weight` (issue #120) |
-| `footsteps` | a step every `stride` metres it walks on the ground (0: only on its animation's `footstep` events), each raising the `footstep` cue of the `physics_material` underfoot (a ray `reach` metres below the feet) and sending `Footstep` (issue #270) |
+| `footsteps` | a step every `stride` metres it walks on the ground (0: only on its animation's events), each raising the `footstep` cue of the `physics_material` underfoot (a ray `reach` metres below the feet) and sending `Footstep` (issue #270); a character that jumps or lands faster than `landSpeed` (2.5 m/s) raises the surface's `jump` and `land` cues; `event` (`footstep`), `left` (`foot_left`) and `right` (`foot_right`) name the animation events that are steps, `""` turns one off (issue #327) |
 | `ragdoll` | falls as a ragdoll — on death, a hit, the `Ragdoll` input (an impulse "x y z" as its parameter) or from code — with the bodies and joints of its model's `ragdoll` records, settles (the `OnSettled` output) and gets back up (the `GetUp` input) — `record` (one `ragdoll` record; empty: every one for the model), `onDeath` (true), `hitImpulse` (N·s), `getUpAfter` (seconds after it has come to rest; 0 = only when told; never once it has died), `getUpBack`/`getUpFront` (the animator states it gets up with, `getup_back`/`getup_front`), `getUpFade` (issues #246–#249, SAGE0134; design/12) |
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
 | `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7); `pattern` (a flicker: Quake letters `a`–`z`, or a preset such as `torch`, `candle`, `pulse`, `strobe`, `fluorescent`) at `patternRate` letters a second, changed by `SetPattern`; `cone` and `innerCone` (degrees) make it a spot light along the entity's forward (issue #314); `shadows` makes it cast shadows (issue #315); `baked` bakes it into a level's lightmap (issue #313) |
@@ -741,7 +742,8 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `nav_door` | beside a `mover`: `locked` — creatures do not open it, and while it is not fully open it is a wall to the planner (without it a creature opens a door in its way and waits, #265) |
 | `nav_link` | an off-mesh link from here to `end` (metres, world axes) — `kind` (`Walk`, `Jump`, `Drop`, `Ladder`, `Teleport`), `twoWay`, `cost`, `startDisabled`; `Enable`/`Disable` switch it; on a prefab of your own a map places it with `"nav_link.end" "2 -3 0"` (#265) |
 | `nav_area` | a box of ground that is a `nav_area` — `area`, `size` (full extents, centred on the entity); it wins over water and over what the ground is made of, and where two overlap the dearer wins (#271) |
-| `audio` | a sound it makes on its own — `sound`, `loop`, `volume` |
+| `audio` | a sound it makes on its own — `sound`, `loop`, `volume`; a `sound` with a cone is heard best along the entity's forward |
+| `reverb_zone` | a box in which the listener hears a `reverb` preset — `reverb`, `size` (full extents, centred on the entity), `offset`, `priority` (higher wins where zones overlap), `fade` (seconds to blend, 0: 1 s); on a map brush entity the brushes give the size (issue #329) |
 | `particles` | an effect it gives off — `effect` |
 | `attributes` | health and the rest, from `attribute` records |
 | `melee` | an attack it can make — a swing, a shot or a throw, as the attack's `delivery` says |
@@ -1250,6 +1252,116 @@ scene record, and a terrain generator of about six lines. No client half is need
 engine's own client module draws the world, the crosshair and the dev UI; your client half is for your
 HUD and your screens. This guide was checked by building exactly that and walking about in it.
 
+### Sound, music and controls
+
+Sound is records and an event: gameplay says what happened (a cue, a hit, an item used), a record says what it
+sounds like, and nothing in C# plays anything. A walk through each piece, in the order a game needs them.
+
+**A sound** (issue #326, #335). A `sound` record names `variations` (`.wav` or `.ogg` files; one is picked each
+time, with `volumeJitter` and `pitchJitter`), a `bus` (`Sfx` by default; `Master`, `Music`, `Voice`, `Ui` and
+`Ambient` too), `volume`, `maxInstances` (4), `cooldown`, `priority` and `minDistance`/`maxDistance` (full volume
+within the first, silent past the second; 0 for the max makes it 2D). Past those: `rolloff` (`linear`, `log` or
+`custom` with a `rolloffCurve` of gains from the min to the max, e.g. `[1, 0.6, 0.2, 0]`), a cone (`coneInner`
+and `coneOuter` are full angles in degrees about the emitter's forward, 360 = omnidirectional; `coneOuterGain`,
+0.25, is the volume beyond the outer one; only an `audio` part's entity has a direction), and `doppler` (a scale
+on the pitch shift of things that move; 0 makes the sound immune). `"stream": true` reads an `.ogg` as it
+plays instead of decoding it whole, for anything minutes long; a streamed variation that is a `.wav`, or any
+variation that is neither, is a load error naming the file. A `.wav` or `.ogg` you save under a folder mount is
+hot reloaded: its loops restart and its one-shots stop. `asset_list` shows a streamed one as `sound (streamed)`.
+The player's volumes are the archived cvars `snd_volume` (master), `snd_sfx`, `snd_music`, `snd_ui`,
+`snd_ambient` and `snd_voice`; also `snd_enabled`, `snd_maxvoices` (32), `snd_doppler` (1; 0 turns doppler off)
+and `snd_occlusion_rays` (8; 0 turns occlusion off). `snd_play <sound>` plays a record where you stand (and plays
+it again when you save its file), `snd_stats` says what is playing and what was refused, `snd_debug 1` overlays
+the voices and the bus levels in the dev tools, and the editor's Audio panel (EDITOR.md) has a meter per bus and
+a Play button. `log_level audio trace` says why a sound played or was refused.
+
+**Music** (issue #325). A `music` record is a `track` (an `.ogg`; music always streams), `layers` (stems the same
+length as the track: `asset`, `volume`, `intensity`, `fade`; a layer is heard while the world's music intensity
+is at or above its own), `volume`, `loop` (on), `loopStart` and `loopEnd` (samples per channel, so an intro
+before `loopStart` plays once and a tail after `loopEnd` never; 0 for the end of the file), and `fadeIn` and
+`fadeOut` in seconds. Music is the world's, and content changes it with data alone: a scene's
+`"environment": { "music": "crypt" }` fades to it when the player arrives; the inputs `PlayMusic "<music>
+[seconds]"`, `StopMusic "[seconds]"` and `SetMusicIntensity "<0..1>"` on any wire (any entity will do); and the
+actions `{ "play_music": "hearth", "fade": 3 }`, `{ "stop_music": 3 }` and `{ "music_intensity": 0.8 }` in a
+`then`. From C#, `MusicRules.Play`, `Stop` and `SetIntensity`. A change crossfades equal-power from whatever is
+playing, a change mid-fade starts from where it is, and a third track replaces the quieter one. Music voices are
+outside `snd_maxvoices` and are never stolen. The track playing and the intensity are saved (the `music` resource;
+a load restarts the track from its top, and the system is `sage.world.music`). The cheat commands `music
+[id|stop] [seconds]` (no argument says what it is doing) and `music_intensity <0..1>` try it. The Sandbox has
+`wander` (drums come in at intensity 0.5) in the open, `hearth` inside the `hut_yard` trigger and `crypt` in the
+crypt scene. Not there: ducking, sample-locked stems, a saved position.
+
+**Footsteps and surfaces** (issue #327). A character's `footsteps` part and a `physics_material`'s cues are
+under "Every prefab part" and §5 (surfaces); the `footstep`, `land` and `jump` cues of the surface under the foot
+are what play. A skeleton steps on its own clips: put `foot_left` and `foot_right` events in an `anim_events`
+record for its model and give it `"footsteps": { "stride": 0 }` (the Sandbox's `hut_walker`).
+
+**Effects, attacks and screens make noise too** (issue #330). An `effect` has `appliedCues`, `tickCues` and
+`removedCues`, cues raised at its target when it is applied (again on each refresh or stack), on each period of a
+periodic one, and when it ends or is dispelled; the old `cues` field is gone. An `attack` may name its own `sound`
+for a landed hit in place of its damage type's (the type's, then the conventions' default type's, when it names
+none). A `ui_sounds` record has `move` (focus moved by the arrows, D-pad or Tab; not on hover or the first
+focus), `select`, `open` and `close`; patch `sage:default_ui_sounds` to give every screen its noises, and name a
+set of your own in a `screen`'s `sounds` to change some (a field it leaves empty takes the default). They play on
+whatever bus their `sound` names; the HUD and `ui_close all` are silent. The Sandbox's `ui_move` and `ui_select`
+are on `Ui`.
+
+**Rooms** (issue #329). A wall muffles a sound: a ray from the listener to each positional voice, at most
+`snd_occlusion_rays` a frame in all, and what is solid in the way (not characters, triggers or hitboxes) lowers the
+voice to 0.45 of its volume and dulls it, smoothly over a fifth of a second. A reverb is a `reverb` record
+(`mix`, `decayTime`, `decayHFRatio`, `density`, `diffusion`, `gain`, `gainHF`, `reflectionsGain`,
+`reflectionsDelay`, `lateGain`, `lateDelay`) or one of the engine's `sage:room`, `sage:hall`, `sage:cave` and
+`sage:outdoors`, heard while the listener is inside a `reverb_zone` part's box. Occlusion and reverb need
+OpenAL's EFX extension, which the desktop backend has; without it the game logs a warning once and plays occlusion
+as volume only, with no reverb. `snd_stats` names the zone you are in and the rays cast, and the trace log has
+`occl X.XX` on a play, `occlusion <sound> blocked|clear at N m` and `reverb <id> mix ... decay ...` or
+`reverb off`. Occlusion is yes or no per ray (no thickness), 2D sounds are never occluded, and zones are boxes.
+
+**Rebinding** (issue #328). Players change controls with the console or the controls screen, and it is saved
+in `user://input.json`. `bind <input> <action> [context]` adds an input (`E`, `key:E`, `mouse:Right` or
+`pad:A`); `unbind <input> [action] [context]` takes it off one action, or every action in the context;
+`bind_reset [action|all] [context]` puts the game's own back. The context is `Gameplay`, `UI`, `Editor` or
+`Console` (left out: `Gameplay`, if the action is bound there). The file is record patches, so you never write it: for each context the
+player changed, an `input_map` called `user:rebinds_<context>` holds the action's whole list, and a patch on each
+map that bound it (yours, a mod's) empties it there. A file that does not parse is ignored with a warning and kept
+as `input.json.bad`. An input another action in the context uses is a conflict: `bind` says which action has it and
+changes nothing. The RPG kit's `rpg:controls` screen (a `screen` over the view-model `ui_controls`, strings
+`rpg.controls.*`) lists every button action by context, captures the next key, mouse button or pad button the
+player presses (never Escape, the left mouse button or the pad's B, Back and Start, which cancel and click),
+asks to replace or keep on a conflict, and resets one action or all; bind a key to it as to any screen. A game
+without the kit makes its own layout over `ui_controls`. Axis actions (`Move`, `Look`) cannot be rebound. In code:
+`Engine.Rebinds` (`InputRebinds`), `SageAppOptions.InputFile` and, in tests,
+`HeadlessAppBuilder.WithUserInput(file)`.
+
+**The mouse** (issue #334). The player's mouse is held (hidden, kept at the centre) while they play, and let go
+for a screen, the console, the controls screen's capture, the dev tools and when the window loses focus; the
+archived cvar `m_capture 0` turns it off. The log says `Mouse captured` and `Mouse released (reason)`. With the
+console closed the dev ImGui windows do not take clicks while the mouse is held; open the console. A smoke run
+can check a log: `SAGE_SMOKE_EXPECT` in `tools/smoke_run.sh` is one extended regular expression per line that
+must each match a log line, in order, beside `SAGE_SMOKE_COMMANDS`.
+
+**Gamepads** (issue #331). Up to four pads drive up to four local players: `joy_players` (1 to 4, default 1) says
+how many have a pad, they are handed out in order, and a pad unplugged and replugged returns to its player.
+`pad_list` shows who has which and `pad_assign <player> <pad>` moves one. A pawn names its player with the
+`sage:player_slot` component (`index`; none means the first); players 1 and up read only the Gameplay map's pad
+bindings. `joy_deadzone` (0 to 0.9) is a floor under every stick's own `deadzone`, radial and rescaled so the
+stick still reaches 1, `joy_curve` is `linear`, `quadratic`, `cubic` or an exponent from 0.1 to 8, and `joy_rumble`
+(0 to 1) scales rumble. A `rumble` record (`low` and `high`, the heavy and the light motor, 0 to 1; `duration`,
+`attack` and `release` in seconds) is named by a `cue`'s or a `damage_type`'s `rumble`: the cue's is felt by the
+player whose entity raised it, the damage type's by the player it hurt. Effects add up per player and the motors
+are clamped at 1. `in_tap`, `in_hold`, `in_axis`, `in_look`, `in_release` and `in_clear` take a trailing `@N`
+(`in_tap Attack @2`) to drive the Nth player. In code: `Engine.Pads` (`PadAssignment`), `Engine.LastDevice`
+(`LastUsedDevice`, which a prompt asks whether to say "E" or "A"), `InputGlyphs.Pick`, `StickResponse`,
+`ScriptedInput`, `RumbleMixer` and `PlayerInput.SetCommand(player, command)`. The Sandbox ships no rumble.
+
+**Recording a session** (issue #333). `record <name>` saves the world as it is and then each tick's player command
+to `user://demos/<name>.sagedemo`; `stop` ends it; `playdemo <name>` loads that save and plays the commands back,
+and says whether the world ended with the hash it was recorded with (`world_hash [world]` prints one: FNV-1a over
+the world's saved state); `demos` lists the files. A demo is refused when the build, game, plugins, mods or actions
+differ from the ones that made it. It replays exactly where the save holds everything the simulation reads; in
+the real Sandbox client it does not yet (the camera rig, `FaceCameraSystem` and `HopSystem` read what a save does
+not hold), so use it for scripted tests and headless games first.
+
 ## 5. Levels: rooms, doors and triggers
 
 Outdoors is terrain; **indoors is brushes**. The engine reads TrenchBroom `.map` files directly
@@ -1291,12 +1403,18 @@ In the editor:
   An exact name wins over a pattern, and a longer pattern over a shorter one; case does not matter. A
   prefab's collider takes one with the `body` part's `"surface"`, terrain by layer with the `terrain`
   record's `"surfaces"` (the first is the ground everywhere a generator paints nothing else), and a
-  creature's `footsteps` part raises the `footstep` cue of whatever it walks on. The engine's own
+  creature's `footsteps` part raises the `footstep` cue of whatever it walks on, and `land` and `jump` (each
+  falling back to `footstep`) when it lands or jumps. The engine's own
   (`sage:default`, `stone`, `wood`, `metal`, `dirt`, `grass`, `flesh`, `glass`) give friction and a
-  penetration hint only; the cues and the textures are yours.
+  penetration hint only; the cues and the textures are yours. Ground no record names, and a surface with no
+  cue, takes the cues of the `gameplay_conventions` `surface` (`sage:default`), which you patch to say what
+  ordinary ground sounds like (the Sandbox's `footsteps.json` patches it with grass).
 - **Brushes with a classname become a solid entity** — a door, a lift, a trigger volume — which is an
   ordinary entity that owns its geometry. Give it a prefab with a `mover` part and it moves.
 - **`"trigger" "1"`** makes its volume something you walk into rather than against, and it is not drawn.
+  A `"trigger" "1"` brush entity whose prefab has a `reverb_zone` part is a room's reverb, sized from its
+  brushes (the Sandbox's `hut_room` and `crypt_echo`); a brush entity with that part and no `"trigger"` is a
+  load warning (issue #329).
 - **A ladder** is a `"trigger" "1"` brush entity whose prefab has a `ladder` part, drawn as the space in
   front of the rungs from the floor to the ledge's top: `"classname" "ladder"`, `"trigger" "1"`,
   `"ladder.facing" "180"` (issue #263).

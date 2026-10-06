@@ -518,7 +518,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | ~~Bepu allocates about 40 B a tick~~ | Retired by #273: it was our Stopwatch, and the step allocates nothing. | Done (4l, #273). |
 | Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets) | Two ways to build a screen; features land in one or the other. | 4q, #350. |
 | Records and saves use reflection, not generated readers | Slower loads; not trim or AOT safe. | Generator follow-up; AOT out of scope (SRS §9). |
-| Determinism is by construction only | No cross-run check; replays not possible yet. | 4l (#273), 4o replay (#333). |
+| Determinism is by construction only | No cross-run check in general; a recorded `.sagedemo` replays to the same world hash where the save holds everything the simulation reads (#333), but not in the real Sandbox client (camera rig, `FaceCameraSystem`, `HopSystem`). | 4l (#273). |
 | Default `AssemblyLoadContext` for game and kit assemblies | Code mods cannot be unloaded or isolated. | 9, #396. |
 | No archive mounts | A game ships as a folder (`sage package`, #293), its mounts copied as folders. | Archive mounts, 9, #397. |
 | ~~Render pass registry cannot replace or disable an engine pass~~ | Retired by #322: `Replace`/`Disable` by id, applied at the seal. | Done (4n, #322). |
