@@ -1,5 +1,7 @@
 #nullable enable
 Sage.Client.InputActions.InputActions(Sage.Simulation.ActionRegistry! registry, Sage.Core.RecordStore! records, Sage.Client.InputDevices! devices, Sage.Core.CVarRegistry! cvars, Sage.Simulation.InputRebinds? rebinds) -> void
+Sage.Client.MouseListener.ApplyCapture(bool want, Microsoft.Xna.Framework.Point centre) -> Sage.Simulation.MouseCaptureFrame
+Sage.Client.MouseListener.Captured.get -> bool
 Sage.Client.RenderStats.LodCulled -> int
 Sage.Client.RenderStats.LodLowered -> int
 Sage.Client.RenderStats.Lightmapped -> int

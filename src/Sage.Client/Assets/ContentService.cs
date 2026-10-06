@@ -313,9 +313,9 @@ public sealed class ContentService : IDisposable
     // An Ogg Vorbis file opened to be decoded as it plays (issue #326, `"stream": true` on the sound): nothing
     // is cached, each voice reads its own copy of the file a few buffers ahead. Null when it is in no mount
     // or is not Ogg Vorbis (logged once).
-    internal PcmStreamer? OpenSoundStream(AssetPath path, bool loop)
+    internal PcmStreamer? OpenSoundStream(AssetPath path, bool loop, long loopStart = 0, long loopEnd = 0)
     {
-        var streamer = PcmStreamer.Open(_vfs, path, loop, out string? error);
+        var streamer = PcmStreamer.Open(_vfs, path, loop, out string? error, loopStart: loopStart, loopEnd: loopEnd);
         if (streamer == null)
         {
             Log.Once(LogCat.Audio, LogLevel.Error, $"sound-stream:{path}", $"Sound '{path}' cannot stream: {error}");

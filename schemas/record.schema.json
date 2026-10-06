@@ -50,6 +50,7 @@
             "material",
             "mesh_lod",
             "movement_profile",
+            "music",
             "nav_area",
             "particle",
             "physics_layers",
@@ -472,6 +473,21 @@
           },
           "then": {
             "$ref": "movement_profile.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "music"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "music.schema.json"
           }
         },
         {
