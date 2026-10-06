@@ -66,6 +66,10 @@
       "type": "string",
       "description": "The scene record every world starts in."
     },
+    "title": {
+      "type": "string",
+      "description": "The screen record shown before the world starts (a host with a window; -notitle skips it)."
+    },
     "sage": {
       "type": "string",
       "description": "The engine versions this game was made for: \"^0.1\"."
