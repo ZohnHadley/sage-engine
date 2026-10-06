@@ -275,11 +275,12 @@ public class SurfaceMaterialTests
         Assert.Matches($@"(?m)^float3 {MaterialSurface.EmissiveColor};", lit);
 
         var registers = Regex.Matches(lit, @"(?m)^sampler \w+ : register\((s\d+)\)").Select(m => m.Groups[1].Value).ToList();
-        Assert.Equal(new[] { "s0", "s2", "s3", "s4", "s5" }, registers);
+        Assert.Equal(new[] { "s0", "s2", "s3", "s4", "s5", "s6" }, registers);   // s6: the lightmap (issue #313)
         Assert.Contains("register(s1)", File.ReadAllText(Path.Combine(Repo, "engine_content", "shaders", "common.fxh")));
-        // Both vertex inputs read the tangent and the colour the client's VertexMesh and VertexSkinned carry.
-        Assert.Equal(2, Regex.Matches(lit, @"float4 Tangent\s+: TANGENT0;").Count);
-        Assert.Equal(2, Regex.Matches(lit, @"float4 Color\s+: COLOR0;").Count);
+        // Every vertex input (rigid, skinned, instanced, issue 4n-5, and lightmapped, issue #313) reads the tangent
+        // and the colour the client's VertexMesh and VertexSkinned carry.
+        Assert.Equal(4, Regex.Matches(lit, @"float4 Tangent\s+: TANGENT0;").Count);
+        Assert.Equal(4, Regex.Matches(lit, @"float4 Color\s+: COLOR0;").Count);
     }
 
     // ---- the Sandbox ---------------------------------------------------------------------------------

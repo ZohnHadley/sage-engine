@@ -2,7 +2,9 @@
 // + fog), AlphaTest (Default + clip at AlphaCutoff), Unlit (albedo + fog) and Skinned (Default, with the
 // vertices bent by up to four of the draw's `Bones` each; issue #117). The sun is shadowed by the sun's
 // shadow map in Default, AlphaTest and Skinned; ShadowCaster and ShadowCasterSkinned draw a caster into
-// that map (issue 4h-4).
+// that map (issue 4h-4), and ShadowCasterAlphaTest and ShadowCasterAlphaTestSkinned an alpha-tested one,
+// clipped at AlphaCutoff as AlphaTest is (issue 4n-11). Lightmapped (issue #313) is Default for a brush
+// level with a baked lightmap.
 //
 // The surface (issue #410), in every technique that shades: a tangent-space normal map, Blinn-Phong
 // highlights from the sun and the lamps (strength and gloss, times a specular map's red and green), an
@@ -142,7 +144,9 @@ float3 Environment(float3 r)
     return tex2D(EnvironmentSampler, uv).rgb;
 }
 
-float4 Shade(VSOutput input, float lit)
+// `baked` and `sky` are a lightmap's (issue #313): baked lamps' light, and how much of the ambient reaches the
+// pixel. Default passes 0 and 1, which the compiler folds away.
+float4 ShadeBaked(VSOutput input, float lit, float3 baked, float sky)
 {
     float4 albedo = tex2D(AlbedoSampler, input.UV) * AlbedoColor * Tint;
     albedo *= lerp(float4(1, 1, 1, 1), input.Color, SurfaceParams.w);
@@ -162,9 +166,14 @@ float4 Shade(VSOutput input, float lit)
     float3 lamps = PointLightsLit(n, v, input.Relative, power, lampSpecular);
     float3 specular = (SunColor * shadow * Highlight(n, v, -SunDir, power) + lampSpecular) * strength;
 
-    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) + sun + lamps, lit);
+    float3 light = lerp(float3(1, 1, 1), HemiAmbient(n) * sky + baked + sun + lamps, lit);
     float3 color = albedo.rgb * light + (specular + reflection) * (lit * albedo.a) + emissive * albedo.a;
     return float4(ApplyFog(color, length(input.Relative)), albedo.a);
+}
+
+float4 Shade(VSOutput input, float lit)
+{
+    return ShadeBaked(input, lit, float3(0, 0, 0), 1);
 }
 
 float4 PSDefault(VSOutput input) : COLOR0
@@ -182,6 +191,76 @@ float4 PSAlphaTest(VSOutput input) : COLOR0
 float4 PSUnlit(VSOutput input) : COLOR0
 {
     return Shade(input, 0);
+}
+
+// ---- Lightmapped (issue #313): a brush level's faces with their baked light ----
+//
+// The renderer draws a mesh that has a lightmap (VertexLightmapped: TEXCOORD1 is its place in the atlas)
+// with this instead of Default, and sets `Lightmap` for the draw. The texture holds the baked lamps' light
+// (rgb, times LIGHTMAP_SCALE: LevelLightmap.Scale) and how much sky the texel sees (a), which the ambient is
+// multiplied by. The sun stays dynamic and shadowed (it moves), and the lamps that are not baked add on top:
+// the renderer leaves the baked ones out of this draw's four.
+#define LIGHTMAP_SCALE 4.0
+texture Lightmap;
+// Its own register, past the shadow map's (s1) and the surface maps' (s2..s5).
+sampler LightmapSampler : register(s6) = sampler_state
+{
+    Texture = <Lightmap>;
+    MinFilter = Linear;
+    MagFilter = Linear;
+    MipFilter = None;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+// VSInput with the lightmap's coordinates; Default's surface (normal, highlights, emissive, reflection; issue
+// #410) and the lamps' spot cones (issue #314) through the same ShadeBaked.
+struct VSLightmappedInput
+{
+    float4 Position   : POSITION0;
+    float3 Normal     : NORMAL0;
+    float2 UV         : TEXCOORD0;
+    float2 LightmapUV : TEXCOORD1;
+    float4 Tangent    : TANGENT0;   // a brush mesh has none: (0,0,0,1), so a normal map changes nothing, as in Default
+    float4 Color      : COLOR0;
+};
+
+struct VSLightmappedOutput
+{
+    float4 Position   : POSITION0;
+    float3 Normal     : TEXCOORD0;
+    float2 UV         : TEXCOORD1;
+    float3 Relative   : TEXCOORD2;
+    float4 Tangent    : TEXCOORD3;
+    float4 Color      : TEXCOORD4;
+    float2 LightmapUV : TEXCOORD5;
+};
+
+VSLightmappedOutput VSLightmapped(VSLightmappedInput input)
+{
+    VSLightmappedOutput output;
+    float4 relative = mul(input.Position, World);
+    output.Position = mul(relative, ViewProj);
+    output.Normal = mul(input.Normal, (float3x3)World);
+    output.UV = input.UV;
+    output.Relative = relative.xyz;
+    output.Tangent = float4(mul(input.Tangent.xyz, (float3x3)World), input.Tangent.w);
+    output.Color = input.Color;
+    output.LightmapUV = input.LightmapUV;
+    return output;
+}
+
+float4 PSLightmapped(VSLightmappedOutput input) : COLOR0
+{
+    VSOutput surface;
+    surface.Position = input.Position;
+    surface.Normal = input.Normal;
+    surface.UV = input.UV;
+    surface.Relative = input.Relative;
+    surface.Tangent = input.Tangent;
+    surface.Color = input.Color;
+    float4 baked = tex2D(LightmapSampler, input.LightmapUV);
+    return ShadeBaked(surface, 1, baked.rgb * LIGHTMAP_SCALE, baked.a);
 }
 
 // ---- Shadow casters (issue 4h-4): depth into the sun's map ----
@@ -217,6 +296,43 @@ float4 PSShadow(VSShadowOutput input) : COLOR0
     return float4(input.Depth, 0, 0, 1);
 }
 
+// ---- Cut-out shadow casters (issue 4n-11): an alpha-tested material's own texture and cutoff ----
+//
+// The renderer applies the item's material (Albedo, AlbedoColor, AlphaCutoff, its sampler) and sets
+// ViewProj to the cascade's. What AlphaTest would discard casts no shadow: a leaf card's holes let the
+// sun through.
+struct VSShadowCutOutput
+{
+    float4 Position : POSITION0;
+    float Depth     : TEXCOORD0;
+    float2 UV       : TEXCOORD1;
+};
+
+VSShadowCutOutput VSShadowCut(VSInput input)
+{
+    VSShadowCutOutput output;
+    output.Position = mul(mul(input.Position, World), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    output.UV = input.UV;
+    return output;
+}
+
+VSShadowCutOutput VSShadowCutSkinned(VSSkinnedInput input)
+{
+    VSShadowCutOutput output;
+    float4x3 skin = SkinMatrix(input.Indices, input.Weights);
+    output.Position = mul(mul(SkinPosition(input.Position, skin), World), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    output.UV = input.UV;
+    return output;
+}
+
+float4 PSShadowCut(VSShadowCutOutput input) : COLOR0
+{
+    AlphaTest(tex2D(AlbedoSampler, input.UV).a * AlbedoColor.a * Tint.a, AlphaCutoff);
+    return float4(input.Depth, 0, 0, 1);
+}
+
 technique Default
 {
     pass P0 { VertexShader = compile vs_3_0 VS(); PixelShader = compile ps_3_0 PSDefault(); }
@@ -237,6 +353,11 @@ technique Skinned
     pass P0 { VertexShader = compile vs_3_0 VSSkinned(); PixelShader = compile ps_3_0 PSDefault(); }
 }
 
+technique Lightmapped
+{
+    pass P0 { VertexShader = compile vs_3_0 VSLightmapped(); PixelShader = compile ps_3_0 PSLightmapped(); }
+}
+
 technique ShadowCaster
 {
     pass P0 { VertexShader = compile vs_3_0 VSShadow(); PixelShader = compile ps_3_0 PSShadow(); }
@@ -245,4 +366,81 @@ technique ShadowCaster
 technique ShadowCasterSkinned
 {
     pass P0 { VertexShader = compile vs_3_0 VSShadowSkinned(); PixelShader = compile ps_3_0 PSShadow(); }
+}
+
+// ---- Instanced meshes (issue 4n-5) ----
+//
+// With `r_instancing 1` a run of items sharing a mesh part, a material, a tint and their lamps is one
+// draw: each instance's camera-relative world matrix comes in a second vertex stream (InstanceTransform,
+// a row per TEXCOORD4..7) in place of `World`; Tint and the lights are the run's, set once. Each
+// technique is its twin above with these vertex shaders (Instancing.TechniqueFor: Default's is
+// `Instanced`, any other's `<name>Instanced`).
+struct VSInstanceInput
+{
+    float4 Position : POSITION0;
+    float3 Normal   : NORMAL0;
+    float2 UV       : TEXCOORD0;
+    float4 Tangent  : TANGENT0;    // as VSInput (issue #410)
+    float4 Color    : COLOR0;
+    float4 World0   : TEXCOORD4;
+    float4 World1   : TEXCOORD5;
+    float4 World2   : TEXCOORD6;
+    float4 World3   : TEXCOORD7;
+};
+
+float4x4 InstanceWorld(VSInstanceInput input)
+{
+    return float4x4(input.World0, input.World1, input.World2, input.World3);
+}
+
+VSOutput VSInstanced(VSInstanceInput input)
+{
+    VSOutput output;
+    float4x4 world = InstanceWorld(input);
+    float4 relative = mul(input.Position, world);
+    output.Position = mul(relative, ViewProj);
+    output.Normal = mul(input.Normal, (float3x3)world);
+    output.UV = input.UV;
+    output.Relative = relative.xyz;
+    output.Tangent = float4(mul(input.Tangent.xyz, (float3x3)world), input.Tangent.w);
+    output.Color = input.Color;
+    return output;
+}
+
+VSShadowOutput VSShadowInstanced(VSInstanceInput input)
+{
+    VSShadowOutput output;
+    output.Position = mul(mul(input.Position, InstanceWorld(input)), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    return output;
+}
+
+technique Instanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSInstanced(); PixelShader = compile ps_3_0 PSDefault(); }
+}
+
+technique AlphaTestInstanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSInstanced(); PixelShader = compile ps_3_0 PSAlphaTest(); }
+}
+
+technique UnlitInstanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSInstanced(); PixelShader = compile ps_3_0 PSUnlit(); }
+}
+
+technique ShadowCasterInstanced
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadowInstanced(); PixelShader = compile ps_3_0 PSShadow(); }
+}
+
+technique ShadowCasterAlphaTest
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadowCut(); PixelShader = compile ps_3_0 PSShadowCut(); }
+}
+
+technique ShadowCasterAlphaTestSkinned
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadowCutSkinned(); PixelShader = compile ps_3_0 PSShadowCut(); }
 }

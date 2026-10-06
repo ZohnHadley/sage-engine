@@ -96,6 +96,13 @@
           "$ref": "ids.schema.json#/definitions/record:physics_material"
         }
       ]
+    },
+    "lightmap": {
+      "description": "Bake a lightmap at load: texels per metre (4 is a good start); 0 = none, the brushes are lit dynamically only. Unit: texels/m. Range: 0 to 32. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 32
     }
   },
   "additionalProperties": false
