@@ -112,7 +112,8 @@ internal sealed class MaterialRuntime
     public required RasterizerState Raster;
     public required RasterizerState RasterWire;
     public required DepthStencilState Depth;
-    public required SamplerState Sampler;
+    public required SamplerFilter Filter;      // the record's sampler; TextureSampling picks the state (issue #317)
+    public required SamplerAddress Address;
     public required float Fog;
     public EffectParameter? Albedo;   // the material's "Albedo" texture param, overridden per sprite sheet
     public ulong SampledTargets;      // bit n: a param samples render target n (`rt:<name>`); not drawn into it
@@ -350,15 +351,8 @@ internal sealed class MaterialCache : IDisposable
                 (false, false) => DepthStencilState.None,
                 _ => WriteNoTest,
             },
-            Sampler = (record.Sampler.Filter, record.Sampler.Address) switch
-            {
-                (SamplerFilter.Point, SamplerAddress.Clamp) => SamplerState.PointClamp,
-                (SamplerFilter.Point, _) => SamplerState.PointWrap,
-                (SamplerFilter.Anisotropic, SamplerAddress.Clamp) => SamplerState.AnisotropicClamp,
-                (SamplerFilter.Anisotropic, _) => SamplerState.AnisotropicWrap,
-                (_, SamplerAddress.Clamp) => SamplerState.LinearClamp,
-                _ => SamplerState.LinearWrap,
-            },
+            Filter = record.Sampler.Filter,
+            Address = record.Sampler.Address,
             Fog = record.Fog ? 1f : 0f,
             CastShadows = record.CastShadows,
             Albedo = effect.Parameters["Albedo"],
@@ -399,7 +393,7 @@ internal sealed class MaterialCache : IDisposable
         device.BlendState = m.Blend;
         device.RasterizerState = wireframe ? m.RasterWire : m.Raster;
         device.DepthStencilState = m.Depth;
-        device.SamplerStates[0] = m.Sampler;
+        device.SamplerStates[0] = TextureSampling.For(m.Filter, m.Address);
     }
 
 }

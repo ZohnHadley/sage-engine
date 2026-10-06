@@ -21,7 +21,8 @@ namespace Sage.Client;
 internal sealed class AssetHotReload : IDisposable
 {
     // Everything the runtime loader can actually decode, checked against the decoders compiled into
-    // MonoGame 3.8.x DesktopGL (StbImageSharp: jpeg, png, bmp, gif, psd, hdr, tga) and confirmed by
+    // MonoGame 3.8.x DesktopGL (StbImageSharp: jpeg, png, bmp, gif, psd, hdr, tga; the engine calls it itself
+    // since issue #317, to premultiply and mipmap in one place) and confirmed by
     // loading one of each. Notably TGA *is* supported despite MonoGame's own doc comment saying it
     // is not, and TIFF, DDS and WebP are *not* despite the same comment saying they are — convert those
     // to PNG, since R12 left no content pipeline to take them through. A GIF gives its first frame; an
@@ -31,7 +32,7 @@ internal sealed class AssetHotReload : IDisposable
     // `.wav` stops or restarts the voices playing it. Shader *source* is `ShaderRecompiler`'s.
     private static readonly string[] Extensions =
     {
-        ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".psd", ".hdr",   // Texture2D.FromStream
+        ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".psd", ".hdr",   // StbImageSharp (CookedTexture.DecodeImage)
         ".mgfxo",                                                          // compiled effects (07 §3.1)
         ".glb",                                                            // models, in place in the renderer's mesh table
         ".wav",                                                            // sounds; voices on them stop or restart

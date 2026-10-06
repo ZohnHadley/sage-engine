@@ -91,6 +91,7 @@ public sealed class Renderer : IDisposable
     private readonly CVar<bool> _fog;
     private readonly CVar<bool> _spriteFaceCamera;
     private readonly CVar<bool> _wireframe;
+    private readonly CVar<int> _anisotropy;
     private readonly CVar<bool> _freezeCull;
     private readonly CVar<bool> _debugThroughWalls;
     private readonly Engine _engine;
@@ -152,6 +153,7 @@ public sealed class Renderer : IDisposable
         var cvars = engine.CVars;
         _fog = settings.Fog;
         _wireframe = settings.Wireframe;
+        _anisotropy = settings.Anisotropy;
         _spriteFaceCamera = settings.SpriteFaceCamera;
         _freezeCull = settings.FreezeCull;
         _debugThroughWalls = settings.DebugThroughWalls;
@@ -550,6 +552,7 @@ public sealed class Renderer : IDisposable
         Plan(s);
         _sprites.FaceCameraPosition = _spriteFaceCamera.Value;
         _wire = _wireframe.Value;
+        TextureSampling.Anisotropy = _anisotropy.Value;   // the samplers materials pick from (issue #317)
         var clear = new Color(s.Environment.ClearColor);   // the horizon's colour; `sage:sky` draws over it when the world has a sky (4h-5)
         var ctx = Begin(world, s, screen, extracting: false);
         _shadow.Drawn = false;   // until `sage:shadow` draws this world's map
@@ -1223,6 +1226,8 @@ internal sealed class RendererCVars
     public readonly CVar<bool> PostGrade;
     public readonly CVar<bool> PostVignette;
 
+    // Texture filtering (issue #317): the anisotropy smooth-filtered materials sample with.
+    public readonly CVar<int> Anisotropy;
     // The per-frame upload budget for streamed content (05 §3.4, issue #308).
     public readonly CVar<float> UploadMs;
 
@@ -1255,6 +1260,10 @@ internal sealed class RendererCVars
             "The colour grade and exposure post effect (sage:grade), with the sky's night tint; needs r_post 1.");
         PostVignette = cvars.Register("r_post_vignette", true, CVarFlags.Archive,
             "The vignette post effect (sage:vignette); needs r_post 1.");
+        Anisotropy = cvars.Register("r_anisotropy", 4, CVarFlags.Archive,
+            "Anisotropic filtering for materials with a Linear or Anisotropic sampler (issue #317): up to this many taps along a " +
+            "surface seen at a slant, so a floor stays sharp into the distance; 1 is plain trilinear. Point-sampled pixel art is not affected.",
+            1, TextureSampling.MaxAnisotropy);
         UploadMs = cvars.Register("asset_upload_ms", 2f, CVarFlags.Archive,
             "Milliseconds a frame may spend loading a streaming world's meshes and textures (05 §3.4); what does not fit waits " +
             "for the next frame. The first load of a frame always starts; 0 is no budget.", 0f, 100f);
