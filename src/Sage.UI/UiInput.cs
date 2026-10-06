@@ -65,6 +65,10 @@ public struct UiResult
     // Focus moved to another widget (or to none).
     public bool FocusChanged;
 
-    // The pointer is over a hit-testable widget: a click here is the UI's, not the world's.
+    // The pointer is over a hit-testable widget, or a focus scope shows: a click here is the UI's, not the world's.
     public bool PointerOverUi;
+
+    // The focus scope that held focus this frame (UiRoot.ActiveScope), or null. Back while one shows is
+    // for whatever showed it — a confirm prompt cancelling — so the screen stack does not close the layer.
+    public Widget? Scope;
 }
