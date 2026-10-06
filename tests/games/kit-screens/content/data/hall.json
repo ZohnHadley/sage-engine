@@ -1,0 +1,56 @@
+[
+  // The hall (issue #355): what the kit's screens show, fixed, so their drawing can be compared run to run.
+
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [20, 1, 20] } } },
+
+  { "type": "item", "id": "lantern", "label": "lantern", "weight": 1, "value": 8 },
+  { "type": "item", "id": "bread", "label": "bread", "maxStack": 10, "weight": 0.5, "value": 1 },
+  { "type": "item", "id": "rope", "label": "rope", "weight": 2, "value": 3 },
+  { "type": "item", "id": "dagger", "label": "dagger", "slot": "MainHand", "weight": 1, "value": 12 },
+  { "type": "rpg_item", "id": "rope", "grid": [1, 2] },
+
+  // The player: a bag with a few things in it, a dagger to wear.
+  {
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "inventory": { "items": [ { "item": "bread", "count": 3 }, { "item": "rope" }, { "item": "dagger" } ], "capacity": 30 }
+    }
+  },
+
+  // The trader (rpg:shop's other) and a chest (rpg:loot's).
+  {
+    "type": "prefab", "id": "trader", "name": "trader",
+    "parts": { "character": { "layer": "enemy" }, "inventory": { "items": [ { "item": "lantern" }, { "item": "bread", "count": 5 } ] } }
+  },
+  {
+    "type": "prefab", "id": "chest", "name": "chest",
+    "parts": { "inventory": { "items": [ { "item": "lantern" }, { "item": "rope" } ] }, "use_screen": "rpg:loot" }
+  },
+
+  // The ferryman: a conversation (the kit's panel screen, `dialogue`) and a topic (rpg:topics's other).
+  { "type": "prefab", "id": "ferryman", "name": "ferryman", "parts": { "character": { "layer": "enemy" }, "dialogue": "ferryman_talk" } },
+  { "type": "dialogue", "id": "ferryman_talk",
+    "nodes": [ { "id": "hello", "text": "Well?", "options": [
+      { "text": "Tell me about...", "topics": true },
+      { "text": "Goodbye.", "end": true } ] } ] },
+  { "type": "dialogue_topic", "id": "the_river", "keyword": "the river", "known": true,
+    "infos": [ { "text": "Shallow. Cross when you like." } ] },
+
+  // What the journal shows once `quest_start crossing` has run.
+  { "type": "quest", "id": "crossing", "label": "The Crossing", "start": "ask",
+    "stages": [ { "id": "ask", "text": "Ask the ferryman about the river." } ] },
+
+  {
+    // The player faces the ferryman a step away (the Use button talks to him); the others stand aside.
+    "type": "scene", "id": "hall",
+    "player": { "prefab": "player", "at": [0, 0.1, 1.6] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0], "id": "floor" },
+      { "prefab": "ferryman", "at": [0, 0, 0], "yaw": 180, "id": "ferryman", "name": "ferryman" },
+      { "prefab": "trader", "at": [-4, 0, 0], "yaw": 180, "id": "trader", "name": "trader" },
+      { "prefab": "chest", "at": [4, 0, 0], "id": "chest", "name": "chest" }
+    ]
+  }
+]

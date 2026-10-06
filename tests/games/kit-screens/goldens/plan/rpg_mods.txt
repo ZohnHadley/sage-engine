@@ -1,0 +1,15 @@
+# rpg:mods: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on tabMods
+rect 360,187.25 560x345.5 #141414e0 @window
+border 360,187.25 560x345.5 #5a4a30ff width 1 @window
+text 368,197.25 36x13.5 #f0e0b0ff scale 1.5 "Mods" @title
+rect 368,218.75 60x15 #2a2620ff>#5a4a30ff @tabMods
+border 368,218.75 60x15 #5a4a30ff>#f0e0b0ff width 1 @tabMods
+text 374,221.75 48x9 #e0d8c8ff scale 1 "Mods (0)" @tabMods
+rect 436,218.75 66x15 #2a2620ff @tabConflicts
+border 436,218.75 66x15 #5a4a30ff width 1 @tabConflicts
+text 442,221.75 54x9 #e0d8c8ff scale 1 "Conflicts" @tabConflicts
+text 368,239.75 114x9 #908878ff scale 1 "No mods were found." @none
+pushclip 368,254.75 544x240 @list
+popclip 0,0 0x0 @list
+text 368,515.75 390x9 #908878ff scale 1 "Later mods win over earlier ones where they conflict.    B: close" @hint

@@ -1,0 +1,18 @@
+{
+  // The kit screens check (issue #355): every screen the RPG kit ships, opened over a still world and checked
+  // twice. Headlessly, tests/Sage.Tests/Kits/KitScreenGoldenTests.cs opens each widget screen and compares its
+  // render plan (UiRenderPlan: every rect, border, text and image, in pixels and drawing order) with
+  // goldens/plan/<screen>.txt. In the real host, tools/kit_screens_check.sh opens each screen, panel screens
+  // too, and `r_framecheck` compares the drawn frame, a grid of cell colours, with goldens/frame/<screen>.json.
+  // screens.txt is the list both read: a new kit screen is one line there, then its goldens are written.
+  // No C#: a player with a bag, a trader with stock, a chest to loot, a ferryman with something to say and a
+  // quest in the journal. Without the engine's shaders (CI's Linux job) the world is the clear colour, so
+  // only the UI changes the frame.
+  "name": "Kit screens",
+  "id": "kitscreens",
+  "plugins": ["sage.gameplay.io", "sage.gameplay.character", "sage.gameplay.attributes", "sage.gameplay.combat",
+              "sage.gameplay.items", "sage.gameplay.abilities", "sage.gameplay.dialogue", "sage.gameplay.quests"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "hall"
+}

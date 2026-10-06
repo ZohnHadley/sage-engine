@@ -1,0 +1,10 @@
+# rpg:topics: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on topic
+rect 306,172.75 668x374.5 #141414e0 @window
+border 306,172.75 668x374.5 #5a4a30ff width 1 @window
+text 314,182.75 72x13.5 #f0e0b0ff scale 1.5 "ferryman" @title
+pushclip 314,204.25 220x320 @scroll
+rect 314,204.25 220x15 #00000000>#5a4a30ff @topic
+text 320,207.25 54x9 #f0d890ff scale 1 "the river" @topic
+popclip 0,0 0x0 @scroll
+text 314,530.25 108x9 #908878ff scale 1 "A: ask    B: leave" @hint

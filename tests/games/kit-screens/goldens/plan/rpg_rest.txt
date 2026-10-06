@@ -1,0 +1,23 @@
+# rpg:rest: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on less
+rect 460,284.75 360x150.5 #141414e0 @window
+border 460,284.75 360x150.5 #5a4a30ff width 1 @window
+text 468,294.75 36x13.5 #f0e0b0ff scale 1.5 "Rest" @title
+text 468,316.25 72x9 #e0d8c8ff scale 1 "Day 0, 12:00" @now
+text 468,331.25 42x9 #e0d8c8ff scale 1 "8 hours" @hours
+rect 468,346.25 18x15 #2a2620ff>#5a4a30ff @less
+border 468,346.25 18x15 #5a4a30ff>#f0e0b0ff width 1 @less
+text 474,349.25 6x9 #e0d8c8ff scale 1 "<" @less
+rect 492,349.75 296x8 #202020ff @bar
+border 492,349.75 296x8 #5a4a30ff width 1 @bar
+rect 492,349.75 98.67x8 #b09050ff @bar
+rect 794,346.25 18x15 #2a2620ff @more
+border 794,346.25 18x15 #5a4a30ff width 1 @more
+text 800,349.25 6x9 #e0d8c8ff scale 1 ">" @more
+rect 468,367.25 42x15 #2a2620ff @sleep
+border 468,367.25 42x15 #5a4a30ff width 1 @sleep
+text 474,370.25 30x9 #e0d8c8ff scale 1 "Sleep" @sleep
+rect 518,367.25 36x15 #2a2620ff @wait
+border 518,367.25 36x15 #5a4a30ff width 1 @wait
+text 524,370.25 24x9 #e0d8c8ff scale 1 "Wait" @wait
+text 468,418.25 270x9 #908878ff scale 1 "< >: how long    A: sleep or wait    B: close" @hint

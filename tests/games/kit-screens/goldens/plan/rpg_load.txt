@@ -1,0 +1,7 @@
+# rpg:load: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on nothing
+rect 340,320.75 600x78.5 #141414e0 @window
+border 340,320.75 600x78.5 #5a4a30ff width 1 @window
+text 348,330.75 36x13.5 #f0e0b0ff scale 1.5 "Load" @title
+text 348,352.25 78x9 #908878ff scale 1 "No saves yet." @none
+text 348,382.25 42x9 #908878ff scale 1 "B: back" @hint

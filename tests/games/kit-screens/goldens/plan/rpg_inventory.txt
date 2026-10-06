@@ -1,0 +1,108 @@
+# rpg:inventory: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on cell
+rect 308,137.75 664x444.5 #141414e0 @window
+border 308,137.75 664x444.5 #5a4a30ff width 1 @window
+text 316,147.75 81x13.5 #f0e0b0ff scale 1.5 "Inventory" @title
+text 316,169.25 108x9 #e0d8c8ff scale 1 "Weight 4.5 / 30 kg" @weight
+rect 316,184.25 648x8 #202020ff @weight_bar
+border 316,184.25 648x8 #5a4a30ff width 1 @weight_bar
+rect 316,184.25 97.2x8 #b09050ff @weight_bar
+rect 316,198.25 56x56 #3a3020ff>#5a4a30ff @cell
+border 316,198.25 56x56 #3a3428ff>#f0e0b0ff width 1 @cell
+text 326,222.88 36x6.75 #f0e8d8ff scale 0.75 "bread ×3" @cell
+rect 374,198.25 56x114 #3a3020ff @cell
+border 374,198.25 56x114 #3a3428ff width 1 @cell
+text 393,251.88 18x6.75 #f0e8d8ff scale 0.75 "rope" @cell
+rect 432,198.25 56x56 #3a3020ff @cell
+border 432,198.25 56x56 #3a3428ff width 1 @cell
+text 446.5,222.88 27x6.75 #f0e8d8ff scale 0.75 "dagger" @cell
+rect 490,198.25 56x56 #1c1a16ff @cell
+border 490,198.25 56x56 #3a3428ff width 1 @cell
+rect 548,198.25 56x56 #1c1a16ff @cell
+border 548,198.25 56x56 #3a3428ff width 1 @cell
+rect 606,198.25 56x56 #1c1a16ff @cell
+border 606,198.25 56x56 #3a3428ff width 1 @cell
+rect 664,198.25 56x56 #1c1a16ff @cell
+border 664,198.25 56x56 #3a3428ff width 1 @cell
+rect 722,198.25 56x56 #1c1a16ff @cell
+border 722,198.25 56x56 #3a3428ff width 1 @cell
+rect 316,256.25 56x56 #1c1a16ff @cell
+border 316,256.25 56x56 #3a3428ff width 1 @cell
+rect 432,256.25 56x56 #1c1a16ff @cell
+border 432,256.25 56x56 #3a3428ff width 1 @cell
+rect 490,256.25 56x56 #1c1a16ff @cell
+border 490,256.25 56x56 #3a3428ff width 1 @cell
+rect 548,256.25 56x56 #1c1a16ff @cell
+border 548,256.25 56x56 #3a3428ff width 1 @cell
+rect 606,256.25 56x56 #1c1a16ff @cell
+border 606,256.25 56x56 #3a3428ff width 1 @cell
+rect 664,256.25 56x56 #1c1a16ff @cell
+border 664,256.25 56x56 #3a3428ff width 1 @cell
+rect 722,256.25 56x56 #1c1a16ff @cell
+border 722,256.25 56x56 #3a3428ff width 1 @cell
+rect 316,314.25 56x56 #1c1a16ff @cell
+border 316,314.25 56x56 #3a3428ff width 1 @cell
+rect 374,314.25 56x56 #1c1a16ff @cell
+border 374,314.25 56x56 #3a3428ff width 1 @cell
+rect 432,314.25 56x56 #1c1a16ff @cell
+border 432,314.25 56x56 #3a3428ff width 1 @cell
+rect 490,314.25 56x56 #1c1a16ff @cell
+border 490,314.25 56x56 #3a3428ff width 1 @cell
+rect 548,314.25 56x56 #1c1a16ff @cell
+border 548,314.25 56x56 #3a3428ff width 1 @cell
+rect 606,314.25 56x56 #1c1a16ff @cell
+border 606,314.25 56x56 #3a3428ff width 1 @cell
+rect 664,314.25 56x56 #1c1a16ff @cell
+border 664,314.25 56x56 #3a3428ff width 1 @cell
+rect 722,314.25 56x56 #1c1a16ff @cell
+border 722,314.25 56x56 #3a3428ff width 1 @cell
+rect 316,372.25 56x56 #1c1a16ff @cell
+border 316,372.25 56x56 #3a3428ff width 1 @cell
+rect 374,372.25 56x56 #1c1a16ff @cell
+border 374,372.25 56x56 #3a3428ff width 1 @cell
+rect 432,372.25 56x56 #1c1a16ff @cell
+border 432,372.25 56x56 #3a3428ff width 1 @cell
+rect 490,372.25 56x56 #1c1a16ff @cell
+border 490,372.25 56x56 #3a3428ff width 1 @cell
+rect 548,372.25 56x56 #1c1a16ff @cell
+border 548,372.25 56x56 #3a3428ff width 1 @cell
+rect 606,372.25 56x56 #1c1a16ff @cell
+border 606,372.25 56x56 #3a3428ff width 1 @cell
+rect 664,372.25 56x56 #1c1a16ff @cell
+border 664,372.25 56x56 #3a3428ff width 1 @cell
+rect 722,372.25 56x56 #1c1a16ff @cell
+border 722,372.25 56x56 #3a3428ff width 1 @cell
+rect 316,430.25 56x56 #1c1a16ff @cell
+border 316,430.25 56x56 #3a3428ff width 1 @cell
+rect 374,430.25 56x56 #1c1a16ff @cell
+border 374,430.25 56x56 #3a3428ff width 1 @cell
+rect 432,430.25 56x56 #1c1a16ff @cell
+border 432,430.25 56x56 #3a3428ff width 1 @cell
+rect 490,430.25 56x56 #1c1a16ff @cell
+border 490,430.25 56x56 #3a3428ff width 1 @cell
+rect 548,430.25 56x56 #1c1a16ff @cell
+border 548,430.25 56x56 #3a3428ff width 1 @cell
+rect 606,430.25 56x56 #1c1a16ff @cell
+border 606,430.25 56x56 #3a3428ff width 1 @cell
+rect 664,430.25 56x56 #1c1a16ff @cell
+border 664,430.25 56x56 #3a3428ff width 1 @cell
+rect 722,430.25 56x56 #1c1a16ff @cell
+border 722,430.25 56x56 #3a3428ff width 1 @cell
+rect 316,488.25 56x56 #1c1a16ff @cell
+border 316,488.25 56x56 #3a3428ff width 1 @cell
+rect 374,488.25 56x56 #1c1a16ff @cell
+border 374,488.25 56x56 #3a3428ff width 1 @cell
+rect 432,488.25 56x56 #1c1a16ff @cell
+border 432,488.25 56x56 #3a3428ff width 1 @cell
+rect 490,488.25 56x56 #1c1a16ff @cell
+border 490,488.25 56x56 #3a3428ff width 1 @cell
+rect 548,488.25 56x56 #1c1a16ff @cell
+border 548,488.25 56x56 #3a3428ff width 1 @cell
+rect 606,488.25 56x56 #1c1a16ff @cell
+border 606,488.25 56x56 #3a3428ff width 1 @cell
+rect 664,488.25 56x56 #1c1a16ff @cell
+border 664,488.25 56x56 #3a3428ff width 1 @cell
+rect 722,488.25 56x56 #1c1a16ff @cell
+border 722,488.25 56x56 #3a3428ff width 1 @cell
+text 316,565.25 648x9 #908878ff scale 1 "D-pad: move    A: pick up / put down    LB / R: turn    LT / F: split    X / Del: drop    B: put back, close" @hint
+text 316,258.25 90x9 #ffffffff scale 1 "3 bread, 1.5 kg"
