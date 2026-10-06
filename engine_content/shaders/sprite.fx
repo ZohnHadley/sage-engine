@@ -1,7 +1,8 @@
 // Billboard sprites (docs/design/07 §3.2): the quads are expanded on the CPU (06 §3.7), so the
 // vertex shader only transforms them. Techniques: Lit (alpha-tested, sun with its shadows, hemispheric
 // ambient, the nearby lamps, fog), Unlit (alpha-tested, fog: full-bright) and UnlitBlend (transparent,
-// no alpha test).
+// no alpha test). ShadowCasterAlphaTest draws an alpha-tested sprite into the sun's shadow map, turned to
+// the sun and clipped at AlphaCutoff, so a leaf billboard casts a cut-out shadow (issue 4n-11).
 #include "common.fxh"
 
 texture Albedo;
@@ -94,6 +95,31 @@ float4 PSUnlitBlend(VSOutput input) : COLOR0
     return Shade(input, 0);
 }
 
+// ---- Shadow caster (issue 4n-11): ViewProj is the cascade's; the quads were turned to the sun ----
+struct VSShadowOutput
+{
+    float4 Position : POSITION0;
+    float Depth     : TEXCOORD0;
+    float2 UV       : TEXCOORD1;
+    float Alpha     : TEXCOORD2;
+};
+
+VSShadowOutput VSShadow(VSInput input)
+{
+    VSShadowOutput output;
+    output.Position = mul(input.Position, ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    output.UV = input.UV;
+    output.Alpha = input.Color.a;
+    return output;
+}
+
+float4 PSShadow(VSShadowOutput input) : COLOR0
+{
+    AlphaTest(tex2D(AlbedoSampler, input.UV).a * AlbedoColor.a * input.Alpha * Tint.a, AlphaCutoff);
+    return float4(input.Depth, 0, 0, 1);
+}
+
 technique Unlit
 {
     pass P0 { VertexShader = compile vs_3_0 VS(); PixelShader = compile ps_3_0 PSUnlit(); }
@@ -107,4 +133,9 @@ technique Lit
 technique UnlitBlend
 {
     pass P0 { VertexShader = compile vs_3_0 VS(); PixelShader = compile ps_3_0 PSUnlitBlend(); }
+}
+
+technique ShadowCasterAlphaTest
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadow(); PixelShader = compile ps_3_0 PSShadow(); }
 }

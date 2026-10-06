@@ -3,7 +3,8 @@
 //
 // Parameter tiers (07 §3.4), set by the renderer; materials never set these:
 //   frame:  ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time,
-//           ShadowViewProj, ShadowParams, ShadowMap (the sun's shadow map, issue 4h-4)
+//           ShadowViewProj, ShadowParams, ShadowMap (the sun's shadow map, issue 4h-4),
+//           ShadowCascadeRects, ShadowCascadeBias (its cascades, issue 4n-11)
 //   object: World, Tint, and for skinned draws Bones
 //   material (set from the material record, with FogEnabled from the record's "fog"):
 //           FogEnabled + whatever the effect declares (Albedo, AlphaCutoff...)
@@ -128,16 +129,20 @@ void AlphaTest(float alpha, float cutoff)
     clip(alpha - cutoff);
 }
 
-// ---- Frame: the sun's shadow map (issue 4h-4, docs/design/06 "As built (sun shadows)") ----
+// ---- Frame: the sun's shadow map (issues 4h-4, 4n-11; docs/design/06 "As built (sun shadows)") ----
 //
-// One map of light-space depth in [0, 1] (R32F, cleared to 1), drawn by `sage:shadow` with the
-// ShadowCaster techniques. `ShadowViewProj` takes a camera-relative position (this view's camera) into
-// the map's clip space; `ShadowMath` (Sage.Simulation) is where it comes from, and its tests are this
-// map's. Read in the pixel shader from `Relative`, so it costs the vertex shader no constants (the skinned
-// one has 64 bones in 192 of its 256). Strength 0 — no map this frame, r_shadows 0, the sun down —
-// makes whatever is sampled not matter.
-float4x4 ShadowViewProj;
-float4 ShadowParams;    // x = strength (0: none), y = 1 / map size, z = depth bias, w = map size in texels
+// Up to three cascades of light-space depth in [0, 1] (R32F, cleared to 1), side by side in one target,
+// drawn by `sage:shadow` with the ShadowCaster techniques. `ShadowViewProj[k]` takes a camera-relative
+// position (this view's camera) into cascade k's clip space and `ShadowCascadeRects[k]` says where that
+// cascade sits in the target; `ShadowMath` (Sage.Simulation) is where they come from, and its tests are
+// this map's (`CascadeOf` is the choice below). Read in the pixel shader from `Relative`, so it costs the
+// vertex shader no constants (the skinned one has 64 bones in 192 of its 256). Strength 0 — no map this
+// frame, r_shadows 0, the sun down — makes whatever is sampled not matter.
+#define MAX_CASCADES 3
+float4x4 ShadowViewProj[MAX_CASCADES];
+float4 ShadowCascadeRects[MAX_CASCADES];   // uv in the target: x, y, width, height
+float4 ShadowCascadeBias;                  // x, y, z: each cascade's depth bias
+float4 ShadowParams;    // x = strength (0: none), y = cascades, z = texels a side of each, w = 1 / that
 texture ShadowMap;
 // Its own register, so an effect's own sampler (Albedo) keeps s0 and the material's sampler state.
 // Point sampling: the 2x2 filter below compares depths, then blends the answers; blending depths is wrong.
@@ -151,30 +156,51 @@ sampler ShadowSampler : register(s1) = sampler_state
     AddressV = Clamp;
 };
 
+// Cascade k, if no nearer one has taken the point: where the point falls on it (uv, depth), its rectangle
+// and bias, kept in `chosen*` when it holds the point with a texel to spare for the filter.
+void ShadowCascade(float3 relative, float4x4 viewProj, float4 rect, float bias, float exists,
+                   inout float3 chosen, inout float4 chosenRect, inout float chosenBias, inout float found)
+{
+    float4 clip = mul(float4(relative, 1), viewProj);
+    float2 uv = float2(clip.x * 0.5 + 0.5, 0.5 - clip.y * 0.5);
+    float2 inside2 = step(ShadowParams.w, uv) * step(uv, 1 - ShadowParams.w);
+    float take = inside2.x * inside2.y * step(0, clip.z) * step(clip.z, 1) * exists * (1 - found);
+    chosen = lerp(chosen, float3(uv, clip.z), take);
+    chosenRect = lerp(chosenRect, rect, take);
+    chosenBias = lerp(chosenBias, bias, take);
+    found = max(found, take);
+}
+
 // How much of the sun reaches a camera-relative point on a surface facing `n`: 1 lit, 0 shadowed.
-// Manual 2x2 PCF: the four texels around the point each say lit or not, and the answers are blended by
-// where the point falls between them, so a shadow edge is a texel-wide ramp rather than a staircase.
+// The first cascade that holds the point (the nearest are the finest), then a manual 2x2 PCF: the four
+// texels around the point each say lit or not, and the answers are blended by where the point falls
+// between them, so a shadow edge is a texel-wide ramp rather than a staircase.
 float ShadowLit(float3 relative, float3 n)
 {
-    float4 clip = mul(float4(relative, 1), ShadowViewProj);
-    float2 uv = float2(clip.x * 0.5 + 0.5, 0.5 - clip.y * 0.5);
-    // More margin as the surface turns from the sun: its depth changes faster across a texel.
-    float depth = clip.z - ShadowParams.z * (2.0 - saturate(dot(n, -SunDir)));
+    float3 chosen = float3(0.5, 0.5, 0);
+    float4 rect = float4(0, 0, 1, 1);
+    float bias = 0;
+    float found = 0;
+    ShadowCascade(relative, ShadowViewProj[0], ShadowCascadeRects[0], ShadowCascadeBias.x, 1, chosen, rect, bias, found);
+    ShadowCascade(relative, ShadowViewProj[1], ShadowCascadeRects[1], ShadowCascadeBias.y, step(1.5, ShadowParams.y), chosen, rect, bias, found);
+    ShadowCascade(relative, ShadowViewProj[2], ShadowCascadeRects[2], ShadowCascadeBias.z, step(2.5, ShadowParams.y), chosen, rect, bias, found);
 
-    float2 texel = uv * ShadowParams.w - 0.5;
+    // More margin as the surface turns from the sun: its depth changes faster across a texel.
+    float depth = chosen.z - bias * (2.0 - saturate(dot(n, -SunDir)));
+
+    float2 texel = chosen.xy * ShadowParams.z - 0.5;
     float2 corner = floor(texel);
     float2 f = texel - corner;
-    float2 at = (corner + 0.5) * ShadowParams.y;
-    float2 dx = float2(ShadowParams.y, 0);
-    float2 dy = float2(0, ShadowParams.y);
+    float2 scale = ShadowParams.w * rect.zw;   // one texel of the cascade, in the target's uv
+    float2 at = rect.xy + (corner + 0.5) * scale;
+    float2 dx = float2(scale.x, 0);
+    float2 dy = float2(0, scale.y);
     float lit00 = step(depth, tex2D(ShadowSampler, at).r);
     float lit10 = step(depth, tex2D(ShadowSampler, at + dx).r);
     float lit01 = step(depth, tex2D(ShadowSampler, at + dy).r);
     float lit11 = step(depth, tex2D(ShadowSampler, at + dx + dy).r);
     float lit = lerp(lerp(lit00, lit10, f.x), lerp(lit01, lit11, f.x), f.y);
 
-    // Off the map (sideways, or past its far end) is lit: the map covers the near slice of the view only.
-    float2 inside2 = step(0, uv) * step(uv, 1);
-    float inside = inside2.x * inside2.y * step(clip.z, 1);
-    return lerp(1, lerp(1, lit, inside), ShadowParams.x);
+    // Off every cascade (sideways, or past either end of its depth) is lit: the maps cover the near slice of the view only.
+    return lerp(1, lerp(1, lit, found), ShadowParams.x);
 }

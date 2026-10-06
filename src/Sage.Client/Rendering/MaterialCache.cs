@@ -18,6 +18,7 @@ internal sealed class EffectBinding
         "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount",
         "Bones",   // the skinned draw's palette (issue #117), set per draw
         "ShadowViewProj", "ShadowParams", "ShadowMap",   // the sun's shadow map (issue 4h-4), frame tier
+        "ShadowCascadeRects", "ShadowCascadeBias",       // its cascades (issue 4n-11), frame tier
     };
 
     public EffectBinding(Effect effect)
@@ -33,6 +34,9 @@ internal sealed class EffectBinding
         ShadowViewProj = P("ShadowViewProj"); ShadowParams = P("ShadowParams"); ShadowMap = P("ShadowMap");
         ShadowCaster = effect.Techniques["ShadowCaster"];
         ShadowCasterSkinned = effect.Techniques["ShadowCasterSkinned"];
+        ShadowCascadeRects = P("ShadowCascadeRects"); ShadowCascadeBias = P("ShadowCascadeBias");
+        ShadowCasterAlphaTest = effect.Techniques[ShadowMath.CasterTechnique(RenderPass.AlphaTested, skinned: false)];
+        ShadowCasterAlphaTestSkinned = effect.Techniques[ShadowMath.CasterTechnique(RenderPass.AlphaTested, skinned: true)];
     }
 
     public Effect Effect { get; }
@@ -42,6 +46,12 @@ internal sealed class EffectBinding
     public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
     public readonly EffectParameter? ShadowViewProj, ShadowParams, ShadowMap;   // issue 4h-4
     public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
+    public readonly EffectParameter? ShadowCascadeRects, ShadowCascadeBias;      // issue 4n-11
+    public readonly EffectTechnique? ShadowCasterAlphaTest, ShadowCasterAlphaTestSkinned;   // a cut-out caster (4n-11)
+
+    // The cascades' matrices and rectangles, reused (set once a view).
+    private readonly Matrix[] _cascadeViewProj = new Matrix[ShadowMath.MaxCascades];
+    private readonly Vector4[] _cascadeRects = new Vector4[ShadowMath.MaxCascades];
 
     // The four lights this draw is lit by (06 §3.9). Reused arrays: this is set per item, and a frame
     // with a thousand items would otherwise allocate two arrays a thousand times (02 §4.6).
@@ -81,17 +91,23 @@ internal sealed class EffectBinding
         // positions are relative to its own, so the difference goes in front. Strength 0 (no map this
         // frame, `r_shadows 0`, night) makes the shader ignore what it samples, and it samples a real
         // texture anyway rather than whatever the slot last held.
-        bool on = shadow.Drawn && shadowMap != null && env.ShadowStrength > 0f;
-        if (on)
+        bool on = shadow.Drawn && shadowMap != null && env.ShadowStrength > 0f && shadow.Count > 0;
+        var bias = Vector4.Zero;
+        var toCaster = on ? Matrix.CreateTranslation(view.CameraPosition - shadow.Camera) : Matrix.Identity;
+        for (int k = 0; k < ShadowMath.MaxCascades; k++)
         {
-            ShadowViewProj?.SetValue(Matrix.CreateTranslation(view.CameraPosition - shadow.Camera) * shadow.ViewProj);
-            ShadowParams.SetValue(new Vector4(env.ShadowStrength, 1f / shadow.Size, shadow.Bias, shadow.Size));
+            // Cascades past the count are never chosen (ShadowParams.y); they are set to something anyway.
+            ref readonly var cascade = ref shadow.Cascades[Math.Min(k, Math.Max(shadow.Count - 1, 0))];
+            _cascadeViewProj[k] = on ? toCaster * cascade.ViewProj : Matrix.Identity;
+            _cascadeRects[k] = on ? cascade.Rect : new Vector4(0f, 0f, 1f, 1f);
+            float b = on ? cascade.Bias : 0f;
+            if (k == 0) bias.X = b; else if (k == 1) bias.Y = b; else bias.Z = b;
         }
-        else
-        {
-            ShadowViewProj?.SetValue(Matrix.Identity);
-            ShadowParams.SetValue(new Vector4(0f, 1f, 0f, 1f));
-        }
+        ShadowViewProj?.SetValue(_cascadeViewProj);
+        ShadowCascadeRects?.SetValue(_cascadeRects);
+        ShadowCascadeBias?.SetValue(bias);
+        // x = strength (0: none), y = cascades, z = texels a side of each, w = 1 / that.
+        ShadowParams.SetValue(on ? new Vector4(env.ShadowStrength, shadow.Count, shadow.Size, 1f / shadow.Size) : new Vector4(0f, 1f, 1f, 1f));
         ShadowMap?.SetValue(on ? shadowMap : none);
     }
 }
