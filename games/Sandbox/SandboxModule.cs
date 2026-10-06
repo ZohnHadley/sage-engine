@@ -46,6 +46,10 @@ public sealed class SandboxModule : IGameModule
         var terrain = world.Resources.Get<Terrain>();
         terrain.Generator = new HillsGenerator();
         terrain.Seed = 1;
+        // Grass, with bare rock where the hills are steep (issue #307; content/data/terrain.json).
+#pragma warning disable SAGE0129   // terrain materials are phase 4g's open-world API, still settling
+        terrain.Material = new RecordId("sandbox", "hills");
+#pragma warning restore SAGE0129
         terrain.Load(SectorCoord.Zero);
 
         world.AddSystem(new HopSystem(world));

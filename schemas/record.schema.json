@@ -48,6 +48,7 @@
             "item",
             "map",
             "material",
+            "mesh_lod",
             "movement_profile",
             "nav_area",
             "particle",
@@ -72,6 +73,7 @@
             "state_machine",
             "tag",
             "terrain",
+            "terrain_material",
             "ui_layout",
             "ui_style",
             "viewmodel",
@@ -444,6 +446,21 @@
           "if": {
             "properties": {
               "type": {
+                "const": "mesh_lod"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "mesh_lod.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "movement_profile"
               }
             },
@@ -798,6 +815,21 @@
           },
           "then": {
             "$ref": "terrain.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "terrain_material"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "terrain_material.schema.json"
           }
         },
         {

@@ -55,7 +55,9 @@ public class DeclarationTests
             ["calendar"] = RegistrationOwners.Core,           // what the day count means as a date (issue 4g-2)
             ["calendar_event"] = RegistrationOwners.Core,     // a festival or a moon phase a wire can fire on (issue 4m-15)
             ["terrain"] = RegistrationOwners.Core,            // built-in ground for a data-only game (issue 4g-3)
+            ["terrain_material"] = RegistrationOwners.Core,   // the ground's layers, blended by height and slope (#307)
             ["viewmodel"] = RegistrationOwners.Core,          // first-person arms (#121)
+            ["mesh_lod"] = RegistrationOwners.Core,           // a LOD group a mesh renderer names (issue 4n-1)
             ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
             ["rpg_item"] = "sage.kits.rpg",          // an item's footprint on the inventory grid (#98)
             ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
@@ -70,7 +72,7 @@ public class DeclarationTests
     public void APluginThatIsNotLoadedRegistersNothing()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "calendar_event", "placements", "prefab", "ragdoll", "scene", "skeleton_sockets", "sky", "state_machine", "terrain", "viewmodel" }, app.Records.TypeNames);
+        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "calendar_event", "mesh_lod", "placements", "prefab", "ragdoll", "scene", "skeleton_sockets", "sky", "state_machine", "terrain", "terrain_material", "viewmodel" }, app.Records.TypeNames);
     }
 
     // Plugin ids on declarations are strings, and one naming a plugin in another assembly (the client)

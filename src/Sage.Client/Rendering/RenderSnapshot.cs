@@ -171,6 +171,17 @@ internal sealed class RenderSnapshot
 
     public int Culled;                   // items rejected by frustum culling this frame, every view
     public int FogCulled;                // of those, rejected because fog hides them wholly (issue 4h-5)
+    public LodCounts Lod;                // renderers per view LOD left out or drew coarser (issue 4n-1, MeshLod.Pick)
+
+    // The view whose LOD choices a renderer remembers for its hysteresis, and whose camera the sun's
+    // caster view measures from (issue 4n-1): the screen's main view, else the first view that is not the
+    // sun's; -1 when there is none.
+    internal int LodView()
+    {
+        if (MainView >= 0) return MainView;
+        for (int v = 0; v < Views.Count; v++) if (!Views[v].ShadowCaster) return v;
+        return -1;
+    }
 
     // Whether fog hides a camera-relative sphere drawn with `material` in `view` wholly (FogMath.Hides):
     // an opaque or alpha-tested material with fog on, in a view drawn with fog (not the sun's caster view,
@@ -230,6 +241,7 @@ internal sealed class RenderSnapshot
         foreach (var pool in _pools) pool.Clear();
         Culled = 0;
         FogCulled = 0;
+        Lod = default;
         MainView = -1;
         Shadow.View = -1;
         Shadow.Drawn = false;

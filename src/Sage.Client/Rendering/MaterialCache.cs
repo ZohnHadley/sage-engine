@@ -133,6 +133,9 @@ internal sealed class MaterialCache : IDisposable
     private readonly Dictionary<RecordId, int> _ids = new();
     private readonly List<RecordId> _idList = new();
     private MaterialRuntime?[] _runtimes = new MaterialRuntime?[16];
+    // The scope each material's textures load at (issue #308): the strongest it was resolved for. A
+    // streaming world's materials load theirs at the sectors' scope, so they go when the sectors do.
+    private AssetScope[] _scopes = new AssetScope[16];
     // Ids whose material *and* the sage:error fallback both failed to build. Remembered until the next
     // Invalidate, so a broken material costs one attempt and one log line, not one per draw per frame
     // (272,780 lines in eight seconds with the shaders missing, 2026-09-27).
@@ -152,21 +155,28 @@ internal sealed class MaterialCache : IDisposable
         _content = content;
         _records = records;
         _targets = targets;
-        // Missing textures: a magenta/black checker (05 §8), impossible to mistake for real content.
-        _missingTexture = new Texture2D(device, 2, 2);
-        _missingTexture.SetData(new[] { Color.Magenta, Color.Black, Color.Black, Color.Magenta });
-        Resolve(MaterialRecord.Error);   // id 0
+        // Missing textures: the content service's checker (05 §8), texture id 0.
+        _missingTexture = content.MissingTexture;
+        Resolve(MaterialRecord.Error, AssetScope.Engine);   // id 0
     }
 
     public int Count => _idList.Count;
 
     public Texture2D MissingTexture => _missingTexture;
 
-    public void Dispose() => _missingTexture.Dispose();   // effects and textures belong to the ContentService
+    public void Dispose() { }   // effects and textures (the checker too) belong to the ContentService
 
-    public int Resolve(RecordId id)
+    // A material id, for the game (its textures stay for the process).
+    public int Resolve(RecordId id) => Resolve(id, AssetScope.Game);
+
+    // A material id for something drawn at a scope: its textures load at the strongest scope it was asked for.
+    public int Resolve(RecordId id, AssetScope scope)
     {
-        if (id.IsEmpty) id = MaterialRecord.Default;
+        if (id.IsEmpty)
+        {
+            id = MaterialRecord.Default;   // the engine's default is everybody's: its textures stay
+            scope = AssetScopes.Stronger(scope, AssetScope.Game);
+        }
         if (!_ids.TryGetValue(id, out int index))
         {
             index = _idList.Count;
@@ -176,8 +186,11 @@ internal sealed class MaterialCache : IDisposable
             {
                 Array.Resize(ref _runtimes, _runtimes.Length * 2);
                 Array.Resize(ref _unbuildable, _runtimes.Length);
+                Array.Resize(ref _scopes, _runtimes.Length);
             }
+            _scopes[index] = scope;
         }
+        else if (scope < _scopes[index]) _scopes[index] = scope;
         return index;
     }
 
@@ -186,7 +199,7 @@ internal sealed class MaterialCache : IDisposable
     {
         var runtime = _runtimes[id];
         if (runtime != null || _unbuildable[id]) return runtime;
-        runtime = Build(_idList[id]) ?? ErrorRuntime();
+        runtime = Build(_idList[id], _scopes[id]) ?? ErrorRuntime();
         _runtimes[id] = runtime;
         _unbuildable[id] = runtime == null;
         return runtime;
@@ -210,25 +223,64 @@ internal sealed class MaterialCache : IDisposable
         if (_error != null || _errorUnbuildable) return _error;
         var record = _records.TryGet(MaterialRecord.Error, out MaterialRecord r) ? r
             : new MaterialRecord { Effect = AssetPath.Intern("shaders/error.mgfxo"), Fog = false };
-        _error = Build(MaterialRecord.Error, record);
+        _error = Build(MaterialRecord.Error, record, AssetScope.Engine);
         _errorUnbuildable = _error == null;
         if (_error == null) Log.Once(LogCat.Shaders, LogLevel.Error, "no-error-material", "sage:error can't be built (shaders/error.mgfxo missing?); broken materials are not drawn");
         else _error.IsError = true;
         return _error;
     }
 
-    private MaterialRuntime? Build(RecordId id)
+    private MaterialRuntime? Build(RecordId id, AssetScope scope)
     {
         if (!_records.TryGet(id, out MaterialRecord record))
         {
+            // A terrain material (issue #307) is drawn as a material of the splat effect, made from it.
+            if (_records.TryGet(id, out TerrainMaterialRecord terrain)) return Build(id, SplatMaterial(terrain), scope);
             if (id != MaterialRecord.Error)
                 Log.Error(LogCat.Shaders, $"Material {id} not found; drawing sage:error");
             return null;
         }
-        return Build(id, record);
+        return Build(id, record, scope);
     }
 
-    private MaterialRuntime? Build(RecordId id, MaterialRecord record)
+    // ---- terrain materials (issue #307) ----------------------------------------------------------------
+
+    private static readonly AssetPath White = AssetPath.Intern("textures/white.png");
+
+    private static MaterialRecord SplatMaterial(TerrainMaterialRecord terrain) => new()
+    {
+        Effect = TerrainSplat.Effect,
+        Technique = TerrainSplat.Technique,
+        Params = TerrainSplat.Params(terrain, White),
+    };
+
+    // What terrain named `material` (a world's `Terrain.Material`) is drawn with: the terrain material
+    // itself, whose layers the mesh then carries weights for (`splat`), or — with no such record, or no
+    // splat effect to draw it (a build without shaders) — a plain material and no weights, said once.
+    public RecordId TerrainLook(RecordId material, out TerrainMaterialRecord? splat)
+    {
+        splat = null;
+        if (material.IsEmpty) return TerrainSplat.DefaultMaterial;
+        if (!_records.TryGet(material, out TerrainMaterialRecord record))
+        {
+            Log.Once(LogCat.Shaders, LogLevel.Error, "terrain-material:" + material,
+                     $"Terrain material {material} not found; drawing {TerrainSplat.DefaultMaterial}");
+            return TerrainSplat.DefaultMaterial;
+        }
+        var fallback = record.Fallback.IsEmpty ? TerrainSplat.DefaultMaterial : record.Fallback;
+        var effect = _content.LoadEffect(TerrainSplat.Effect);
+        if (effect == null || effect.Techniques[TerrainSplat.Technique] == null)
+        {
+            Log.Once(LogCat.Shaders, LogLevel.Warn, "terrain-fallback:" + material,
+                     $"Terrain material {material}: {TerrainSplat.Effect} (technique '{TerrainSplat.Technique}') is not available " +
+                     $"(a build without shaders?); drawing its fallback {fallback}");
+            return fallback;
+        }
+        splat = record;
+        return material;
+    }
+
+    private MaterialRuntime? Build(RecordId id, MaterialRecord record, AssetScope scope)
     {
         if (record.Effect.IsEmpty) { Log.Error(LogCat.Shaders, $"Material {id}: no \"effect\""); return null; }
         var effect = _content.LoadEffect(record.Effect);
@@ -265,7 +317,7 @@ internal sealed class MaterialCache : IDisposable
             }
             else if (value.IsTexture)
             {
-                texture = _content.LoadTexture(value.Texture);
+                texture = _content.LoadTexture(value.Texture, scope);
                 if (texture == null) Log.Warn(LogCat.Shaders, $"Material {id}: texture {value.Texture} missing; using the checker placeholder");
                 texture ??= _missingTexture;
             }

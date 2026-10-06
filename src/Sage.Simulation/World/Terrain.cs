@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Sage.Simulation;
@@ -179,6 +180,13 @@ public sealed class Terrain
     // (Heightfield.SetLayer). Physics gives a sector's collision mesh these as it builds it; a terrain
     // record's "surfaces" sets them.
     public List<RecordId> SurfaceLayers { get; } = new();
+
+    // What the ground is drawn with (issue #307): a `terrain_material` record, whose layers the client
+    // blends by a weight map worked out from each sector's heights and normals. Empty: the one tiling
+    // texture of `sage:terrain_default`. Set it before sectors load; ones already drawn keep their look.
+    // A terrain record's "material" sets it.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public RecordId Material { get; set; }
     public int Seed
     {
         get => _seed;

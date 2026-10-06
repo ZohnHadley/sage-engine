@@ -35,3 +35,47 @@ Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
+const Sage.Simulation.MeshLod.Culled = -1 -> int
+const Sage.Simulation.MeshLod.Unknown = -2 -> int
+readonly Sage.Simulation.RenderEnvironment.LayerDrawDistance -> float[]!
+Sage.Simulation.LodMetric
+Sage.Simulation.LodMetric.Distance = 0 -> Sage.Simulation.LodMetric
+Sage.Simulation.LodMetric.ScreenSize = 1 -> Sage.Simulation.LodMetric
+Sage.Simulation.MeshLod
+Sage.Simulation.MeshLodLevel
+Sage.Simulation.MeshLodLevel.Distance -> float
+Sage.Simulation.MeshLodLevel.Material -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
+Sage.Simulation.MeshLodLevel.Mesh -> Sage.Core.AssetPath
+Sage.Simulation.MeshLodLevel.MeshLodLevel() -> void
+Sage.Simulation.MeshLodLevel.ScreenSize -> float
+Sage.Simulation.MeshLodRecord
+Sage.Simulation.MeshLodRecord.CullDistance -> float
+Sage.Simulation.MeshLodRecord.CullScreenSize -> float
+Sage.Simulation.MeshLodRecord.Hysteresis -> float
+Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Simulation.MeshLodLevel!>!
+Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
+Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
+Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
+static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
+static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float
+Sage.Simulation.Terrain.Material.get -> Sage.Core.RecordId
+Sage.Simulation.Terrain.Material.set -> void
+Sage.Simulation.TerrainLayer
+Sage.Simulation.TerrainLayer.HeightBlend -> float
+Sage.Simulation.TerrainLayer.MaxHeight -> float
+Sage.Simulation.TerrainLayer.MaxSlope -> float
+Sage.Simulation.TerrainLayer.MinHeight -> float
+Sage.Simulation.TerrainLayer.MinSlope -> float
+Sage.Simulation.TerrainLayer.SlopeBlend -> float
+Sage.Simulation.TerrainLayer.TerrainLayer() -> void
+Sage.Simulation.TerrainLayer.Texture -> Sage.Core.AssetPath
+Sage.Simulation.TerrainLayer.Tile -> float
+Sage.Simulation.TerrainMaterialRecord
+Sage.Simulation.TerrainMaterialRecord.Detail -> Sage.Core.AssetPath
+Sage.Simulation.TerrainMaterialRecord.DetailStrength -> float
+Sage.Simulation.TerrainMaterialRecord.DetailTile -> float
+Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
+Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
+Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
+Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId

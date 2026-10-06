@@ -418,7 +418,9 @@ public sealed partial class Scenes
         if (!_engine.Records.TryGet(scene.Terrain.Id, out TerrainRecord record)) return;   // the load check says so
         terrain.SurfaceLayers.Clear();
         terrain.SurfaceLayers.AddRange(record.Surfaces);   // issue #270: before the ground is (re)built
-        if (BuiltInTerrain.Matches(terrain.Generator, terrain.Seed, record)) return;
+        bool looks = terrain.Material == record.Material;
+        terrain.Material = record.Material;                // issue #307: drawn with it from the next sector built
+        if (looks && BuiltInTerrain.Matches(terrain.Generator, terrain.Seed, record)) return;
         for (int i = terrain.Sectors.Count - 1; i >= 0; i--) terrain.Unload(terrain.Sectors[i].Coord);
         terrain.Generator = BuiltInTerrain.Create(record);
         terrain.Seed = record.Seed;

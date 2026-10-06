@@ -298,16 +298,33 @@ public sealed class ClientModule : IModule
             Log.Info(LogCat.Console, $"reloaded {n} asset(s)");
         });
 
-        ctx.Engine.CVars.RegisterCommand("asset_list", CVarFlags.None, "Every asset currently loaded.", _ =>
+        var listed = ctx.Engine;
+        ctx.Engine.CVars.RegisterCommand("asset_list", CVarFlags.None,
+            "asset_list [filter]: every asset loaded, with its scope, how many live entities hold it, and its size (issue #308).", a =>
         {
-            if (_content == null) return;
+            if (_content == null || _renderer == null) return;
+            string? filter = a.Count > 0 ? a[0] : null;
+            var worlds = listed.Worlds;
             int n = 0;
-            foreach (var (path, kind, canReload) in _content.Cached)
+            long bytes = 0;
+            void Row(AssetPath path, string kind, AssetType? type, AssetScope scope, long size, string note = "")
             {
-                Log.Info(LogCat.Console, $"  {path,-48} {kind}{(canReload ? "" : "  (no hot reload)")}");
+                if (filter != null && !path.ToString().Contains(filter, StringComparison.OrdinalIgnoreCase)) return;
+                string refs = type is { } t ? AssetReleases.RefCount(worlds, new AssetKey(t, path)).ToString() : "-";
+                Log.Info(LogCat.Console, $"  {path,-48} {kind,-8} {AssetScopes.Name(scope),-7} refs {refs,-4} {size / 1024.0,8:F1} KB{note}");
                 n++;
+                bytes += size;
             }
-            Log.Info(LogCat.Console, $"{n} asset(s) loaded");
+            foreach (var (_, entry) in _renderer.Meshes.Entries)
+                if (!entry.Path.IsEmpty) Row(entry.Path, "mesh", AssetType.Mesh, entry.Scope, entry.Bytes);
+            foreach (var (_, entry) in _content.Textures.Entries) Row(entry.Path, "texture", AssetType.Texture, entry.Scope, entry.Bytes);
+            foreach (var (path, kind, canReload) in _content.Cached)
+                if (kind != "texture") Row(path, kind, null, AssetScope.Game, 0, canReload ? "" : "  (no hot reload)");
+            int built = 0;
+            foreach (var (_, entry) in _renderer.Meshes.Entries) if (entry.Path.IsEmpty) built++;
+            Log.Info(LogCat.Console, $"{n} asset(s) listed, {bytes / (1024.0 * 1024.0):F1} MB of meshes and textures; {built} built mesh(es) " +
+                                     $"(terrain, brushes); {_renderer.Releases.Evicted} evicted so far; upload budget {_renderer.Budget.MillisecondsPerFrame:F1} ms, " +
+                                     $"{_renderer.Budget.TotalDeferred} load(s) put off to a later frame");
         });
     }
 
@@ -366,6 +383,8 @@ public sealed class ClientModule : IModule
         world.Resources.Add(new ScreenStack());
         // Sprite animation is simulation, not rendering (12 §3), so AnimationModule installs it: a
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
+        // The frame's safe point for assets: what sectors released is freed before anything extracts (#308).
+        world.AddSystem(new AssetScopeSystem(world, _renderer!));
         // Terrain chunk meshes are built before extract, on the frame a sector appears (14 §3).
         world.AddSystem(new TerrainMeshSystem(world, _renderer!));
         // The far ring's coarse ground and far looks (#277), when sage.streaming keeps one.

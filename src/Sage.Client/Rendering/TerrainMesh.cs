@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -11,6 +12,9 @@ namespace Sage.Client;
 // LOD work per chunk. A sector the player is about to stand on is built whole on the frame it appears; one
 // streaming made live while walking (`TerrainSector.Budgeted`, #277) a few chunks a frame. Normals are the
 // heightfield's vertex normals, seam-free across sectors, and the buffers are released with the sector.
+// With a terrain material (`Terrain.Material`, issue #307) each vertex also carries its four layer weights
+// (`TerrainSplat.Weights`, worked out headlessly from the same heights and normals), and the chunk is
+// drawn with the splat effect; without one, or without the effect, it is the one tiling texture of before.
 [System("sage.client.terrain_mesh", Phase.FrameUpdate)]
 internal sealed class TerrainMeshSystem : ISystem
 {
@@ -26,10 +30,11 @@ internal sealed class TerrainMeshSystem : ISystem
     private Terrain? _terrain;
     private readonly World _world;
     private readonly List<VertexPositionNormalTexture> _vertices = new();
+    private readonly List<VertexTerrain> _splatVertices = new();
     private readonly List<int> _indices = new();
 
-    // What sectors that left released (#277, SectorAssets): freed here, on the frame after, before Extract.
-    private readonly List<AssetPath> _releasedPaths = new();
+    // The chunk meshes of sectors that left (#277, SectorAssets): freed here, on the frame after, before
+    // Extract. The models and textures they released are the renderer's to free (AssetScopeSystem, #308).
     private readonly List<MeshHandle> _releasedHandles = new();
 
     public TerrainMeshSystem(World world, Renderer renderer)
@@ -37,10 +42,7 @@ internal sealed class TerrainMeshSystem : ISystem
         _world = world;
         _renderer = renderer;
         if (world.Resources.TryGet<SectorAssets>(out var assets) && assets != null)
-        {
-            assets.Released += path => _releasedPaths.Add(path);
             assets.HandleReleased += handle => _releasedHandles.Add(handle);
-        }
     }
 
     public void Run(in SystemContext ctx)
@@ -78,18 +80,13 @@ internal sealed class TerrainMeshSystem : ISystem
         }
     }
 
-    // A sector's GPU buffers go with it (#277): the chunk meshes it built, and models nothing else draws.
-    // A path taken up again since it was released (a sector came straight back) is kept.
+    // A sector's chunk meshes go with it (#277).
     private void Release()
     {
-        if (_releasedHandles.Count == 0 && _releasedPaths.Count == 0) return;
+        if (_releasedHandles.Count == 0) return;
         for (int i = 0; i < _releasedHandles.Count; i++) _renderer.DestroyMesh(_releasedHandles[i]);
-        if (_releasedPaths.Count > 0 && _world.Resources.TryGet<SectorAssets>(out var assets) && assets != null)
-            for (int i = 0; i < _releasedPaths.Count; i++)
-                if (!assets.IsHeld(_releasedPaths[i])) _renderer.UnloadMesh(_releasedPaths[i]);
-        Log.Debug(LogCat.Streaming, $"freed {_releasedHandles.Count} built mesh(es) and {_releasedPaths.Count} model(s) with their sectors");
+        Log.Debug(LogCat.Streaming, $"freed {_releasedHandles.Count} built mesh(es) with their sectors");
         _releasedHandles.Clear();
-        _releasedPaths.Clear();
     }
 
     private void Build(TerrainSector sector, int from, int upTo, int chunks)
@@ -97,25 +94,24 @@ internal sealed class TerrainMeshSystem : ISystem
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var heights = sector.Heights;
         var corner = _terrain!.CornerOf(sector.Coord);   // origin space (R6), not absolute
+        var material = _renderer.Materials.TerrainLook(_terrain.Material, out var splat);
 
         for (int index = from; index < upTo; index++)
         {
             int cx = index % chunks, cz = index / chunks;
-            var handle = BuildChunk(heights, cx, cz, out BoundingSphere bounds);
+            var handle = BuildChunk(heights, splat, cx, cz, out BoundingSphere bounds);
             var entity = _world.Create(Transform.At(corner), $"terrain {sector.Coord} {cx},{cz}");
-            _world.Add(entity, new MeshRenderer { Handle = handle, Material = TerrainMaterial });
+            _world.Add(entity, new MeshRenderer { Handle = handle, Material = material });
             _world.Add(entity, new SectorOwned { Sector = sector.Coord });   // unloaded with it, its buffers released (#277)
         }
         Log.Info(LogCat.Streaming, $"Terrain sector {sector.Coord}: chunk meshes {from}..{upTo - 1} of {chunks * chunks} " +
                                    $"({ChunkCells}x{ChunkCells} cells each) in {watch.Elapsed.TotalMilliseconds:F1} ms");
     }
 
-    private static readonly RecordId TerrainMaterial = new("sage", "terrain_default");
-
     // One chunk: positions in world space (the entity transform stays identity, like other static
     // geometry), normals from the heightfield, and UVs that tile the material every metre.
     // Sector-local: the chunk is placed by its entity's transform, so an origin rebase moves it (R6).
-    private MeshHandle BuildChunk(Heightfield heights, int chunkX, int chunkZ, out BoundingSphere bounds)
+    private MeshHandle BuildChunk(Heightfield heights, TerrainMaterialRecord? splat, int chunkX, int chunkZ, out BoundingSphere bounds)
     {
         _vertices.Clear();
         _indices.Clear();
@@ -159,8 +155,46 @@ internal sealed class TerrainMeshSystem : ISystem
         float half = ChunkCells * spacing * 0.5f;
         var center = new Vector3((x0 * spacing) + half, (min + max) * 0.5f, (z0 * spacing) + half);
         bounds = new BoundingSphere(center, MathF.Sqrt(2 * half * half + MathF.Pow((max - min) * 0.5f, 2)));
-        return _renderer.CreateMesh(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_vertices),
-                                    System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_indices),
+        if (splat != null)
+        {
+            // The weight map, vertex by vertex, in the order the loop above added them. A vertex on a
+            // chunk's edge is the same grid vertex as its neighbour's, so the blend has no chunk seam.
+            _splatVertices.Clear();
+            for (int z = 0, i = 0; z < side; z++)
+                for (int x = 0; x < side; x++, i++)
+                    _splatVertices.Add(new VertexTerrain(_vertices[i], TerrainSplat.Weights(splat, heights, x0 + x, z0 + z)));
+            return _renderer.CreateMesh(CollectionsMarshal.AsSpan(_splatVertices), CollectionsMarshal.AsSpan(_indices),
+                                        bounds, $"terrain {chunkX},{chunkZ}");
+        }
+        return _renderer.CreateMesh(CollectionsMarshal.AsSpan(_vertices), CollectionsMarshal.AsSpan(_indices),
                                     bounds, $"terrain {chunkX},{chunkZ}");
     }
+}
+
+// A splat terrain vertex (issue #307): VertexPositionNormalTexture's three elements, then the four layer
+// weights as a colour (layer 0 in red), which `shaders/terrain.fx` reads as COLOR0. An effect that does not
+// read them (the fallback's lit.fx) draws it as a plain vertex.
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+internal readonly struct VertexTerrain : IVertexType
+{
+    public readonly Vector3 Position;
+    public readonly Vector3 Normal;
+    public readonly Vector2 TextureCoordinate;
+    public readonly Color Weights;
+
+    public VertexTerrain(in VertexPositionNormalTexture vertex, uint weights)
+    {
+        Position = vertex.Position;
+        Normal = vertex.Normal;
+        TextureCoordinate = vertex.TextureCoordinate;
+        Weights = new Color(weights);   // packed R lowest, as TerrainSplat packs layer 0
+    }
+
+    public static readonly VertexDeclaration VertexDeclaration = new(
+        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
+        new VertexElement(12, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0),
+        new VertexElement(24, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0),
+        new VertexElement(32, VertexElementFormat.Color, VertexElementUsage.Color, 0));
+
+    VertexDeclaration IVertexType.VertexDeclaration => VertexDeclaration;
 }

@@ -4454,6 +4454,14 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 255
+        },
+        "lod": {
+          "description": "Its LOD group (a mesh_lod record): coarser meshes with distance; empty = its own mesh always. Names a mesh_lod record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:mesh_lod"
+            }
+          ]
         }
       },
       "additionalProperties": false,
