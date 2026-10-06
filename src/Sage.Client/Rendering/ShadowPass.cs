@@ -5,18 +5,21 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Sage.Client;
 
-// Sun shadows (issue 4h-4, decision 1): the engine's first Shadow-stage pass. One stable map, R32F,
-// `r_shadow_size` texels a side, over the nearest `r_shadow_distance` metres of the screen's main view;
-// the lit shaders read it with a 2x2 PCF (common.fxh `ShadowLit`). Where the map sits is `ShadowMath.Fit`,
-// headless and tested; this only turns its answer into a view and draws it.
+// Sun shadows (issue 4h-4, decision 1; cascades issue 4n-11): the engine's first Shadow-stage pass. Up to
+// three stable cascades (`r_shadow_cascades`), R32F, `r_shadow_size` texels a side each, side by side in one
+// target, over the nearest `r_shadow_distance` metres of the screen's main view; the lit shaders pick a
+// cascade and read it with a 2x2 PCF (common.fxh `ShadowLit`). Where each map sits is
+// `ShadowMath.FitCascades`, headless and tested; this only turns its answer into views and draws them.
 //
-//   Extract  adds the **caster view**: the sun's orthographic view, camera-relative to the main view's
-//            camera, flagged `ShadowCaster`. The mesh and skinned extracts put into it only what
-//            `ShadowMath.Casts` (opaque materials with `castShadows`), culled against its box, which
-//            reaches toward the sun; sprites, particles, lights and debug lines skip it, and the
-//            viewmodel never reaches it. Nothing is added with `r_shadows 0`, in a world that does not
-//            draw to the screen, with no main view, or when the strength is 0 (the sun is down).
-//   Draw     renders those items into `sage:shadow` (Renderer.DrawShadowCasters).
+//   Extract  adds one **caster view** per cascade: the sun's orthographic view, camera-relative to the
+//            main view's camera, flagged `ShadowCaster`. The sun's direction is quantised first
+//            (`r_shadow_sun_step`), so the grids hold still while it moves. The mesh, skinned and sprite
+//            extracts put into each only what `ShadowMath.Casts` (opaque and alpha-tested materials with
+//            `castShadows`), culled against its box, which reaches toward the sun; particles, decals,
+//            lights and debug lines skip them, and the viewmodel never reaches them. Nothing is added with
+//            `r_shadows 0`, in a world that does not draw to the screen, with no main view, or when the
+//            strength is 0 (the sun is down).
+//   Draw     renders those items and sprites into `sage:shadow` (Renderer.DrawShadowCasters).
 //
 // Strength is `RenderEnvironment.ShadowStrength` — the sky's `shadow` key, softened by weather — and
 // nothing once the sun is below the horizon (`ShadowMath.Strength`). A world with no sky keeps the
@@ -28,6 +31,8 @@ internal sealed class ShadowPass : IRenderPass
     public const string Target = "sage:shadow";   // the map's render target
 
     private readonly RendererCVars _cvars;
+    private readonly ShadowFit[] _fits = new ShadowFit[ShadowMath.MaxCascades];
+    private readonly float[] _splits = new float[ShadowMath.MaxCascades];
 
     public ShadowPass(RendererCVars cvars) => _cvars = cvars;
 
@@ -42,51 +47,64 @@ internal sealed class ShadowPass : IRenderPass
         float distance = MathF.Min(main.Far, _cvars.ShadowDistance.Value);
         if (distance <= main.Near) return;
 
+        var atlas = ShadowMath.Atlas(_cvars.ShadowCascades.Value, _cvars.ShadowSize.Value);
+        int count = atlas.Cascades, size = atlas.CascadeSize;
+        var fits = _fits.AsSpan(0, count);
+        var splits = _splits.AsSpan(0, count);
+
         // The lens, from the projection: an orthographic one has M44 = 1.
         var p = main.Projection;
-        var (centre, radius) = p.M44 == 1f
-            ? ShadowMath.OrthographicSlice(main.Near, distance, 1f / p.M11, 1f / p.M22)
-            : ShadowMath.PerspectiveSlice(main.Near, distance, 1f / p.M11, 1f / p.M22);
         var origin = context.World.Resources.TryGet<Origin>(out var o) && o != null ? o.ToAbsolute(System.Numerics.Vector3.Zero) : default;
-        int size = _cvars.ShadowSize.Value;
-        var fit = ShadowMath.Fit(main.CameraPosition.ToNumerics(), main.Forward.ToNumerics(), centre, radius,
-                                 s.Environment.SunDirection.ToNumerics(), size, origin);
+        var sun = ShadowMath.QuantiseSun(s.Environment.SunDirection.ToNumerics(), _cvars.ShadowSunStep.Value);
+        ShadowMath.FitCascades(main.CameraPosition.ToNumerics(), main.Forward.ToNumerics(), p.M44 == 1f, 1f / p.M11, 1f / p.M22,
+                               main.Near, distance, sun, size, origin, fits, splits);
 
         var renderer = context.Renderer;
-        int target = renderer.DeclareTargetId(Target, size, size, SurfaceFormat.Single, DepthFormat.Depth24);
-        int index = s.Views.Count;
-        s.EnsureViewSlots(index + 1);
-        ref var view = ref s.Views.Add();
-        view.View = fit.View;              // System.Numerics → MonoGame (implicit)
-        view.Projection = fit.Projection;
-        view.ViewProj = fit.ViewProj;
-        view.CameraPosition = main.CameraPosition;
-        view.Forward = s.Environment.SunDirection;
-        view.Near = 0f;
-        view.Far = fit.DepthRange;
-        view.Target = target;
-        view.Viewport = new Rectangle(0, 0, size, size);
-        view.FullTarget = true;
-        view.Order = 0;
-        view.Hidden = 0;                   // a first-person body still casts
-        view.DepthOnly = false;
-        view.ShadowCaster = true;
-        view.LightStart = view.LightCount = 0;
-        view.DebugStart = view.DebugCount = 0;
-        view.Culled = 0;
-        view.ItemStart = view.ItemCount = 0;
-        view.SpriteStart = view.SpriteCount = 0;
-
-        // Culled against the map's box, which reaches toward the sun (never frozen by r_freezecull).
-        s.Frustum(index).Matrix = view.ViewProj;
-        s.CullOrigins[index] = view.CameraPosition;
-        s.CullValid[index] = true;
-
-        s.Shadow = new ShadowFrame
+        int target = renderer.DeclareTargetId(Target, atlas.Width, atlas.Height, SurfaceFormat.Single, DepthFormat.Depth24);
+        int first = s.Views.Count;
+        s.EnsureViewSlots(first + count);
+        var frame = new ShadowFrame
         {
-            View = index, Target = target, ViewProj = view.ViewProj, Camera = main.CameraPosition,
-            Bias = fit.DepthBias, Size = size, Drawn = false,
+            View = first, Count = count, Target = target, Camera = main.CameraPosition, Size = size, Drawn = false,
         };
+        for (int k = 0; k < count; k++)
+        {
+            ref readonly var fit = ref fits[k];
+            var (x, y) = atlas.Corner(k);
+            int index = first + k;
+            ref var view = ref s.Views.Add();
+            view.View = fit.View;              // System.Numerics → MonoGame (implicit)
+            view.Projection = fit.Projection;
+            view.ViewProj = fit.ViewProj;
+            view.CameraPosition = main.CameraPosition;
+            view.Forward = sun;                // the quantised sun: sprites turn to it
+            view.Near = 0f;
+            view.Far = fit.DepthRange;
+            view.Target = target;
+            view.Viewport = new Rectangle(x, y, size, size);
+            view.FullTarget = count == 1;
+            view.Order = 0;
+            view.Hidden = 0;                   // a first-person body still casts
+            view.DepthOnly = false;
+            view.ShadowCaster = true;
+            view.LightStart = view.LightCount = view.DynamicLightCount = 0;
+            view.DebugStart = view.DebugCount = 0;
+            view.Culled = 0;
+            view.ItemStart = view.ItemCount = 0;
+            view.SpriteStart = view.SpriteCount = 0;
+
+            // Culled against the cascade's box, which reaches toward the sun (never frozen by r_freezecull).
+            s.Frustum(index).Matrix = view.ViewProj;
+            s.CullOrigins[index] = view.CameraPosition;
+            s.CullValid[index] = true;
+
+            ref var cascade = ref frame.Cascades[k];
+            cascade.ViewProj = view.ViewProj;
+            cascade.Bias = fit.DepthBias;
+            cascade.Rect = new Vector4((float)x / atlas.Width, (float)y / atlas.Height,
+                                       (float)size / atlas.Width, (float)size / atlas.Height);
+        }
+        s.Shadow = frame;
     }
 
     public void Draw(RenderContext context) => context.Renderer.DrawShadowCasters(context);

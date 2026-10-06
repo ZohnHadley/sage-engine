@@ -117,7 +117,7 @@ internal sealed class CameraExtract : ISystem
             ? Matrix.CreateOrthographic(request.OrthoHeight * aspect, request.OrthoHeight, request.Near, request.Far)
             : Matrix.CreatePerspectiveFieldOfView(request.FovY, aspect, request.Near, request.Far);
         view.ViewProj = view.View * view.Projection;
-        view.LightStart = view.LightCount = 0;
+        view.LightStart = view.LightCount = view.DynamicLightCount = 0;
         view.DebugStart = view.DebugCount = 0;
         view.Culled = 0;
         view.ItemStart = view.ItemCount = 0;
@@ -522,17 +522,24 @@ internal sealed class LightExtract : ISystem
             Vector3 camera = view.CameraPosition;
             view.LightStart = snapshot.Lights.Count;
 
-            foreach (var (globals, lights, _) in _lights.Chunks)
-                for (int n = 0; n < globals.Length; n++)
-                {
-                    ref readonly var light = ref lights[n];
-                    if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
+            // The lamps that are not baked first, then the baked ones (issue #313): a lightmapped draw takes
+            // the first run only (`DynamicLightCount`), everything else the lot.
+            for (int baked = 0; baked < 2; baked++)
+            {
+                if (baked == 1) view.DynamicLightCount = snapshot.Lights.Count - view.LightStart;
+                foreach (var (globals, lights, _) in _lights.Chunks)
+                    for (int n = 0; n < globals.Length; n++)
+                    {
+                        ref readonly var light = ref lights[n];
+                        if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
+                        if (light.Baked != (baked == 1)) continue;
 
-                    var pose = globals[n].Interpolated(alpha);
-                    var world = pose.Position;
-                    var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
-                    snapshot.Lights.Add() = LightRules.Sample(light, at, pose.Rotation, seconds);
-                }
+                        var pose = globals[n].Interpolated(alpha);
+                        var world = pose.Position;
+                        var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
+                        snapshot.Lights.Add() = LightRules.Sample(light, at, pose.Rotation, seconds);
+                    }
+            }
             view.LightCount = snapshot.Lights.Count - view.LightStart;
         }
     }
@@ -665,11 +672,14 @@ internal sealed class SpriteExtract : ISystem
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
+                // An alpha-tested sprite casts a cut-out shadow, turned to the sun (issue 4n-11).
+                bool casts = ShadowMath.Casts(material.Pass, material.CastShadows);
+
                 // Per view (issue #77): which way it faces depends on where *this* camera is.
                 for (int v = 0; v < views; v++)
                 {
                     ref var view = ref s.Views[v];
-                    if (view.ShadowCaster) continue;                       // sprites cast no shadow (4h-4)
+                    if (view.ShadowCaster && !casts) continue;             // the sun's views keep casters only (4n-11)
                     if (view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
                     Vector3 camera = view.CameraPosition;
 
@@ -685,7 +695,10 @@ internal sealed class SpriteExtract : ISystem
                     }
 
                     // Which way does it face the camera, and which frame is playing?
-                    int direction = SpriteMath.DirectionIndex(pose.Position, camera.ToNumerics(), SageMath.YawOf(pose.Rotation), sheet.Directions, out bool flipU);
+                    // A caster view's "camera" is the sun (its Forward is the light's direction): the shadow
+                    // shows the side of a directional sprite the sun sees.
+                    var viewer = view.ShadowCaster ? pose.Position - view.Forward.ToNumerics() * 1000f : camera.ToNumerics();
+                    int direction = SpriteMath.DirectionIndex(pose.Position, viewer, SageMath.YawOf(pose.Rotation), sheet.Directions, out bool flipU);
                     int frameIndex = 0;
                     if (animated && sheet.Clip(animator.Clip) is { } clip)
                         frameIndex = SpriteMath.FrameAt(clip, direction, animator.Time);
