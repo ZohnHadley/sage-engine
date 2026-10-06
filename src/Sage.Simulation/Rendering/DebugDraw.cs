@@ -47,6 +47,20 @@ public sealed class DebugDraw
         public bool Drawn;
     }
 
+    // A world-space label (Text3D): expanded into strokes facing each camera at extract.
+    private struct Label
+    {
+        public Vector3 At;
+        public string Text;
+        public float Height;
+        public uint Rgba;
+        public float Remaining;
+        public bool Drawn;
+    }
+
+    private const int MaxLabels = 256;
+    private const int MaxLabelLength = 64;
+    private readonly List<Label> _labels = new(16);
     private readonly List<Entry> _entries = new(256);
     private bool _warned;
 
@@ -54,6 +68,31 @@ public sealed class DebugDraw
     public bool Enabled;
 
     public int Count => _entries.Count;
+
+    // World-space text labels waiting to be drawn.
+    public int LabelCount => _labels.Count;
+
+    // A label at `at`, `height` metres tall, in the stroke font (`DebugFont`), turned to face each camera
+    // at extract. For what a number cannot say in a log: an entity's id, a state, a distance. Capitals,
+    // digits and some punctuation; at most 64 characters (the rest are cut).
+    public void Text3D(Vector3 at, string text, uint colour = DebugColour.White, float height = 0.25f, float seconds = 0f)
+    {
+        if (!Enabled || string.IsNullOrEmpty(text) || _labels.Count >= MaxLabels) return;
+        if (text.Length > MaxLabelLength) text = text[..MaxLabelLength];
+        _labels.Add(new Label { At = at, Text = text, Height = height, Rgba = colour, Remaining = seconds });
+    }
+
+    // The labels as segments facing a camera whose screen axes in world space are `right` and `up`.
+    public void CopyLabelsTo(List<DebugLine> into, Vector3 right, Vector3 up)
+    {
+        for (int i = 0; i < _labels.Count; i++)
+        {
+            var l = _labels[i];
+            DebugFont.Layout(l.Text, l.At, right, up, l.Height, l.Rgba, into);
+            l.Drawn = true;
+            _labels[i] = l;
+        }
+    }
 
     // ---- shapes -------------------------------------------------------------------------------
     // `seconds` keeps a shape alive across frames, which is how you see something that happened in
@@ -202,6 +241,8 @@ public sealed class DebugDraw
         _warned = false;
         for (int i = _entries.Count - 1; i >= 0; i--)
             if (_entries[i].Remaining <= 0f) _entries.RemoveAt(i);
+        for (int i = _labels.Count - 1; i >= 0; i--)
+            if (_labels[i].Remaining <= 0f) _labels.RemoveAt(i);
     }
 
 
@@ -229,9 +270,17 @@ public sealed class DebugDraw
             if (entry.Remaining <= 0f && entry.Drawn) _entries.RemoveAt(i);
             else _entries[i] = entry;
         }
+        for (int i = _labels.Count - 1; i >= 0; i--)
+        {
+            var label = _labels[i];
+            if (label.Remaining <= 0f) continue;
+            label.Remaining -= seconds;
+            if (label.Remaining <= 0f && label.Drawn) _labels.RemoveAt(i);
+            else _labels[i] = label;
+        }
     }
 
-    public void Clear() => _entries.Clear();
+    public void Clear() { _entries.Clear(); _labels.Clear(); }
 }
 
 public static class DebugDrawExtensions
