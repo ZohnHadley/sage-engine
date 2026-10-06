@@ -515,6 +515,15 @@ jobs:
       - name: Install Xvfb
         run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
 
+      # TEMPORARY (diagnosing #481's black ground): the same frame with one feature off at a time.
+      - name: Diagnose the drawing (temporary)
+        continue-on-error: true
+        run: |
+          SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+wait 3\n+echo DIAG default\n+r_pixelcheck checks/drawing.json shaders\n+r_fog 0\n+wait 2\n+echo DIAG fog0\n+r_pixelcheck checks/drawing.json shaders\n+r_lights 0\n+wait 2\n+echo DIAG fog0-lights0\n+r_pixelcheck checks/drawing.json shaders\n+r_wireframe 1\n+wait 2\n+echo DIAG wireframe\n+r_pixelcheck checks/drawing.json shaders\n+wait 1' \
+            tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 tests/games/render-check 10 Audio Records Input Render || true
+          log=$(ls -t user/rendercheck/logs/sage-*.log | head -1)
+          grep -v "Pixel check passed\|Pixel check FAILED\|Pixel check skipped" "$log" | sed 's/^.*\] //' | head -150
+
       - name: Draw the render check and check its pixels (Development host, Xvfb)
         run: |
           set -euo pipefail
