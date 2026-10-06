@@ -354,7 +354,7 @@ intern table) or per thread (`Profiler` tables, `[ThreadStatic]` scratch buffers
 
 | Plan | Milestone | Issue |
 |---|---|---|
-| A `JobSystem` over the thread pool and async asset decode with budgeted GPU upload ([`../design/02-core-services-and-logging.md`](../design/02-core-services-and-logging.md) §4.5, 05 §6) | 4n | #308 |
+| A `JobSystem` over the thread pool and async asset decode ([`../design/02-core-services-and-logging.md`](../design/02-core-services-and-logging.md) §4.5, 05 §6); the GPU upload budget is built (#308), decoding is still on the main thread | later | none filed |
 | A render thread handed a copy of the snapshot (the snapshot is value data for this reason) | later | none filed |
 
 ## 11. Memory model
@@ -386,14 +386,18 @@ because a background GC miscounts the per-thread allocation figure.
 | Records | `RecordStore` on the `Engine` | Process; hot reload updates instances in place; runtime records (`AddRuntime`) survive reload. |
 | Entities and components | Each `World` | Until destroyed or the world is disposed. |
 | Physics bodies and shapes | `PhysicsSpace` per world (Bepu `BufferPool`) | The world. |
-| Textures, effects, sounds, fonts | `ContentService` | Cached for the process, disposed with the service; **never unloaded** while running. |
-| Meshes | `Renderer` mesh table | Same: process lifetime. |
+| Textures | `ContentService`'s `AssetTable` | By scope (#308): `Engine` and `Game` for the process; `Sector` until no live entity in any world holds it after its sectors unload; `Ui` until no screen has drawn it for 300 frames. Freed at the frame's safe point (`sage.client.asset_scopes`). |
+| Effects, sounds, fonts | `ContentService` | Cached for the process, disposed with the service; never unloaded while running. |
+| Meshes | `Renderer` mesh table (an `AssetTable`) | By scope, as textures; built meshes (terrain chunks, brushes) by their owner (`DestroyMesh`). |
 | Skeletons and clips | `GltfAnimationReader` on the `Engine` | Process, cached by path. |
 | Render targets | `RenderTargetPool` in the client | Reused across frames. |
 
-**Planned: asset scopes (4n, #308).** `AssetServer` with scopes (engine, game, scene, sector), reference
-counting, LRU eviction and a memory budget, so GPU memory returns to baseline when content unloads (SRS
-REQ-PERF-06). The streaming half, per-sector scopes for meshes (`SectorAssets`), is built (#277).
+**Asset scopes (4n, #308), built.** Meshes and textures carry a scope (engine, game, sector, UI; the stronger
+of two wins), sectors count who holds them (`SectorAssets`, #277), and what is released is freed at the
+frame's safe point, so GPU memory returns to baseline when content unloads (SRS REQ-PERF-06; test:
+LoadingAndUnloadingFiftySectorsReturnsTextureAndMeshCountsToBaseline). Streamed loads keep to
+`asset_upload_ms` a frame. There is no LRU cache or memory budget (`asset_cache_mb` was not built), and no
+`AssetRef` handle: ids in an `AssetTable` stay stable instead.
 
 ## 12. Persistence
 
@@ -451,13 +455,14 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
   parallelism.
 - **Exit games** in `tests/games/` (scene-only, camera-cut, scripted-sequence, topics, skeletal, weapons,
   saves, open-world, mods, editor, no-plugins) are data-first games that prove a phase's exit criterion
-  headlessly.
+  headlessly; `tests/games/render-check` is the fixed scene CI's `drawing` job reads back (#318).
 - **Analyzer tests** compile small sources and expect each SAGE id; layering tests read the built
   assemblies.
 - **Golden saves** for every format version must keep loading.
 - **Smoke runs** (`tools/smoke_run.sh`) start the real host under Xvfb with `host_exitafter` and check the
-  log; this is the only automated check of `Sage.Client`, which tests may not reference. Automated tests of
-  the drawing path are #318.
+  log; this is the only automated check of `Sage.Client`, which tests may not reference. The drawing path is
+  checked by CI's `drawing` job (#318): the Linux host draws `tests/games/render-check` with the shaders the
+  Windows job compiled, and `r_pixelcheck` checks regions of the frame it reads back.
 - **Docs are checked**: `tools/check_docs.py` verifies links, cited tests and counts against the registry
   dump; schema output is diffed in CI.
 
@@ -475,7 +480,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Event | a struct sent with `world.Events.Send`, read with `Reader<T>(this)` |
 | Entity input or output | `EntityInputs.Register` / `Register<T>`, `EntityOutputs.Declare` (in `Init`) |
 | Vocabulary word | `[Condition("id")]`, `[Action("id")]`, or a new `[Vocabulary]` with its entry attribute |
-| Render pass | `[RenderPass("ns:id", RenderStage.X)]` on an `IRenderPass`, added to `RenderPasses` in `Init` (replacing an engine pass is #322) |
+| Render pass | `[RenderPass("ns:id", RenderStage.X)]` on an `IRenderPass`, added to `RenderPasses` in `Init`; an engine pass is replaced or switched off by id with `RenderPasses.Replace` / `Disable` (#322) |
 | UI | a `Widget` subclass in code; screens by id in the client's `ScreenRegistry`; `ui_layout`, `ui_style`, `screen` records (new widget types from data are 4q) |
 | Console command, cvar | `CVarRegistry.RegisterCommand` / `Register` in `Init` |
 | Input action | `Engine.Actions.Register` in `Init`; bindings in `input_map` records |
@@ -507,7 +512,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Risk or debt | Effect | Plan |
 |---|---|---|
 | Per-process statics: `UserPaths`, `Log`, `CrashReporter` | Two apps in one process (an editor hosting a server, two test apps) share one log, user folder and crash report. | #49 (Stage E); rises if a server or multiplayer starts. |
-| Asset memory is freed only for meshes | A sector's meshes are released with it (#277); textures and sounds still grow without bound over a long session. | 4n, #308. |
+| ~~Asset memory is freed only for meshes~~ | Retired by #308: meshes and textures are released with their scope; sounds and effects (a handful each) stay for the process. | Done (4n, #308). |
 | ~~Single-threaded scheduler~~ | Systems that declare their access run in parallel stages since #288; no engine system declares its access yet, so the engine's phases still run one system at a time. | Done (4m, #288); declaring the engine's systems has no issue yet. |
 | ~~Save snapshots on the tick~~ | Retired by #285: the tick copies component columns (about 3 ms at 10k entities, Debug) and the writer builds the JSON. | Done (4m, #285). |
 | ~~Bepu allocates about 40 B a tick~~ | Retired by #273: it was our Stopwatch, and the step allocates nothing. | Done (4l, #273). |
@@ -516,5 +521,5 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Determinism is by construction only | No cross-run check; replays not possible yet. | 4l (#273), 4o replay (#333). |
 | Default `AssemblyLoadContext` for game and kit assemblies | Code mods cannot be unloaded or isolated. | 9, #396. |
 | No archive mounts | A game ships as a folder (`sage package`, #293), its mounts copied as folders. | Archive mounts, 9, #397. |
-| Render pass registry cannot replace or disable an engine pass | Games cannot swap core rendering stages. | 4n, #322. |
+| ~~Render pass registry cannot replace or disable an engine pass~~ | Retired by #322: `Replace`/`Disable` by id, applied at the seal. | Done (4n, #322). |
 | Dev tools allocate per frame | Frame zero-allocation holds only with the overlay closed. | 10b. |
