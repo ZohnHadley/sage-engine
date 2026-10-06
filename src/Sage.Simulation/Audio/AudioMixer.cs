@@ -57,6 +57,10 @@ public sealed class Voice
     // score dropping out for a footstep is the one thing worse than no score. Streamed, from LoopStart to
     // LoopEnd (frames; 0 is the end of the file) once it loops.
     internal bool Music;
+
+    // Started from a sound preview (`AudioMixer.Preview`): it restarts, even a one-shot, when its file
+    // is replaced, so editing a WAV plays the new sound.
+    internal bool Preview;
     internal long LoopStart;
     internal long LoopEnd;
 }
@@ -137,6 +141,7 @@ public sealed class AudioMixer
 
     public void SetBusVolume(AudioBus bus, float volume) => _settings.SetVolume(bus, volume);
 
+    public float BusVolume(AudioBus bus) => _settings.Volume(bus);
     // Occlusion and reverb (issue #329): set where the mixer is made for a world; without one every voice
     // is clear and dry.
     internal AudioEnvironment? Environment { get; set; }
@@ -219,6 +224,43 @@ public sealed class AudioMixer
         return voice.Handle;
     }
 
+    // The last sound previewed, so a reload of its file can play it again when it has already ended.
+    private RecordId _previewSound;
+    private SoundRecord? _previewRecord;
+
+    // Plays a sound record 2D for the editor's preview button and `snd_play` (issue 4o-12): at the
+    // listener, ignoring cooldown and instance limits so the button always answers. The mixer
+    // remembers it, and replays it when the file behind it is replaced (`Invalidate`).
+    public VoiceHandle Preview(RecordId sound, SoundRecord? record)
+    {
+        if (record == null || record.Variations.Count == 0) return Refuse(sound, "nothing to play");
+        _previewSound = sound;
+        _previewRecord = record;
+        return StartPreview();
+    }
+
+    private VoiceHandle StartPreview()
+    {
+        var record = _previewRecord!;
+        if (Capped() >= MaxVoices && !StealQuietest(record)) return Refuse(_previewSound, "every voice is busy with something louder");
+        var voice = new Voice
+        {
+            Handle = new VoiceHandle(_nextId++),
+            Sound = _previewSound,
+            Record = record,
+            Asset = record.Variations[_random.Next(record.Variations.Count)],
+            Positional = false,
+            Volume = record.Volume,
+            StartedAt = _now,
+            Preview = true,
+        };
+        Compute(voice);
+        _voices.Add(voice);
+        _lastPlayed[_previewSound] = _now;
+        Log.Trace(LogCat.Audio, $"preview {_previewSound} gain {voice.Gain:F2}");
+        return voice.Handle;
+    }
+
     // The record a music voice is computed with: 2D, on the Music bus, streamed. One for every music voice,
     // and never handed to anybody who could change it.
     private static readonly SoundRecord MusicSound = new() { Bus = AudioBus.Music, Stream = true, MaxDistance = 0f, MaxInstances = int.MaxValue };
@@ -290,13 +332,19 @@ public sealed class AudioMixer
     public int Invalidate(AssetPath asset)
     {
         int n = 0;
+        bool previewing = false;
         foreach (var voice in _voices)
         {
             if (voice.Asset != asset || voice.Stopping) continue;
-            if (voice.Loop) voice.Started = false;
+            if (voice.Loop || voice.Preview) voice.Started = false;
             else voice.Stopping = true;
+            previewing |= voice.Preview;
             n++;
         }
+
+        // A preview that already played out is played again: the point of editing a file under a
+        // preview is to hear the new one (issue 4o-12).
+        if (!previewing && _previewRecord != null && _previewRecord.Variations.Contains(asset) && StartPreview().IsValid) n++;
         return n;
     }
 

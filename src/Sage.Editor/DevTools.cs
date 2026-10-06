@@ -70,6 +70,7 @@ public sealed class DevTools : IDisposable
     private readonly RecordsPanel _records;   // the record browser (#224)
     private PalettePanel? _palette;   // #222
     private ProblemsPanel? _problems;   // #227
+    private AudioPanel? _audioPanel;    // 4o-12
     private PlaySession? _play;       // play-in-editor (#226): ed_play, ed_stop
     private PlayBar? _playBar;
     private WiringPanel? _wiring;     // #225
@@ -351,6 +352,7 @@ public sealed class DevTools : IDisposable
         if (_world != null) _wiring?.DrawLines(_world);
         _log.Draw();
         _problems?.Draw();
+        (_audioPanel ??= new AudioPanel(_engine, () => _world)).Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();

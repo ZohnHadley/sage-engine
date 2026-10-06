@@ -323,6 +323,10 @@ public sealed class ClientModule : IModule
             if (listening == 0) Log.Info(LogCat.Console, "no world is listening yet");
         });
 
+        // The on-screen overlay (voices, bus levels) is the editor's StatOverlay; this is its switch.
+        ctx.Engine.CVars.Register("snd_debug", false, CVarFlags.DevOnly,
+            "Overlay the active voices (sound, bus, distance, gain) and the bus levels; needs the dev tools.");
+
         ctx.Engine.CVars.RegisterCommand("snd_play", CVarFlags.Cheat,
             "snd_play <sound>: play a sound record at the listener, to hear what it is.", a =>
         {
@@ -332,7 +336,7 @@ public sealed class ClientModule : IModule
             var mixer = FirstMixer(ctx.Engine);
             if (mixer == null) { Log.Warn(LogCat.Console, "snd_play: no world is listening yet"); return; }
             ctx.Engine.Records.TryGet(id, out SoundRecord record);
-            var voice = mixer.Play(id, record, mixer.ListenerPosition, positional: false);
+            var voice = mixer.Preview(id, record);   // remembered: editing its file plays it again
             Log.Info(LogCat.Console, voice.IsValid ? $"playing {id}" : $"{id} was refused (see snd_stats)");
         });
 

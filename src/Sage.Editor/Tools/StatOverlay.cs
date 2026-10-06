@@ -20,6 +20,9 @@ internal sealed class StatOverlay
     private bool _showAssets;
     private readonly Func<Renderer?> _renderer;
     private readonly Func<World?> _world;
+    private readonly CVarRegistry _cvars;
+    private CVar<bool>? _soundDebug;                           // snd_debug (issue 4o-12), the client's cvar
+    private readonly AudioMonitor _audio = new();
 
     // Frame timing, averaged over half a second so the numbers are readable.
     private double _accumSeconds;
@@ -39,6 +42,7 @@ internal sealed class StatOverlay
         _core = core;
         _renderer = renderer;
         _world = world;
+        _cvars = cvars;
         cvars.RegisterCommand("stat", CVarFlags.None, "stat <fps|mem|frame|render|assets|all|none>: toggle performance overlays.", a =>
         {
             string what = a.Count > 0 ? a[0].ToLowerInvariant() : "";
@@ -142,9 +146,28 @@ internal sealed class StatOverlay
             ImGui.Text($"terrain sectors loaded {terrain.Sectors.Count,3}");
     }
 
+    // `snd_debug`: the bus levels and the active voices, loudest first, with how far each is.
+    private void DrawSound()
+    {
+        ImGui.Separator();
+        if (_world() is not { } world || !world.Resources.TryGet<AudioMixer>(out var mixer) || mixer == null)
+        {
+            ImGui.Text("no audio mixer");
+            return;
+        }
+        _audio.Refresh(mixer);
+        ImGui.Text($"voices {mixer.Playing}/{mixer.MaxVoices}   refused {mixer.Refused}   stolen {mixer.Stolen}");
+        foreach (var b in _audio.Buses)
+            ImGui.Text($"{b.Bus,-8} {b.Voices,3} voices   level {b.Level:F2}   peak {b.Peak:F2}   slider {b.Setting:F2}");
+        foreach (var v in _audio.Voices)
+            ImGui.Text($"{v.Sound,-28} {v.Bus,-7} {(v.Positional ? $"{v.Distance,6:F1} m" : "    2D  ")}  gain {v.Gain:F2}{(v.Loop ? " loop" : "")}");
+    }
+
     public void Draw()
     {
-        if (!_showFps && !_showMem && !_showFrame && !_showRender && !_showAssets) return;
+        _soundDebug ??= _cvars.Find("snd_debug") as CVar<bool>;   // registered by the client, which may start after this
+        bool sound = _soundDebug?.Value == true;
+        if (!sound && !_showFps && !_showMem && !_showFrame && !_showRender && !_showAssets) return;
 
         var io = ImGui.GetIO();
         ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X - 10, 30), ImGuiCond.Always, new Vector2(1, 0));
@@ -170,6 +193,8 @@ internal sealed class StatOverlay
                 DrawAssets();
             if (_showFrame)
                 DrawProfiler();
+            if (sound)
+                DrawSound();
         }
         ImGui.End();
     }
