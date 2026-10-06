@@ -1679,6 +1679,10 @@
               "y": {
                 "description": "(int)",
                 "type": "integer"
+              },
+              "rotated": {
+                "description": "(bool)",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1705,6 +1709,10 @@
               "y": {
                 "description": "(int)",
                 "type": "integer"
+              },
+              "rotated": {
+                "description": "(bool)",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1731,6 +1739,10 @@
               "y": {
                 "description": "(int)",
                 "type": "integer"
+              },
+              "rotated": {
+                "description": "(bool)",
+                "type": "boolean"
               }
             },
             "additionalProperties": false

@@ -29,6 +29,7 @@ public sealed class UiDraw
         public BitmapFont? Font;
         public float Scale;
         public Texture2D? Texture;
+        public bool Turned;   // an image a quarter turn clockwise into Destination
     }
 
     private readonly PooledList<Command> _commands = new(64);
@@ -159,6 +160,21 @@ public sealed class UiDraw
         };
     }
 
+    // An image a quarter turn clockwise, filling `destination` (an item turned on its side, issue #346).
+    internal void ImageTurned(Texture2D texture, Rectangle destination, Color colour)
+    {
+        ref var command = ref _commands.Add();
+        command = new Command
+        {
+            Kind = Kind.Image,
+            Destination = destination,
+            Source = new Rectangle(0, 0, texture.Width, texture.Height),
+            Colour = colour,
+            Texture = texture,
+            Turned = true,
+        };
+    }
+
     // Pixels a string will take, for centring and for right-aligned numbers. Zero before the font
     // has loaded, which callers can treat as "don't know yet".
     public Vector2 Measure(string text, float scale = 1f) =>
@@ -183,6 +199,13 @@ public sealed class UiDraw
                 case Kind.Text when (command.Font ?? _font) != null && command.Text != null:
                     (command.Font ?? _font)!.Draw(batch, command.Text.AsSpan(command.Start, command.Length),
                                new Vector2(command.Destination.X, command.Destination.Y), command.Colour, command.Scale);
+                    break;
+                case Kind.Image when command.Texture != null && command.Turned:
+                    // Turned about its top-left, which then sits at the destination's top-right: the
+                    // texture's width runs down the destination's height and its height across.
+                    var d = command.Destination;
+                    batch.Draw(command.Texture, new Rectangle(d.Right, d.Y, d.Height, d.Width), command.Source, command.Colour,
+                               MathF.PI / 2f, Vector2.Zero, SpriteEffects.None, 0f);
                     break;
                 case Kind.Image when command.Texture != null:
                     batch.Draw(command.Texture, command.Destination, command.Source, command.Colour);

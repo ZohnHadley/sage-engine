@@ -34,6 +34,9 @@ public sealed class UiRoot
     private Dropdown? _popup;
     private float _tooltipTime;
     private bool _pointerLast;
+    private Widget? _dragCandidate;   // a Draggable widget the pointer went down on: a click or a drag, as it turns out
+    private Vector2 _pressPoint;
+    private UiDrag _drag;
 
     public UiRoot(ITextMeasure text, Vector2 designSize = default)
     {
@@ -128,6 +131,21 @@ public sealed class UiRoot
     public Widget? Focused => _focused;
     public Widget? Hovered => _hovered;
 
+    // The drag in progress (issue #346), or an inactive one (IsActive false).
+    public UiDrag Drag => _drag;
+    public bool IsDragging => _drag.IsActive;
+
+    // How far (virtual units) the pointer moves, held on a Draggable widget, before it is a drag and not a click.
+    public float DragThreshold { get; set; } = 6f;
+
+    // Ends the drag in progress without a drop (a view-model that will not take it): nothing is reported.
+    public void CancelDrag()
+    {
+        if (!_drag.IsActive) return;
+        _drag = default;
+        Version++;
+    }
+
     // The dropdown whose list is open, drawn over everything and hit first (issue #340).
     public Dropdown? Popup => _popup;
 
@@ -221,21 +239,73 @@ public sealed class UiRoot
             {
                 _pointerLast = true;
                 SetHovered(hit);
-                // While a slider is held, the pointer drags it rather than moving focus away.
-                if (_captured == null && FocusTarget(hit) is { } target) FocusCore(target);
+                // While a slider is held, the pointer drags it rather than moving focus away; a drag moves
+                // focus with it, onto what it would be dropped on.
+                if ((_captured == null || _drag.IsActive) && FocusTarget(hit) is { } target) FocusCore(target);
             }
             if (input.Wheel != 0f && ScrollAncestor(hit) is { } scroll)
                 scroll.ScrollBy(new Vector2(0f, -input.Wheel * scroll.WheelStep));
             if (input.PointerPressed && FocusTarget(hit) is { } pressed && FocusCore(pressed))
             {
                 _captured = pressed;
-                if (pressed.IsEnabled) pressed.OnPointerPressed(point);
-                result.Activated = Activate(pressed);
+                _drag = default;
+                if (pressed.Draggable && pressed.IsEnabled && input.PointerDown)
+                {
+                    // Held on something that can be dragged: a click if it is let go where it is, a drag if
+                    // it moves first — so it is activated on the release, never on the press.
+                    _dragCandidate = pressed;
+                    _pressPoint = point;
+                }
+                else
+                {
+                    _dragCandidate = null;
+                    if (pressed.IsEnabled) pressed.OnPointerPressed(point);
+                    result.Activated = Activate(pressed);
+                }
             }
             else if (input.PointerDown && input.PointerMoved && _captured != null && _captured.Root == this && _captured.IsEnabled)
-                _captured.OnPointerDragged(point);
+            {
+                if (_drag.IsActive)
+                {
+                    _drag = new UiDrag(_drag.Source!, _drag.Payload, _drag.Start, point, hit);
+                    result.DragMoved = true;
+                    result.Drag = _drag;
+                    Version++;   // the ghost moved
+                }
+                else if (_dragCandidate != null)
+                {
+                    if (Vector2.Distance(point, _pressPoint) >= DragThreshold)
+                    {
+                        _drag = new UiDrag(_dragCandidate, RowOf(_dragCandidate), _pressPoint, point, hit);
+                        _dragCandidate = null;
+                        result.DragStarted = true;
+                        result.Drag = _drag;
+                        Version++;
+                    }
+                }
+                else _captured.OnPointerDragged(point);
+            }
         }
-        if (!input.PointerDown) _captured = null;
+        if (!input.PointerDown)
+        {
+            if (_drag.IsActive || _dragCandidate != null)
+            {
+                // Let go: what is under the pointer now, whether or not it moved this frame.
+                var under = HitTestVirtual(point);
+                if (_scope != null && !_scope.Contains(under)) under = null;
+                if (_drag.IsActive)
+                {
+                    result.Dropped = true;
+                    result.Drag = new UiDrag(_drag.Source!, _drag.Payload, _drag.Start, point, under);
+                    _drag = default;
+                    Version++;
+                }
+                else if (_dragCandidate!.Root == this && _dragCandidate.Contains(under))
+                    result.Activated = Activate(_dragCandidate);   // a click on something draggable
+                _dragCandidate = null;
+            }
+            _captured = null;
+        }
 
         // A key that typed a character into the focused text field is not also a direction (W, A, S
         // and D move focus in the `ui` context): arrows and the D-pad type nothing, so they still do.
@@ -248,8 +318,22 @@ public sealed class UiRoot
         }
         if (!string.IsNullOrEmpty(input.Typed) && _focused != null && _focused.WantsText && _focused.IsEnabled)
             _focused.OnText(input.Typed);
-        if (input.Confirm && _focused != null) result.Activated = Activate(_focused);
-        result.Back = input.Back && !(_focused != null && _focused.OnBack());
+        if (input.Confirm && _focused != null && !_drag.IsActive) result.Activated = Activate(_focused);
+        if (input.Command != UiCommand.None)
+        {
+            result.Command = input.Command;
+            result.CommandTarget = _drag.IsActive ? _drag.Source : _focused;
+        }
+        if (input.Back && _drag.IsActive)
+        {
+            // Back while dragging puts it back: a drop that is cancelled, and Back used.
+            result.Dropped = true;
+            result.Drag = new UiDrag(_drag.Source!, _drag.Payload, _drag.Start, _drag.Pointer, null, cancelled: true);
+            _drag = default;
+            _dragCandidate = _captured = null;
+            Version++;
+        }
+        else result.Back = input.Back && !(_focused != null && _focused.OnBack());
         result.Changed = _changed;
 
         UpdateTooltip(input.DeltaTime);
@@ -362,6 +446,8 @@ public sealed class UiRoot
     internal void Detaching(Widget subtree)
     {
         if (subtree.Contains(_captured)) _captured = null;
+        if (subtree.Contains(_dragCandidate)) _dragCandidate = null;
+        if (_drag.IsActive && subtree.Contains(_drag.Source)) { _drag = default; Version++; }
         if (subtree.Contains(_popup)) _popup = null;
         if (subtree.Contains(_focused)) { _focused = null; Version++; }
         if (subtree.Contains(_hovered)) _hovered = null;
@@ -408,6 +494,13 @@ public sealed class UiRoot
     {
         for (var w = hit; w != null; w = w.Parent)
             if (w.CanFocus) return w;
+        return null;
+    }
+
+    private static object? RowOf(Widget? widget)
+    {
+        for (var w = widget; w != null; w = w.Parent)
+            if (w.Data != null) return w.Data;
         return null;
     }
 

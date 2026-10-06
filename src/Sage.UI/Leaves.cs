@@ -102,6 +102,16 @@ public class Button : Label
 
     public override string TypeName => "button";
 
+    private string? _icon;
+    private bool _iconTurned;
+
+    // A picture drawn across its content, under its text, by asset path (issue #346): an item over the
+    // squares of its footprint, a spell's icon. Stretched to fill: a picture is drawn for the shape it fills.
+    public string? Icon { get => _icon; set { if (_icon == value) return; _icon = value; InvalidateVisual(); } }
+
+    // The icon is drawn a quarter turn clockwise: an item turned on its side in a grid.
+    public bool IconTurned { get => _iconTurned; set { if (_iconTurned == value) return; _iconTurned = value; InvalidateVisual(); } }
+
     public event Action<Button>? Pressed;
 
     protected internal override void OnActivate()
