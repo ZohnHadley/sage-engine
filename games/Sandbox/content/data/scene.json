@@ -606,7 +606,9 @@
     "skyColor": [0.26, 0.29, 0.27],
     "sunScale": 0.45, "ambientScale": 0.7,
     "fogTint": [0.55, 0.6, 0.6], "skyTint": [0.5, 0.55, 0.55], "fogStartScale": 0.4, "fogEndScale": 0.5,
-    "sound": "rain_loop", "soundVolume": 0.55, "shelteredVolume": 0.25
+    "sound": "rain_loop", "soundVolume": 0.55, "shelteredVolume": 0.25,
+    // Wet ground (issue #311): soaked in about forty seconds, then puddles on the flat; the sun dries it after.
+    "wetting": 0.025, "drying": 0
   },
   {
     // Rain with lightning (issue #311): a flash on the sky and the ambient every so often, outdoors only, and
@@ -620,7 +622,8 @@
     "sunScale": 0.3, "ambientScale": 0.55,
     "fogTint": [0.45, 0.5, 0.5], "skyTint": [0.4, 0.45, 0.45], "fogStartScale": 0.3, "fogEndScale": 0.4,
     "sound": "rain_loop", "soundVolume": 0.8, "shelteredVolume": 0.2,
-    "lightningRate": 6, "lightningFlash": 0.9, "thunder": "thunder", "thunderVolume": 0.9
+    "lightningRate": 6, "lightningFlash": 0.9, "thunder": "thunder", "thunderVolume": 0.9,
+    "wetting": 0.05, "drying": 0
   },
   {
     "type": "weather", "id": "snow", "label": "snow",

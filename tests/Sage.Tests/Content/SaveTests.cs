@@ -325,8 +325,10 @@ public class SaveTests
         var weather = fx.World.Resources.Get<Weather>();
         weather.Set(new RecordId("sandbox", "storm"), seconds: 4f);
         weather.Advance(1f);
+        weather.Wetness = 0.7f;   // how wet the ground is (issue #311)
 
         Assert.True(fx.Engine.Saves.Save("weather"));
+        weather.Wetness = 0f;
 
         // Let it clear up, the way playing on would.
         weather.Set(new RecordId("sage", "clear"), seconds: 0f);
@@ -339,6 +341,7 @@ public class SaveTests
         Assert.Equal(new RecordId("sandbox", "storm"), loaded.Target);
         Assert.Equal(0.25f, loaded.Blend, 2);
         Assert.False(loaded.Settled);
+        Assert.Equal(0.7f, loaded.Wetness, 3);
     }
 
     // What a world thinks of you, and what you are half way through, are the two things a save is most

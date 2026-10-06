@@ -22,9 +22,10 @@ internal static class MaterialSurface
 {
     // The effect parameters the surface fills (lit.fx's names). A record's `params` may not set them.
     public const string NormalMap = "NormalMap", SpecularMap = "SpecularMap", EmissiveMap = "EmissiveMap",
-                        EnvironmentMap = "EnvironmentMap", SurfaceParams = "SurfaceParams", EmissiveColor = "EmissiveColor";
+                        EnvironmentMap = "EnvironmentMap", SurfaceParams = "SurfaceParams", EmissiveColor = "EmissiveColor",
+                        Weathering = "Weathering";
 
-    public static readonly string[] Names = { NormalMap, SpecularMap, EmissiveMap, EnvironmentMap, SurfaceParams, EmissiveColor };
+    public static readonly string[] Names = { NormalMap, SpecularMap, EmissiveMap, EnvironmentMap, SurfaceParams, EmissiveColor, Weathering };
 
     // The 1x1 stand-ins (engine_content/textures, made by engine_content/tools/make_engine_textures.py).
     public static readonly AssetPath FlatNormal = AssetPath.Intern("textures/flat_normal.png");
@@ -50,6 +51,8 @@ internal static class MaterialSurface
                 Values = new[] { record.Specular, record.Gloss, record.EnvironmentMap.IsEmpty ? 0f : record.Reflectivity, record.VertexColors ? 1f : 0f },
             },
             EmissiveColor => new MaterialParam { Values = new[] { record.Emissive.X, record.Emissive.Y, record.Emissive.Z } },
+            // How much rain shows on it (issue #311): only an opaque material wets (WetnessRules.Weathering).
+            Weathering => new MaterialParam { Values = new[] { WetnessRules.Weathering(record) } },
             _ => null!,
         };
         return value != null;
@@ -68,10 +71,11 @@ internal static class MaterialSurface
         foreach (var name in record.Params.Keys)
             if (IsSurfaceParam(name))
                 check.Error($"params['{name}']", $"'{name}' is set by the material's surface fields (normalMap, specularMap, specular, gloss, " +
-                                                  "emissiveMap, emissive, vertexColors, environmentMap, reflectivity), not by params");
+                                                  "emissiveMap, emissive, vertexColors, environmentMap, reflectivity, weathering), not by params");
         if (!(record.Specular >= 0f && record.Specular <= 4f)) check.Error("specular", "must be between 0 and 4");
         if (!(record.Gloss >= 0f && record.Gloss <= 1f)) check.Error("gloss", "must be between 0 and 1");
         if (!(record.Reflectivity >= 0f && record.Reflectivity <= 1f)) check.Error("reflectivity", "must be between 0 and 1");
+        if (!(record.Weathering >= 0f && record.Weathering <= 1f)) check.Error("weathering", "must be between 0 and 1");
         if (!(record.Emissive.X >= 0f && record.Emissive.Y >= 0f && record.Emissive.Z >= 0f) || !float.IsFinite(record.Emissive.X + record.Emissive.Y + record.Emissive.Z))
             check.Error("emissive", "must be three numbers of 0 or more");
         if (record.Reflectivity > 0f && record.EnvironmentMap.IsEmpty)

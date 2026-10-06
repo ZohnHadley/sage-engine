@@ -254,7 +254,8 @@ internal static class WeatherPicker
     }
 }
 
-// Fixed Late, before the sky: the weather moves, the picker draws, the camera looks up, lightning strikes.
+// Fixed Late, before the sky: the weather moves, the picker draws, the ground wets or dries, the camera looks
+// up, lightning strikes.
 // Headless, so a server's weather and a test's are the client's.
 [System(Id, Phase.Late, Before = new[] { "sage.world.sky" })]
 internal sealed class WeatherSystem : ISystem
@@ -274,6 +275,7 @@ internal sealed class WeatherSystem : ISystem
         if (!resources.TryGet<RecordStore>(out var records) || records == null) return;
 
         Draw(weather, records, resources);
+        WetnessRules.Step(weather, records, dt);
 
         if (!resources.TryGet<WeatherSky>(out var sky) || sky == null) return;
         WeatherCover.Update(_world, sky, dt);

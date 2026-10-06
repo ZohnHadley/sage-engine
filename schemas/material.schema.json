@@ -205,6 +205,13 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1
+    },
+    "weathering": {
+      "description": "How much rain wets it: darker and glossier facing the sky, puddles where flat; 0 stays dry (opaque materials only) Range: 0 to 1. Category: Surface. (float, default 1)",
+      "default": 1,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     }
   },
   "additionalProperties": false
