@@ -204,6 +204,8 @@ internal sealed class ParticleExtract : ISystem
                     instance.Texture = texture;
                     instance.Mode = BillboardMode.Spherical;      // a spark has no up
                     instance.Roll = group.Rotation[i];            // and it may be turning (`spinDegrees`)
+                    instance.Right = default;                     // a billboard (issue #306)
+                    instance.Up = default;
                     instance.SortKey = RenderSortKey.Make(pass, 0, material, texture,
                                                           Vector3.Dot(centre, view.Forward.ToNumerics()), view.Far);
                     instance.View = v;

@@ -56,6 +56,11 @@ def main():
     if not os.path.isdir(OUT):
         os.makedirs(OUT)
     write_png(os.path.join(OUT, 'particle.png'), 32, 32, particle(32))
+    # The surface maps a material leaves out (issue #410), one pixel each, that change nothing: a normal
+    # straight out of the surface (0, 0, 1 as 128, 128, 255) and black, for no reflection. White (no
+    # change to the specular factors, and the emissive map under an emissive colour) is white.png.
+    write_png(os.path.join(OUT, 'flat_normal.png'), 1, 1, [(128, 128, 255, 255)])
+    write_png(os.path.join(OUT, 'black.png'), 1, 1, [(0, 0, 0, 255)])
 
 
 if __name__ == '__main__':
