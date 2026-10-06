@@ -55,7 +55,7 @@ internal static class RenderViewPlan
     // are `order[starts[v] .. starts[v] + counts[v])`, in key order, with their keys beside them in
     // `sortedKeys`. `starts` and `counts` need one slot per view; `sortedKeys` and `order` one per entry.
     //
-    // A counting sort by view, then a sort within each view: extract writes entries interleaved (a
+    // A counting sort by view, then a stable radix sort within each view (`RadixSort`, ties keep entry order): extract writes entries interleaved (a
     // system adds every view's copy of an entity before moving on, and particles come after sprites),
     // so the view cannot simply be the top bits of a key that already uses all 64.
     public static void Bucket(ReadOnlySpan<int> viewOf, ReadOnlySpan<ulong> keys, Span<int> starts, Span<int> counts,
@@ -86,7 +86,7 @@ internal static class RenderViewPlan
         for (int v = 0; v < views; v++)
         {
             starts[v] -= counts[v];
-            if (counts[v] > 1) sortedKeys.Slice(starts[v], counts[v]).Sort(order.Slice(starts[v], counts[v]));
+            if (counts[v] > 1) RadixSort.Sort(sortedKeys.Slice(starts[v], counts[v]), order.Slice(starts[v], counts[v]));
         }
     }
 }
