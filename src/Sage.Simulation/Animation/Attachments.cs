@@ -163,15 +163,32 @@ public static class BoneAttachments
         return PoseSampler.Compose(in pose);
     }
 
-    // Content checks (issue #22's rule: a mistake is a load error, at its line).
-    internal static void Check(SkeletonSocketsRecord record, RecordCheck check)
+    // Content checks (issue #22's rule: a mistake is a load error, at its line). `skeletonOf` reads the
+    // model's skeleton when it can (the engine's GltfAnimationReader; null when the model is not in a
+    // mount or has no skin, which other checks report): then every socket's joint must be one of its
+    // joints (issue #361), so a misspelt bone is said at load rather than as a sword that never moves.
+    internal static void Check(SkeletonSocketsRecord record, RecordCheck check, Func<AssetPath, Skeleton?>? skeletonOf = null)
     {
         if (record.Model.IsEmpty) check.Error("model", "names no model: sockets are looked up by the model their skeleton comes from");
+        var skeleton = record.Model.IsEmpty || skeletonOf == null ? null : skeletonOf(record.Model);
         foreach (var (name, socket) in record.Sockets)
         {
             if (socket == null) { check.Error($"sockets.{name}", "is empty"); continue; }
             if (string.IsNullOrWhiteSpace(socket.Joint)) check.Error($"sockets.{name}.joint", "names no joint");
+            else if (skeleton != null && skeleton.IndexOf(socket.Joint) < 0)
+                check.Error($"sockets.{name}.joint", $"names joint '{socket.Joint}', which the skeleton of '{record.Model.Path}' does not have{NearestJoint(skeleton, socket.Joint)}");
         }
+    }
+
+    // ", did you mean 'hand.R'?" for a joint whose name differs only in case or separators; else "".
+    private static string NearestJoint(Skeleton skeleton, string name)
+    {
+        static string Fold(string s) => s.Replace(".", "", StringComparison.Ordinal).Replace("_", "", StringComparison.Ordinal)
+                                         .Replace("-", "", StringComparison.Ordinal).Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
+        string folded = Fold(name);
+        for (int i = 0; i < skeleton.JointCount; i++)
+            if (Fold(skeleton.NameOf(i)) == folded) return $"; did you mean '{skeleton.NameOf(i)}'?";
+        return "";
     }
 
     // An entity's world pose from its transform and its parents', as of now (GlobalTransform is only
@@ -186,7 +203,7 @@ public static class BoneAttachments
 
 // Late phase, after the IK: moves every attachment to its socket. Allocation-free once resolved.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
-[System(Id, Phase.Late, After = new[] { AimIkSystem.Id, "?sage.animation.foot_ik" })]
+[System(Id, Phase.Late, After = new[] { AimIkSystem.Id, LookAtIkSystem.Id, HandIkSystem.Id, "?sage.animation.foot_ik" })]
 internal sealed class AttachmentSystem : ISystem
 {
     public const string Id = "sage.animation.attachments";
