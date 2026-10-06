@@ -14,8 +14,9 @@
   { "type": "map", "id": "crypt", "file": "maps/crypt.map", "at": [512, 0, 6656] },
   {
     "type": "scene", "id": "crypt", "space": "Interior", "maps": ["crypt"],
-    // No sky inside: this and the torches are all the light there is.
-    "environment": { "ambient": [0.05, 0.045, 0.05] }
+    // No sky inside: this and the torches are all the light there is. Its own music, faded to as the player
+    // comes down the steps; the main scene's fades back on the way out (engine issue #325).
+    "environment": { "ambient": [0.05, 0.045, 0.05], "music": "crypt" }
   },
   {
     // A torch on the crypt's wall: a point light that is always lit and flickers (the `flicker` preset, a

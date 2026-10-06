@@ -34,6 +34,9 @@ internal sealed class AudioSystem : ISystem
     private readonly HashSet<int> _sourceVoices = new();
     private readonly HashSet<int> _seen = new();
 
+    // The world's music made into voices (issue #325): the decisions are the player's, headless.
+    private readonly MusicPlayer _music = new();
+
     // The mixer and the backend are *this world's* (11 §3): voices are positioned in its origin space,
     // so a second world cannot share them any more than it can share a `RenderSnapshot`.
     public AudioSystem(World world, RecordStore records, CVar<bool> enabled)
@@ -68,7 +71,11 @@ internal sealed class AudioSystem : ISystem
 
         // Turning the sound off stops what is already playing, rather than leaving a loop running
         // silently until something else ends it.
-        if (!_enabled.Value && _mixer.Playing > 0) _mixer.StopAll();
+        if (!_enabled.Value && _mixer.Playing > 0)
+        {
+            _mixer.StopAll();
+            _music.Silence(_mixer);   // and starts the music again from the top when it comes back on
+        }
 
         if (_enabled.Value)
         {
@@ -77,6 +84,8 @@ internal sealed class AudioSystem : ISystem
             foreach (ref readonly var hit in _damage.Read()) Damage(hit);
             foreach (ref readonly var used in _used.Read()) Used(used);
             Sources(world);
+            if (world.Resources.TryGet<Music>(out var music) && music != null)
+                _music.Update(music, _records, _mixer, ctx.Frame.Dt);
         }
         else
         {
