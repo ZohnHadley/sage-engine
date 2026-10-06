@@ -78,7 +78,8 @@
             "ui_style",
             "viewmodel",
             "water_surface",
-            "weather"
+            "weather",
+            "weather_pattern"
           ]
         }
       },
@@ -906,6 +907,21 @@
           },
           "then": {
             "$ref": "weather.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "weather_pattern"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "weather_pattern.schema.json"
           }
         }
       ]
