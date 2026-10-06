@@ -53,6 +53,12 @@ public struct PointLight : IComponent
     [Property(Min = 0, Max = 179, Unit = "deg", Tooltip = "Spot light: full strength inside this half-angle, fading to the cone's edge; 0 = three quarters of the cone")]
     public float InnerCone;
 
+    // Casts shadows (issue #315): the renderer gives it a depth map — a spot's cone, or a cube all round —
+    // when it is among the `r_shadow_lamps` nearest that ask (LampShadows). Off by default: a lamp that
+    // does not ask costs no map. A save from before it loads as off.
+    [Property(Tooltip = "Casts shadows: one of the r_shadow_lamps nearest lamps that ask gets a depth map (a cube, or a spot's cone); costs a shadow pass")]
+    public bool Shadows;
+
     // Whether it lights anything: switched on, with a range and an intensity.
     public readonly bool Lit => !Off && Range > 0f && Intensity > 0f;
 }
@@ -121,6 +127,11 @@ public readonly record struct LightSample(Vector3 Position, Vector3 Colour, floa
     // inside the inner angle, nothing outside the outer, a ramp between, in one dot product. Zero — the
     // default — is 1 everywhere: a point light (`LightRules.Spot` makes one).
     public Vector4 Spot { get; init; }
+
+    // Shadows (issue #315): whether the light asks for a map (`PointLight.Shadows`), and the map it has this
+    // frame: 1 + its block in the lamps' atlas (LampShadows), 0 for none.
+    internal bool CastsShadows { get; init; }
+    internal int ShadowSlot { get; init; }
 
     // The cone's strength toward a point: 1 for a point light.
     public float ConeAt(Vector3 at)
@@ -210,7 +221,7 @@ public static class LightRules
     {
         float brightness = LightStyles.Brightness(light.Pattern, light.PatternRate, seconds);
         var spot = light.Cone > 0f ? Spot(Vector3.Transform(TransformMath.Forward, rotation), light.Cone, light.InnerCone) : Vector4.Zero;
-        return new LightSample(at, light.Colour * (light.Intensity * brightness), light.Range) { Spot = spot };
+        return new LightSample(at, light.Colour * (light.Intensity * brightness), light.Range) { Spot = spot, CastsShadows = light.Shadows };
     }
 
     // What the chosen lights add at a point on a surface facing `normal`: the shaders' sum, and these are

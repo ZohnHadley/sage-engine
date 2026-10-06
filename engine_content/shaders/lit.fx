@@ -117,6 +117,7 @@ float3 PointLightsLit(float3 n, float3 v, float3 relative, float power, out floa
 {
     float3 sum = float3(0, 0, 0);
     specular = float3(0, 0, 0);
+    float2 shadowed = LampShadows(relative, n);   // the lamps' shadow maps (issue #315)
 
     for (int i = 0; i < MAX_LIGHTS; i++)
     {
@@ -129,7 +130,7 @@ float3 PointLightsLit(float3 n, float3 v, float3 relative, float power, out floa
 
         float3 l = toLight / max(distance, 0.001);
         float falloff = 1.0 - distance / max(range, 0.001);
-        float3 c = LightColors[i].rgb * (falloff * falloff * SpotCone(i, -l));   // a spot's cone (issue #314)
+        float3 c = LightColors[i].rgb * (falloff * falloff * SpotCone(i, -l) * LampShadowOf(shadowed, i));   // a spot's cone (issue #314)
         sum += c * saturate(dot(n, l));
         specular += c * Highlight(n, v, l, power);
     }
@@ -267,20 +268,21 @@ float4 PSLightmapped(VSLightmappedOutput input) : COLOR0
 
 // ---- Shadow casters (issue 4h-4): depth into the sun's map ----
 //
-// ViewProj is the sun's (the renderer sets it for these draws). The depth goes out through a
-// TEXCOORD, as computed here: the map compares against the same number ShadowLit computes, whatever
-// the platform later does to the position's z.
+// ViewProj is the sun's, or a lamp face's (issue #315; the renderer sets it for these draws). The depth goes
+// out through a TEXCOORD, as computed here: the map compares against the same number ShadowLit (LampShadow)
+// computes, whatever the platform later does to the position's z. Its z and w go out and are divided per
+// pixel: a lamp's view is a perspective one, whose z/w is not linear across a triangle.
 struct VSShadowOutput
 {
     float4 Position : POSITION0;
-    float Depth     : TEXCOORD0;
+    float2 Depth    : TEXCOORD0;   // z and w: divided per pixel (a lamp's perspective map; issue #315)
 };
 
 VSShadowOutput VSShadow(VSInput input)
 {
     VSShadowOutput output;
     output.Position = mul(mul(input.Position, World), ViewProj);
-    output.Depth = output.Position.z / output.Position.w;
+    output.Depth = output.Position.zw;
     return output;
 }
 
@@ -289,13 +291,13 @@ VSShadowOutput VSShadowSkinned(VSSkinnedInput input)
     VSShadowOutput output;
     float4x3 skin = SkinMatrix(input.Indices, input.Weights);
     output.Position = mul(mul(SkinPosition(input.Position, skin), World), ViewProj);
-    output.Depth = output.Position.z / output.Position.w;
+    output.Depth = output.Position.zw;
     return output;
 }
 
 float4 PSShadow(VSShadowOutput input) : COLOR0
 {
-    return float4(input.Depth, 0, 0, 1);
+    return float4(input.Depth.x / input.Depth.y, 0, 0, 1);
 }
 
 // ---- Cut-out shadow casters (issue 4n-11): an alpha-tested material's own texture and cutoff ----
@@ -306,7 +308,7 @@ float4 PSShadow(VSShadowOutput input) : COLOR0
 struct VSShadowCutOutput
 {
     float4 Position : POSITION0;
-    float Depth     : TEXCOORD0;
+    float2 Depth    : TEXCOORD0;   // z and w: divided per pixel (a lamp's perspective map; issue #315)
     float2 UV       : TEXCOORD1;
 };
 
@@ -314,7 +316,7 @@ VSShadowCutOutput VSShadowCut(VSInput input)
 {
     VSShadowCutOutput output;
     output.Position = mul(mul(input.Position, World), ViewProj);
-    output.Depth = output.Position.z / output.Position.w;
+    output.Depth = output.Position.zw;
     output.UV = input.UV;
     return output;
 }
@@ -324,7 +326,7 @@ VSShadowCutOutput VSShadowCutSkinned(VSSkinnedInput input)
     VSShadowCutOutput output;
     float4x3 skin = SkinMatrix(input.Indices, input.Weights);
     output.Position = mul(mul(SkinPosition(input.Position, skin), World), ViewProj);
-    output.Depth = output.Position.z / output.Position.w;
+    output.Depth = output.Position.zw;
     output.UV = input.UV;
     return output;
 }
@@ -332,7 +334,7 @@ VSShadowCutOutput VSShadowCutSkinned(VSSkinnedInput input)
 float4 PSShadowCut(VSShadowCutOutput input) : COLOR0
 {
     AlphaTest(tex2D(AlbedoSampler, input.UV).a * AlbedoColor.a * Tint.a, AlphaCutoff);
-    return float4(input.Depth, 0, 0, 1);
+    return float4(input.Depth.x / input.Depth.y, 0, 0, 1);
 }
 
 technique Default
@@ -413,7 +415,7 @@ VSShadowOutput VSShadowInstanced(VSInstanceInput input)
 {
     VSShadowOutput output;
     output.Position = mul(mul(input.Position, InstanceWorld(input)), ViewProj);
-    output.Depth = output.Position.z / output.Position.w;
+    output.Depth = output.Position.zw;
     return output;
 }
 

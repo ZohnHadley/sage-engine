@@ -5008,6 +5008,11 @@
           "type": "number",
           "minimum": 0,
           "maximum": 179
+        },
+        "shadows": {
+          "description": "Casts shadows: one of the r_shadow_lamps nearest lamps that ask gets a depth map (a cube, or a spot's cone); costs a shadow pass. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

@@ -69,6 +69,7 @@ float Wrap(float3 n, float3 toLight)
 float3 SpritePointLights(float3 n, float3 relative)
 {
     float3 sum = float3(0, 0, 0);
+    float2 shadowed = LampShadows(relative, n);   // the lamps' shadow maps (issue #315)
 
     for (int i = 0; i < MAX_LIGHTS; i++)
     {
@@ -81,7 +82,7 @@ float3 SpritePointLights(float3 n, float3 relative)
 
         float falloff = 1.0 - distance / max(range, 0.001);
         float3 l = toLight / max(distance, 0.001);
-        sum += LightColors[i].rgb * (falloff * falloff * Wrap(n, l) * SpotCone(i, -l));
+        sum += LightColors[i].rgb * (falloff * falloff * Wrap(n, l) * SpotCone(i, -l) * LampShadowOf(shadowed, i));
     }
 
     return sum;
@@ -143,7 +144,7 @@ float4 PSUnlitBlendSoft(VSOutput input) : COLOR0
 struct VSShadowOutput
 {
     float4 Position : POSITION0;
-    float Depth     : TEXCOORD0;
+    float2 Depth    : TEXCOORD0;   // z and w: divided per pixel (a lamp's perspective map; issue #315)
     float2 UV       : TEXCOORD1;
     float Alpha     : TEXCOORD2;
 };
@@ -152,7 +153,7 @@ VSShadowOutput VSShadow(VSInput input)
 {
     VSShadowOutput output;
     output.Position = mul(input.Position, ViewProj);
-    output.Depth = output.Position.z / output.Position.w;
+    output.Depth = output.Position.zw;
     output.UV = input.UV;
     output.Alpha = input.Color.a;
     return output;
@@ -161,7 +162,7 @@ VSShadowOutput VSShadow(VSInput input)
 float4 PSShadow(VSShadowOutput input) : COLOR0
 {
     AlphaTest(tex2D(AlbedoSampler, input.UV).a * AlbedoColor.a * input.Alpha * Tint.a, AlphaCutoff);
-    return float4(input.Depth, 0, 0, 1);
+    return float4(input.Depth.x / input.Depth.y, 0, 0, 1);
 }
 
 technique Unlit

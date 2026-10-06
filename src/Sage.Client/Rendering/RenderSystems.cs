@@ -490,7 +490,7 @@ internal sealed class RenderPassExtract : ISystem
         _snapshot = world.Resources.Get<RenderSnapshot>();
     }
 
-    public void Run(in SystemContext ctx) => _renderer.ExtractPasses(ctx.World, _snapshot, _renderer.IsScreenWorld(ctx.World));
+    public void Run(in SystemContext ctx) => _renderer.ExtractPasses(ctx.World, _snapshot, _renderer.IsScreenWorld(ctx.World), ctx.Frame.Alpha);
 }
 
 // Extract: one SpriteInstance per visible billboard (06 §3.8). It picks the direction group from the
@@ -528,6 +528,7 @@ internal sealed class LightExtract : ISystem
 
         float alpha = ctx.Frame.Alpha;
         double seconds = WorldTime.Of(ctx.World).Scaled;
+        var maps = snapshot.LampMaps;
         // A view at a time, so each view's lights are one run of the list (RenderView.LightStart).
         for (int v = 0; v < snapshot.Views.Count; v++)
         {
@@ -541,7 +542,7 @@ internal sealed class LightExtract : ISystem
             for (int baked = 0; baked < 2; baked++)
             {
                 if (baked == 1) view.DynamicLightCount = snapshot.Lights.Count - view.LightStart;
-                foreach (var (globals, lights, _) in _lights.Chunks)
+                foreach (var (globals, lights, entities) in _lights.Chunks)
                     for (int n = 0; n < globals.Length; n++)
                     {
                         ref readonly var light = ref lights[n];
@@ -551,7 +552,10 @@ internal sealed class LightExtract : ISystem
                         var pose = globals[n].Interpolated(alpha);
                         var world = pose.Position;
                         var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
-                        snapshot.Lights.Add() = LightRules.Sample(light, at, pose.Rotation, seconds);
+                        var sample = LightRules.Sample(light, at, pose.Rotation, seconds);
+                        // Its shadow map, if `sage:shadow` gave it one this frame (issue #315).
+                        if (light.Shadows && maps.Count > 0) sample = sample with { ShadowSlot = maps.SlotOf(entities.EntityAt(n)) };
+                        snapshot.Lights.Add() = sample;
                     }
             }
             view.LightCount = snapshot.Lights.Count - view.LightStart;

@@ -19,10 +19,11 @@
   },
   {
     // A torch on the crypt's wall: a point light that is always lit and flickers (the `flicker` preset, a
-    // Quake light style; engine issue #314), and its embers.
+    // Quake light style; engine issue #314), and its embers. It casts shadows (a cube map, engine issue #315):
+    // the crate throws one across the floor (the two nearest torches, r_shadow_lamps).
     "type": "prefab", "id": "crypt_torch", "name": "torch",
     "parts": {
-      "light": { "colour": [1.0, 0.62, 0.32], "range": 9, "intensity": 2.6, "pattern": "flicker" },
+      "light": { "colour": [1.0, 0.62, 0.32], "range": 9, "intensity": 2.6, "pattern": "flicker", "shadows": true },
       "particles": { "effect": "embers" }
     }
   },

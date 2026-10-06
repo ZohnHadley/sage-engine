@@ -1547,6 +1547,11 @@
           "type": "number",
           "minimum": 0,
           "maximum": 179
+        },
+        "shadows": {
+          "description": "Casts shadows (a cube, or a spot's cone) when among the r_shadow_lamps nearest lamps that ask; off costs nothing. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

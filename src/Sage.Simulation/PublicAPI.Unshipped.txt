@@ -266,3 +266,4 @@ Sage.Simulation.RenderPassRegistry<TPass>.Disable(string! id, string! by) -> voi
 Sage.Simulation.RenderPassRegistry<TPass>.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.RenderPassInfo!>!
 Sage.Simulation.RenderPassRegistry<TPass>.Replace(string! id, TPass! pass, string? by = null) -> void
 Sage.Simulation.ParticleRecord.Soft -> float
+Sage.Simulation.PointLight.Shadows -> bool

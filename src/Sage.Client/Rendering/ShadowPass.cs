@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -23,6 +24,12 @@ namespace Sage.Client;
 //            `r_shadows 0`, with no view that receives, or when the strength is 0 (the sun is down).
 //   Draw     renders those items and sprites into `sage:shadow` (the main view's; `sage:shadow:1` and on
 //            for the others), and each view's lit draws read its own (Renderer.DrawShadowCasters).
+//
+// Lamps (issue #315): with `r_shadows 1`, day or night, the `r_shadow_lamps` nearest lamps that say `shadows`
+// (LampShadows.Choose) get a map each in `sage:shadow:lamps` — a spot one perspective view, a point light six —
+// through caster views like the cascades', which hide the lamp's own entity. LightExtract marks their samples
+// (LightSample.ShadowSlot) and the lit draws read the atlas (common.fxh `LampShadow`). No lamp that asks: no
+// target, no view, nothing drawn.
 //
 // Strength is `RenderEnvironment.ShadowStrength` — the sky's `shadow` key, softened by weather — and
 // nothing once the sun is below the horizon (`ShadowMath.Strength`). A world with no sky keeps the
@@ -59,7 +66,14 @@ internal sealed class ShadowPass : IRenderPass
         if (!_cvars.Shadows.Value) return;
         var s = context.Snapshot;
         int views = s.Views.Count;
-        if (views == 0 || s.Environment.ShadowStrength <= 0f) return;
+        if (views == 0) return;
+        ExtractSun(context, s, views);
+        AddLamps(context, s);   // after the sun's: lamps shadow at night too
+    }
+
+    private void ExtractSun(RenderContext context, RenderSnapshot s, int views)
+    {
+        if (s.Environment.ShadowStrength <= 0f) return;
 
         // Which views get a map (ShadowViews, headless and tested): the main view first, then the rest.
         float distance = _cvars.ShadowDistance.Value;
@@ -147,4 +161,107 @@ internal sealed class ShadowPass : IRenderPass
     }
 
     public void Draw(RenderContext context) => context.Renderer.DrawShadowCasters(context);
+
+    // ---- Lamp shadows (issue #315) ----
+
+    private const string LampTarget = "sage:shadow:lamps";
+
+    // Each world's lamps, queried once (a query allocates when it is made).
+    private readonly ConditionalWeakTable<World, LampQuery> _lampQueries = new();
+    private sealed class LampQuery(World world)
+    {
+        public readonly Query<GlobalTransform, PointLight> Lights = world.Query<GlobalTransform, PointLight>();
+    }
+
+    private LightSample[] _lampCandidates = new LightSample[16];
+    private Entity[] _lampEntities = new Entity[16];
+    private readonly int[] _lampChosen = new int[LampShadows.MaxLamps];
+
+    // The lamps that get a map (LampShadows.Choose, from the receiving camera: the screen's main view, else
+    // the first real view), each fitted (LampShadows.Fit) with a caster view per face, all into one atlas.
+    // Nothing at all — no target, no view — when no lamp asks, or `r_shadow_lamps 0`.
+    private void AddLamps(RenderContext context, RenderSnapshot s)
+    {
+        int budget = _cvars.ShadowLamps.Value;
+        if (budget <= 0) return;
+        int receiver = s.LodView();
+        if (receiver < 0 || s.Views[receiver].NoShadows) return;
+        var camera = s.Views[receiver].CameraPosition;
+
+        // The lamps that ask, camera-relative, as LightExtract samples them (unflickered: a flicker's dark
+        // step must not take the map away and give it back).
+        var query = _lampQueries.GetValue(context.World, static w => new LampQuery(w)).Lights;
+        int count = 0;
+        foreach (var (globals, lights, entities) in query.Chunks)
+            for (int n = 0; n < globals.Length; n++)
+            {
+                ref readonly var light = ref lights[n];
+                if (!light.Shadows || !light.Lit) continue;
+                var pose = globals[n].Interpolated(context.Alpha);
+                var at = pose.Position - camera.ToNumerics();
+                var spot = light.Cone > 0f ? LightRules.Spot(System.Numerics.Vector3.Transform(TransformMath.Forward, pose.Rotation), light.Cone, light.InnerCone)
+                                           : System.Numerics.Vector4.Zero;
+                if (count == _lampCandidates.Length)
+                {
+                    Array.Resize(ref _lampCandidates, count * 2);
+                    Array.Resize(ref _lampEntities, count * 2);
+                }
+                _lampCandidates[count] = new LightSample(at, light.Colour * light.Intensity, light.Range) { Spot = spot, CastsShadows = true };
+                _lampEntities[count++] = entities.EntityAt(n);
+            }
+        int chosen = LampShadows.Choose(_lampCandidates.AsSpan(0, count), budget, _lampChosen);
+        if (chosen == 0) return;
+
+        var frame = s.LampMaps;
+        var atlas = LampShadows.Atlas(budget, _cvars.ShadowLampSize.Value);
+        var renderer = context.Renderer;
+        frame.Atlas = atlas;
+        frame.Target = renderer.DeclareTargetId(LampTarget, atlas.Width, atlas.Height, SurfaceFormat.Single, DepthFormat.Depth24);
+        frame.Camera = camera;
+        frame.View = s.Views.Count;
+        frame.Count = chosen;
+        var main = s.Views[receiver];   // a copy: Add below may move the list
+        for (int k = 0; k < chosen; k++)
+        {
+            int index = _lampChosen[k];
+            frame.Lamps[k] = _lampEntities[index];
+            ref var fit = ref frame.Fits[k];
+            fit = LampShadows.Fit(_lampCandidates[index], k, atlas);
+            s.EnsureViewSlots(s.Views.Count + fit.Faces);
+            for (int f = 0; f < fit.Faces; f++)
+            {
+                ref readonly var face = ref fit.Views[f];
+                int v = s.Views.Count;
+                ref var view = ref s.Views.Add();
+                view.View = face.View;              // System.Numerics → MonoGame (implicit)
+                view.Projection = face.Projection;
+                view.ViewProj = face.ViewProj;
+                view.CameraPosition = camera;
+                view.Forward = face.Forward;        // sprites turn as they would to a sun that way
+                view.Near = fit.Near;
+                view.Far = fit.Far;
+                view.Target = frame.Target;
+                view.Viewport = new Rectangle(face.X, face.Y, atlas.TileSize, atlas.TileSize);
+                view.FullTarget = false;
+                view.Order = 0;
+                view.Hidden = frame.Lamps[k].Id;   // a lamp's own mesh (its glass, its torch) does not hide it
+                view.DepthOnly = false;
+                view.ShadowCaster = true;
+                view.Source = main.Source;
+                view.NoShadows = view.NoViewmodel = view.NoSky = view.NoDebugLines = false;
+                view.Shadow = -1;
+                view.Receiver = receiver;
+                view.LightStart = view.LightCount = view.DynamicLightCount = 0;
+                view.DebugStart = view.DebugCount = 0;
+                view.Culled = 0;
+                view.ItemStart = view.ItemCount = 0;
+                view.SpriteStart = view.SpriteCount = 0;
+
+                s.Frustum(v).Matrix = view.ViewProj;
+                s.CullOrigins[v] = camera;
+                s.CullValid[v] = true;
+            }
+        }
+        frame.ViewCount = s.Views.Count - frame.View;
+    }
 }

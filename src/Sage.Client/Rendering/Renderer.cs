@@ -714,9 +714,10 @@ public sealed partial class Renderer : IDisposable
     }
 
     // Every pass's Extract, in draw order (RenderPassExtract, after the cameras).
-    internal void ExtractPasses(World world, RenderSnapshot s, bool screen)
+    internal void ExtractPasses(World world, RenderSnapshot s, bool screen, float alpha = 1f)
     {
         var ctx = Begin(world, s, screen, extracting: true);
+        ctx.Alpha = alpha;
         for (int stage = 0; stage < RenderStages.Count; stage++)
         {
             var passes = _passes.In((RenderStage)stage);
@@ -980,7 +981,8 @@ public sealed partial class Renderer : IDisposable
     internal void DrawShadowCasters(RenderContext ctx)
     {
         var s = ctx.Snapshot;
-        if (s.Shadows.Count == 0) return;
+        var lamps = s.LampMaps;
+        if (s.Shadows.Count == 0 && lamps.Count == 0) return;
 
         // A default material that could not be built (no shaders: Linux CI) is already reported, under Shaders.
         var material = Materials.Get(Materials.Resolve(MaterialRecord.Default));
@@ -1000,23 +1002,35 @@ public sealed partial class Renderer : IDisposable
             ref var map = ref s.Shadows[m];
             SetTarget(map.Target);
             _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Vector4.One, 1f, 0);
-            for (int c = 0; c < map.Count; c++)
-            {
-                ref var view = ref s.Views[map.View + c];
-                _stats.ShadowCasters += view.ItemCount + view.SpriteCount;   // what the caster views hold, drawn or not (r_stats)
-                _device.Viewport = new Viewport(view.Viewport);
-                CasterState();
-                caster.ViewProj?.SetValue(view.ViewProj);
-                caster.FrameStamp = -1;   // the next view sets its own frame parameters on this effect
-                _current = -1;
-                DrawCasterItems(s, view, caster);
-                DrawCasterSprites(s, view);
-            }
+            for (int c = 0; c < map.Count; c++) DrawCasterView(s, map.View + c, caster);
             map.Drawn = true;
+            _stats.ShadowMaps++;
+        }
+        // The lamps' maps (issue #315): every face of every lamp into its tile of the one atlas.
+        if (lamps.Count > 0)
+        {
+            SetTarget(lamps.Target);
+            _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Vector4.One, 1f, 0);
+            for (int v = 0; v < lamps.ViewCount; v++) DrawCasterView(s, lamps.View + v, caster);
+            lamps.Drawn = true;
             _stats.ShadowMaps++;
         }
         _sprites.FaceCameraPosition = faceCamera;
         _current = -1;
+    }
+
+    // One caster view: its casters into its square of the target bound.
+    private void DrawCasterView(RenderSnapshot s, int index, EffectBinding caster)
+    {
+        ref var view = ref s.Views[index];
+        _stats.ShadowCasters += view.ItemCount + view.SpriteCount;   // what the caster views hold, drawn or not (r_stats)
+        _device.Viewport = new Viewport(view.Viewport);
+        CasterState();
+        caster.ViewProj?.SetValue(view.ViewProj);
+        caster.FrameStamp = -1;   // the next view sets its own frame parameters on this effect
+        _current = -1;
+        DrawCasterItems(s, view, caster);
+        DrawCasterSprites(s, view);
     }
 
     // What every caster draws with: depth tested and written, no blending (the map is a float target),
@@ -1217,7 +1231,10 @@ public sealed partial class Renderer : IDisposable
             var shadows = _drawing;
             bool shadowed = shadows != null && view.Shadow >= 0 && view.Shadow < shadows.Shadows.Count && shadows.Shadows[view.Shadow].Drawn;
             ref readonly var shadow = ref shadowed ? ref shadows!.Shadows[view.Shadow] : ref NoShadow;
-            m.Effect.SetFrame(view, env, shadow, shadowed ? _targets.Texture(shadow.Target) : null, Materials.MissingTexture);
+            var lamps = shadows?.LampMaps;
+            bool lampsDrawn = lamps is { Drawn: true, Count: > 0 };
+            m.Effect.SetFrame(view, env, shadow, shadowed ? _targets.Texture(shadow.Target) : null, Materials.MissingTexture,
+                              lampsDrawn ? lamps : null, lampsDrawn ? _targets.Texture(lamps!.Target) : null);
             m.Effect.FrameStamp = _viewStamp;
         }
         if (material != _current)
@@ -1601,6 +1618,8 @@ internal sealed class RendererCVars
     public readonly CVar<float> ShadowSunStep;
     public readonly CVar<int> ShadowViews;         // issue 4n-19
     public readonly CVar<int> ShadowViewSize;
+    public readonly CVar<int> ShadowLamps;         // issue #315
+    public readonly CVar<int> ShadowLampSize;
 
     // Post-processing (issue 4h-6): the post_effect chain, the engine's two effects' switches, and the
     // render scale (06 §3.9), which works with the chain off too.
@@ -1658,6 +1677,12 @@ internal sealed class RendererCVars
         ShadowViewSize = cvars.Register("r_shadow_view_size", global::Sage.Simulation.ShadowViews.DefaultViewSize, CVarFlags.None,
             "Each cascade of a shadow map for a view other than the screen's main one, in texels a side (never more than r_shadow_size).",
             256, 4096);
+        ShadowLamps = cvars.Register("r_shadow_lamps", LampShadows.DefaultLamps, CVarFlags.None,
+            "Lamp shadows (issue #315): how many of the lamps that say \"shadows\" get a shadow map a frame, the nearest first " +
+            "(a cube for a point light, one view for a spot); the others light without shadows. 0: none. Needs r_shadows 1.",
+            0, LampShadows.MaxLamps);
+        ShadowLampSize = cvars.Register("r_shadow_lamp_size", LampShadows.DefaultSize, CVarFlags.None,
+            "Each face of a lamp's shadow map, in texels a side (less if the lamps' atlas would pass 4096).", 64, 2048);
         Post = cvars.Register("r_post", false, CVarFlags.Archive,
             "Post-processing (issue 4h-6): the screen is drawn into sage:scene and through the post_effect chain (colour grade, vignette) before the UI.");
         Scale = cvars.Register("r_scale", 1f, CVarFlags.Archive,

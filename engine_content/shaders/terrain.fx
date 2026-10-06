@@ -91,20 +91,20 @@ float4 PSSplat(VSOutput input) : COLOR0
 struct VSShadowOutput
 {
     float4 Position : POSITION0;
-    float Depth     : TEXCOORD0;
+    float2 Depth    : TEXCOORD0;   // z and w: divided per pixel (a lamp's perspective map; issue #315)
 };
 
 VSShadowOutput VSShadow(VSInput input)
 {
     VSShadowOutput output;
     output.Position = mul(mul(input.Position, World), ViewProj);
-    output.Depth = output.Position.z / output.Position.w;
+    output.Depth = output.Position.zw;
     return output;
 }
 
 float4 PSShadow(VSShadowOutput input) : COLOR0
 {
-    return float4(input.Depth, 0, 0, 1);
+    return float4(input.Depth.x / input.Depth.y, 0, 0, 1);
 }
 
 technique Splat

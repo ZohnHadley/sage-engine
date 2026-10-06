@@ -4,8 +4,9 @@
 // Parameter tiers (07 §3.4), set by the renderer; materials never set these:
 //   frame:  ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time,
 //           ShadowViewProj, ShadowParams, ShadowMap (the sun's shadow map, issue 4h-4),
-//           ShadowCascadeRects, ShadowCascadeBias (its cascades, issue 4n-11)
-//   object: World, Tint, and for skinned draws Bones
+//           ShadowCascadeRects, ShadowCascadeBias (its cascades, issue 4n-11),
+//           LampShadowMap, LampShadowAtlas (the lamps' shadow atlas, issue #315)
+//   object: World, Tint, and for skinned draws Bones; the lamps (LightPositions...) and their maps (LampShadow*)
 //   material (set from the material record, with FogEnabled from the record's "fog"):
 //           FogEnabled + whatever the effect declares (Albedo, AlphaCutoff...)
 // OpenGL ignores default values in .fx files: every parameter is set by the engine or a material.
@@ -92,6 +93,95 @@ float3 SunLight(float3 n)
     return SunColor * saturate(dot(n, -SunDir));
 }
 
+// ---- Object: the lamps' shadow maps (issue #315; `LampShadows`, Sage.Simulation, whose tests are these functions') ----
+//
+// A lamp that says `shadows`, among the frame's `r_shadow_lamps` nearest, has a map in one R32F atlas drawn by
+// `sage:shadow` with the ShadowCaster techniques: a spot one perspective view down its cone, a point light
+// (or a wide spot) a cube of six 90-degree views. The renderer puts a draw's lamps with maps first, and the
+// first MAX_LAMP_SHADOWS are looked up here, in straight-line code before the lamps' loop (a texture read in
+// a loop that may stop early is not allowed). No matrices: the face is the major axis of the lamp-to-surface
+// vector (a spot has one), its uv the other two axes over it, and the depth the caster's z/w, A - B / distance.
+// LampShadowCorner.w is 0 for a lamp with no map, which makes whatever is read not matter.
+#define MAX_LAMP_SHADOWS 2
+float4 LampShadowForward[MAX_LAMP_SHADOWS];   // a spot's axis; w = 1 / tan(half its view), 0 for a cube
+float4 LampShadowRight[MAX_LAMP_SHADOWS];     // a spot's right; w = A
+float4 LampShadowUp[MAX_LAMP_SHADOWS];        // a spot's up; w = B
+float4 LampShadowCorner[MAX_LAMP_SHADOWS];    // xy = its block's corner (uv), z = depth margin per metre, w = 1: has a map
+float4 LampShadowAtlas;                       // x, y = one texel (uv), z = texels a side of a face, w = margin (metres)
+texture LampShadowMap;
+// s7: past the sun's map (s1), lit.fx's surface maps (s2..s5) and lightmap (s6), and sprite.fx's SceneDepth (s2).
+sampler LampShadowSampler : register(s7) = sampler_state
+{
+    Texture = <LampShadowMap>;
+    MinFilter = Point;
+    MagFilter = Point;
+    MipFilter = Point;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+// How much of a lamp at `lamp` reaches a camera-relative point on a surface facing `n`: 1 lit, 0 shadowed.
+// `LampShadows.Project`, `Bias`, `QueryDepth` and `Lit` are this on the CPU; then a 2x2 PCF as ShadowLit's,
+// kept inside the face's tile.
+float LampShadow(float3 relative, float3 n, float3 lamp, float4 forward, float4 right, float4 up, float4 corner)
+{
+    float3 d = relative - lamp;
+    float3 a = abs(d);
+    float mx = step(a.y, a.x) * step(a.z, a.x);
+    float my = (1 - mx) * step(a.z, a.y);
+    float3 axis = float3(mx, my, 1 - mx - my);
+    float3 positive = step(0, d);
+    float3 cubeForward = axis * (positive * 2 - 1);
+    float3 cubeHint = float3(0, 1 - my, my);   // the up a face's view is made with: +Z for the Y faces
+    float3 cubeRight = cross(cubeHint, -cubeForward);
+    float3 cubeUp = cross(-cubeForward, cubeRight);
+
+    float spot = step(0.001, forward.w);
+    float3 f = lerp(cubeForward, forward.xyz, spot);
+    float3 r = lerp(cubeRight, right.xyz, spot);
+    float3 u = lerp(cubeUp, up.xyz, spot);
+    float scale = lerp(1, forward.w, spot);
+    float face = dot(axis, float3(0, 2, 4) + 1 - positive) * (1 - spot);   // +X, -X, +Y, -Y, +Z, -Z
+
+    float z = dot(d, f);   // metres along the face's axis
+    float2 ndc = float2(dot(d, r), dot(d, u)) * (scale / max(z, 0.001));
+    float2 uv = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    float inside = step(abs(ndc.x), 1) * step(abs(ndc.y), 1) * step(0.001, z);
+
+    float3 toLamp = -d / max(length(d), 0.001);
+    float bias = z * corner.z * (2 - saturate(dot(n, toLamp))) + LampShadowAtlas.w;
+    float depth = right.w - up.w / max(z - bias, 0.001);
+
+    float size = LampShadowAtlas.z;
+    float secondRow = step(2.5, face);
+    float2 tile = float2(face - 3 * secondRow, secondRow) * size;
+    float2 texel = uv * size - 0.5;
+    float2 low = clamp(floor(texel), 0, size - 2);
+    float2 weight = saturate(texel - low);
+    float2 at = corner.xy + (tile + low + 0.5) * LampShadowAtlas.xy;
+    float2 dx = float2(LampShadowAtlas.x, 0);
+    float2 dy = float2(0, LampShadowAtlas.y);
+    float lit00 = step(depth, tex2D(LampShadowSampler, at).r);
+    float lit10 = step(depth, tex2D(LampShadowSampler, at + dx).r);
+    float lit01 = step(depth, tex2D(LampShadowSampler, at + dy).r);
+    float lit11 = step(depth, tex2D(LampShadowSampler, at + dx + dy).r);
+    float lit = lerp(lerp(lit00, lit10, weight.x), lerp(lit01, lit11, weight.x), weight.y);
+    return lerp(1, lit, inside * corner.w);
+}
+
+// The first two lamps' shadows at a point (x for light 0, y for light 1), before any loop over the lamps.
+float2 LampShadows(float3 relative, float3 n)
+{
+    return float2(LampShadow(relative, n, LightPositions[0], LampShadowForward[0], LampShadowRight[0], LampShadowUp[0], LampShadowCorner[0]),
+                  LampShadow(relative, n, LightPositions[1], LampShadowForward[1], LampShadowRight[1], LampShadowUp[1], LampShadowCorner[1]));
+}
+
+// Light i's share of them: the lamps past the first two have no map.
+float LampShadowOf(float2 shadows, int i)
+{
+    return i == 0 ? shadows.x : (i == 1 ? shadows.y : 1);
+}
+
 // What the nearby lamps add. Falloff is (1 - d/range) squared: nothing outside the range, and a curve
 // that looks like light rather than like a cone. Lambert against the surface normal, the same as the
 // sun, so a wall facing away from a lamp stays dark and a room reads as a room. A spot light is the same
@@ -99,6 +189,7 @@ float3 SunLight(float3 n)
 float3 PointLights(float3 n, float3 relative)
 {
     float3 sum = float3(0, 0, 0);
+    float2 shadowed = LampShadows(relative, n);   // the lamps' shadow maps (issue #315)
 
     for (int i = 0; i < MAX_LIGHTS; i++)
     {
@@ -112,7 +203,7 @@ float3 PointLights(float3 n, float3 relative)
         float falloff = 1.0 - distance / max(range, 0.001);
         float3 l = toLight / max(distance, 0.001);
         float lambert = saturate(dot(n, l));
-        sum += LightColors[i].rgb * (falloff * falloff * lambert * SpotCone(i, -l));
+        sum += LightColors[i].rgb * (falloff * falloff * lambert * SpotCone(i, -l) * LampShadowOf(shadowed, i));
     }
 
     return sum;
