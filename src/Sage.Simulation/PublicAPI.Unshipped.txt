@@ -43,3 +43,23 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Bounce = 1 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Die = 2 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.None = 0 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Collision -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Friction -> float
+Sage.Simulation.ParticleRecord.Restitution -> float
+Sage.Simulation.ParticleRecord.SheetColumns -> int
+Sage.Simulation.ParticleRecord.SheetCycles -> float
+Sage.Simulation.ParticleRecord.SheetFrames -> int
+Sage.Simulation.ParticleRecord.SheetRandomStart -> bool
+Sage.Simulation.ParticleRecord.SheetRows -> int
+Sage.Simulation.Particles.CollisionBudget.get -> int
+Sage.Simulation.Particles.CollisionBudget.set -> void
+Sage.Simulation.Particles.Group.FirstFrame -> int[]!
+Sage.Simulation.Particles.Group.FrameOf(int i) -> int
+Sage.Simulation.Particles.Group.UvOf(int i) -> System.Numerics.Vector4
+Sage.Simulation.Particles.Hits.get -> int
+Sage.Simulation.Particles.Rays.get -> int
+Sage.Simulation.Particles.RaysSkipped.get -> int

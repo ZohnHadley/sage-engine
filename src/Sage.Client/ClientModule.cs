@@ -171,7 +171,9 @@ public sealed class ClientModule : IModule
                 if (!world.Resources.TryGet<Particles>(out var particles) || particles == null) continue;
                 world.Resources.TryGet<FloatingTexts>(out var texts);
                 Log.Info(LogCat.Console, $"'{world.Name}': {particles.Live} particle(s) of {particles.Budget}, " +
-                                         $"{particles.Refused} refused; {texts?.Count ?? 0} number(s)");
+                                         $"{particles.Refused} refused; {particles.Rays} collision ray(s), " +
+                                         $"{particles.RaysSkipped} over the budget of {particles.CollisionBudget} a frame, " +
+                                         $"{particles.Hits} hit(s); {texts?.Count ?? 0} number(s)");
                 foreach (var group in particles.Groups)
                     if (group.Count > 0)
                         Log.Info(LogCat.Console, $"  {group.Effect,-28} {group.Count,5} live");
