@@ -195,6 +195,8 @@ internal struct RenderItem
     // A skinned draw's palette (issue #117): RenderSnapshot.Bones[BoneStart, BoneStart + BoneCount).
     // BoneCount 0 is a rigid draw. Every view that sees a renderer shares its one range.
     public int BoneStart, BoneCount;
+    // A morphed skinned draw (issue #363): Renderer.Morphed's handle for its vertices; 0 draws the mesh's own.
+    public int Morph;
 }
 
 // Everything the Render phase draws this frame (06 §3.1–3.2): Extract writes it, Render reads only it.

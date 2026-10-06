@@ -51,8 +51,10 @@ public sealed class AnimationSet
 //
 // What is read: the first skin in the file (its joints, their parents, their rest TRS and inverse bind
 // matrices; a missing inverse bind accessor means identity, as glTF says), and every animation's
-// translation, rotation and scale channels that target one of its joints. Channels on other nodes
-// (the mesh, a camera) and morph weights are skipped. A joint whose parent is not a joint is a root;
+// translation, rotation and scale channels that target one of its joints. The model's morph targets
+// (GltfMorphs: by name, across its meshes) become the skeleton's, and a `weights` channel on a node
+// whose mesh has targets becomes the clip's weight tracks for them (issue #363). Other channels (on a
+// node that is not a joint, a camera) are skipped. A joint whose parent is not a joint is a root;
 // the transforms of non-joint nodes above it are not applied (glTF would), which is logged.
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
 public sealed class GltfAnimationReader
@@ -234,7 +236,8 @@ public sealed class GltfAnimationReader
             rest[j] = RestOf(node, name);
             ibms[j] = inverseBind[s];
         }
-        var skeleton = new Skeleton(names, parents, rest, ibms, jointOfSkin);
+        var morphs = GltfMorphs.Read(root);
+        var skeleton = new Skeleton(names, parents, rest, ibms, jointOfSkin, morphs.Names, morphs.Rest);
 
         var jointOfNode = new Dictionary<int, int>(count);
         foreach (var (nodeIndex, s) in skinIndexOfNode) jointOfNode[nodeIndex] = jointOfSkin[s];
@@ -249,10 +252,10 @@ public sealed class GltfAnimationReader
                 Log.Warn(LogCat.Animation, $"Skinned model {name}: two clips are called '{clipName}'; the second is skipped");
                 continue;
             }
-            clips.Add(ReadClip(animation, clipName, count, jointOfNode, name));
+            clips.Add(ReadClip(animation, clipName, count, morphs, jointOfNode, name));
         }
 
-        Log.Debug(LogCat.Animation, $"Skinned model {name}: {count} joints, {clips.Count} clip(s)");
+        Log.Debug(LogCat.Animation, $"Skinned model {name}: {count} joints, {morphs.Count} morph target(s), {clips.Count} clip(s)");
         return new AnimationSet(name, skeleton, clips.ToArray());
     }
 
@@ -275,14 +278,20 @@ public sealed class GltfAnimationReader
         return Pose.Identity;
     }
 
-    private static AnimationClip ReadClip(SharpGLTF.Schema2.Animation animation, string clipName, int joints,
+    private static AnimationClip ReadClip(SharpGLTF.Schema2.Animation animation, string clipName, int joints, GltfMorphs morphs,
                                           Dictionary<int, int> jointOfNode, string name)
     {
-        var clip = new AnimationClip(clipName, joints, Math.Max(0f, animation.Duration));
+        var clip = new AnimationClip(clipName, joints, morphs.Count, Math.Max(0f, animation.Duration));
         int skipped = 0;
         foreach (var channel in animation.Channels)
         {
             var node = channel.TargetNode;
+            if (node != null && channel.TargetNodePath == PropertyPath.weights)
+            {
+                if (morphs.Of(node.Mesh) is { } map) ReadWeights(channel.GetMorphSampler(), map, clip);
+                else skipped++;
+                continue;
+            }
             if (node == null || !jointOfNode.TryGetValue(node.LogicalIndex, out int joint)) { skipped++; continue; }
             switch (channel.TargetNodePath)
             {
@@ -333,6 +342,33 @@ public sealed class GltfAnimationReader
         }
         times = t.ToArray();
         values = v.ToArray();
+    }
+
+    // A weights channel holds every target of its mesh per key; each becomes the clip's track for the
+    // model's target it maps to (a later channel for the same target replaces an earlier one).
+    private static void ReadWeights(IAnimationSampler<float[]> sampler, int[] map, AnimationClip clip)
+    {
+        var mode = ModeOf(sampler.InterpolationMode);
+        var times = new List<float>();
+        var keys = new List<float[]>();   // per key: the mesh's weights (cubic: in tangents, values, out tangents)
+        if (mode == AnimationInterpolation.CubicSpline)
+        {
+            foreach (var (time, (tangentIn, value, tangentOut)) in sampler.GetCubicKeys())
+            {
+                times.Add(time); keys.Add(tangentIn); keys.Add(value); keys.Add(tangentOut);
+            }
+        }
+        else
+        {
+            foreach (var (time, value) in sampler.GetLinearKeys()) { times.Add(time); keys.Add(value); }
+        }
+        var t = times.ToArray();
+        for (int i = 0; i < map.Length; i++)
+        {
+            var values = new float[keys.Count];
+            for (int k = 0; k < values.Length; k++) values[k] = i < keys[k].Length && float.IsFinite(keys[k][i]) ? keys[k][i] : 0f;
+            clip.SetMorphWeights(map[i], mode, t, values);
+        }
     }
 
     private static void ReadRotations(IAnimationSampler<Quaternion> sampler, out AnimationInterpolation mode, out float[] times, out Quaternion[] values)

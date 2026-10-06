@@ -151,6 +151,7 @@ public sealed class RenderContext
             item.SortKey = RenderSortKey.Make(runtime.Pass, layer, materialId, meshId, Vector3.Dot(center, v.Forward), v.Far);
             item.View = view;
             item.BoneStart = item.BoneCount = 0;
+            item.Morph = 0;
         }
     }
 

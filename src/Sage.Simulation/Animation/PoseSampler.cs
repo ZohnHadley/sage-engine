@@ -37,6 +37,14 @@ public static class PoseSampler
         int joints = Math.Min(clip.JointCount, local.Length);
         for (int j = 0; j < joints; j++)
             clip.SampleJoint(j, t, ref local[j]);
+
+        // The morph_weights channel (issue #363): rest weights, then the clip's weight tracks.
+        var morph = pose.MorphWeights;
+        if (morph.Length == 0) return;
+        pose.Skeleton.RestMorphWeights.CopyTo(morph);
+        int targets = Math.Min(clip.MorphTargetCount, morph.Length);
+        for (int m = 0; m < targets; m++)
+            clip.SampleMorph(m, t, ref morph[m]);
     }
 
     // Blends `b` into `a`, in place: each joint moves `weight` of the way from a to b (times mask[j]
@@ -70,6 +78,18 @@ public static class PoseSampler
                 Rotation = Quaternion.Normalize(Quaternion.Slerp(pa.Rotation, pb.Rotation, wj)),
                 Scale = Vector3.Lerp(pa.Scale, pb.Scale, wj),
             };
+        }
+
+        // Morph weights lerp like positions; a mask weighs each target by its own entry (issue #363).
+        var ma = a.MorphWeights;
+        var mb = b.MorphWeights;
+        var mr = result.MorphWeights;
+        if (ma.Length != mr.Length || mb.Length != mr.Length) return;
+        var maskMorph = mask == null ? ReadOnlySpan<float>.Empty : mask.MorphWeights;
+        for (int m = 0; m < mr.Length; m++)
+        {
+            float wm = mask == null ? w : m < maskMorph.Length ? w * maskMorph[m] : 0f;
+            mr[m] = wm <= 0f ? ma[m] : wm >= 1f ? mb[m] : ma[m] + (mb[m] - ma[m]) * wm;
         }
     }
 

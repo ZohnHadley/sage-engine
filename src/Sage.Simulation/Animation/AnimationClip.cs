@@ -33,7 +33,8 @@ public readonly struct ClipEvent
 // A clip (docs/design/12 §3, issue #116): per-joint translation, rotation and scale channels, each with
 // its own keys and interpolation, and a duration. Made for one skeleton (joint indices are that
 // skeleton's), usually by GltfAnimationReader. A joint with no channel of a kind keeps its rest value
-// when sampled (PoseSampler.Sample).
+// when sampled (PoseSampler.Sample). A clip may also have a weight track per morph target of its skeleton
+// (issue #363); a target without one keeps its rest weight.
 //
 // Whether a clip loops is not the clip's: glTF has no such flag, and the same walk is looped by a
 // locomotion state and played once by a cut-scene, so the sampler is told (`loop`).
@@ -45,13 +46,18 @@ public sealed class AnimationClip
     private readonly Track[] _translation;
     private readonly Track[] _rotation;
     private readonly Track[] _scale;
+    private readonly Track[] _morph;                         // one weight track per morph target (issue #363)
     private readonly List<ClipEvent> _events = new();
     private readonly List<bool> _fromRecords = new();       // parallel to _events: put there by anim_events
 
-    public AnimationClip(string name, int jointCount, float duration)
+    public AnimationClip(string name, int jointCount, float duration) : this(name, jointCount, 0, duration) { }
+
+    // With a weight track slot per morph target of the skeleton it is made for (issue #363).
+    public AnimationClip(string name, int jointCount, int morphTargetCount, float duration)
     {
         ArgumentNullException.ThrowIfNull(name);
         if (jointCount < 0) throw new ArgumentOutOfRangeException(nameof(jointCount));
+        if (morphTargetCount < 0) throw new ArgumentOutOfRangeException(nameof(morphTargetCount));
         if (!(duration >= 0) || float.IsInfinity(duration)) throw new ArgumentOutOfRangeException(nameof(duration), "a clip's duration is finite and not negative");
         Name = name;
         JointCount = jointCount;
@@ -59,10 +65,13 @@ public sealed class AnimationClip
         _translation = new Track[jointCount];
         _rotation = new Track[jointCount];
         _scale = new Track[jointCount];
+        MorphTargetCount = morphTargetCount;
+        _morph = new Track[morphTargetCount];
     }
 
     public string Name { get; }
     public int JointCount { get; }
+    public int MorphTargetCount { get; }
 
     // In seconds: the last key's time in a clip read from glTF.
     public float Duration { get; }
@@ -106,6 +115,18 @@ public sealed class AnimationClip
     public void SetScale(int joint, AnimationInterpolation interpolation, float[] times, Vector3[] values) =>
         _scale[CheckJoint(joint)] = Track.Create(interpolation, times, values, null, "scale");
 
+    // A morph target's weight track (issue #363): `values` one weight per key, three for CubicSpline.
+    public void SetMorphWeights(int target, AnimationInterpolation interpolation, float[] times, float[] values)
+    {
+        if ((uint)target >= (uint)MorphTargetCount)
+            throw new ArgumentOutOfRangeException(nameof(target), $"clip '{Name}' has {MorphTargetCount} morph targets");
+        ArgumentNullException.ThrowIfNull(values);
+        _morph[target] = Track.Create(interpolation, times, null, null, "morph weight", values);
+    }
+
+    // True when the clip has a weight track for the morph target.
+    public bool AnimatesMorph(int target) => (uint)target < (uint)MorphTargetCount && _morph[target].Keys > 0;
+
     // True when any channel moves the joint.
     public bool Animates(int joint) =>
         (uint)joint < (uint)JointCount && (_translation[joint].Keys > 0 || _rotation[joint].Keys > 0 || _scale[joint].Keys > 0);
@@ -145,28 +166,38 @@ public sealed class AnimationClip
         return true;
     }
 
-    // One channel: key times, and either vectors (translation, scale) or rotations.
+    // Writes the target's weight over `weight` when the clip has a track for it.
+    internal void SampleMorph(int target, float time, ref float weight)
+    {
+        ref readonly var m = ref _morph[target];
+        if (m.Keys > 0) weight = m.SampleScalar(time);
+    }
+
+    // One channel: key times, and either vectors (translation, scale), rotations or scalars (morph weights).
     private readonly struct Track
     {
         public readonly AnimationInterpolation Interpolation;
         public readonly float[] Times;
         public readonly Vector3[]? Vectors;
         public readonly Quaternion[]? Rotations;
+        public readonly float[]? Scalars;
 
-        private Track(AnimationInterpolation interpolation, float[] times, Vector3[]? vectors, Quaternion[]? rotations)
+        private Track(AnimationInterpolation interpolation, float[] times, Vector3[]? vectors, Quaternion[]? rotations, float[]? scalars)
         {
             Interpolation = interpolation;
             Times = times;
             Vectors = vectors;
             Rotations = rotations;
+            Scalars = scalars;
         }
 
         public int Keys => Times?.Length ?? 0;
 
-        public static Track Create(AnimationInterpolation interpolation, float[] times, Vector3[]? vectors, Quaternion[]? rotations, string what)
+        public static Track Create(AnimationInterpolation interpolation, float[] times, Vector3[]? vectors, Quaternion[]? rotations, string what,
+                                   float[]? scalars = null)
         {
             ArgumentNullException.ThrowIfNull(times);
-            int count = vectors?.Length ?? rotations?.Length ?? throw new ArgumentNullException(nameof(vectors));
+            int count = vectors?.Length ?? rotations?.Length ?? scalars?.Length ?? throw new ArgumentNullException(nameof(vectors));
             if (!Enum.IsDefined(interpolation)) throw new ArgumentOutOfRangeException(nameof(interpolation));
             int perKey = interpolation == AnimationInterpolation.CubicSpline ? 3 : 1;
             if (count != times.Length * perKey)
@@ -174,7 +205,7 @@ public sealed class AnimationClip
             for (int i = 0; i < times.Length; i++)
                 if (!float.IsFinite(times[i]) || (i > 0 && times[i] < times[i - 1]))
                     throw new ArgumentException($"A {what} channel's key times must be finite and ascend (key {i}: {times[i]})");
-            return new Track(interpolation, times, vectors, rotations);
+            return new Track(interpolation, times, vectors, rotations, scalars);
         }
 
         // The key k with Times[k] <= time < Times[k + 1], and how far between them (u in [0, 1), and the
@@ -210,6 +241,22 @@ public sealed class AnimationClip
                 default:
                     Hermite(u, out float h00, out float h10, out float h01, out float h11);
                     // glTF 2.0 Appendix C: v_k, b_k (out of k), v_k+1, a_k+1 (into k+1), tangents scaled by the span.
+                    return h00 * v[k * 3 + 1] + h10 * span * v[k * 3 + 2] + h01 * v[k * 3 + 4] + h11 * span * v[k * 3 + 3];
+            }
+        }
+
+        public float SampleScalar(float time)
+        {
+            var v = Scalars!;
+            int k = Find(time, out float u, out float span);
+            bool cubic = Interpolation == AnimationInterpolation.CubicSpline;
+            if (u <= 0) return cubic ? v[k * 3 + 1] : v[k];
+            switch (Interpolation)
+            {
+                case AnimationInterpolation.Step: return v[k];
+                case AnimationInterpolation.Linear: return v[k] + (v[k + 1] - v[k]) * u;
+                default:
+                    Hermite(u, out float h00, out float h10, out float h01, out float h11);
                     return h00 * v[k * 3 + 1] + h10 * span * v[k * 3 + 2] + h01 * v[k * 3 + 4] + h11 * span * v[k * 3 + 3];
             }
         }

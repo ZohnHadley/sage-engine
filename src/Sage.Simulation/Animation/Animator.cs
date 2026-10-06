@@ -119,6 +119,10 @@ public sealed class AnimatorPart : IPrefabPart
             if (set.FindClip(clip) == null)
                 Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-clip:{Graph}:{model}:{clip}",
                     $"{ctx.Where}: anim_graph {Graph} plays '{clip}', which {set.Source} has no clip called; that state stands at rest");
+        foreach (var target in graph.Compile().MorphTargets)
+            if (set.Skeleton.MorphIndexOf(target) < 0)
+                Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-morph:{Graph}:{model}:{target}",
+                    $"{ctx.Where}: anim_graph {Graph} drives morph target '{target}', which {set.Source} has not got");
     }
 }
 
@@ -448,6 +452,17 @@ public static partial class Animators
         return true;
     }
 
+    // A morph target's weight in the entity's pose, as AnimatorSystem last sampled it (issue #363): what a
+    // blink or a jaw-open clip, or the graph's `morphs`, left it at. Null when there is no pose or the
+    // model has no target of that name.
+    public static float? GetMorphWeight(World world, Entity entity, string target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        if (!TryGetPose(world, entity, out var pose)) return null;
+        int index = pose.Skeleton.MorphIndexOf(target);
+        return index < 0 ? null : pose.MorphWeights[index];
+    }
+
     // ---- debugging -------------------------------------------------------------------------------------
 
     // One animator, in words (anim_debug).
@@ -514,6 +529,16 @@ public static partial class Animators
                 check.Error($"Params['{name}'].From", "a trigger is set by inputs and code, never from the body");
             if (param.Kind == AnimParamKind.Bool && param.From is not (AnimParamSource.None or AnimParamSource.Grounded or AnimParamSource.Crouching))
                 check.Warn($"Params['{name}'].From", $"{param.From} is a number; a Bool reads it as 1 when it is not 0");
+        }
+
+        foreach (var (target, param) in record.Morphs)
+        {
+            string at = $"Morphs['{target}']";
+            if (string.IsNullOrWhiteSpace(target)) check.Error("Morphs", "a morph target needs a name");
+            int p = g.ParamIndex(param);
+            if (string.IsNullOrEmpty(param)) check.Error(at, "names the param that drives it");
+            else if (p < 0) check.Error(at, $"'{param}' is not one of its params" + Spelling.Suggest(param, g.ParamNames));
+            else if (g.ParamKinds[p] == AnimParamKind.Trigger) check.Error(at, $"'{param}' is a Trigger; a morph target reads a Float or a Bool");
         }
 
         var layerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Animators.BaseLayer };

@@ -25,6 +25,13 @@ namespace Sage.Testing;
 //   and, with `withRun: true` (issue #118's walk↔run blends), a third:
 //       "run" (0.5 s, meant to loop): mid rotation LINEAR about +Z, 0 s identity, 0.25 s −90°, 0.5 s identity.
 //
+// With `withMorphs: true` (issue #363) the strip has two morph targets, named in the mesh's
+// extras.targetNames, at the mesh's weights [0, JawRest]:
+//       "blink" moves the two tip vertices (4, 5) down by BlinkDrop, "jaw_open" the two root vertices (0, 1)
+//       forward (+Z) by JawReach, and the two clips that animate them, a `weights` channel on the body node:
+//       "blink" (1 s, LINEAR): [0, JawRest] at 0 s, [1, JawRest] at 0.5 s, [0, JawRest] at 1 s;
+//       "talk"  (1 s, LINEAR): [0, 0] at 0 s, [0, 1] at 1 s.
+//
 // `withSkin: false` writes the same nodes, mesh and clips with no skin, for the reader's warning.
 public static class SkinnedModelBuilder
 {
@@ -32,8 +39,10 @@ public static class SkinnedModelBuilder
     public const string Idle = "idle", Walk = "walk", Run = "run";
     public const float BoneLength = 1f;
     public const float IdleDuration = 2f, WalkDuration = 1f, RunDuration = 0.5f;
+    public const string Blink = "blink", JawOpen = "jaw_open", Talk = "talk";
+    public const float BlinkDrop = 0.5f, JawReach = 0.25f, JawRest = 0.2f;
 
-    public static byte[] Build(bool withSkin = true, bool withRun = false)
+    public static byte[] Build(bool withSkin = true, bool withRun = false, bool withMorphs = false)
     {
         var model = ModelRoot.CreateModel();
         var scene = model.UseScene("scene");
@@ -45,7 +54,7 @@ public static class SkinnedModelBuilder
         tip.LocalMatrix = Matrix4x4.CreateTranslation(0, BoneLength, 0);
 
         var body = scene.CreateNode("body");
-        body.Mesh = BuildMesh(model, withSkin);
+        body.Mesh = BuildMesh(model, withSkin, withMorphs);
         if (withSkin)
         {
             var skin = model.CreateSkin("rig");
@@ -87,18 +96,32 @@ public static class SkinnedModelBuilder
             }, true);
         }
 
+        if (withMorphs)
+        {
+            var blink = model.CreateAnimation(Blink);
+            blink.CreateMorphChannel(body, new Dictionary<float, float[]>
+            {
+                [0f] = new[] { 0f, JawRest }, [0.5f] = new[] { 1f, JawRest }, [1f] = new[] { 0f, JawRest },
+            }, 2, true);
+            var talk = model.CreateAnimation(Talk);
+            talk.CreateMorphChannel(body, new Dictionary<float, float[]>
+            {
+                [0f] = new[] { 0f, 0f }, [1f] = new[] { 0f, 1f },
+            }, 2, true);
+        }
+
         return model.WriteGLB().ToArray();
     }
 
-    // Writes Build(withSkin, withRun) to `file` (folders made as needed) and returns the path.
-    public static string Write(string file, bool withSkin = true, bool withRun = false)
+    // Writes Build(withSkin, withRun, withMorphs) to `file` (folders made as needed) and returns the path.
+    public static string Write(string file, bool withSkin = true, bool withRun = false, bool withMorphs = false)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file))!);
-        File.WriteAllBytes(file, Build(withSkin, withRun));
+        File.WriteAllBytes(file, Build(withSkin, withRun, withMorphs));
         return file;
     }
 
-    private static Mesh BuildMesh(ModelRoot model, bool withSkin)
+    private static Mesh BuildMesh(ModelRoot model, bool withSkin, bool withMorphs)
     {
         const float w = 0.1f;
         var positions = new Vector3[]
@@ -135,6 +158,18 @@ public static class SkinnedModelBuilder
             primitive.SetVertexAccessor("WEIGHTS_0", weight);
         }
 
+        if (withMorphs)
+        {
+            var blinkDeltas = new Vector3[6];
+            blinkDeltas[4] = blinkDeltas[5] = new Vector3(0, -BlinkDrop, 0);
+            var jawDeltas = new Vector3[6];
+            jawDeltas[0] = jawDeltas[1] = new Vector3(0, 0, JawReach);
+            primitive.SetMorphTargetAccessors(0, new Dictionary<string, Accessor> { ["POSITION"] = Deltas(model, "blink", blinkDeltas) });
+            primitive.SetMorphTargetAccessors(1, new Dictionary<string, Accessor> { ["POSITION"] = Deltas(model, "jaw_open", jawDeltas) });
+            mesh.SetMorphWeights(new[] { 0f, JawRest });
+            mesh.Extras = new System.Text.Json.Nodes.JsonObject { ["targetNames"] = new System.Text.Json.Nodes.JsonArray(Blink, JawOpen) };
+        }
+
         var index = model.CreateAccessor("indices");
         // Padded to four bytes: glTF wants every buffer view aligned.
         var indexBytes = new byte[(indices.Length * 2 + 3) & ~3];
@@ -142,6 +177,15 @@ public static class SkinnedModelBuilder
         index.SetIndexData(View(model, indexBytes, BufferMode.ELEMENT_ARRAY_BUFFER), 0, indices.Length, IndexEncodingType.UNSIGNED_SHORT);
         primitive.SetIndexAccessor(index);
         return mesh;
+    }
+
+    private static Accessor Deltas(ModelRoot model, string name, Vector3[] deltas)
+    {
+        var accessor = model.CreateAccessor(name);
+        accessor.SetVertexData(View(model, MemoryMarshal.AsBytes(deltas.AsSpan()).ToArray(), BufferMode.ARRAY_BUFFER), 0, deltas.Length,
+                               new AttributeFormat(DimensionType.VEC3, EncodingType.FLOAT, false));
+        accessor.UpdateBounds();
+        return accessor;
     }
 
     private static BufferView View(ModelRoot model, byte[] bytes, BufferMode mode) => model.UseBufferView(bytes, 0, null, 0, mode);
