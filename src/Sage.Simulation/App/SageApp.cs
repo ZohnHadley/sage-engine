@@ -75,6 +75,11 @@ public sealed class SageAppOptions
 
     // `user://logs/mod_report.txt`, written once content has loaded. Null: not written.
     public string? ModReportFile { get; init; }
+
+    // The player's rebinds, `user://input.json` (InputRebinds, issue #328): record patches mounted last, so
+    // they win over the game and every mod, and where `bind`, `unbind`, `bind_reset` and the controls screen
+    // write. Null: no rebinding is kept (the commands say so).
+    public string? InputFile { get; init; }
 }
 
 // The order an app goes through. Each step checks it comes after the one before, so a host that
@@ -124,6 +129,7 @@ public sealed class SageApp : IDisposable
             app.MountPlugins();
             app.MountGame();
             app.MountMods();
+            app.Engine.Rebinds = new InputRebinds(app.Engine.Actions, app.Engine.Records, options.InputFile);
         }
         catch
         {
@@ -297,6 +303,7 @@ public sealed class SageApp : IDisposable
         Engine.Records.RegisterCommands(CVars);
         Engine.Saves.RegisterCommands(CVars);
         Engine.Scenes.RegisterCommands(CVars);   // scene_load (issue #29)
+        Engine.Rebinds.RegisterCommands(CVars);   // bind, unbind, bind_reset (#328)
         Engine.ModManager.RegisterCommands(CVars);   // mod_list, mod_order, mod_enable/disable/move (4j-3)
         // Entity and scale commands work on any world, so every host has them, not only the one with
         // a window: a server's console and a test can spawn and list entities too.
@@ -320,6 +327,9 @@ public sealed class SageApp : IDisposable
         Advance(AppStage.Configured, AppStage.ContentLoaded);
         Engine.Actions.Seal.Seal("content was loaded");
         Engine.Vocabularies.Seal("content was loaded");   // records name their entries (issue #28)
+        // `user://input.json` last of all (#328), whatever a host mounted since Create: the player's
+        // rebinds patch the game's and the mods' maps.
+        if (_options.InputFile is { } inputFile) Engine.Vfs.Mount(new UserInputMount(inputFile));
         Engine.Records.Load(Engine.Vfs);   // seals record types
         WriteModReport();
         ChooseStartScene();

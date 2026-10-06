@@ -103,7 +103,7 @@ public class Game1 : Game
         // keyboard layout, dead keys and modifiers (08 §3.1, 13 §3). ImGui subscribes to the same
         // event for its own fields; both get every character, and whoever has focus uses it.
         Window.TextInput += (_, e) => devices.PushTyped(e.Character);
-        actions = new InputActions(engine.Actions, engine.Records, devices, cvars);
+        actions = new InputActions(engine.Actions, engine.Records, devices, cvars, engine.Rebinds);
         moveAction = engine.Actions.Get("Move");
         lookAction = engine.Actions.Get("Look");
         menuAction = engine.Actions.Get("Menu");

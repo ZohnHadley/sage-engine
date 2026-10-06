@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace Sage.Simulation;
@@ -211,10 +212,80 @@ public sealed class InputBinding
 
     public override string ToString() =>
         Key != null ? $"key {Key}" : Mouse != null ? $"mouse {Mouse}" : Gamepad != null ? $"gamepad {Gamepad}" : Composite != null ? $"composite {Composite}" : "(empty)";
+
+    // What a player reads on a controls screen: "E", "Mouse Left", "Pad A", "WASD".
+    public string DisplayName =>
+        Key ?? (Mouse != null ? $"Mouse {Mouse}" : Gamepad != null ? $"Pad {Gamepad}" : Composite ?? "(empty)");
+
+    // Console and rebind text (`bind`): `E` or `key:E`, `mouse:Right`, `pad:A` (or `gamepad:A`), `composite:WASD`. A bare
+    // word is a key. Names are not checked here (the client knows the device names); InputRebinds' validator does.
+    public static bool TryParse(string text, out InputBinding binding, out string error)
+    {
+        binding = new InputBinding();
+        error = "";
+        text = text.Trim();
+        if (text.Length == 0) { error = "no input given"; return false; }
+        int colon = text.IndexOf(':');
+        string kind = colon < 0 ? "key" : text.Substring(0, colon).ToLowerInvariant();
+        string name = colon < 0 ? text : text.Substring(colon + 1);
+        if (name.Length == 0) { error = $"'{text}' names no input"; return false; }
+        switch (kind)
+        {
+            case "key": binding.Key = name; return true;
+            case "mouse": binding.Mouse = name; return true;
+            case "pad" or "gamepad": binding.Gamepad = name; return true;
+            case "composite": binding.Composite = name; return true;
+            default: error = $"unknown input kind '{kind}' (key, mouse, pad, composite)"; return false;
+        }
+    }
+
+    internal InputBinding Clone() => (InputBinding)MemberwiseClone();
+
+    // The physical inputs this binding listens to, normalised, for comparing two bindings: a composite is
+    // its keys, so `W` collides with `WASD`. Different spellings of one key ("e", "E") are one input.
+    internal IEnumerable<string> Inputs()
+    {
+        if (Key != null) yield return "key:" + Key.ToLowerInvariant();
+        else if (Mouse != null) yield return "mouse:" + Mouse.ToLowerInvariant();
+        else if (Gamepad != null) yield return "pad:" + Gamepad.ToLowerInvariant();
+        else if (Composite != null)
+        {
+            string[] keys = Composite.ToUpperInvariant() switch
+            {
+                "WASD" => new[] { "w", "a", "s", "d" },
+                "ARROWS" => new[] { "up", "down", "left", "right" },
+                _ => new[] { "composite:" + Composite.ToLowerInvariant() },
+            };
+            foreach (string key in keys) yield return keys.Length == 1 ? key : "key:" + key;
+        }
+    }
+
+    // The same device input (a binding's scale or dead zone do not make it another).
+    internal bool SameInput(InputBinding other) =>
+        Inputs().OrderBy(x => x, StringComparer.Ordinal).SequenceEqual(other.Inputs().OrderBy(x => x, StringComparer.Ordinal));
+
+    internal bool Overlaps(InputBinding other) => Inputs().Intersect(other.Inputs()).Any();
+
+    internal bool IsGamepad => Gamepad != null;
+
+    internal System.Text.Json.Nodes.JsonObject ToJson()
+    {
+        var o = new System.Text.Json.Nodes.JsonObject();
+        if (Key != null) o["key"] = Key;
+        if (Mouse != null) o["mouse"] = Mouse;
+        if (Gamepad != null) o["gamepad"] = Gamepad;
+        if (Composite != null) o["composite"] = Composite;
+        if (Scale != 1f) o["scale"] = Scale;
+        if (Deadzone != 0.2f) o["deadzone"] = Deadzone;
+        if (Invert) o["invert"] = true;
+        if (Rate) o["rate"] = true;
+        return o;
+    }
 }
 
 // Input map (08 §4): bindings for one context. Several maps may target the same context (engine,
-// game, mods); their bindings add up. Player rebinds will be record patches (08 §3.2).
+// game, mods); their bindings add up. A player's rebinds are record patches in `user://input.json`
+// (InputRebinds, 08 §3.2).
 [Record("input_map", Plugin = "sage.client")]
 public sealed class InputMapRecord
 {

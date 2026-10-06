@@ -9515,7 +9515,7 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_mods.",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods.",
       "type": "string",
       "enum": [
         "RpgEquipment",
@@ -9529,6 +9529,7 @@
         "SandboxHud",
         "SandboxMainMenu",
         "SandboxStatus",
+        "UiControls",
         "UiMods",
         "rpg_equipment",
         "rpg_inventory",
@@ -9541,6 +9542,7 @@
         "sandbox_hud",
         "sandbox_main_menu",
         "sandbox_status",
+        "ui_controls",
         "ui_mods"
       ]
     },
@@ -9982,6 +9984,35 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'sandbox_status' (StatusView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "ui_controls",
+                      "UiControls"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: ui_controls.",
+                    "enum": [
+                      "ui_controls",
+                      "UiControls"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'ui_controls' (ControlsView)."
               }
             },
             {
