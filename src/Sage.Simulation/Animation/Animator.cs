@@ -171,7 +171,7 @@ public static partial class Animators
             "Animation LOD: animators farther than this from the main camera sample their pose every 2nd tick, past twice it every 4th " +
             "(their states and times still step every tick); 0 = every animator every tick.", 0f, 100000f);
         engine.CVars.RegisterCommand("anim_debug", CVarFlags.None,
-            "anim_debug [filter]: every animator's layers (state, time, cross-fade, blend weights), params and LOD rate.", a =>
+            "anim_debug [filter]: every animator's layers (state, time, cross-fade, blend weights), params and LOD rate, and every sprite's clip and frame.", a =>
         {
             string filter = a.Count > 0 ? a[0] : "";
             int shown = 0;
@@ -184,8 +184,15 @@ public static partial class Animators
                     Log.Info(LogCat.Console, $"[{world.Name}] {Describe(world, e)}");
                     shown++;
                 }
+                if (world.Resources.TryGet<IAnimDebugSource>(out var extra) && extra != null)
+                {
+                    var lines = new List<string>();
+                    extra.Describe(world, filter, lines);
+                    foreach (var line in lines) Log.Info(LogCat.Console, $"[{world.Name}] {line}");
+                    shown += lines.Count;
+                }
             }
-            Log.Info(LogCat.Console, $"anim_debug: {shown} animator(s)");
+            Log.Info(LogCat.Console, $"anim_debug: {shown} animator(s) and sprite(s)");
         });
     }
 
