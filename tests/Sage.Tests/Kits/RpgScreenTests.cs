@@ -365,6 +365,178 @@ public class RpgScreenTests
         Assert.Equal(Id("coin"), again.ItemAt(1, 0)!.Item);
         Assert.False(again.Refresh(world, loaded));                                         // nothing changed: nothing done
     }
+
+    // ---- drag and drop, pictures, turning, splitting and dropping (issue #346) -------------------------
+
+    private const string Pictures = """
+        [ { "type": "rpg_item", "id": "sword", "patch": true, "icon": "textures/sword.png" } ]
+        """;
+
+    private static Widget CellWidget(Grid cells, GridCell cell) => cells.Child(cell.Y * cell.Grid.Columns + cell.X);
+
+    // A square's middle in pixels (the stack's viewport is the design size: one pixel a unit), from the
+    // second square of the top row, which these tests keep a single square.
+    private static Vector2 At(Grid cells, int column, int row)
+    {
+        var second = cells.Child(1).Rect;
+        float pitch = second.Width + cells.Spacing.X;
+        return new Vector2(second.X + pitch * (column - 1) + second.Width / 2f, second.Y + pitch * row + second.Height / 2f);
+    }
+
+    // The acceptance test of issue #346 for the mouse: the sword's picture spans its three squares; the
+    // pointer drags it by its bottom square, R turns it in the hand, and let go it lies across three
+    // squares where the pointer put it, turned, and saved so; a stack dragged off the window lands on the
+    // ground in front of the hero.
+    [Fact]
+    public void AMouseDragsAnItemByItsPictureTurnsItAndDropsAStackOnTheGround()
+    {
+        using var app = Boot(Pictures);
+        var world = app.World;
+        var hero = Carrier(world, "hero", 0f, ("sword", 1), ("bread", 4));
+        var bag = Open(app, RpgKitModule.InventoryScreen, hero);
+        var view = Assert.IsType<InventoryView>(bag.Screen.ViewModel);
+        var cells = bag.Screen.View.Find<Grid>("cells")!;
+        bag.Press(UiInput.Wait(1f));   // opened: faded in, laid out
+
+        // One picture across the sword's squares: its top-left square spans 1 × 3 and the others hide.
+        var sword = view.Bag.ItemAt(0, 0)!;
+        var top = CellWidget(cells, view.Bag.CellAt(0, 0)!);
+        Assert.Equal((1, 3), (top.ColumnSpan, top.RowSpan));
+        Assert.Equal("textures/sword.png", ((Button)top).Icon);
+        Assert.False(CellWidget(cells, view.Bag.CellAt(0, 1)!).Visible);
+        Assert.False(CellWidget(cells, view.Bag.CellAt(0, 2)!).Visible);
+        Assert.True(top.Draggable);
+        Assert.Equal(cells.Child(1).Rect.Height * 3f + cells.Spacing.Y * 2f, top.Rect.Height, 3);
+
+        // Grabbed by its bottom square and dragged: the hand has it, whole (its picture is the ghost).
+        var stack = bag.Stack;
+        stack.Update(UiInput.Hold(At(cells, 0, 2)));
+        var result = stack.Update(UiInput.Drag(At(cells, 4, 4)));
+        Assert.True(result.DragStarted);
+        Assert.Same(sword, view.Held);
+        Assert.True(view.Dragging);
+        Assert.True(top.Visible);
+        // Over square (4, 4) by its bottom square: it would go at (4, 2) to (4, 4), and it fits there.
+        stack.Update(UiInput.Drag(At(cells, 4, 4) + new Vector2(1f, 0f)));
+        Assert.Equal(GridCell.TargetStyle, view.Bag.CellAt(4, 2)!.Style);
+        Assert.Equal(GridCell.TargetStyle, view.Bag.CellAt(4, 4)!.Style);
+        Assert.Equal(GridCell.EmptyStyle, view.Bag.CellAt(4, 1)!.Style);
+
+        // R turns it in the hand: three across from the square under the pointer, blocked by nothing.
+        stack.Update(new UiInput { Command = UiCommand.Rotate, Pointer = At(cells, 4, 4), PointerDown = true });
+        Assert.True(view.HeldTurned);
+        stack.Update(UiInput.Drag(At(cells, 4, 4)));
+        Assert.Equal(GridCell.TargetStyle, view.Bag.CellAt(6, 4)!.Style);
+        Assert.Equal(GridCell.EmptyStyle, view.Bag.CellAt(4, 3)!.Style);
+
+        // Let go: it lies across (4, 4) to (6, 4), turned, its picture turned with it, and saved so.
+        result = stack.Update(UiInput.Release(At(cells, 4, 4)));
+        Assert.True(result.Dropped);
+        stack.Update(UiInput.Wait(0f));
+        Assert.Null(view.Held);
+        sword = view.Bag.ItemAt(4, 4)!;
+        Assert.Equal(Id("sword"), sword.Item);
+        Assert.True(sword.Rotated);
+        Assert.Equal((3, 1), (sword.Width, sword.Height));
+        Assert.Same(sword, view.Bag.ItemAt(6, 4));
+        Assert.Null(view.Bag.ItemAt(0, 0));
+        var corner = (Button)CellWidget(cells, view.Bag.CellAt(4, 4)!);
+        Assert.Equal((3, 1), (corner.ColumnSpan, corner.RowSpan));
+        Assert.True(corner.IconTurned);
+        Assert.Contains(world.Get<ItemGridPlacements>(hero).Placed!, p => p.Item == Id("sword") && p.X == 4 && p.Y == 4 && p.Rotated);
+
+        // A click (pressed and let go in place) is the hand's: it picks the bread up, and Back puts it back.
+        var bread = view.Bag.ItemAt(1, 0)!;
+        Assert.Equal(Id("bread"), bread.Item);
+        stack.Update(UiInput.Hold(At(cells, 1, 0)));
+        stack.Update(UiInput.Release(At(cells, 1, 0)));
+        Assert.Same(bread, view.Held);
+        Assert.False(view.Dragging);
+        bag.B();
+        Assert.Null(view.Held);
+        Assert.False(bag.Layer.IsClosing);
+
+        // Dragged off the window and let go over the world: on the ground in front of the hero.
+        stack.Update(UiInput.Hold(At(cells, 1, 0)));
+        Assert.True(stack.Update(UiInput.Drag(new Vector2(4f, 4f))).DragStarted);
+        stack.Update(UiInput.Release(new Vector2(4f, 4f)));
+        stack.Update(UiInput.Wait(0f));
+        Assert.Equal("", view.Message);
+        Assert.Equal(0, world.CountOf(hero, Id("bread")));
+        var pickups = world.Query<Pickup>().Entities.ToArray();
+        Assert.Single(pickups);
+        Assert.Equal(4, world.Get<Pickup>(pickups[0]).Count);
+        Assert.False(bag.Layer.IsClosing);                                                  // a drag is not a click outside
+    }
+
+    // And for the gamepad: the left shoulder turns a stack where it lies (refused when there is no room)
+    // or in the hand, the left trigger halves a stack, X drops one — and a corpse's stacks are not the
+    // hero's to drop.
+    [Fact]
+    public void AGamepadTurnsSplitsAndDropsAStack()
+    {
+        using var app = Boot(Pictures);
+        var world = app.World;
+        var hero = Carrier(world, "hero", 0f, ("sword", 1), ("bread", 5));
+        var bag = Open(app, RpgKitModule.InventoryScreen, hero);
+        var view = Assert.IsType<InventoryView>(bag.Screen.ViewModel);
+
+        // Turned where it lies, the sword would cover the bread: refused, and said why.
+        Assert.Same(view.Bag.CellAt(0, 0), bag.Focused);
+        bag.Press(UiInput.Do(UiCommand.Rotate));
+        Assert.Equal("There is no room to turn sword there.", view.Message);
+        Assert.False(view.Bag.ItemAt(0, 0)!.Rotated);
+
+        // In the hand it turns, and goes down three across on the fourth row. While it is held its squares
+        // come apart, so the D-pad walks them; where it would go is shown under focus.
+        bag.A();
+        Assert.Equal(Id("sword"), view.Held!.Item);
+        bag.Press(UiInput.Do(UiCommand.Rotate));
+        Assert.True(view.HeldTurned);
+        bag.Nav(UiNavigation.Down, 3);
+        Assert.Same(view.Bag.CellAt(0, 3), bag.Focused);
+        Assert.Equal(GridCell.TargetStyle, view.Bag.CellAt(2, 3)!.Style);
+        bag.A();
+        var sword = view.Bag.ItemAt(0, 3)!;
+        Assert.True(sword.Rotated);
+        Assert.Same(sword, view.Bag.ItemAt(2, 3));
+        Assert.Null(view.Bag.ItemAt(0, 0));
+        // Turned back where it lies, it stands up again: three squares down from (0, 3).
+        Assert.Same(sword, ((GridCell)bag.Focused!).Item);
+        bag.Press(UiInput.Do(UiCommand.Rotate));
+        Assert.Equal("", view.Message);
+        Assert.Equal((1, 3), (view.Bag.ItemAt(0, 5)!.Width, view.Bag.ItemAt(0, 5)!.Height));
+
+        // The bread halved: 3 stays where it was, 2 more in the first free square, and still 5 carried.
+        var cells = bag.Screen.View.Find<Grid>("cells")!;
+        Assert.True(bag.Root.Focus(CellWidget(cells, view.Bag.CellAt(1, 0)!)));
+        bag.Press(UiInput.Do(UiCommand.Split));
+        Assert.Equal("", view.Message);
+        Assert.Equal(5, world.CountOf(hero, Id("bread")));
+        var halves = view.Bag.Items.Where(i => i.Item == Id("bread")).ToArray();
+        Assert.Equal(new[] { 3, 2 }, halves.Select(h => h.Count));
+        Assert.Equal((0, 0), (halves[1].X, halves[1].Y));
+        Assert.Equal(2, world.Get<Inventory>(hero).Items.Count(s => s.Item == Id("bread")));
+        bag.Press(UiInput.Do(UiCommand.Split));                                             // and 3 again: 2 and 1
+        Assert.Equal(new[] { 2, 1, 2 }, view.Bag.Items.Where(i => i.Item == Id("bread")).Select(h => h.Count));   // the new half after its own
+        Assert.Equal((2, 0), (view.Bag.Items[2].X, view.Bag.Items[2].Y));
+
+        // X drops the focused stack on the ground.
+        var focused = Assert.IsType<GridCell>(bag.Focused);
+        int count = focused.Item!.Count;
+        bag.Press(UiInput.Do(UiCommand.Alternate));
+        Assert.Equal(5 - count, world.CountOf(hero, Id("bread")));
+        Assert.Single(world.Query<Pickup>().Entities.ToArray());
+
+        // Looting, the corpse's stacks are not the hero's to drop.
+        var bandit = Carrier(world, "bandit", 0f, ("coin", 3));
+        var loot = Open(app, RpgKitModule.LootScreen, hero, bandit);
+        var lootView = Assert.IsType<LootView>(loot.Screen.ViewModel);
+        Assert.Same(lootView.Container.CellAt(0, 0), loot.Focused);
+        loot.Press(UiInput.Do(UiCommand.Alternate));
+        Assert.Equal("coin ×3 cannot be dropped here.", lootView.Message);
+        Assert.Equal(3, world.CountOf(bandit, Id("coin")));
+    }
 }
 
 // Every RPG screen open and read each frame, with nothing changing: no allocation (02 §4.6).

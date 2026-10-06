@@ -114,6 +114,10 @@
             "description": "An image's picture. A texture path. (AssetPath)",
             "type": "string"
           },
+          "icon": {
+            "description": "A button's picture, drawn across it under its text (an item over its squares) A texture path. (AssetPath)",
+            "type": "string"
+          },
           "naturalSize": {
             "description": "An image's size when nothing stretches it. Unit: units. (Vector2)",
             "type": "array",
@@ -399,6 +403,18 @@
             "type": "number",
             "minimum": 0
           },
+          "columnSpan": {
+            "description": "In a grid, how many cells across it takes; 0 or 1: one. Range: 0 to 64. (int)",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "rowSpan": {
+            "description": "In a grid, how many cells down it takes; 0 or 1: one. Range: 0 to 64. (int)",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
           "anchors": {
             "description": "In a box: a name (top_left, center, bottom_right, fill, top_wide...) or [minX, minY, maxX, maxY]. (Anchors?)",
             "anyOf": [
@@ -623,6 +639,10 @@
               }
             ]
           },
+          "draggable": {
+            "description": "The pointer can drag it and drop it on something else; a click on it then activates on release. (bool)",
+            "type": "boolean"
+          },
           "tabIndex": {
             "description": "Tab order: lower first, then tree order. (int)",
             "type": "integer"
@@ -689,7 +709,7 @@
             "type": "string"
           },
           "bindings": {
-            "description": "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options; an image's or view's fog, a view's target and radius. (Dictionary<string, string>)",
+            "description": "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options; icon, iconTurned, columnSpan, rowSpan; an image's or view's fog, a view's target and radius. (Dictionary<string, string>)",
             "type": "object",
             "additionalProperties": {
               "type": "string"

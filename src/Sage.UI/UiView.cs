@@ -142,6 +142,9 @@ internal sealed class LayoutBuilder
         w.Enabled = n.Enabled;
         if (n.Focusable is { } focusable) w.Focusable = focusable;
         w.TabIndex = n.TabIndex;
+        w.Draggable = n.Draggable;
+        w.ColumnSpan = n.ColumnSpan;
+        w.RowSpan = n.RowSpan;
         w.FocusScope = n.FocusScope;
         w.FocusUp = NameOrNull(n.FocusUp);
         w.FocusDown = NameOrNull(n.FocusDown);
@@ -160,6 +163,7 @@ internal sealed class LayoutBuilder
                 label.Wrap = n.Wrap;
                 if (n.Overflow is { } overflow) label.Overflow = overflow;
                 label.MaxWidth = n.MaxWidth;
+                if (label is Button button && !n.Icon.IsEmpty) button.Icon = n.Icon.ToString();
                 break;
             case Image image:
                 if (!n.Source.IsEmpty) image.Source = n.Source.ToString();
@@ -269,6 +273,10 @@ internal sealed class LayoutBuilder
                 case UiBindings.Fog: bound.Fog = reader; break;
                 case UiBindings.Target: bound.Target = reader; break;
                 case UiBindings.Radius: bound.Radius = reader; break;
+                case UiBindings.Icon: bound.Icon = reader; break;
+                case UiBindings.IconTurned: bound.IconTurned = reader; break;
+                case UiBindings.ColumnSpan: bound.ColumnSpan = reader; break;
+                case UiBindings.RowSpan: bound.RowSpan = reader; break;
                 case UiBindings.Rows:
                     var template = tree.ChildrenOf(name).FirstOrDefault();
                     if (template.Node != null && bound.Widget is Container host)
@@ -320,9 +328,13 @@ internal static class UiBindings
                         X = "x", Y = "y",
                         // A picture's discovery fog (a UiFogMask), a view's render target and its top-down
                         // camera's radius in metres (issue #348).
-                        Fog = "fog", Target = "target", Radius = "radius";
+                        Fog = "fog", Target = "target", Radius = "radius",
+                        // A button's picture and whether it is turned on its side, and the cells a grid's child
+                        // spans (issue #346: an item's picture across its footprint). Lower case: keys are.
+                        Icon = "icon", IconTurned = "iconturned", ColumnSpan = "columnspan", RowSpan = "rowspan";
 
-    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, Checked, Selected, Options, Fog, Target, Radius };
+    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, Checked, Selected, Options, Fog, Target, Radius,
+                                            Icon, IconTurned, ColumnSpan, RowSpan };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
     public static string? Primary(string widget) => widget switch
@@ -358,6 +370,7 @@ internal static class UiBindings
         Source => widget is "image" or "view",
         Fog => widget is "image" or "view",
         Target or Radius => widget == "view",
+        Icon or IconTurned => widget == "button",
         Rows => widget is "stack" or "item_list" or "grid" or "box",
         Columns => widget == "grid",   // a grid as wide as its view-model says (an inventory's, issue #98)
         _ => true,
@@ -399,6 +412,8 @@ internal sealed class BoundNode
     public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
     public BindingReader? Checked, Selected, Options, Content;   // the form widgets' (issue #340)
     public BindingReader? Fog, Target, Radius;                     // a picture's fog, a view's (issue #348)
+    public BindingReader? Icon, IconTurned, ColumnSpan, RowSpan;  // pictures across a grid's cells (issue #346)
+    private string? _icon;
     public RowsSlot? Rows;
     private string? _source, _style, _content, _target;
     private object? _read;          // what this node last read: where the player's changes are written
@@ -410,7 +425,8 @@ internal sealed class BoundNode
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
                            || Enabled != null || Data != null || Columns != null || X != null || Y != null
                            || Checked != null || Selected != null || Options != null || Content != null
-                           || Fog != null || Target != null || Radius != null;
+                           || Fog != null || Target != null || Radius != null
+                           || Icon != null || IconTurned != null || ColumnSpan != null || RowSpan != null;
 
     // Listens for the player changing the widget, when its value is bound, to write it back (issue #340).
     public void WriteBack()
@@ -484,6 +500,17 @@ internal sealed class BoundNode
             }
             if (Radius != null) view.Radius = Radius.Read(source).AsFloat;
         }
+        if (Widget is Button button)
+        {
+            if (Icon != null)
+            {
+                string? icon = Icon.Read(source).AsString;   // by reference, as an image's source
+                if (!ReferenceEquals(icon, _icon)) { _icon = icon; button.Icon = string.IsNullOrEmpty(icon) ? null : icon; }
+            }
+            if (IconTurned != null) button.IconTurned = IconTurned.Read(source).IsTrue;
+        }
+        if (ColumnSpan != null) Widget.ColumnSpan = (int)ColumnSpan.Read(source).Number;
+        if (RowSpan != null) Widget.RowSpan = (int)RowSpan.Read(source).Number;
         if (Style != null)
         {
             string? style = Style.Read(source).AsString;

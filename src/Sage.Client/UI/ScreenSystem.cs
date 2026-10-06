@@ -38,7 +38,7 @@ internal sealed class ScreenSystem : ISystem
     private readonly Query<Transform> _players;
     private double _lastRealTime = -1d;
 
-    private readonly ActionId _up, _down, _left, _right, _tab, _confirm, _alternate, _back;
+    private readonly ActionId _up, _down, _left, _right, _tab, _confirm, _alternate, _back, _rotate, _split;
 
     public ScreenSystem(World world, InputActions actions, InputDevices devices, ActionRegistry registry, ContentService content, Renderer? renderer = null)
     {
@@ -70,6 +70,8 @@ internal sealed class ScreenSystem : ISystem
         _confirm = registry.Get("MenuConfirm");
         _alternate = registry.Get("MenuAlternate");
         _back = registry.Get("MenuBack");
+        _rotate = registry.Get("MenuRotate");
+        _split = registry.Get("MenuSplit");
     }
 
     public void Run(in SystemContext ctx)
@@ -139,6 +141,10 @@ internal sealed class ScreenSystem : ISystem
             Confirm = _actions.Pressed(_confirm),
             ConfirmHeld = _actions.Held(_confirm),
             Back = _actions.Pressed(_back),
+            // The focused thing's other commands (issue #346): drop, turn, split an item on a grid.
+            Alternate = _actions.Pressed(_alternate),
+            Rotate = _actions.Pressed(_rotate),
+            Split = _actions.Pressed(_split),
             Pointer = new System.Numerics.Vector2(mouse.Position.X, mouse.Position.Y),
             PointerMoved = mouse.IsMoving,
             PointerPressed = mouse.IsButtonPressed(MouseButton.LEFT),

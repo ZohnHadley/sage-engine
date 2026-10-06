@@ -144,6 +144,9 @@ public sealed class UiNode
     [AssetKind("texture"), Property(Tooltip = "An image's picture")]
     public AssetPath Source;
 
+    [AssetKind("texture"), Property(Tooltip = "A button's picture, drawn across it under its text (an item over its squares)")]
+    public AssetPath Icon;
+
     [Property(Unit = "units", Tooltip = "An image's size when nothing stretches it")]
     public Vector2 NaturalSize;
 
@@ -195,6 +198,12 @@ public sealed class UiNode
 
     [Property(Min = 0, Tooltip = "In a stack, its share of the room left over")]
     public float Expand;
+
+    [Property(Min = 0, Max = 64, Tooltip = "In a grid, how many cells across it takes; 0 or 1: one")]
+    public int ColumnSpan;
+
+    [Property(Min = 0, Max = 64, Tooltip = "In a grid, how many cells down it takes; 0 or 1: one")]
+    public int RowSpan;
 
     [Property(Tooltip = "In a box: a name (top_left, center, bottom_right, fill, top_wide...) or [minX, minY, maxX, maxY]")]
     public Anchors? Anchors;
@@ -265,6 +274,9 @@ public sealed class UiNode
     [Property(Tooltip = "Takes focus; buttons and list items do by default")]
     public bool? Focusable;
 
+    [Property(Tooltip = "The pointer can drag it and drop it on something else; a click on it then activates on release")]
+    public bool Draggable;
+
     [Property(Tooltip = "Tab order: lower first, then tree order")]
     public int TabIndex;
 
@@ -300,7 +312,7 @@ public sealed class UiNode
     [Property(Tooltip = "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to")]
     public string Bind = "";
 
-    [Property(Tooltip = "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options; an image's or view's fog, a view's target and radius")]
+    [Property(Tooltip = "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options; icon, iconTurned, columnSpan, rowSpan; an image's or view's fog, a view's target and radius")]
     public Dictionary<string, string> Bindings = new();
 }
 

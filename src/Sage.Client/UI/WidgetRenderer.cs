@@ -72,7 +72,10 @@ internal static class WidgetRenderer
                     if (command.Texture.IsEmpty || content.LoadTexture(command.Texture, AssetScope.Ui) is not { } texture) break;
                     var colour = Colour(command, blend, opacity);
                     var slice = command.Slice;
-                    if (slice == Thickness.Zero)
+                    if (command.Turned)
+                        ui.ImageTurned(texture, new Microsoft.Xna.Framework.Rectangle((int)MathF.Round(r.X), (int)MathF.Round(y),
+                                       (int)MathF.Round(r.Width), (int)MathF.Round(r.Height)), colour);
+                    else if (slice == Thickness.Zero)
                         ui.Image(texture, new Microsoft.Xna.Framework.Rectangle((int)MathF.Round(r.X), (int)MathF.Round(y),
                                  (int)MathF.Round(r.Width), (int)MathF.Round(r.Height)), colour);
                     else

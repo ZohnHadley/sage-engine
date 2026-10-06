@@ -566,6 +566,9 @@ internal struct UiControls
 {
     public bool Up, Down, Left, Right, Tab, Shift, Confirm, ConfirmHeld, Back;
 
+    // MenuAlternate, MenuRotate and MenuSplit (issue #346): UiInput.Command, one a frame.
+    public bool Alternate, Rotate, Split;
+
     // The mouse, in viewport pixels; wheel in the window's units (120 a notch).
     public Vector2 Pointer;
     public bool PointerMoved, PointerPressed, PointerDown;
@@ -603,6 +606,7 @@ internal static class UiInputMap
             Pointer = c.Pointer,
             DeltaTime = c.DeltaTime,
             Typed = c.Typed,
+            Command = c.Alternate ? UiCommand.Alternate : c.Rotate ? UiCommand.Rotate : c.Split ? UiCommand.Split : UiCommand.None,
         };
         if (!c.PointerTaken)
         {

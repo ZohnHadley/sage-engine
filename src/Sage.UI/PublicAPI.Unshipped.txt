@@ -24,6 +24,10 @@ Sage.UI.InputPrompts.Version.get -> int
 Sage.UI.Localisation.Prompts.get -> Sage.UI.InputPrompts?
 const Sage.UI.UiFonts.DefaultSize = 9 -> float
 override Sage.UI.TrueTypeFont.ToString() -> string!
+Sage.UI.Button.Icon.get -> string?
+Sage.UI.Button.Icon.set -> void
+Sage.UI.Button.IconTurned.get -> bool
+Sage.UI.Button.IconTurned.set -> void
 Sage.UI.FontTextMeasure
 Sage.UI.FontTextMeasure.Font.get -> Sage.UI.TrueTypeFont!
 Sage.UI.FontTextMeasure.FontTextMeasure(Sage.UI.TrueTypeFont! font, float size) -> void
@@ -31,7 +35,13 @@ Sage.UI.FontTextMeasure.LineHeight.get -> float
 Sage.UI.FontTextMeasure.Measure(string! text, float scale) -> System.Numerics.Vector2
 Sage.UI.FontTextMeasure.Size.get -> float
 Sage.UI.FontTextMeasure.Width(System.ReadOnlySpan<char> text, float scale) -> float
+Sage.UI.Grid.CellAt(System.Numerics.Vector2 point, out int column, out int row) -> bool
 Sage.UI.ITextMeasure.Width(System.ReadOnlySpan<char> text, float scale) -> float
+Sage.UI.IViewModel.Command(Sage.UI.UiCommand command, Sage.UI.Widget? target, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.IViewModel.DragMove(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> void
+Sage.UI.IViewModel.DragStart(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.IViewModel.Drop(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.IViewModel.Focused(Sage.UI.Widget? widget, in Sage.UI.UiBindContext context) -> void
 Sage.UI.Label.Font.get -> Sage.Core.AssetPath
 Sage.UI.Label.Font.set -> void
 Sage.UI.Label.FontSize.get -> float
@@ -75,6 +85,23 @@ Sage.UI.UiFogMask.this[int x, int y].set -> void
 Sage.UI.UiFogMask.UiFogMask(int width, int height) -> void
 Sage.UI.UiFogMask.Version.get -> int
 Sage.UI.UiFogMask.Width.get -> int
+Sage.UI.UiCommand
+Sage.UI.UiCommand.Alternate = 1 -> Sage.UI.UiCommand
+Sage.UI.UiCommand.None = 0 -> Sage.UI.UiCommand
+Sage.UI.UiCommand.Rotate = 2 -> Sage.UI.UiCommand
+Sage.UI.UiCommand.Split = 3 -> Sage.UI.UiCommand
+Sage.UI.UiDrag
+Sage.UI.UiDrag.Cancelled.get -> bool
+Sage.UI.UiDrag.Ghost.get -> Sage.Simulation.Rect
+Sage.UI.UiDrag.IsActive.get -> bool
+Sage.UI.UiDrag.Offset.get -> System.Numerics.Vector2
+Sage.UI.UiDrag.Payload.get -> object?
+Sage.UI.UiDrag.Pointer.get -> System.Numerics.Vector2
+Sage.UI.UiDrag.Source.get -> Sage.UI.Widget?
+Sage.UI.UiDrag.Start.get -> System.Numerics.Vector2
+Sage.UI.UiDrag.Target.get -> Sage.UI.Widget?
+Sage.UI.UiDrag.UiDrag() -> void
+Sage.UI.UiDrag.UiDrag(Sage.UI.Widget! source, object? payload, System.Numerics.Vector2 start, System.Numerics.Vector2 pointer, Sage.UI.Widget? target, bool cancelled = false) -> void
 Sage.UI.UiFonts
 Sage.UI.UiFonts.Clear() -> void
 Sage.UI.UiFonts.Get(Sage.Core.AssetPath path) -> Sage.UI.TrueTypeFont?
@@ -82,15 +109,31 @@ Sage.UI.UiFonts.Measure(Sage.Core.AssetPath font, float size, Sage.UI.ITextMeasu
 Sage.UI.UiFonts.UiFonts(Sage.Core.VirtualFileSystem! vfs) -> void
 Sage.UI.UiFonts.UiFonts(System.Func<Sage.Core.AssetPath, byte[]?>! read) -> void
 Sage.UI.UiFonts.Version.get -> int
+Sage.UI.UiInput.Command -> Sage.UI.UiCommand
 Sage.UI.UiModule.Fonts.get -> Sage.UI.UiFonts!
 Sage.UI.UiNode.Camera -> Sage.UI.UiViewCameraNode?
 Sage.UI.UiNode.FogColour -> uint?
 Sage.UI.UiNode.MaxWidth -> float
 Sage.UI.UiNode.Overflow -> Sage.UI.TextOverflow?
 Sage.UI.UiNode.Target -> string!
+Sage.UI.UiNode.ColumnSpan -> int
+Sage.UI.UiNode.Draggable -> bool
+Sage.UI.UiNode.Icon -> Sage.Core.AssetPath
+Sage.UI.UiNode.RowSpan -> int
 Sage.UI.UiNode.Wrap -> bool
+Sage.UI.UiResult.Command -> Sage.UI.UiCommand
+Sage.UI.UiResult.CommandTarget -> Sage.UI.Widget?
+Sage.UI.UiResult.Drag -> Sage.UI.UiDrag
+Sage.UI.UiResult.DragMoved -> bool
+Sage.UI.UiResult.DragStarted -> bool
+Sage.UI.UiResult.Dropped -> bool
+Sage.UI.UiRoot.CancelDrag() -> void
+Sage.UI.UiRoot.Drag.get -> Sage.UI.UiDrag
+Sage.UI.UiRoot.DragThreshold.get -> float
+Sage.UI.UiRoot.DragThreshold.set -> void
 Sage.UI.UiRoot.Fonts.get -> Sage.UI.UiFonts?
 Sage.UI.UiRoot.Fonts.set -> void
+Sage.UI.UiRoot.IsDragging.get -> bool
 Sage.UI.UiScreenStack.Fonts.get -> Sage.UI.UiFonts?
 const Sage.UI.Dropdown.Arrow = "v" -> string!
 override Sage.UI.Checkbox.IsSelected.get -> bool
@@ -296,7 +339,13 @@ Sage.UI.ViewPose.Position -> System.Numerics.Vector3
 Sage.UI.ViewPose.Rotation -> System.Numerics.Quaternion
 Sage.UI.ViewPose.Subject -> Sage.Simulation.Entity
 Sage.UI.ViewPose.ViewPose() -> void
+Sage.UI.Widget.ColumnSpan.get -> int
+Sage.UI.Widget.ColumnSpan.set -> void
+Sage.UI.Widget.Draggable.get -> bool
+Sage.UI.Widget.Draggable.set -> void
 Sage.UI.Widget.NotifyValueChanged() -> void
+Sage.UI.Widget.RowSpan.get -> int
+Sage.UI.Widget.RowSpan.set -> void
 Sage.UI.Widget.ValueChanged -> System.Action<Sage.UI.Widget!>?
 Sage.UI.Widget.FocusDown.get -> string?
 Sage.UI.Widget.FocusDown.set -> void
@@ -351,7 +400,10 @@ static Sage.UI.UiScreenActions.Open(Sage.Simulation.World! world, Sage.Core.Reco
 static Sage.UI.TrueTypeFont.Load(byte[]! data, string! name) -> Sage.UI.TrueTypeFont!
 static Sage.UI.UiFonts.IsAtlas(Sage.Core.AssetPath path) -> bool
 static Sage.UI.UiFonts.IsTrueType(Sage.Core.AssetPath path) -> bool
+static Sage.UI.UiInput.Do(Sage.UI.UiCommand command) -> Sage.UI.UiInput
 static Sage.UI.UiInput.Drag(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
+static Sage.UI.UiInput.Hold(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
+static Sage.UI.UiInput.Release(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
 static Sage.UI.UiInput.Type(string! text) -> Sage.UI.UiInput
 static Sage.UI.WorldViews.SubjectOf(Sage.Simulation.World! world, Sage.UI.View! view, in Sage.UI.UiBindContext context) -> Sage.Simulation.Entity
 static Sage.UI.WorldViews.TryPose(Sage.Simulation.World! world, Sage.UI.View! view, in Sage.UI.UiBindContext context, double time, out Sage.UI.ViewPose pose) -> bool
