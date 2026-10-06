@@ -266,7 +266,7 @@ Both jobs check out the whole history (`fetch-depth: 0`), because the version co
 both jobs' builds check the **declared public API**: each assembly games compile against keeps
 `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt`, and a public change the files do not have is a
 build error (RS0016/RS0017; Linux also shows it on purpose). [`docs/RELEASING.md`](docs/RELEASING.md)
-says how to update them. Pushing a `v*.*.*` tag runs [`release.yml`](.github/workflows/release.yml), which builds that commit on Windows, runs the tests, packs the SDK, the Player and the templates and attaches them to a GitHub release (RELEASING §4; nothing goes to a public feed, #296). The 0.1.0 API is frozen in the `Shipped` files; the `v0.1.0` tag is the owner's push and has not been pushed.
+says how to update them. Pushing a `v*.*.*` tag runs [`release.yml`](.github/workflows/release.yml), which builds that commit on Windows, runs the tests, packs the SDK, the Player and the templates and attaches them to a GitHub release (RELEASING §4; nothing goes to a public feed, #296). The 0.1.0 API is frozen in the `Shipped` files; `v0.1.0` is tagged and [released](https://github.com/ZohnHadley/sage-engine/releases/tag/v0.1.0) with its three packages.
 
 Warnings are errors (`Directory.Build.props`), and package versions live in one place
 (`Directory.Packages.props`). `main` is
