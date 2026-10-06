@@ -184,6 +184,10 @@ internal sealed class ParticleExtract : ISystem
                 // Past the fog's cull distance a fogged particle is its fog colour over a background of
                 // the same colour: not drawn, and counted as fog culled (issue 4n-6).
                 float fogCull = runtime != null && runtime.Fog > 0f ? _snapshot.Environment.FogCull : float.PositiveInfinity;
+                // Soft against the scene's depth (issue 4n-6), which covers the screen's views as the scene draws
+                // them: a render target's view or a depth-only one (the viewmodel) draws its particles hard.
+                float soft = SoftParticles.Applies(group.Record.Soft, pass) && view.Target == RenderViewPlan.Screen && !view.DepthOnly
+                    ? group.Record.Soft : 0f;
 
                 for (int i = 0; i < group.Count; i++)
                 {
@@ -217,6 +221,8 @@ internal sealed class ParticleExtract : ISystem
                     instance.Roll = group.Rotation[i];            // and it may be turning (`spinDegrees`)
                     instance.Right = default;                     // a billboard (issue #306)
                     instance.Up = default;
+                    instance.Soft = soft;
+                    if (soft > 0f) _snapshot.SoftSprites++;
                     instance.SortKey = RenderSortKey.Make(pass, 0, material, texture,
                                                           Vector3.Dot(centre, view.Forward.ToNumerics()), view.Far);
                     instance.View = v;

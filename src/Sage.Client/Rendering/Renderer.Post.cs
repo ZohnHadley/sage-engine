@@ -89,12 +89,15 @@ public sealed partial class Renderer
     // items drawn again into `sage:depth` (R32F, the scene's size, each view in its own rectangle) with
     // lit.fx's ShadowCaster technique, which writes z/w; cleared to 1, the sky. A depth-only view (the
     // viewmodel) clears depth in its rectangle first, as it does when it draws, so the hands are in front.
-    // Alpha-tested holes are solid here. Called with the scene drawn and `_toScene` still set.
-    private void DrawSceneDepth(RenderSnapshot s)
+    // Alpha-tested holes are solid here. Called before the views draw (soft particles read it while they do,
+    // issue 4n-6) with `_toScene` set; without the chain (soft particles only) it is the back buffer's size.
+    // False when it could not be drawn (no default material or caster: a build without shaders).
+    private bool DrawSceneDepth(RenderSnapshot s)
     {
-        int target = _targets.Declare(PostChainPlan.DepthTarget, _sceneSize.X, _sceneSize.Y, SurfaceFormat.Single, DepthFormat.Depth24);
+        var size = _toScene ? _sceneSize : TargetSize(RenderViewPlan.Screen);
+        int target = _targets.Declare(PostChainPlan.DepthTarget, size.X, size.Y, SurfaceFormat.Single, DepthFormat.Depth24);
         _device.SetRenderTarget(_targets.Texture(target));
-        _device.Viewport = new Viewport(0, 0, _sceneSize.X, _sceneSize.Y);
+        _device.Viewport = new Viewport(0, 0, size.X, size.Y);
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Vector4.One, 1f, 0);
         _bound = NotBound;
         _passBound = false;
@@ -102,12 +105,12 @@ public sealed partial class Renderer
 
         // A default material that could not be built (no shaders: Linux CI) is already reported, under Shaders.
         var material = Materials.Get(Materials.Resolve(MaterialRecord.Default));
-        if (material == null || material.IsError) return;
+        if (material == null || material.IsError) return false;
         var caster = material.Effect;
         if (caster.ShadowCaster == null)
         {
-            Log.Once(LogCat.Shaders, LogLevel.Warn, "no-depth-caster", $"{MaterialRecord.Default}'s effect has no ShadowCaster technique; post effects read no depth");
-            return;
+            Log.Once(LogCat.Shaders, LogLevel.Warn, "no-depth-caster", $"{MaterialRecord.Default}'s effect has no ShadowCaster technique; post effects and soft particles read no depth");
+            return false;
         }
         var effect = caster.Effect;
         _device.BlendState = BlendState.Opaque;
@@ -159,6 +162,7 @@ public sealed partial class Renderer
         }
         caster.FrameStamp = -1;   // the next view sets its own frame parameters on this effect
         _current = -1;
+        return true;
     }
 
     // ---- Drawing the chain ----

@@ -101,6 +101,16 @@ public sealed class ParticleRecord
     [Property(Category = "Sheet", Tooltip = "Each particle starts on a frame of its own, so a cloud of them does not flicker in step")]
     public bool SheetRandomStart;
 
+    // ---- Soft against the world (issue 4n-6) ----
+    //
+    // A soft particle fades over the last `soft` metres before the opaque geometry behind it, so a puff of
+    // smoke on the floor shows no hard line where its quad cuts the ground (SoftParticles). It reads the
+    // scene's depth (`sage:depth`, the depth hook of issue #316), so a frame with one visible draws it; where
+    // there is none to read (no shaders, a render-target view, a material whose effect has no soft twin)
+    // it is drawn hard, as every particle was before. 0, the default, is hard.
+    [Property(Min = 0, Unit = "m", Tooltip = "Fades the particle over this distance in front of the geometry behind it, so it shows no hard edge where it cuts a surface; 0 = hard")]
+    public float Soft;
+
     public static readonly RecordId DefaultMaterial = new("sage", "particle_additive");
 
     // The frames a particle runs through: the grid's, or fewer when `sheetFrames` says.
@@ -118,6 +128,7 @@ public sealed class ParticleRecord
         if (!(record.SheetCycles >= 0f) || float.IsInfinity(record.SheetCycles)) check.Error("sheetCycles", "\"sheetCycles\" is a number of 0 or more");
         if (!(record.Restitution >= 0f && record.Restitution <= 1f)) check.Error("restitution", "\"restitution\" is a fraction from 0 to 1");
         if (!(record.Friction >= 0f && record.Friction <= 1f)) check.Error("friction", "\"friction\" is a fraction from 0 to 1");
+        if (!(record.Soft >= 0f) || float.IsInfinity(record.Soft)) check.Error("soft", "\"soft\" is a distance in metres of 0 or more (0 = hard)");
         if (record.Collision != ParticleCollision.None && record.Local)
             check.Warn("collision", "is not read on a local (carried) effect: its particles are wherever their owner is");
     }
@@ -164,6 +175,17 @@ public sealed class Particles
     public Vector3 Wind { get; set; }
 
     public IReadOnlyList<Group> Groups => _order;
+
+    // Whether a live particle is soft (issue 4n-6): such a frame wants the scene's depth (SoftParticles).
+    internal bool AnySoft
+    {
+        get
+        {
+            for (int g = 0; g < _order.Count; g++)
+                if (_order[g].Count > 0 && _order[g].Record.Soft > 0f) return true;
+            return false;
+        }
+    }
 
     public void ResetStats() => Refused = Rays = RaysSkipped = Hits = 0;
 
