@@ -1,6 +1,9 @@
 #nullable enable
 const Sage.UI.InputPrompts.GlyphTablePrefix = "@input." -> string!
 const Sage.UI.InputPrompts.Placeholder = "action:" -> string!
+override Sage.UI.Box.ChildClip.get -> Sage.Simulation.Rect
+Sage.UI.Box.ClipChildren.get -> bool
+Sage.UI.Box.ClipChildren.set -> void
 Sage.UI.InputPrompts
 Sage.UI.InputPrompts.Binding(string! action) -> Sage.Simulation.InputBinding?
 Sage.UI.InputPrompts.Device.get -> Sage.Simulation.InputDeviceKind
@@ -55,6 +58,7 @@ Sage.UI.UiFonts.UiFonts(Sage.Core.VirtualFileSystem! vfs) -> void
 Sage.UI.UiFonts.UiFonts(System.Func<Sage.Core.AssetPath, byte[]?>! read) -> void
 Sage.UI.UiFonts.Version.get -> int
 Sage.UI.UiModule.Fonts.get -> Sage.UI.UiFonts!
+Sage.UI.UiNode.Clip -> bool
 Sage.UI.UiNode.MaxWidth -> float
 Sage.UI.UiNode.Overflow -> Sage.UI.TextOverflow?
 Sage.UI.UiNode.Wrap -> bool

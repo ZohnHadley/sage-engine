@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text.Json.Serialization;
 using System.Diagnostics.CodeAnalysis;
 
@@ -47,6 +48,18 @@ public abstract class QuestObjective
 
     // What the journal says when the content wrote no `text`: "kill 3 wolves".
     public abstract string Describe(World world, int count);
+
+    // Where a map marks this objective while it is unmet, for a quest the player tracks (issue #349): the
+    // entity of this name, wherever it is now...
+    [Property(Tooltip = "Who or what a map marks while this is unmet: an entity's name; empty: the objective's own place, if it has one")]
+    public string Target = "";
+
+    // ...or, when it names none, a place of the objective's own in absolute metres (`reach`'s `at`).
+    public virtual bool TryGetPlace(out Vector3 at)
+    {
+        at = default;
+        return false;
+    }
 }
 
 [Experimental("SAGE0120", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // open vocabulary (#28): may change before 1.0
@@ -73,6 +86,9 @@ public sealed class QuestStage
     public string Text = "";                        // what the journal says while this stage is on
     public List<QuestObjective> Objectives = new();
     public string Next = "";                        // the stage that follows when they are all met
+    // Who or what a map marks while this stage is on, by entity name (issue #349): the hermit a "go and
+    // tell him" stage waits on. An objective names its own (QuestObjective.Target).
+    public string Target = "";
     // Reaching this stage ends the quest. A stage that waits to be *told* it is over — "go and report" —
     // is not this: it has no objectives, no `next`, and something outside finishes it (a conversation
     // with `finishQuest`, a trigger, a command).
@@ -108,6 +124,12 @@ public sealed class Journal
         // Kills counted since this stage began, one number per objective, by index. Counting is the
         // only thing a quest has to *remember*; everything else it can look up.
         public List<int> Progress { get; set; } = new();
+
+        // The stages it has moved on from, in order (issue #349): what the journal's history shows.
+        public List<string> History { get; set; } = new();
+
+        // The player follows it: a map marks its targets (issue #349). Starting a quest tracks it.
+        public bool Tracked { get; set; }
     }
 
     public List<Entry> Entries { get; set; } = new();
@@ -147,7 +169,7 @@ public static class Quests
             return false;
         }
 
-        journal.Entries.Add(new Journal.Entry { Quest = quest, Stage = stage.Id });
+        journal.Entries.Add(new Journal.Entry { Quest = quest, Stage = stage.Id, Tracked = true });
         world.Events.Send(new QuestChanged(quest, stage.Id, false));
         Log.Info(LogCat.Gameplay, $"Quest started: {(record.Label.Length > 0 ? record.Label : quest.Name)}");
         Check(world, quest);        // a stage whose objectives are already met does not sit there
@@ -172,6 +194,7 @@ public static class Quests
             return false;
         }
 
+        if (entry.Stage != next.Id) entry.History.Add(entry.Stage);
         entry.Stage = next.Id;
         entry.Progress.Clear();
         entry.Finished = next.Done && next.Objectives.Count == 0;
@@ -194,6 +217,18 @@ public static class Quests
         Log.Info(LogCat.Gameplay, $"Quest finished: {label}");
         return true;
     }
+
+    // Follows a quest or stops (issue #349): a map marks a tracked quest's targets. False when it is not
+    // in the journal.
+    public static bool Track(World world, RecordId quest, bool tracked = true)
+    {
+        var entry = JournalOf(world)?.Of(quest);
+        if (entry == null) return false;
+        entry.Tracked = tracked;
+        return true;
+    }
+
+    public static bool IsTracked(World world, RecordId quest) => JournalOf(world)?.Of(quest)?.Tracked == true;
 
     public static bool IsActive(World world, RecordId quest)
     {

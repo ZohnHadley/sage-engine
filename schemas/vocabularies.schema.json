@@ -9961,6 +9961,11 @@
                       "Have"
                     ]
                   },
+                  "target": {
+                    "description": "Who or what a map marks while this is unmet: an entity's name; empty: the objective's own place, if it has one. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
                   "text": {
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
                     "default": "",
@@ -10017,6 +10022,11 @@
                       }
                     ]
                   },
+                  "target": {
+                    "description": "Who or what a map marks while this is unmet: an entity's name; empty: the objective's own place, if it has one. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
                   "text": {
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
                     "default": "",
@@ -10064,6 +10074,11 @@
                         "$ref": "ids.schema.json#/definitions/record:prefab"
                       }
                     ]
+                  },
+                  "target": {
+                    "description": "Who or what a map marks while this is unmet: an entity's name; empty: the objective's own place, if it has one. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
                   },
                   "text": {
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
@@ -10130,6 +10145,11 @@
                     "type": "number",
                     "minimum": 0
                   },
+                  "target": {
+                    "description": "Who or what a map marks while this is unmet: an entity's name; empty: the objective's own place, if it has one. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
                   "text": {
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
                     "default": "",
@@ -10190,6 +10210,11 @@
                         "$ref": "ids.schema.json#/definitions/record:prefab"
                       }
                     ]
+                  },
+                  "target": {
+                    "description": "Who or what a map marks while this is unmet: an entity's name; empty: the objective's own place, if it has one. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
                   },
                   "text": {
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",

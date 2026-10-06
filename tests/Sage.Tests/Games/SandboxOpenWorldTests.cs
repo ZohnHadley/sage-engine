@@ -146,7 +146,7 @@ public class SandboxOpenWorldTests
         Assert.Empty(Named(world, "old_road_stone"));                      // sector (4, 0) asleep now, three behind
 
         var stack = SandboxScreensTests.Stack(world);
-        var layer = stack.Open(new RecordId("sandbox", "map"), new UiBindContext(world, player));
+        var layer = stack.Open(Sage.Kits.Rpg.RpgKitModule.MapScreen, new UiBindContext(world, player));
         stack.Update(UiInput.Wait(0f));
         var map = Assert.IsType<MapView>(layer.Screen!.ViewModel);
         var road = Assert.Single(map.Markers, m => m.Label == "Old Road");  // asleep, so a marker of its own

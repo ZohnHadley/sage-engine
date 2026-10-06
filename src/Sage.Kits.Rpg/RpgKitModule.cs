@@ -36,6 +36,11 @@ public sealed class RpgKitModule : IModule
     public static readonly RecordId TopicsScreen = new(ContentNamespace, "topics");
     public static readonly RecordId ShopScreen = new(ContentNamespace, "shop");
 
+    // The journal and the map (issue #349): the story so far and the quests tracked, and the scene's picture
+    // under its fog with the markers on it (JournalView, MapView). Every game with the kit has them.
+    public static readonly RecordId JournalScreen = new(ContentNamespace, "journal");
+    public static readonly RecordId MapScreen = new(ContentNamespace, "map");
+
     // The rest and wait screen (issue 4g-7): hours, then sleep or wait (RestView, the Rest rule).
     public static readonly RecordId RestScreen = new(ContentNamespace, "rest");
 
@@ -88,6 +93,7 @@ public sealed class RpgKitModule : IModule
         slots.Register(MainHand);
         slots.Register(OffHand);
         ctx.Engine.Records.AddCheck<RpgItemRecord>(RpgItemRecord.Check);
+        ctx.Engine.Records.AddCheck<AreaMapRecord>(AreaMapRecord.Check);
 
         // Composing spells at the console (F21), the same rules a spellmaker screen calls.
         Spellmaker.RegisterCommands(ctx.Engine);
@@ -133,6 +139,8 @@ public sealed class RpgKitModule : IModule
         world.AddSystem(new ReadiedSpellSystem(world, _actions!));
         // Using a chest or a body opens its screen (issue #344).
         world.AddSystem(new UseScreenSystem(world));
+        // Walking lifts the map's fog (issue #349).
+        world.AddSystem(new MapDiscoverySystem());
         // The equipment screen lists the slots there are.
         if (!world.Resources.TryGet<EquipSlots>(out _)) world.Resources.Add(_slots!);
     }

@@ -181,6 +181,9 @@ internal sealed class LayoutBuilder
                 if (n.Direction is { } direction) stack.Direction = direction;
                 stack.Spacing = n.Spacing;
                 break;
+            case Box box:
+                box.ClipChildren = n.Clip;
+                break;
             case Scroll scroll:
                 if (n.Horizontal is { } across) scroll.Horizontal = across;
                 if (n.Vertical is { } down) scroll.Vertical = down;
@@ -240,6 +243,8 @@ internal sealed class LayoutBuilder
                 case UiBindings.Columns: bound.Columns = reader; break;
                 case UiBindings.X: bound.X = reader; break;
                 case UiBindings.Y: bound.Y = reader; break;
+                case UiBindings.W: bound.W = reader; break;
+                case UiBindings.H: bound.H = reader; break;
                 case UiBindings.Rows:
                     var template = tree.ChildrenOf(name).FirstOrDefault();
                     if (template.Node != null && bound.Widget is Container host)
@@ -288,9 +293,12 @@ internal static class UiBindings
                         Checked = "checked", Selected = "selected", Options = "options",
                         // Where in its parent Box it sits, 0..1 across and down: a point anchor there (a map's
                         // markers, issue #99). Kept inside the box: a point anchor places the widget proportionally.
-                        X = "x", Y = "y";
+                        X = "x", Y = "y",
+                        // With `x` and `y`, a rect rather than a point: anchors from (x, y) to (x + w, y + h), not kept
+                        // inside the box — a map's picture or a patch of its fog, cut off by a `clip` box (issue #349).
+                        W = "w", H = "h";
 
-    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, Checked, Selected, Options };
+    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, W, H, Checked, Selected, Options };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
     public static string? Primary(string widget) => widget switch
@@ -361,7 +369,7 @@ internal sealed class BoundNode
 
     public ICondition? VisibleIf, EnabledIf;
     public TextSlot? Text, Tooltip;
-    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
+    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y, W, H;
     public BindingReader? Checked, Selected, Options, Content;   // the form widgets' (issue #340)
     public RowsSlot? Rows;
     private string? _source, _style, _content;
@@ -372,7 +380,7 @@ internal sealed class BoundNode
 
     public bool Dynamic => _children.Length > 0 || Rows != null || VisibleIf != null || EnabledIf != null || Text != null || Tooltip != null
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
-                           || Enabled != null || Data != null || Columns != null || X != null || Y != null
+                           || Enabled != null || Data != null || Columns != null || X != null || Y != null || W != null || H != null
                            || Checked != null || Selected != null || Options != null || Content != null;
 
     // Listens for the player changing the widget, when its value is bound, to write it back (issue #340).
@@ -477,7 +485,17 @@ internal sealed class BoundNode
         }
         if (Data != null) Widget.Data = Data.Read(source).Ref;
         if (Columns != null && Widget is Grid grid) grid.Columns = (int)Columns.Read(source).AsFloat;   // Grid keeps at least 1
-        if (X != null || Y != null)
+        if (W != null || H != null)
+        {
+            // A rect (issue #349): where it starts and how much of the box it spans, overhanging it as it may.
+            var at = Widget.Anchors;
+            float x = X != null ? X.Read(source).AsFloat : at.MinX;
+            float y = Y != null ? Y.Read(source).AsFloat : at.MinY;
+            float w = W != null ? MathF.Max(W.Read(source).AsFloat, 0f) : at.MaxX - at.MinX;
+            float h = H != null ? MathF.Max(H.Read(source).AsFloat, 0f) : at.MaxY - at.MinY;
+            Widget.Anchors = new Anchors(x, y, x + w, y + h);
+        }
+        else if (X != null || Y != null)
         {
             var at = Widget.Anchors;
             float x = X != null ? Math.Clamp(X.Read(source).AsFloat, 0f, 1f) : at.MinX;

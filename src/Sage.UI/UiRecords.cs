@@ -202,6 +202,9 @@ public sealed class UiNode
     [Property(Tooltip = "A grid's cells are all the size of the biggest")]
     public bool Uniform;
 
+    [Property(Tooltip = "A box cuts off what is inside it at its edges (a map's picture, zoomed in and panned)")]
+    public bool Clip;
+
     [Property(Tooltip = "A scroll scrolls across (default false)")]
     public bool? Horizontal;
 

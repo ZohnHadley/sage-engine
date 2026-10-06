@@ -116,8 +116,29 @@
     "cannot_save": "Could not save your controls; see the log.",
     "hint": "Changes apply at once.    B: close"
   },
+  "journal": {
+    "title": "Journal",
+    "summary": { "zero": "Nothing on the go, {finished} done", "one": "{count} quest on the go, {finished} done", "other": "{count} quests on the go, {finished} done" },
+    "empty": "(nothing yet)",
+    "done": "done",
+    "tracked": ">",
+    "hint": "A on a quest: track it or stop    B: close"
+  },
   "map": {
-    "travel": "Travel ({hours} h)"
+    "title": "Map",
+    "you": "you",
+    "travel": "Travel ({hours} h)",
+    "destinations": "Travel to",
+    "destination": "{label}   {hours} h",
+    "range": { "zero": "Nothing marked within {range} m", "one": "{count} place within {range} m", "other": "{count} places within {range} m" },
+    "zoom_in": "+",
+    "zoom_out": "-",
+    "north": "N",
+    "south": "S",
+    "east": "E",
+    "west": "W",
+    "recentre": "Centre",
+    "hint": "North is up. Choose a waystone to travel.    B: close"
   },
   "menu": {
     "game_title": "A New Adventure",
