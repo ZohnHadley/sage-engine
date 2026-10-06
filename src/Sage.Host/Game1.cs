@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -42,6 +43,9 @@ public class Game1 : Game
     private readonly CommandLatch[] otherLatches = { new(), new(), new() };   // local players 2..4 (#331)
     private ActionId moveAction, lookAction, menuAction, toggleConsoleAction;
     private PlayerInput playerInput = null!;
+    // The Shipping console (#353): a drop-down drawn by the client. A dev build has the ImGui console
+    // instead and never opens this one.
+    private DropDownConsole dropConsole = null!;
 
 #if SAGE_DEV
     // The console, the overlays, the free camera and the editor — everything a developer sees and a
@@ -117,6 +121,7 @@ public class Game1 : Game
         hostCVars.VSync.Changed += _ => ApplyVSync();
         hostCVars.Width.Changed += _ => ApplyWindowSize();
         hostCVars.Height.Changed += _ => ApplyWindowSize();
+        hostCVars.Fullscreen.Changed += _ => ApplyFullscreen();
         // The window can be resized by dragging its edges (or maximised), in a game and in the editor:
         // the back buffer follows, and everything that draws reads its size every frame (the views,
         // the UI, ImGui), so nothing else has to be told.
@@ -125,8 +130,12 @@ public class Game1 : Game
         recHotReload = cvars.Register("rec_hotreload", engine.Core.Developer.Value >= 1, CVarFlags.DevOnly,
             "Reload record files (data/**/*.json) when they change on disk.");
 
+        dropConsole = new DropDownConsole(cvars, engine.Core,
+            () => engine.Records.TypeNames.SelectMany(t => engine.Records.Ids(t)).Select(i => i.ToString()));
 #if SAGE_DEV
         dev = new DevTools(this, engine, devices, actions);
+#else
+        dropConsole.RegisterCommands();
 #endif
         cvars.RegisterCommand("quit", CVarFlags.None, "quit [seconds]: exit now, or after this long.", a =>
         {
@@ -150,6 +159,7 @@ public class Game1 : Game
         app.Configure();   // config.cfg, now that every cvar and command exists
         ApplyVSync();
         ApplyWindowSize();
+        ApplyFullscreen();
         Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
 
         // Records, module Start, then the main world (01 §5.1). Modules install their resources and
@@ -164,6 +174,7 @@ public class Game1 : Game
         }
         engine.Modules.ProvideHostService(new ClientHost(this));
         engine.Modules.ProvideHostService(devices);
+        engine.Modules.ProvideHostService(dropConsole);
         // A save's thumbnail (issue #285): the last frame drawn, shrunk, handed over when the save is taken.
 #pragma warning disable SAGE0131 // the host ships with the engine that declares the save API
         engine.Saves.Thumbnail = CaptureThumbnail;
@@ -263,6 +274,22 @@ public class Game1 : Game
         graphics.ApplyChanges();
     }
 
+    // `vid_fullscreen` (issue #339): borderless, so switching is quick and the desktop's mode is kept.
+    private void ApplyFullscreen()
+    {
+        bool on = hostCVars.Fullscreen.Value;
+        if (graphics.IsFullScreen == on) return;
+        graphics.HardwareModeSwitch = false;
+        graphics.IsFullScreen = on;
+        if (!on)
+        {
+            graphics.PreferredBackBufferWidth = hostCVars.Width.Value;   // back to the window it was
+            graphics.PreferredBackBufferHeight = hostCVars.Height.Value;
+        }
+        graphics.ApplyChanges();
+        Log.Info(LogCat.Render, on ? "Fullscreen" : "Windowed");
+    }
+
     // `vid_width` / `vid_height`: the back buffer follows, and the screen's views with it (each view
     // takes its aspect from its own viewport, 06 §3.4a).
     private void ApplyWindowSize()
@@ -290,6 +317,7 @@ public class Game1 : Game
             graphics.PreferredBackBufferWidth = bounds.Width;
             graphics.PreferredBackBufferHeight = bounds.Height;
             graphics.ApplyChanges();
+            if (graphics.IsFullScreen) return;   // the screen's size is not the window's to remember
             hostCVars.Width.Value = Math.Clamp(bounds.Width, HostCVars.MinWidth, HostCVars.MaxWidth);
             hostCVars.Height.Value = Math.Clamp(bounds.Height, HostCVars.MinHeight, HostCVars.MaxHeight);
         }
@@ -322,7 +350,9 @@ public class Game1 : Game
 #if SAGE_DEV
         bool uiWantsMouse = dev.WantsMouse, uiWantsKeyboard = dev.WantsKeyboard;
 #else
-        const bool uiWantsMouse = false, uiWantsKeyboard = false;
+        // The drop-down console has the mouse and the keyboard while it is open: no screen's field sees
+        // what is typed into it (the same flags ImGui's capture sets in a dev build).
+        bool uiWantsMouse = dropConsole.IsOpen, uiWantsKeyboard = dropConsole.IsOpen;
 #endif
         // The editor (`-edit`) reads its own map and nothing walks: there is no pawn. A game run has no
         // Editor context at all, so the editor's keys never reach a played game.
@@ -337,7 +367,7 @@ public class Game1 : Game
 #if SAGE_DEV
         actions.SetActive(InputContext.Console, dev.ConsoleIsOpen);
 #else
-        actions.SetActive(InputContext.Console, false);
+        actions.SetActive(InputContext.Console, dropConsole.IsOpen);
 #endif
         actions.UiWantsKeyboard = uiWantsKeyboard;
         actions.UiWantsMouse = uiWantsMouse;
@@ -348,6 +378,10 @@ public class Game1 : Game
         // where Escape is too easy a key to lose work to: File > Exit (or `quit`) leaves it.
 #if SAGE_DEV
         if (actions.Pressed(toggleConsoleAction)) dev.ToggleConsole();
+#else
+        if (actions.Pressed(toggleConsoleAction)) dropConsole.Toggle();
+        else if (dropConsole.IsOpen) FeedConsole();
+        dropConsole.Update(realDt);
 #endif
         if (actions.Pressed(menuAction))
         {
@@ -356,7 +390,8 @@ public class Game1 : Game
             else if (playing) dev.StopPlaying();   // Escape leaves play, not the editor (#226)
             else if (!Editing) Exit();
 #else
-            Exit();
+            if (dropConsole.IsOpen) dropConsole.Close();
+            else Exit();
 #endif
         }
 
@@ -414,6 +449,26 @@ public class Game1 : Game
     // headless-tested; this gathers their inputs and applies the answer.
     private bool wasCaptured;
     private string? lastWhy = "";
+    // Typing, history, completion and scrolling for the Shipping console (#353): the window's characters,
+    // plus the few keys that are not text. The Console input context has swallowed the keyboard, so
+    // nothing else acts on these.
+    private void FeedConsole()
+    {
+        dropConsole.Type(devices.Typed);
+        var keyboard = devices.Keyboard;
+        if (keyboard.IsKeyPressed(Keys.Up)) dropConsole.Press(Sage.Core.ConsoleNavKey.Up);
+        if (keyboard.IsKeyPressed(Keys.Down)) dropConsole.Press(Sage.Core.ConsoleNavKey.Down);
+        if (keyboard.IsKeyPressed(Keys.Left)) dropConsole.Press(Sage.Core.ConsoleNavKey.Left);
+        if (keyboard.IsKeyPressed(Keys.Right)) dropConsole.Press(Sage.Core.ConsoleNavKey.Right);
+        if (keyboard.IsKeyPressed(Keys.Home)) dropConsole.Press(Sage.Core.ConsoleNavKey.Home);
+        if (keyboard.IsKeyPressed(Keys.End)) dropConsole.Press(Sage.Core.ConsoleNavKey.End);
+        if (keyboard.IsKeyPressed(Keys.Tab)) dropConsole.Press(Sage.Core.ConsoleNavKey.Tab);
+        if (keyboard.IsKeyPressed(Keys.PageUp)) dropConsole.Press(Sage.Core.ConsoleNavKey.PageUp);
+        if (keyboard.IsKeyPressed(Keys.PageDown)) dropConsole.Press(Sage.Core.ConsoleNavKey.PageDown);
+        int wheel = devices.Mouse.ScrollWheelDelta;
+        if (wheel != 0) dropConsole.ScrollBy(wheel / 120 * 3);
+    }
+
     private void UpdateMouseCapture(bool uiWantsMouse, bool playing)
     {
         var w = inputWorld;
@@ -426,7 +481,7 @@ public class Game1 : Game
 #if SAGE_DEV
         bool console = dev.ConsoleIsOpen;
 #else
-        const bool console = false;
+        bool console = dropConsole.IsOpen;
 #endif
         var inputs = new MouseCaptureInputs
         {

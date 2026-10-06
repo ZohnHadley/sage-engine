@@ -179,6 +179,8 @@ Sage.Simulation.ShadowAtlas.Height.get -> int
 Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
+Sage.Simulation.SoundRecord.Caption -> string!
+Sage.Simulation.SoundRecord.Speaker -> string!
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
@@ -612,3 +614,8 @@ Sage.Simulation.Scenes.Title.set -> void
 static Sage.Simulation.Scenes.AtTitle(Sage.Simulation.World! world) -> bool
 Sage.Simulation.SageAppOptions.Title.get -> string?
 Sage.Simulation.SageAppOptions.Title.init -> void
+Sage.Simulation.Engine.DumpSections.get -> Sage.Simulation.RegistryDumpSections!
+Sage.Simulation.RegistryDumpSections
+Sage.Simulation.RegistryDumpSections.Add(string! name, System.Func<System.Text.Json.Nodes.JsonNode?>! build) -> void
+Sage.Simulation.RegistryDumpSections.All.get -> System.Collections.Generic.IReadOnlyList<(string! Name, System.Func<System.Text.Json.Nodes.JsonNode?>! Build)>!
+Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void

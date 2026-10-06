@@ -51,6 +51,21 @@ public sealed class Localisation
     // The language shown: what `lang` says, as long as it has tables (English otherwise).
     public string Language { get; private set; } = DefaultLanguage;
 
+    // Which way the language's text runs (issue #345): its `language` record's `direction`, or, when it
+    // has none or says auto, right to left for the scripts that are (Arabic, Hebrew, Persian, Urdu...).
+    // Screens shown in a right-to-left language are mirrored (UiRoot.RightToLeft).
+    public TextDirection Direction { get; private set; } = TextDirection.LeftToRight;
+
+    public bool IsRightToLeft => Direction == TextDirection.RightToLeft;
+
+    // The fonts the language's `language` record names: tried, in order, for a character a label's own
+    // font lacks, and what a label with no font of its own is drawn in (UiFonts.Fallbacks).
+    public IReadOnlyList<AssetPath> Fonts { get; private set; } = Array.Empty<AssetPath>();
+
+    // How a {placeholder:format} is written in the language: "{gold:n0}" is "1,234" in English and
+    // "1.234" in German. The invariant culture when the system knows no such language.
+    public CultureInfo Culture { get; private set; } = CultureInfo.InvariantCulture;
+
     // Moves whenever the tables or the language change, or what an `{action:...}` prompt shows (a rebind,
     // the device in use): what shows text re-resolves it then.
     public int Version => _tablesVersion + (Prompts?.Version ?? 0);
@@ -81,7 +96,7 @@ public sealed class Localisation
         var none = new ArrayArgs(Array.Empty<(string, object?)>());
         var builder = _builder ??= new StringBuilder(128);
         builder.Clear();
-        Fill(builder, shown, ref none);
+        Fill(builder, shown, ref none, Culture);
         return builder.ToString();
     }
 
@@ -117,7 +132,7 @@ public sealed class Localisation
 
         var builder = _builder ??= new StringBuilder(128);
         builder.Clear();
-        Fill(builder, template, ref args);
+        Fill(builder, template, ref args, Culture);
         return builder.ToString();
     }
 
@@ -136,8 +151,10 @@ public sealed class Localisation
         return dot > 1 ? key[1..dot] : key.TrimStart('@');
     }
 
-    // {name} → its value; {{ and }} → a brace; an unfilled or unclosed placeholder stays as written.
-    private void Fill<TArgs>(StringBuilder builder, string template, ref TArgs args) where TArgs : IPlaceholderValues
+    // {name} → its value; {name:format} → its value formatted for the language ("n0", "p0", "d" for a
+    // date: .NET's format strings, in Culture); {action:Name} → the input glyph (#352); {{ and }} → a
+    // brace; an unfilled or unclosed placeholder stays as written.
+    private void Fill<TArgs>(StringBuilder builder, string template, ref TArgs args, CultureInfo culture) where TArgs : IPlaceholderValues
     {
         for (int i = 0; i < template.Length; i++)
         {
@@ -146,11 +163,15 @@ public sealed class Localisation
             if (c != '{') { builder.Append(c); continue; }
             int close = template.IndexOf('}', i + 1);
             if (close < 0) { builder.Append(template, i, template.Length - i); return; }
-            var name = template.AsSpan(i + 1, close - i - 1);
-            if (args.TryAppend(name, builder)) { }
-            else if (Prompts != null && name.StartsWith(InputPrompts.Placeholder, StringComparison.Ordinal) && name.Length > InputPrompts.Placeholder.Length)
-                builder.Append(Prompts.Glyph(name[InputPrompts.Placeholder.Length..].Trim().ToString()));
-            else builder.Append(template, i, close - i + 1);
+            // An argument named by the whole text wins ("action:Use" given as one); then an input glyph;
+            // then name:format.
+            var whole = template.AsSpan(i + 1, close - i - 1);
+            int colon = whole.IndexOf(':');
+            if (args.TryAppend(whole, ReadOnlySpan<char>.Empty, culture, builder)) { }
+            else if (Prompts != null && whole.StartsWith(InputPrompts.Placeholder, StringComparison.Ordinal) && whole.Length > InputPrompts.Placeholder.Length)
+                builder.Append(Prompts.Glyph(whole[InputPrompts.Placeholder.Length..].Trim().ToString()));
+            else if (colon < 0 || !args.TryAppend(whole[..colon], whole[(colon + 1)..], culture, builder))
+                builder.Append(template, i, close - i + 1);
             i = close;
         }
     }
@@ -172,10 +193,61 @@ public sealed class Localisation
             texts = english;
         }
         Language = language;
+        Culture = CultureOf(language);
+        Direction = DirectionOf(language, TextDirection.Auto);
+        Fonts = Array.Empty<AssetPath>();
+        Languages = Available(vfs);
         _texts = texts;
         _fallback = language == DefaultLanguage ? new Dictionary<string, LocalisedText>(StringComparer.Ordinal) : english;
         _warned.Clear();
         _tablesVersion++;
+    }
+
+    // What the language's `language` record says about it (UiModule, after Load): its direction (Auto:
+    // by its code) and its fonts.
+    internal void Describe(TextDirection direction, IReadOnlyList<AssetPath> fonts)
+    {
+        Direction = DirectionOf(Language, direction);
+        Fonts = fonts;
+        _tablesVersion++;
+    }
+
+    // Right to left for the languages whose scripts are, by primary subtag; left to right otherwise.
+    public static TextDirection DirectionOf(string language, TextDirection declared = TextDirection.Auto)
+    {
+        if (declared != TextDirection.Auto) return declared;
+        int dash = language.IndexOfAny(new[] { '-', '_' });
+        string primary = (dash < 0 ? language : language[..dash]).ToLowerInvariant();
+        return primary is "ar" or "he" or "iw" or "fa" or "ur" or "yi" or "ps" or "sd" or "ug" or "ckb" or "dv" or "syr"
+            ? TextDirection.RightToLeft : TextDirection.LeftToRight;
+    }
+
+    private static CultureInfo CultureOf(string language)
+    {
+        try { return CultureInfo.GetCultureInfo(language.Replace('_', '-')); }
+        catch (CultureNotFoundException) { return CultureInfo.InvariantCulture; }
+    }
+
+    // Every language some mount has tables for (the folders under strings/), sorted.
+    public static IReadOnlyList<string> LanguagesIn(VirtualFileSystem vfs)
+    {
+        var found = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var (path, _) in vfs.Enumerate(VirtualPath.Parse("strings"), "*.json", recursive: true))
+        {
+            var parts = path.Value.Split('/');
+            if (parts.Length >= 3) found.Add(parts[1]);
+        }
+        return found.ToList();
+    }
+
+    // The languages some mount has strings for (`strings/<lang>/`), English always among them, in order:
+    // what an options screen offers for `lang` (issue #339). Read at each Load.
+    public IReadOnlyList<string> Languages { get; private set; } = new[] { DefaultLanguage };
+
+    private static string[] Available(VirtualFileSystem vfs)
+    {
+        var found = new SortedSet<string>(LanguagesIn(vfs), StringComparer.OrdinalIgnoreCase) { DefaultLanguage };
+        return found.ToArray();
     }
 
     // The same language again, from the same mounts: hot reload.
@@ -275,6 +347,11 @@ internal sealed class LocalisedText
     public string File { get; }
     public bool IsPlural => _forms != null;
 
+    // Every text it has: the one, or each plural form.
+    public IEnumerable<string> Texts => _forms == null ? new[] { Other } : _forms.Where(f => f != null).Select(f => f!);
+
+    public bool HasForm(PluralCategory category) => _forms != null && _forms[(int)category] != null;
+
     // The form for `category`, `zero` for a count of 0 when there is one, and `other` when it lacks it.
     public string Form(PluralCategory category, double count)
     {
@@ -305,8 +382,11 @@ internal sealed class LocalisedText
     }
 }
 
-// Which plural form a count takes, per language. English's rule (one for exactly 1, other otherwise)
-// is the default for a language not listed; add a language's rule here when its strings arrive.
+// Which plural form a count takes, per language: the CLDR rules (https://cldr.unicode.org, plurals.xml)
+// for the languages games ship in, by primary subtag ("pt-PT" is the one region with a rule of its own).
+// A language not listed takes English's (one for exactly 1, other otherwise). The operands are CLDR's:
+// n the absolute count, i its integer digits, v how many fraction digits it shows and f those digits
+// (a count is a double, so 1.5 has v 1 and f 5, and 2.0 is the integer 2).
 internal static class PluralRules
 {
     private static readonly string[] Categories = { "zero", "one", "two", "few", "many", "other" };
@@ -322,19 +402,127 @@ internal static class PluralRules
         return other;
     }
 
-    public static PluralCategory Select(string language, double count)
+    private readonly record struct Operands(double N, long I, int V, long F);
+
+    private const PluralCategory Zero = PluralCategory.Zero, One = PluralCategory.One, Two = PluralCategory.Two,
+                                 Few = PluralCategory.Few, Many = PluralCategory.Many, Other = PluralCategory.Other;
+
+    private sealed record Rule(Func<Operands, PluralCategory> Select, PluralCategory[] Uses);
+
+    private static readonly Rule English = new(o => o.I == 1 && o.V == 0 ? One : Other, new[] { One, Other });
+    private static readonly Rule None = new(_ => Other, new[] { Other });
+    private static readonly Rule ExactlyOne = new(o => o.N == 1 ? One : Other, new[] { One, Other });
+    private static readonly Rule ZeroOrOne = new(o => o.I == 0 || o.N == 1 ? One : Other, new[] { One, Other });
+    // fr, es, it, pt, ca: "1 000 000 de", a many for whole millions.
+    private static bool Millions(Operands o) => o.V == 0 && o.I != 0 && o.I % 1000000 == 0;
+    private static readonly Rule Romance = new(o => o.I == 1 && o.V == 0 ? One : Millions(o) ? Many : Other, new[] { One, Many, Other });
+    private static readonly Rule Spanish = new(o => o.N == 1 ? One : Millions(o) ? Many : Other, new[] { One, Many, Other });
+    private static readonly Rule French = new(o => o.I is 0 or 1 ? One : Millions(o) ? Many : Other, new[] { One, Many, Other });
+    private static readonly Rule Portuguese = new(o => o.I is 0 or 1 ? One : Millions(o) ? Many : Other, new[] { One, Many, Other });
+    private static readonly Rule EastSlavic = new(o =>
+        o.V != 0 ? Other
+        : o.I % 10 == 1 && o.I % 100 != 11 ? One
+        : o.I % 10 is >= 2 and <= 4 && o.I % 100 is not (>= 12 and <= 14) ? Few
+        : Many, new[] { One, Few, Many, Other });
+    private static readonly Rule Polish = new(o =>
+        o.V != 0 ? Other
+        : o.I == 1 ? One
+        : o.I % 10 is >= 2 and <= 4 && o.I % 100 is not (>= 12 and <= 14) ? Few
+        : Many, new[] { One, Few, Many, Other });
+    private static readonly Rule Czech = new(o =>
+        o.V != 0 ? Many : o.I == 1 ? One : o.I is >= 2 and <= 4 ? Few : Other, new[] { One, Few, Many, Other });
+    private static readonly Rule SouthSlavic = new(o =>
+    {
+        long x = o.V == 0 ? o.I : o.F;
+        return x % 10 == 1 && x % 100 != 11 ? One
+             : x % 10 is >= 2 and <= 4 && x % 100 is not (>= 12 and <= 14) ? Few
+             : Other;
+    }, new[] { One, Few, Other });
+    private static readonly Rule Slovenian = new(o =>
+        o.V != 0 ? Few : (o.I % 100) switch { 1 => One, 2 => Two, 3 or 4 => Few, _ => Other }, new[] { One, Two, Few, Other });
+    private static readonly Rule Lithuanian = new(o =>
+        o.F != 0 ? Many
+        : o.I % 10 == 1 && o.I % 100 is not (>= 11 and <= 19) ? One
+        : o.I % 10 >= 2 && o.I % 100 is not (>= 11 and <= 19) ? Few
+        : Other, new[] { One, Few, Many, Other });
+    private static readonly Rule Latvian = new(o =>
+        o.V == 0 && (o.I % 10 == 0 || o.I % 100 is >= 11 and <= 19) ? Zero
+        : o.V == 0 ? (o.I % 10 == 1 && o.I % 100 != 11 ? One : Other)
+        : o.F % 10 == 1 && o.F % 100 != 11 ? One : Other, new[] { Zero, One, Other });
+    private static readonly Rule Romanian = new(o =>
+        o.I == 1 && o.V == 0 ? One
+        : o.V != 0 || o.N == 0 || o.I % 100 is >= 1 and <= 19 ? Few
+        : Other, new[] { One, Few, Other });
+    private static readonly Rule Arabic = new(o =>
+        o.V != 0 ? Other
+        : o.I switch { 0 => Zero, 1 => One, 2 => Two, _ => (o.I % 100) switch { >= 3 and <= 10 => Few, >= 11 and <= 99 => Many, _ => Other } },
+        new[] { Zero, One, Two, Few, Many, Other });
+    private static readonly Rule Hebrew = new(o =>
+        o.I == 1 && o.V == 0 || o.I == 0 && o.V != 0 ? One : o.I == 2 && o.V == 0 ? Two : Other, new[] { One, Two, Other });
+    private static readonly Rule Irish = new(o =>
+        o.V != 0 ? Other : o.I switch { 1 => One, 2 => Two, >= 3 and <= 6 => Few, >= 7 and <= 10 => Many, _ => Other },
+        new[] { One, Two, Few, Many, Other });
+    private static readonly Rule Welsh = new(o =>
+        o.V != 0 ? Other : o.I switch { 0 => Zero, 1 => One, 2 => Two, 3 => Few, 6 => Many, _ => Other },
+        new[] { Zero, One, Two, Few, Many, Other });
+    private static readonly Rule Icelandic = new(o =>
+        o.V == 0 ? (o.I % 10 == 1 && o.I % 100 != 11 ? One : Other) : One, new[] { One, Other });
+
+    private static readonly Dictionary<string, Rule> Rules = Build();
+
+    private static Dictionary<string, Rule> Build()
+    {
+        var rules = new Dictionary<string, Rule>(StringComparer.Ordinal);
+        void Add(Rule rule, params string[] languages) { foreach (var l in languages) rules[l] = rule; }
+        Add(English, "en", "de", "nl", "sv", "nb", "nn", "no", "da", "fi", "et", "el", "bg", "hu", "eo", "af", "sq", "gl", "ur", "sw");
+        Add(Romance, "it", "ca", "pt-pt");
+        Add(Spanish, "es");
+        Add(French, "fr");
+        Add(Portuguese, "pt");
+        Add(ExactlyOne, "tr", "az", "ka", "kk", "ky", "mn", "uz", "eu", "ta", "te", "ml", "ne", "ps");
+        Add(ZeroOrOne, "hi", "bn", "fa", "gu", "kn", "zu", "am", "as");
+        Add(None, "ja", "ko", "zh", "yue", "th", "vi", "id", "ms", "lo", "my", "km", "jv", "bo");
+        Add(EastSlavic, "ru", "uk", "be");
+        Add(Polish, "pl");
+        Add(Czech, "cs", "sk");
+        Add(SouthSlavic, "hr", "sr", "bs", "mk");
+        Add(Slovenian, "sl");
+        Add(Lithuanian, "lt");
+        Add(Latvian, "lv");
+        Add(Romanian, "ro", "mo");
+        Add(Arabic, "ar");
+        Add(Hebrew, "he", "iw");
+        Add(Irish, "ga");
+        Add(Welsh, "cy");
+        Add(Icelandic, "is");
+        return rules;
+    }
+
+    public static PluralCategory Select(string language, double count) => RuleOf(language).Select(Operate(count));
+
+    // The categories a language's counts fall in: the forms a plural text in it should have.
+    public static IReadOnlyList<PluralCategory> Uses(string language) => RuleOf(language).Uses;
+
+    private static Rule RuleOf(string language)
+    {
+        string code = language.Replace('_', '-').ToLowerInvariant();
+        if (Rules.TryGetValue(code, out var rule)) return rule;
+        return Rules.TryGetValue(Primary(code), out rule) ? rule : English;
+    }
+
+    private static Operands Operate(double count)
     {
         double n = Math.Abs(count);
-        bool whole = n == Math.Floor(n);
-        switch (Primary(language))
-        {
-            case "fr":   // 0 and 1 are singular
-                return n < 2 ? PluralCategory.One : PluralCategory.Other;
-            case "ja": case "ko": case "zh":   // no plural
-                return PluralCategory.Other;
-            default:     // en, de, nl, es, it, sv...: exactly one
-                return whole && n == 1 ? PluralCategory.One : PluralCategory.Other;
-        }
+        if (double.IsNaN(n) || double.IsInfinity(n)) return new Operands(0, 0, 0, 0);
+        long i = n >= long.MaxValue ? long.MaxValue : (long)Math.Floor(n);
+        if (n == Math.Floor(n)) return new Operands(n, i, 0, 0);
+        // The fraction as it would be written: the shortest digits that round-trip.
+        string text = n.ToString("R", CultureInfo.InvariantCulture);
+        int dot = text.IndexOf('.');
+        if (dot < 0 || text.IndexOf('E') >= 0) return new Operands(n, i, 1, 0);
+        string digits = text[(dot + 1)..];
+        long f = digits.Length <= 18 ? long.Parse(digits, CultureInfo.InvariantCulture) : 0;
+        return new Operands(n, i, digits.Length, f);
     }
 
     private static string Primary(string language)
@@ -347,7 +535,8 @@ internal static class PluralRules
 // Values for {placeholders}, by name, without allocating where the caller does not.
 internal interface IPlaceholderValues
 {
-    bool TryAppend(ReadOnlySpan<char> name, StringBuilder builder);
+    // Appends the value of `name`: as it is (invariant) when `format` is empty, else formatted with it in `culture`.
+    bool TryAppend(ReadOnlySpan<char> name, ReadOnlySpan<char> format, IFormatProvider culture, StringBuilder builder);
     bool TryGetNumber(string name, out double value);
 }
 
@@ -357,15 +546,24 @@ internal readonly struct ArrayArgs : IPlaceholderValues
 
     public ArrayArgs((string Name, object? Value)[] args) { _args = args ?? Array.Empty<(string, object?)>(); }
 
-    public bool TryAppend(ReadOnlySpan<char> name, StringBuilder builder)
+    public bool TryAppend(ReadOnlySpan<char> name, ReadOnlySpan<char> format, IFormatProvider culture, StringBuilder builder)
     {
         foreach (var (key, value) in _args)
             if (name.Equals(key, StringComparison.Ordinal))
             {
-                builder.Append(value is IFormattable f ? f.ToString(null, CultureInfo.InvariantCulture) : value?.ToString());
+                builder.Append(value is IFormattable f
+                    ? format.IsEmpty ? f.ToString(null, CultureInfo.InvariantCulture) : Formatted(f, format, culture)
+                    : value?.ToString());
                 return true;
             }
         return false;
+    }
+
+    // A value written with a format string in a language; a format the value does not take shows it as it is.
+    internal static string Formatted(IFormattable value, ReadOnlySpan<char> format, IFormatProvider culture)
+    {
+        try { return value.ToString(format.ToString(), culture); }
+        catch (FormatException) { return value.ToString(null, CultureInfo.InvariantCulture); }
     }
 
     public bool TryGetNumber(string name, out double value)

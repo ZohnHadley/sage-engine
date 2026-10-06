@@ -22,6 +22,22 @@ namespace Sage.Simulation;
 //
 // The format is versioned (`format`); a reader checks it. Fields are written as the metadata table has
 // them, so a JSON Schema (#21) can be generated from this file as well as from the table itself.
+// Extra top-level sections of the registry dump, from code the simulation does not reference (issue #354):
+// `engine.DumpSections.Add("screens", () => ...)` in a module's Init, read when the dump is built.
+public sealed class RegistryDumpSections
+{
+    private readonly List<(string Name, Func<JsonNode?> Build)> _sections = new();
+
+    public IReadOnlyList<(string Name, Func<JsonNode?> Build)> All => _sections;
+
+    public void Add(string name, Func<JsonNode?> build)
+    {
+        if (_sections.Exists(s => s.Name == name))
+            throw new InvalidOperationException($"Two modules add a '{name}' section to the registry dump.");
+        _sections.Add((name, build));
+    }
+}
+
 public static class RegistryDump
 {
     public const int Format = 1;
@@ -166,6 +182,9 @@ public static class RegistryDump
                 return (JsonNode)o;
             })),
         }));
+
+        // What layers above the simulation registered (the client's screens, issue #354), each its own array.
+        foreach (var (name, build) in engine.DumpSections.All) root[name] = build();
 
         // Relaxed escaping: help text with a § or an apostrophe should read as written.
         return root.ToJsonString(new JsonSerializerOptions

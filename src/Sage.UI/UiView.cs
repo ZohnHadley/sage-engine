@@ -641,12 +641,13 @@ internal sealed class TextSlot
 
         public SlotArgs(Arg[] args) { _args = args; }
 
-        public bool TryAppend(ReadOnlySpan<char> name, StringBuilder builder)
+        public bool TryAppend(ReadOnlySpan<char> name, ReadOnlySpan<char> format, IFormatProvider culture, StringBuilder builder)
         {
             for (int i = 0; i < _args.Length; i++)
                 if (name.Equals(_args[i].Name, StringComparison.Ordinal))
                 {
-                    _args[i].Last.AppendTo(builder);
+                    if (format.IsEmpty) _args[i].Last.AppendTo(builder);
+                    else _args[i].Last.AppendTo(builder, format, culture);
                     return true;
                 }
             return false;
