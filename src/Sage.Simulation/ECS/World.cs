@@ -81,6 +81,7 @@ public sealed class World : IDisposable
         // What the sky is doing belongs to the world, not to whoever draws it (06 §3.13): a headless
         // server can be rained on, and a save carries the storm you walked into.
         Resources.Add(new Weather { Current = WeatherRecord.Clear, Target = WeatherRecord.Clear });
+        Resources.Add(new WeatherSky());   // what is overhead and what is flashing: not saved (issue #311)
         // Which sector the simulation is running in (R6, 14 §3). Core rather than streaming's: it is the
         // frame every absolute position converts through (placements, saves, levels), and without
         // streaming it simply never moves from sector zero.

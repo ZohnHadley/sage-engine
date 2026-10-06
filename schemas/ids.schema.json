@@ -866,7 +866,9 @@
         "sandbox:pickup",
         "sandbox:rain_loop",
         "sandbox:swing",
-        "swing"
+        "sandbox:thunder",
+        "swing",
+        "thunder"
       ]
     },
     "record:spread": {
@@ -1091,7 +1093,17 @@
         "sandbox:clear",
         "sandbox:rain",
         "sandbox:snow",
-        "snow"
+        "sandbox:storm",
+        "snow",
+        "storm"
+      ]
+    },
+    "record:weather_pattern": {
+      "description": "The id of a weather_pattern record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "changeable",
+        "sandbox:changeable"
       ]
     },
     "base:ability": {
@@ -1954,7 +1966,9 @@
         "sandbox:pickup",
         "sandbox:rain_loop",
         "sandbox:swing",
-        "swing"
+        "sandbox:thunder",
+        "swing",
+        "thunder"
       ]
     },
     "base:spread": {
@@ -2179,7 +2193,17 @@
         "sandbox:clear",
         "sandbox:rain",
         "sandbox:snow",
-        "snow"
+        "sandbox:storm",
+        "snow",
+        "storm"
+      ]
+    },
+    "base:weather_pattern": {
+      "description": "Another weather_pattern record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "changeable",
+        "sandbox:changeable"
       ]
     },
     "ecs_tag": {
