@@ -43,6 +43,10 @@ public struct UiInput
     // Seconds since the last Update (tooltip delay).
     public float DeltaTime;
 
+    // Characters typed this frame, as the window reported them ('\b' backspace, '\r' Enter), for the
+    // focused text field (issue #340); null or empty: none.
+    public string? Typed;
+
     public static UiInput Nav(UiNavigation direction) => new() { Navigate = direction };
     public static UiInput Press => new() { Confirm = true };
     public static UiInput Cancel => new() { Back = true };
@@ -50,6 +54,8 @@ public struct UiInput
     public static UiInput Click(Vector2 pointer) => new() { Pointer = pointer, PointerMoved = true, PointerPressed = true };
     public static UiInput Scroll(Vector2 pointer, float notches) => new() { Pointer = pointer, Wheel = notches };
     public static UiInput Wait(float seconds) => new() { DeltaTime = seconds };
+    public static UiInput Type(string text) => new() { Typed = text };
+    public static UiInput Drag(Vector2 pointer) => new() { Pointer = pointer, PointerMoved = true, PointerDown = true };
 }
 
 // What one Update did, for the screen that owns the tree.
@@ -67,6 +73,9 @@ public struct UiResult
 
     // The pointer is over a hit-testable widget, or a focus scope shows: a click here is the UI's, not the world's.
     public bool PointerOverUi;
+
+    // The widget whose value the player changed this frame (Widget.ValueChanged), if any: the last one.
+    public Widget? Changed;
 
     // The focus scope that held focus this frame (UiRoot.ActiveScope), or null. Back while one shows is
     // for whatever showed it — a confirm prompt cancelling — so the screen stack does not close the layer.

@@ -36,6 +36,11 @@ public interface IViewModel
     // Back was pressed: true when the view-model used it (put down an item it was holding), false to let
     // the screen close.
     bool Back(in UiBindContext context) => false;
+
+    // The player changed a form widget of the screen (issue #340) — a slider, a checkbox, a dropdown, a
+    // text field, the tab shown — and its binding has already written the value here: apply it (set the
+    // volume cvar) or check it. The screen reads the view-model again after.
+    void Changed(Widget widget, in UiBindContext context) { }
 }
 
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
@@ -86,17 +91,23 @@ public sealed class UiScreen
         View.Refresh(ViewModel, in context);
     }
 
-    // What one UiRoot.Update did, for this screen (issue #98): an activated widget inside it goes to the
-    // view-model's Activate, Back to its Back; then the screen is read again. Returns whether the
+    // What one UiRoot.Update did, for this screen (issue #98): a widget the player changed goes to the
+    // view-model's Changed (#340), an activated one to its Activate, Back to its Back; then the screen is
+    // read again. Returns whether the
     // view-model used it — Back that it did not use is the owner's cue to close the screen.
     public bool Handle(in UiResult result)
     {
         if (!IsOpen || ViewModel == null) return false;
         var context = Context;
-        bool used = false;
+        bool used = false, changed = false;
+        if (result.Changed is { } edited && Root.Contains(edited))
+        {
+            ViewModel.Changed(edited, in context);
+            changed = true;
+        }
         if (result.Activated is { } widget && Root.Contains(widget)) used = ViewModel.Activate(widget, in context);
         if (result.Back) used |= ViewModel.Back(in context);
-        if (used) Refresh();
+        if (used || changed) Refresh();
         return used;
     }
 
