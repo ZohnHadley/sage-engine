@@ -28,6 +28,11 @@ public struct PointLight : IComponent
     // before it has no such field and loads as on, which is what every light was.
     [Property(Tooltip = "Switched off: no light until TurnOn or Toggle (entity I/O) reaches it")]
     public bool Off;
+    // Baked (issue #313): a level with a lightmap bakes it in, shadows and all, and its lightmapped faces
+    // leave it out of their four; everything else (props, creatures, doors) is still lit by it. It cannot
+    // switch or flicker as far as those faces are concerned: it is in the texture.
+    [Property(Tooltip = "Static: baked into the lightmap of the level that places it (with shadows); still lights what is not lightmapped")]
+    public bool Baked;
 
     // Whether it lights anything: switched on, with a range and an intensity.
     public readonly bool Lit => !Off && Range > 0f && Intensity > 0f;

@@ -32,6 +32,8 @@ public sealed class LightPart : IPrefabPart
     public float Intensity = 1f;
     [Property(Tooltip = "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night)")]
     public bool Off;
+    [Property(Tooltip = "Static: baked into the lightmap of the level that places it, with shadows (a map record's \"lightmap\"); it should not switch")]
+    public bool Baked;
 
     public void Apply(in PrefabPartContext ctx) => ctx.World.Add(ctx.Entity, new PointLight
     {
@@ -39,6 +41,7 @@ public sealed class LightPart : IPrefabPart
         Range = Range <= 0f ? 8f : Range,
         Intensity = Intensity <= 0f ? 1f : Intensity,
         Off = Off,
+        Baked = Baked,
     });
 }
 

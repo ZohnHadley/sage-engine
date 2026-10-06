@@ -11,7 +11,11 @@
     // (half a sector, 512 m) plus the offset that puts the hut a short walk north-east of the player.
     // `onTerrain` stands it on the ground and reads y as the height above it.
     "at": [526, 0, 496],
-    "onTerrain": true
+    "onTerrain": true,
+    // A lightmap, four texels a metre, baked at load (engine issue #313). Its lamps switch, so they stay
+    // dynamic; what it bakes is the sky each face can see, which is why the inside of the hut is no longer
+    // lit by the sky as brightly as its outside.
+    "lightmap": 4
   },
 
   // A lamp (06 §3.9, F2). The hut places two of these by classname, which is all a `.map` needs to say:

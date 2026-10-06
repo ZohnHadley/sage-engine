@@ -43,6 +43,9 @@ public struct RenderStats
     // What the renderer holds (`stat assets`, issue #300): mesh slots (an unloaded one counts until it is
     // reused), textures and materials, the placeholders not counted.
     public int Meshes, Textures, Materials;
+
+    // Draws this frame with a baked lightmap (issue #313, `Lightmapped`).
+    public int Lightmapped;
 }
 
 // A drawable piece of a mesh: one ModelMeshPart with its bone transform baked in (06 §4).
@@ -54,6 +57,7 @@ internal sealed class MeshPart
     public Matrix Bone = Matrix.Identity;      // mesh space → model space
     public BoundingSphere Bounds;              // model space
     public bool Skinned;                       // VertexSkinned, in the skin's bind space (issue #117)
+    public Texture2D? Lightmap;                // VertexLightmapped, drawn with `Lightmapped` (issue #313); not owned
 }
 
 internal sealed class MeshData
@@ -158,7 +162,7 @@ public sealed class Renderer : IDisposable
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  views {LastFrame.Views} ({LastFrame.TargetViews} into render targets, {_targets.Count} target(s)), items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
-                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), " +
+                                     $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), lightmapped {LastFrame.Lightmapped}, " +
                                      $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}, " +
                                       $"fog culled {LastFrame.FogCulled}, lod culled {LastFrame.LodCulled}, lod lowered {LastFrame.LodLowered}, skies {LastFrame.Skies}; " +
                                       $"{_meshes.Count} meshes, {_content.Textures.Count} textures, {Materials.Count} materials" + PostStats()));
@@ -437,6 +441,15 @@ public sealed class Renderer : IDisposable
     // hands back a handle (06 §4). Destroy it with DestroyMesh when the chunk goes away.
     public MeshHandle CreateMesh(ReadOnlySpan<VertexPositionNormalTexture> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name = "(procedural)") =>
         CreateMesh(vertices, VertexPositionNormalTexture.VertexDeclaration, indices, bounds, name);
+
+    // A lightmapped brush mesh (issue #313): the same, with each vertex's lightmap coordinates, drawn with the
+    // material's effect's `Lightmapped` technique and `lightmap` (which the caller owns and disposes).
+    internal MeshHandle CreateMesh(ReadOnlySpan<VertexLightmapped> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name, Texture2D lightmap)
+    {
+        var handle = CreateMesh(vertices, VertexLightmapped.VertexDeclaration, indices, bounds, name);
+        Mesh(handle.Id).Parts[0].Lightmap = lightmap;
+        return handle;
+    }
 
     // Splat terrain (issue #307): the same, with each vertex's four layer weights.
     internal MeshHandle CreateMesh(ReadOnlySpan<VertexTerrain> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name) =>
@@ -1056,14 +1069,24 @@ public sealed class Renderer : IDisposable
             m.Effect.World?.SetValue(item.World);
             m.Effect.Tint?.SetValue(item.Tint);
             var technique = item.BoneCount > 0 ? Skin(s, item, m, ref stats) : m.Technique;
+            var part = Mesh(item.Mesh).Parts[item.Part];
+
+            // A lightmapped face (issue #313) has its baked lamps in the texture: only the others light it.
+            var lamps = lights;
+            if (part.Lightmap != null && m.Lightmapped != null && m.Effect.Lightmap != null && item.BoneCount == 0)
+            {
+                technique = m.Lightmapped;
+                m.Effect.Lightmap.SetValue(part.Lightmap);
+                lamps = lights[..view.DynamicLightCount];
+                stats.Lightmapped++;
+            }
 
             // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
             // translation is where it is relative to the camera — the same frame the view's lights are in.
             var at = new System.Numerics.Vector3(item.World.M41, item.World.M42, item.World.M43);
-            int lit = LightRules.Nearest(lights, at, _lights);
+            int lit = LightRules.Nearest(lamps, at, _lights);
             m.Effect.SetLights(_lights.AsSpan(0, lit));
             if (lit > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = lit;
-            var part = Mesh(item.Mesh).Parts[item.Part];
             _device.SetVertexBuffer(part.VertexBuffer);
             _device.Indices = part.IndexBuffer;
             foreach (var pass in technique.Passes)

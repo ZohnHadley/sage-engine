@@ -4915,6 +4915,11 @@
           "description": "Switched off: no light until TurnOn or Toggle (entity I/O) reaches it. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "baked": {
+          "description": "Static: baked into the lightmap of the level that places it (with shadows); still lights what is not lightmapped. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

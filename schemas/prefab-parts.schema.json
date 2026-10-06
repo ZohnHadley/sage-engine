@@ -1466,6 +1466,11 @@
           "description": "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night) (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "baked": {
+          "description": "Static: baked into the lightmap of the level that places it, with shadows (a map record's \"lightmap\"); it should not switch. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

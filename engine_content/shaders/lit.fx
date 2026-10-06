@@ -2,7 +2,7 @@
 // + fog), AlphaTest (Default + clip at AlphaCutoff), Unlit (albedo + fog) and Skinned (Default, with the
 // vertices bent by up to four of the draw's `Bones` each; issue #117). The sun is shadowed by the sun's
 // shadow map in Default, AlphaTest and Skinned; ShadowCaster and ShadowCasterSkinned draw a caster into
-// that map (issue 4h-4).
+// that map (issue 4h-4). Lightmapped (issue #313) is Default for a brush level with a baked lightmap.
 #include "common.fxh"
 
 texture Albedo;
@@ -85,6 +85,66 @@ float4 PSUnlit(VSOutput input) : COLOR0
     return Shade(input, 0);
 }
 
+// ---- Lightmapped (issue #313): a brush level's faces with their baked light ----
+//
+// The renderer draws a mesh that has a lightmap (VertexLightmapped: TEXCOORD1 is its place in the atlas)
+// with this instead of Default, and sets `Lightmap` for the draw. The texture holds the baked lamps' light
+// (rgb, times LIGHTMAP_SCALE: LevelLightmap.Scale) and how much sky the texel sees (a), which the ambient is
+// multiplied by. The sun stays dynamic and shadowed (it moves), and the lamps that are not baked add on top:
+// the renderer leaves the baked ones out of this draw's four.
+#define LIGHTMAP_SCALE 4.0
+texture Lightmap;
+// Its own register, past the shadow map's (s1) and the surface maps' (s2..s5).
+sampler LightmapSampler : register(s6) = sampler_state
+{
+    Texture = <Lightmap>;
+    MinFilter = Linear;
+    MagFilter = Linear;
+    MipFilter = None;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+struct VSLightmappedInput
+{
+    float4 Position   : POSITION0;
+    float3 Normal     : NORMAL0;
+    float2 UV         : TEXCOORD0;
+    float2 LightmapUV : TEXCOORD1;
+};
+
+struct VSLightmappedOutput
+{
+    float4 Position   : POSITION0;
+    float3 Normal     : TEXCOORD0;
+    float2 UV         : TEXCOORD1;
+    float3 Relative   : TEXCOORD2;
+    float2 LightmapUV : TEXCOORD3;
+};
+
+VSLightmappedOutput VSLightmapped(VSLightmappedInput input)
+{
+    VSLightmappedOutput output;
+    float4 relative = mul(input.Position, World);
+    output.Position = mul(relative, ViewProj);
+    output.Normal = mul(input.Normal, (float3x3)World);
+    output.UV = input.UV;
+    output.Relative = relative.xyz;
+    output.LightmapUV = input.LightmapUV;
+    return output;
+}
+
+float4 PSLightmapped(VSLightmappedOutput input) : COLOR0
+{
+    float4 albedo = tex2D(AlbedoSampler, input.UV) * AlbedoColor * Tint;
+    float3 n = normalize(input.Normal);
+    float4 baked = tex2D(LightmapSampler, input.LightmapUV);
+    float3 sun = SunLight(n) * ShadowLit(input.Relative, n);
+    float3 light = HemiAmbient(n) * baked.a + baked.rgb * LIGHTMAP_SCALE + sun + PointLights(n, input.Relative);
+    float3 color = ApplyFog(albedo.rgb * light, length(input.Relative));
+    return float4(color, albedo.a);
+}
+
 // ---- Shadow casters (issue 4h-4): depth into the sun's map ----
 //
 // ViewProj is the sun's (the renderer sets it for these draws). The depth goes out through a
@@ -136,6 +196,11 @@ technique Unlit
 technique Skinned
 {
     pass P0 { VertexShader = compile vs_3_0 VSSkinned(); PixelShader = compile ps_3_0 PSDefault(); }
+}
+
+technique Lightmapped
+{
+    pass P0 { VertexShader = compile vs_3_0 VSLightmapped(); PixelShader = compile ps_3_0 PSLightmapped(); }
 }
 
 technique ShadowCaster

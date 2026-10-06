@@ -117,7 +117,7 @@ internal sealed class CameraExtract : ISystem
             ? Matrix.CreateOrthographic(request.OrthoHeight * aspect, request.OrthoHeight, request.Near, request.Far)
             : Matrix.CreatePerspectiveFieldOfView(request.FovY, aspect, request.Near, request.Far);
         view.ViewProj = view.View * view.Projection;
-        view.LightStart = view.LightCount = 0;
+        view.LightStart = view.LightCount = view.DynamicLightCount = 0;
         view.DebugStart = view.DebugCount = 0;
         view.Culled = 0;
         view.ItemStart = view.ItemCount = 0;
@@ -520,16 +520,23 @@ internal sealed class LightExtract : ISystem
             Vector3 camera = view.CameraPosition;
             view.LightStart = snapshot.Lights.Count;
 
-            foreach (var (globals, lights, _) in _lights.Chunks)
-                for (int n = 0; n < globals.Length; n++)
-                {
-                    ref readonly var light = ref lights[n];
-                    if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
+            // The lamps that are not baked first, then the baked ones (issue #313): a lightmapped draw takes
+            // the first run only (`DynamicLightCount`), everything else the lot.
+            for (int baked = 0; baked < 2; baked++)
+            {
+                if (baked == 1) view.DynamicLightCount = snapshot.Lights.Count - view.LightStart;
+                foreach (var (globals, lights, _) in _lights.Chunks)
+                    for (int n = 0; n < globals.Length; n++)
+                    {
+                        ref readonly var light = ref lights[n];
+                        if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
+                        if (light.Baked != (baked == 1)) continue;
 
-                    var world = globals[n].Interpolated(alpha).Position;
-                    var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
-                    snapshot.Lights.Add() = new LightSample(at, light.Colour * light.Intensity, light.Range);
-                }
+                        var world = globals[n].Interpolated(alpha).Position;
+                        var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
+                        snapshot.Lights.Add() = new LightSample(at, light.Colour * light.Intensity, light.Range);
+                    }
+            }
             view.LightCount = snapshot.Lights.Count - view.LightStart;
         }
     }

@@ -1,3 +1,4 @@
 #nullable enable
 Sage.Client.RenderStats.LodCulled -> int
 Sage.Client.RenderStats.LodLowered -> int
+Sage.Client.RenderStats.Lightmapped -> int
