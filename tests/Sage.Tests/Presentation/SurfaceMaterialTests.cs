@@ -277,9 +277,10 @@ public class SurfaceMaterialTests
         var registers = Regex.Matches(lit, @"(?m)^sampler \w+ : register\((s\d+)\)").Select(m => m.Groups[1].Value).ToList();
         Assert.Equal(new[] { "s0", "s2", "s3", "s4", "s5" }, registers);
         Assert.Contains("register(s1)", File.ReadAllText(Path.Combine(Repo, "engine_content", "shaders", "common.fxh")));
-        // Both vertex inputs read the tangent and the colour the client's VertexMesh and VertexSkinned carry.
-        Assert.Equal(2, Regex.Matches(lit, @"float4 Tangent\s+: TANGENT0;").Count);
-        Assert.Equal(2, Regex.Matches(lit, @"float4 Color\s+: COLOR0;").Count);
+        // Every vertex input (rigid, skinned and instanced, issue 4n-5) reads the tangent and the colour the
+        // client's VertexMesh and VertexSkinned carry.
+        Assert.Equal(3, Regex.Matches(lit, @"float4 Tangent\s+: TANGENT0;").Count);
+        Assert.Equal(3, Regex.Matches(lit, @"float4 Color\s+: COLOR0;").Count);
     }
 
     // ---- the Sandbox ---------------------------------------------------------------------------------
