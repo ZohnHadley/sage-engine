@@ -26,6 +26,7 @@ public sealed class Engine : IDisposable
         Records.Json.Converters.Insert(3, new EntityJsonConverter());
         Components = new ComponentSchema(Records.Json);
         Saves = new SaveSystem(this);
+        Demos = new Demos(this);
         Animations = new GltfAnimationReader(Vfs);
         Animations.UseEvents(Records);                        // anim_events records (issue #119)
         // Every registry records who registered what (issue #12).
@@ -162,6 +163,11 @@ public sealed class Engine : IDisposable
     // Save and load (09 §3.5, F27).
     public SaveSystem Saves { get; }
 
+    // Demos: the player's commands recorded and played back (issue #333). Internal: the console commands
+    // (`record`, `stop`, `playdemo`) are how a game and a player use it, and the host says which world is
+    // the player's.
+    internal Demos Demos { get; }
+
     // What each world starts with, and hot reload of it (issue #29).
     public Scenes Scenes { get; }
 
@@ -250,6 +256,7 @@ public sealed class Engine : IDisposable
             world.AddSystem(new StateMachineSystem(world));      // sage:state_machine (issue #92)
             world.AddSystem(new LogicSequenceSystem(world));     // what a `wait` put off (issue #275)
             world.AddSystem(new QuickSaveKeysSystem(world, this)); // F5 and F9 (issue 4i-6)
+            world.AddSystem(new DemoSystem(this));               // demos record and replay commands (issue #333)
             // Skeletal poses and what follows them (issue #120): whoever animates a skeleton registers
             // its pose here; aim IK and bone attachments adjust and follow it in the Late phase, and the
             // registration passes through to SkinPoses, which skinned meshes are drawn from (#117).
@@ -320,6 +327,7 @@ public sealed class Engine : IDisposable
 #pragma warning disable SAGE0131 // the engine's own save system
         Saves.WaitForWrites();
 #pragma warning restore SAGE0131
+        Demos.Stop();   // a recording is finished, with its hash, while its world is still here
         for (int i = _worlds.Count - 1; i >= 0; i--)
             _worlds[i].Dispose();
         _worlds.Clear();
