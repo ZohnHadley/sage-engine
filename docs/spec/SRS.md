@@ -117,7 +117,7 @@ developer tools.
 | REQ-SYS-03 | Simulation assemblies shall not reference MonoGame; the client, hosts and editor may. | Must | Done (SAGE0024) |
 | REQ-SYS-04 | A game shall be buildable outside the repository from the Sage SDK and templates. | Must | Done (local feed); public feed open (R1) |
 | REQ-SYS-05 | A game shall be packageable into a folder that runs on a machine without the SDK. | Must | Done (#293: `sage package`, the Shipping host with the game beside it; CI packages the template game and runs it on Linux; test: `APackageIsTheShippingHostWithTheGameBesideItAndNothingElse`) |
-| REQ-SYS-06 | The engine shall keep its public API declared and versioned with SemVer from git tags. | Must | Done; first tag pending (R1) |
+| REQ-SYS-06 | The engine shall keep its public API declared and versioned with SemVer from git tags. | Must | Done; 0.1.0 tagged and released (R1) |
 
 ## 5. Performance requirements
 
