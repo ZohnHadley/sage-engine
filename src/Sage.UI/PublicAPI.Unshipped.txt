@@ -324,6 +324,9 @@ static Sage.UI.Subtitles.Format(in Sage.UI.SubtitleLine line) -> string!
 static Sage.UI.UiContrast.Luminance(uint colour) -> double
 static Sage.UI.UiContrast.Over(uint top, uint bottom) -> uint
 static Sage.UI.UiContrast.Ratio(uint a, uint b) -> double
+Sage.UI.ScreenRecord.Pauses -> bool
+Sage.UI.UiScreenStack.HoldsPause.get -> bool
+Sage.UI.UiScreenStack.PausesWorld.get -> bool
 Sage.UI.UiNode.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.UI.UiScreenActions
 static Sage.UI.UiScreenActions.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen, Sage.Simulation.Entity subject, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> Sage.UI.UiLayer?

@@ -10206,16 +10206,20 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods.",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_rest, rpg_save, rpg_shop, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods.",
       "type": "string",
       "enum": [
         "RpgEquipment",
         "RpgInventory",
         "RpgJournal",
+        "RpgLoad",
         "RpgLoot",
         "RpgMap",
+        "RpgPause",
         "RpgRest",
+        "RpgSave",
         "RpgShop",
+        "RpgTitle",
         "RpgTopics",
         "SandboxHud",
         "SandboxMainMenu",
@@ -10225,10 +10229,14 @@
         "rpg_equipment",
         "rpg_inventory",
         "rpg_journal",
+        "rpg_load",
         "rpg_loot",
         "rpg_map",
+        "rpg_pause",
         "rpg_rest",
+        "rpg_save",
         "rpg_shop",
+        "rpg_title",
         "rpg_topics",
         "sandbox_hud",
         "sandbox_main_menu",
@@ -10346,6 +10354,35 @@
                 "properties": {
                   "viewModel": {
                     "enum": [
+                      "rpg_load",
+                      "RpgLoad"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_load.",
+                    "enum": [
+                      "rpg_load",
+                      "RpgLoad"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_load' (LoadGameView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
                       "rpg_loot",
                       "RpgLoot"
                     ]
@@ -10404,6 +10441,35 @@
                 "properties": {
                   "viewModel": {
                     "enum": [
+                      "rpg_pause",
+                      "RpgPause"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_pause.",
+                    "enum": [
+                      "rpg_pause",
+                      "RpgPause"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_pause' (PauseView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
                       "rpg_rest",
                       "RpgRest"
                     ]
@@ -10438,6 +10504,35 @@
                 "properties": {
                   "viewModel": {
                     "enum": [
+                      "rpg_save",
+                      "RpgSave"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_save.",
+                    "enum": [
+                      "rpg_save",
+                      "RpgSave"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_save' (SaveGameView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
                       "rpg_shop",
                       "RpgShop"
                     ]
@@ -10464,6 +10559,35 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'rpg_shop' (ShopView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_title",
+                      "RpgTitle"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_title.",
+                    "enum": [
+                      "rpg_title",
+                      "RpgTitle"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_title' (TitleView)."
               }
             },
             {

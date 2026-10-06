@@ -605,3 +605,12 @@ Sage.Simulation.AudioMonitor.Refresh(Sage.Simulation.AudioMixer! mixer) -> void
 Sage.Simulation.AudioMonitor.Voices.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.VoiceRow>!
 Sage.Simulation.AudioMixer.BusVolume(Sage.Simulation.AudioBus bus) -> float
 Sage.Simulation.AudioMixer.Preview(Sage.Core.RecordId sound, Sage.Simulation.SoundRecord? record) -> Sage.Simulation.VoiceHandle
+Sage.Simulation.Engine.BeginGame(Sage.Simulation.World! world) -> bool
+Sage.Simulation.SageAppOptions.ShowTitle.get -> bool
+Sage.Simulation.SageAppOptions.ShowTitle.init -> void
+Sage.Simulation.SaveSlot.Scene.get -> Sage.Core.RecordId
+Sage.Simulation.Scenes.Title.get -> Sage.Core.RecordId
+Sage.Simulation.Scenes.Title.set -> void
+static Sage.Simulation.Scenes.AtTitle(Sage.Simulation.World! world) -> bool
+Sage.Simulation.SageAppOptions.Title.get -> string?
+Sage.Simulation.SageAppOptions.Title.init -> void

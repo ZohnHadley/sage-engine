@@ -1,1 +1,3 @@
 #nullable enable
+Sage.Core.GameManifest.Title.get -> string?
+Sage.Core.GameManifest.Title.set -> void

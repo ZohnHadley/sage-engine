@@ -150,6 +150,21 @@ public sealed class UiModule : IModule
         _started = true;
         ContentChanged();
         ctx.Engine.Records.Reloaded += ContentChanged;
+        ctx.Engine.Signals.WorldCreated += OpenTitle;
+    }
+
+    // A world made waiting at the title (game.json's `"title"`, Scenes.Title, issue #342) shows that screen,
+    // on top of whatever the modules opened (a HUD): modal, and neither Back nor a click beside it closes
+    // it. Its view-model starts the game (Engine.BeginGame) or loads a save, and closes it.
+    private void OpenTitle(World world)
+    {
+#pragma warning disable SAGE0121   // the title is part of the scenes API (#29, #342)
+        if (!Scenes.AtTitle(world) || _engine!.Scenes.Title is not { IsEmpty: false } title) return;
+#pragma warning restore SAGE0121
+        if (!world.Resources.TryGet<UiScreenStack>(out var stack) || stack == null) return;
+        var layer = stack.Open(title, new UiBindContext(world));
+        layer.CloseOnBack = false;
+        layer.CloseOnClickOutside = false;
     }
 
     public void OnWorldCreated(World world)
