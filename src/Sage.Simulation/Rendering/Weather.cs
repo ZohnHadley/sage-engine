@@ -59,6 +59,23 @@ public sealed class WeatherRecord
     public RecordRef<SoundRecord> Sound;
     public float SoundVolume = 1f;
 
+    // **Under a roof** (issue #311). Rain and snow fall around the camera, so what they know of the
+    // world is whether the camera has sky above it (`WeatherCover`): the drops stop, and this is how much
+    // of the weather's sound is left (0.25: the rain is a patter on the roof, not a downpour on the ears).
+    [Property(Min = 0, Max = 1, Tooltip = "Under a roof or inside: the share of the sound's volume left (1 = not muffled)", Category = "Cover")]
+    public float ShelteredVolume = 0.25f;
+
+    // **Lightning**: flashes a minute across the world, each one a pulse of light on the sky and ambient
+    // (outdoors only) and a `Thunder` cue some seconds later, by how far off it struck. 0 is none.
+    [Property(Min = 0, Unit = "/min", Tooltip = "Average lightning strikes a minute; 0 is none", Category = "Lightning")]
+    public float LightningRate;
+    [Property(Min = 0, Max = 2, Tooltip = "How bright the flash is at its peak: added to the sky and the ambient light", Category = "Lightning")]
+    public float LightningFlash = 0.8f;
+    [Property(Tooltip = "The sound a strike is heard as, once the thunder has travelled", Category = "Lightning")]
+    public RecordRef<SoundRecord> Thunder;
+    [Property(Min = 0, Max = 1, Tooltip = "The thunder's volume (a strike heard from under a roof is muffled by ShelteredVolume too)", Category = "Lightning")]
+    public float ThunderVolume = 1f;
+
     public static readonly RecordId Clear = new("sage", "clear");
 }
 
@@ -76,6 +93,14 @@ public sealed class Weather
     public RecordId Target { get; set; }           // what it is becoming
     public float Blend { get; set; } = 1f;         // 0 = entirely Current, 1 = entirely Target
     public float BlendRate { get; set; } = 1f;     // per second; a storm takes as long as it was asked to
+
+    // **Picked by the clock and the region** (issue #311): a `weather_pattern` record the picker draws
+    // from, the region the world is in (a pick that names another region is not a candidate), and the
+    // time slot a pick was last made for, so a save does not draw again on load. A save from before has
+    // none of the three: no pattern, so the weather is whatever it was set to.
+    public RecordId Pattern { get; set; }
+    public string Region { get; set; } = "";
+    public long PickedSlot { get; set; } = -1;
 
     public bool Settled => Blend >= 1f;
 
@@ -139,6 +164,13 @@ public static class WeatherRules
     {
         var (from, to, t) = Blend(records, weather);
         return Lerp(from.Rate, to.Rate, t);
+    }
+
+    // Strikes a minute now: fades with the blend like the rain does, so a storm clearing stops thundering.
+    public static float LightningRateNow(RecordStore records, Weather weather)
+    {
+        var (from, to, t) = Blend(records, weather);
+        return Lerp(from.LightningRate, to.LightningRate, t);
     }
 
     public static Vector3 WindNow(RecordStore records, Weather weather)
