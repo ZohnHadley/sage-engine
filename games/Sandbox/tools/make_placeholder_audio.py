@@ -6,12 +6,18 @@ sounds are *generated* — a few hundred bytes of arithmetic each, deliberately 
 prove the pipeline end to end. Every one is a 22.05 kHz mono 16-bit WAV, which is what
 `SoundEffect.FromStream` reads (05 §3.2).
 
-Run:  python games/Sandbox/tools/make_placeholder_audio.py
+Music (issue #325) is made the same way and encoded to Ogg Vorbis with ffmpeg, because music streams and
+only Ogg Vorbis streams: a few seconds each at the lowest quality, a dozen kilobytes or so.
+
+Run:  python games/Sandbox/tools/make_placeholder_audio.py   (ffmpeg with libvorbis on the PATH for the music)
 """
 import math
 import os
 import random
+import shutil
 import struct
+import subprocess
+import tempfile
 import wave
 
 RATE = 22050
@@ -31,6 +37,62 @@ def write(name, samples):
             frames += struct.pack('<h', v)
         f.writeframes(bytes(frames))
     print('%-22s %5.2fs  %6d bytes' % (name, len(samples) / float(RATE), len(samples) * 2))
+
+
+def write_ogg(name, samples):
+    """One mono Ogg Vorbis file in content/music, through a temporary WAV and ffmpeg."""
+    folder = os.path.join(OUT, '..', 'music')
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    if shutil.which('ffmpeg') is None:
+        print('%-22s skipped: no ffmpeg' % name)
+        return
+    with tempfile.TemporaryDirectory() as temp:
+        wav = os.path.join(temp, name + '.wav')
+        with wave.open(wav, 'wb') as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(RATE)
+            f.writeframes(b''.join(struct.pack('<h', int(max(-1.0, min(1.0, v)) * 32000)) for v in samples))
+        path = os.path.join(folder, name + '.ogg')
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'libvorbis', '-q:a', '0',
+                        '-map_metadata', '-1', '-fflags', '+bitexact', '-flags:a', '+bitexact', path], check=True)
+    print('%-22s %5.2fs  %6d bytes' % (name + '.ogg', len(samples) / float(RATE), os.path.getsize(path)))
+
+
+def pad(chords, seconds, swell=4.0, level=0.35):
+    """A soft pad: each chord a set of whole-hertz sines (so a loop of whole seconds joins without a click),
+    one chord to a span, with a slow swell whose period divides the loop."""
+    n = int(seconds * RATE)
+    span = n // len(chords)
+    out = []
+    for i in range(n):
+        t = i / float(RATE)
+        chord = chords[min(i // span, len(chords) - 1)]
+        # Cross-fade the chords over a tenth of a second either side of a change.
+        edge = (i % span) / float(RATE)
+        v = sum(math.sin(2 * math.pi * f * t) for f in chord) / len(chord)
+        if edge < 0.1 and i >= span:
+            prev = chords[(i // span) - 1]
+            a = edge / 0.1
+            v = v * a + (1 - a) * sum(math.sin(2 * math.pi * f * t) for f in prev) / len(prev)
+        elif edge < 0.1:
+            last = chords[-1]
+            a = edge / 0.1
+            v = v * a + (1 - a) * sum(math.sin(2 * math.pi * f * t) for f in last) / len(last)
+        out.append(v * level * (0.8 + 0.2 * math.sin(2 * math.pi * t / swell)))
+    return out
+
+
+def pulse(seconds, every=0.5, freq=60.0, level=0.6):
+    """A soft drum on every beat: the layer that comes in when things get tense."""
+    n = int(seconds * RATE)
+    beat = int(every * RATE)
+    out = []
+    for i in range(n):
+        t = (i % beat) / float(RATE)
+        out.append(math.sin(2 * math.pi * freq * math.exp(-t * 5) * t) * math.exp(-t * 9) * level)
+    return out
 
 
 def envelope(i, n, attack=0.01, release=0.3):
@@ -135,6 +197,15 @@ def main():
         a = i / float(fade)
         fire[i] = fire[i] * a + fire[n - fade + i] * (1 - a)
     write('fire_loop', fire[:n - fade])
+
+    # Music (issue #325). `wander` is the clearing's: a one-second intro played once, then a four-second body
+    # that loops from sample 22050 (its `loopStart`), with a drum layer heard at intensity 0.5 and above.
+    # `hearth` is the hut yard's, switched to by a trigger's output; `crypt` is the crypt scene's.
+    intro = [v * (i / float(RATE)) for i, v in enumerate(pad([(220, 277, 330)], 1.0))]
+    write_ogg('wander', intro + pad([(220, 277, 330), (196, 247, 294)], 4.0))
+    write_ogg('wander_drums', [0.0] * RATE + pulse(4.0))
+    write_ogg('hearth', pad([(262, 330, 392), (220, 262, 330)], 4.0, level=0.3))
+    write_ogg('crypt', pad([(55, 82, 110), (52, 78, 104)], 4.0, swell=2.0, level=0.45))
 
 
 if __name__ == '__main__':

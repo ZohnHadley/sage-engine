@@ -71,6 +71,8 @@ public sealed class Engine : IDisposable
         Records.AddCheck<WaterSurfaceRecord>(WaterSurfaceRecord.Check);
         // A sound's files are .wav or .ogg, and only .ogg when it streams (issue #326).
         Records.AddCheck<SoundRecord>(SoundRecord.Check);
+        // A music record's files are .ogg and its loop points in order (issue #325).
+        Records.AddCheck<MusicRecord>(MusicRecord.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the
@@ -105,6 +107,8 @@ public sealed class Engine : IDisposable
             Ragdolls.RegisterGetUp(this);                         // and the `GetUp` input (issue #247)
             // Load doors (issue 4g-5): the `Travel` input, the engine's like scenes.
             Travel.Register(this);
+            // Music (issue #325): PlayMusic, StopMusic and SetMusicIntensity, the engine's like the weather.
+            MusicRules.Register(this);
             // Quick-save and quick-load (issue 4i-6): the engine's, bound to F5 and F9 in engine content.
             Actions.Register(SaveSystem.QuickSaveAction, ActionKind.Button);
             Actions.Register(SaveSystem.QuickLoadAction, ActionKind.Button);
@@ -233,6 +237,8 @@ public sealed class Engine : IDisposable
             world.AddSystem(new CalendarEventSystem(world));     // calendar events fire their wires (issue 4m-15)
             world.AddSystem(new WeatherSystem(world));           // the weather moves, is drawn, looks up and strikes (issue #311)
             world.AddSystem(new SkySystem(world));               // lights the world by its `sky`, if it has one
+            world.Resources.Add(new Music());                    // which track, fading from which (issue #325), saved
+            world.AddSystem(new MusicSystem(world));             // the crossfade moves at tick rate
             world.Resources.Add(new TravelLog());                // discovered travel points (issue 4g-5), saved
             world.AddSystem(new TravelPointSystem(world));
             world.AddSystem(new CameraDirector(world));

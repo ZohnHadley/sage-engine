@@ -1,5 +1,9 @@
 #nullable enable
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
+const Sage.Simulation.MusicRules.DefaultFade = 2 -> float
+const Sage.Simulation.MusicRules.IntensityInput = "SetMusicIntensity" -> string!
+const Sage.Simulation.MusicRules.PlayInput = "PlayMusic" -> string!
+const Sage.Simulation.MusicRules.StopInput = "StopMusic" -> string!
 const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
 const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
 *REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
@@ -41,6 +45,41 @@ Sage.Simulation.Decals.Place(Sage.Core.RecordId effect, Sage.Simulation.DecalRec
 Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
+Sage.Simulation.Music
+Sage.Simulation.Music.Advance(float dt) -> void
+Sage.Simulation.Music.Blend.get -> float
+Sage.Simulation.Music.Blend.set -> void
+Sage.Simulation.Music.BlendRate.get -> float
+Sage.Simulation.Music.BlendRate.set -> void
+Sage.Simulation.Music.GainOf(Sage.Core.RecordId track) -> float
+Sage.Simulation.Music.Intensity.get -> float
+Sage.Simulation.Music.Intensity.set -> void
+Sage.Simulation.Music.Music() -> void
+Sage.Simulation.Music.Play(Sage.Core.RecordId track, float seconds) -> void
+Sage.Simulation.Music.Previous.get -> Sage.Core.RecordId
+Sage.Simulation.Music.Previous.set -> void
+Sage.Simulation.Music.Settled.get -> bool
+Sage.Simulation.Music.Stop(float seconds) -> void
+Sage.Simulation.Music.Track.get -> Sage.Core.RecordId
+Sage.Simulation.Music.Track.set -> void
+Sage.Simulation.MusicLayer
+Sage.Simulation.MusicLayer.Asset -> Sage.Core.AssetPath
+Sage.Simulation.MusicLayer.Fade -> float
+Sage.Simulation.MusicLayer.Intensity -> float
+Sage.Simulation.MusicLayer.MusicLayer() -> void
+Sage.Simulation.MusicLayer.Volume -> float
+Sage.Simulation.MusicRecord
+Sage.Simulation.MusicRecord.FadeIn -> float
+Sage.Simulation.MusicRecord.FadeOut -> float
+Sage.Simulation.MusicRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.MusicLayer!>!
+Sage.Simulation.MusicRecord.Loop -> bool
+Sage.Simulation.MusicRecord.LoopEnd -> long
+Sage.Simulation.MusicRecord.LoopStart -> long
+Sage.Simulation.MusicRecord.MusicRecord() -> void
+Sage.Simulation.MusicRecord.Track -> Sage.Core.AssetPath
+Sage.Simulation.MusicRecord.Volume -> float
+Sage.Simulation.MusicRules
+Sage.Simulation.SceneEnvironment.Music -> Sage.Core.RecordRef<Sage.Simulation.MusicRecord!>
 Sage.Simulation.ShadowAtlas
 Sage.Simulation.ShadowAtlas.Cascades.get -> int
 Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
@@ -97,6 +136,10 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+static Sage.Simulation.MusicRules.Of(Sage.Simulation.World! world) -> Sage.Simulation.Music!
+static Sage.Simulation.MusicRules.Play(Sage.Simulation.World! world, Sage.Core.RecordId track, float? seconds = null) -> void
+static Sage.Simulation.MusicRules.SetIntensity(Sage.Simulation.World! world, float intensity) -> void
+static Sage.Simulation.MusicRules.Stop(Sage.Simulation.World! world, float? seconds = null) -> void
 static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
 static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
 static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int

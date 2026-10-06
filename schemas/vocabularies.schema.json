@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, pass_time, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, music_intensity, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -202,7 +202,9 @@
         "LoadScene",
         "Log",
         "Message",
+        "MusicIntensity",
         "PassTime",
+        "PlayMusic",
         "PlaySound",
         "SaveGame",
         "SetStage",
@@ -210,6 +212,7 @@
         "SetVar",
         "SpawnPrefab",
         "StartQuest",
+        "StopMusic",
         "TakeItem",
         "Teleport",
         "Wait",
@@ -227,7 +230,9 @@
         "load_scene",
         "log",
         "message",
+        "music_intensity",
         "pass_time",
+        "play_music",
         "play_sound",
         "save_game",
         "set_stage",
@@ -235,6 +240,7 @@
         "set_var",
         "spawn_prefab",
         "start_quest",
+        "stop_music",
         "take_item",
         "teleport",
         "wait",
@@ -810,6 +816,42 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "music_intensity",
+                      "MusicIntensity"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: music_intensity.",
+                    "enum": [
+                      "music_intensity",
+                      "MusicIntensity"
+                    ]
+                  },
+                  "intensity": {
+                    "description": "0 calm to 1 desperate: a layer is heard at or above its own intensity. Range: 0 to 1. (float, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'music_intensity' (MusicIntensityAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "pass_time",
                       "PassTime"
                     ]
@@ -843,6 +885,55 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'pass_time' (PassTimeAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "play_music",
+                      "PlayMusic"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: play_music.",
+                    "enum": [
+                      "play_music",
+                      "PlayMusic"
+                    ]
+                  },
+                  "fade": {
+                    "description": "Seconds the crossfade takes; left out, the track's own fadeIn. Unit: s. At least 0. (float?)",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "music": {
+                    "description": "The music record to fade to. Names a music record. (RecordRef<MusicRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:music"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'play_music' (PlayMusicAction)."
               }
             },
             {
@@ -1171,6 +1262,47 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'start_quest' (StartQuestAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "stop_music",
+                      "StopMusic"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: stop_music.",
+                    "enum": [
+                      "stop_music",
+                      "StopMusic"
+                    ]
+                  },
+                  "fade": {
+                    "description": "Seconds the fade to silence takes; left out, the track's own fadeOut. Unit: s. At least 0. (float?)",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'stop_music' (StopMusicAction)."
               }
             },
             {
@@ -2738,6 +2870,88 @@
         {
           "type": "object",
           "properties": {
+            "intensity": {
+              "description": "0 calm to 1 desperate: a layer is heard at or above its own intensity. Range: 0 to 1. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "music_intensity": {
+              "anyOf": [
+                {
+                  "description": "0 calm to 1 desperate: a layer is heard at or above its own intensity. Range: 0 to 1. (float, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "intensity": {
+                      "description": "0 calm to 1 desperate: a layer is heard at or above its own intensity. Range: 0 to 1. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'music_intensity' (MusicIntensityAction), in shorthand."
+            }
+          },
+          "required": [
+            "music_intensity"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "MusicIntensity": {
+              "anyOf": [
+                {
+                  "description": "0 calm to 1 desperate: a layer is heard at or above its own intensity. Range: 0 to 1. (float, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "intensity": {
+                      "description": "0 calm to 1 desperate: a layer is heard at or above its own intensity. Range: 0 to 1. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'music_intensity' (MusicIntensityAction), in shorthand."
+            },
+            "intensity": {
+              "description": "0 calm to 1 desperate: a layer is heard at or above its own intensity. Range: 0 to 1. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "MusicIntensity"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "hours": {
               "description": "Game hours that pass. Unit: h. At least 0. (double, default 0)",
               "default": 0,
@@ -2828,6 +3042,142 @@
           },
           "required": [
             "PassTime"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fade": {
+              "description": "Seconds the crossfade takes; left out, the track's own fadeIn. Unit: s. At least 0. (float?)",
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "music": {
+              "description": "The music record to fade to. Names a music record. (RecordRef<MusicRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:music"
+                }
+              ]
+            },
+            "play_music": {
+              "anyOf": [
+                {
+                  "description": "The music record to fade to. Names a music record. (RecordRef<MusicRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:music"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "music": {
+                      "description": "The music record to fade to. Names a music record. (RecordRef<MusicRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:music"
+                        }
+                      ]
+                    },
+                    "fade": {
+                      "description": "Seconds the crossfade takes; left out, the track's own fadeIn. Unit: s. At least 0. (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'play_music' (PlayMusicAction), in shorthand."
+            }
+          },
+          "required": [
+            "play_music"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "PlayMusic": {
+              "anyOf": [
+                {
+                  "description": "The music record to fade to. Names a music record. (RecordRef<MusicRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:music"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "music": {
+                      "description": "The music record to fade to. Names a music record. (RecordRef<MusicRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:music"
+                        }
+                      ]
+                    },
+                    "fade": {
+                      "description": "Seconds the crossfade takes; left out, the track's own fadeIn. Unit: s. At least 0. (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'play_music' (PlayMusicAction), in shorthand."
+            },
+            "fade": {
+              "description": "Seconds the crossfade takes; left out, the track's own fadeIn. Unit: s. At least 0. (float?)",
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "music": {
+              "description": "The music record to fade to. Names a music record. (RecordRef<MusicRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:music"
+                }
+              ]
+            }
+          },
+          "required": [
+            "PlayMusic"
           ],
           "additionalProperties": false
         },
@@ -3708,6 +4058,118 @@
           },
           "required": [
             "StartQuest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fade": {
+              "description": "Seconds the fade to silence takes; left out, the track's own fadeOut. Unit: s. At least 0. (float?)",
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "stop_music": {
+              "anyOf": [
+                {
+                  "description": "Seconds the fade to silence takes; left out, the track's own fadeOut. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "fade": {
+                      "description": "Seconds the fade to silence takes; left out, the track's own fadeOut. Unit: s. At least 0. (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'stop_music' (StopMusicAction), in shorthand."
+            }
+          },
+          "required": [
+            "stop_music"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "StopMusic": {
+              "anyOf": [
+                {
+                  "description": "Seconds the fade to silence takes; left out, the track's own fadeOut. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "fade": {
+                      "description": "Seconds the fade to silence takes; left out, the track's own fadeOut. Unit: s. At least 0. (float?)",
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'stop_music' (StopMusicAction), in shorthand."
+            },
+            "fade": {
+              "description": "Seconds the fade to silence takes; left out, the track's own fadeOut. Unit: s. At least 0. (float?)",
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "StopMusic"
           ],
           "additionalProperties": false
         },
