@@ -64,8 +64,10 @@ public class DeclarationTests
             ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
             ["rpg_item"] = "sage.kits.rpg",          // an item's footprint on the inventory grid (#98)
             ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
+            ["language"] = "sage.ui",   // a translation's direction and fonts (#345)
             ["ui_style_set"] = "sage.ui",                                                             // accessibility (#351)
             ["ui_sounds"] = "sage.ui",   // what screens sound like (#330)
+            ["ui_option"] = "sage.ui",   // the options screen's settings (#339)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)

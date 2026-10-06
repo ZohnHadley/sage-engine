@@ -46,6 +46,7 @@
             "hitboxes",
             "input_map",
             "item",
+            "language",
             "map",
             "material",
             "mesh_lod",
@@ -78,6 +79,7 @@
             "terrain",
             "terrain_material",
             "ui_layout",
+            "ui_option",
             "ui_sounds",
             "ui_style",
             "ui_style_set",
@@ -417,6 +419,21 @@
           },
           "then": {
             "$ref": "item.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "language"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "language.schema.json"
           }
         },
         {
@@ -897,6 +914,21 @@
           },
           "then": {
             "$ref": "ui_layout.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "ui_option"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "ui_option.schema.json"
           }
         },
         {

@@ -1,23 +1,17 @@
 [
-  // The keys for the RPG kit's screens (issue #27): the kit (game.json "kits") registers the Spellbook,
-  // Spellmaker and Journal actions, and which key opens each is this game's decision, like the screens
-  // SandboxClientModule binds them to. Maps add up per context, so these sit beside the engine's own
-  // `ui` and `gameplay` maps (engine_content/data/input.json). Bound in both, so the key that opened a
-  // screen also closes it.
+  // This game's own keys. The RPG kit's (Spellbook B, Spellmaker M, Journal J, Rest T) are its default
+  // maps (`rpg:ui`, `rpg:gameplay`, issue #354) and need no line here. Maps add up per context, so these
+  // sit beside the engine's own `ui` and `gameplay` maps (engine_content/data/input.json). Bound in both,
+  // so the key that opened a screen also closes it.
   {
     "type": "input_map",
     "id": "rpg_ui",
     "context": "UI",
     "actions": {
-      "Spellbook":     [ { "key": "B" } ],
-      "Spellmaker":    [ { "key": "M" } ],
-      "Journal":       [ { "key": "J" } ],
       // The Sandbox's own widget screens (issues #97, #99): SandboxModule registers the actions.
       "Status":        [ { "key": "C" } ],
       "Map":           [ { "key": "N" } ],
-      "MainMenu":      [ { "key": "F10" } ],
-      // The RPG kit's rest screen (4g-7): the kit's client registers the action, the key is ours.
-      "Rest":          [ { "key": "T" } ]
+      "MainMenu":      [ { "key": "F10" } ]
     }
   },
   {
@@ -25,13 +19,9 @@
     "id": "rpg_gameplay",
     "context": "Gameplay",
     "actions": {
-      "Spellbook":     [ { "key": "B" } ],
-      "Spellmaker":    [ { "key": "M" } ],
-      "Journal":       [ { "key": "J" } ],
       "Status":        [ { "key": "C" } ],
       "Map":           [ { "key": "N" } ],
-      "MainMenu":      [ { "key": "F10" } ],
-      "Rest":          [ { "key": "T" } ]
+      "MainMenu":      [ { "key": "F10" } ]
     }
   }
 ]

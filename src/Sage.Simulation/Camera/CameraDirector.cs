@@ -70,6 +70,7 @@ public sealed class CameraDirector : ISystem
         if (_active == null) _world.Resources.TryGet(out _active);
 
         _views.Begin();
+        float fov = _world.Engine?.PlayerFov?.Value ?? 0f;
         foreach (var (cameras, poses, entities) in _rigged.Chunks)
         {
             var c = cameras.Span;
@@ -77,7 +78,8 @@ public sealed class CameraDirector : ISystem
             for (int i = 0; i < c.Length; i++)
             {
                 if (!c[i].Enabled) continue;
-                _views.Offer(Resolve(c[i], entities.EntityAt(i), p[i].Position, p[i].Rotation));
+                var entity = entities.EntityAt(i);
+                _views.Offer(WithPlayerFov(Resolve(c[i], entity, p[i].Position, p[i].Rotation), entity, fov));
             }
         }
 
@@ -90,7 +92,8 @@ public sealed class CameraDirector : ISystem
             {
                 if (!c[i].Enabled) continue;
                 var pose = g[i].Interpolated(alpha);
-                _views.Offer(Resolve(c[i], entities.EntityAt(i), pose.Position, pose.Rotation));
+                var entity = entities.EntityAt(i);
+                _views.Offer(WithPlayerFov(Resolve(c[i], entity, pose.Position, pose.Rotation), entity, fov));
             }
         }
 
@@ -130,6 +133,14 @@ public sealed class CameraDirector : ISystem
             active.Far = main.Far;
         }
         _views.End();
+    }
+
+    // The `fov` cvar (issue #339), in degrees, over a player camera's own while it is above 0.
+    private static CameraView WithPlayerFov(CameraView view, Entity entity, float fov)
+    {
+        if (fov > 0f && view.Projection == CameraProjection.Perspective && entity.Tags.Has<PlayerCamera>())
+            view.FovY = MathF.Min(fov * MathF.PI / 180f, CameraMath.MaxFovY);
+        return view;
     }
 
     // A camera's view, every value made usable (Camera says what the defaults are).

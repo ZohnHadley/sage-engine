@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace Sage.UI;
@@ -70,7 +71,7 @@ public sealed class UiModule : IModule
         _lang.Changed += _ =>
         {
             if (!_started) return;
-            Localisation.Load(ctx.Engine.Vfs, _lang.Value);
+            LoadLanguage();
             Screens.RebuildAll();
         };
 
@@ -127,6 +128,7 @@ public sealed class UiModule : IModule
         ctx.Engine.Records.AddCheck<UiLayoutRecord>(UiContentChecks.Layout);
         ctx.Engine.Records.AddCheck<UiStyleSetRecord>(UiAccessibilityChecks.StyleSet);
         ctx.Engine.Records.AddCheck<ScreenRecord>((screen, check) => UiContentChecks.ScreenViewModel(screen, check, viewModels));
+        ctx.Engine.Records.AddCheck<OptionRecord>(OptionChecks.Check);   // the options screen's settings (issue #339)
 
         ctx.Engine.CVars.RegisterCommand("loc", CVarFlags.None,
             "loc <@ns.key> [count]: what a localisation key shows in the current language; loc alone: the language and how many keys it has.", a =>
@@ -141,6 +143,22 @@ public sealed class UiModule : IModule
                 ? Localisation.Text(key, n) : Localisation.Text(key);
             Log.Info(LogCat.Console, $"{key} = \"{text}\"");
         });
+        ctx.Engine.CVars.RegisterCommand("loc_check", CVarFlags.None,
+            "loc_check: every language's tables against English's (missing and stray keys, placeholders, plural forms) and its characters against the fonts that draw them, as `sage validate` does.", _ =>
+        {
+            int problems = UiContentChecks.Languages(ctx.Engine.Records, ctx.Engine.Vfs, Fonts);
+            Log.Info(LogCat.Console, $"loc_check: {problems} problem(s) in {Localisation.LanguagesIn(ctx.Engine.Vfs).Count} language(s)");
+        });
+    }
+
+    // The `lang` cvar's tables, and what its `language` record says: direction and fonts (#345).
+    private void LoadLanguage()
+    {
+        var engine = _engine!;
+        Localisation.Load(engine.Vfs, _lang!.Value);
+        var record = UiContentChecks.FindLanguage(engine.Records, Localisation.Language)?.Record;
+        Localisation.Describe(record?.Direction ?? TextDirection.Auto, record?.Fonts.ToArray() ?? Array.Empty<AssetPath>());
+        Fonts.SetFallbacks(Localisation.Fonts);
     }
 
     private bool _started, _fontsRead;
@@ -212,10 +230,13 @@ public sealed class UiModule : IModule
         if (_fontsRead) Fonts.Clear();   // a font file may have changed with the rest: read again on next use
         _fontsRead = true;
         Styles.Rebuild(engine.Records);
-        Localisation.Load(engine.Vfs, _lang!.Value);
+        LoadLanguage();
         UiContentChecks.Includes(engine.Records);
         UiContentChecks.Screens(engine.Records, engine.Vocabularies.Of<IViewModel>());
         if (BuildInfo.IsDevBuild) UiContentChecks.Keys(engine.Records, Localisation);
+        // Every translation's completeness (#345): `sage validate` (and loc_check) only, as it reads
+        // every language's tables and fonts.
+        if (engine.Records.MissingAssetsAreErrors) UiContentChecks.Languages(engine.Records, engine.Vfs, Fonts);
         if (BuildInfo.IsDevBuild) UiAccessibilityChecks.Contrast(engine.Records);
         Screens.RebuildAll();
     }
@@ -526,6 +547,113 @@ internal static class UiContentChecks
         type == typeof(string) || typeof(IEnumerable).IsAssignableFrom(type) || (!type.IsValueType && !type.IsPrimitive) ;
 
     private static string Join(string path, string name) => path.Length == 0 ? name : path + "." + name;
+
+    // The `language` record for a language code, if content has one.
+    public static (RecordId Id, LanguageRecord Record)? FindLanguage(RecordStore records, string code)
+    {
+        foreach (var id in records.Ids("language"))
+            if (records.TryGet(id, out LanguageRecord record) && LanguageRecord.SameCode(record.CodeFor(id), code)) return (id, record);
+        return null;
+    }
+
+    // How complete each translation is (issue #345), as warnings: for every language with tables but
+    // English, the English keys it lacks (shown in English), keys only it has (no content can name
+    // them), placeholders it adds or leaves out, plural forms its counts need and it lacks, and the
+    // characters none of the fonts that would draw it has. Also a `language` record no tables are for.
+    // Returns how many problems it said.
+    public static int Languages(RecordStore records, VirtualFileSystem vfs, UiFonts fonts)
+    {
+        int problems = 0;
+        void Warn(string message) { Log.Warn(LogCat.UI, message); problems++; }
+        var languages = Localisation.LanguagesIn(vfs);
+
+        foreach (var id in records.Ids("language"))
+        {
+            if (!records.TryGet(id, out LanguageRecord record)) continue;
+            string code = record.CodeFor(id);
+            if (!languages.Any(l => LanguageRecord.SameCode(l, code)))
+                Warn($"{records.Where("language", id)}: language {id}: no mount has strings/{code}/, so nothing is shown in it");
+        }
+
+        var english = Localisation.Read(vfs, Localisation.DefaultLanguage);
+        // The fonts any text may be drawn in, whatever the language: the styles' and the engine's own.
+        var common = new List<TrueTypeFont>();
+        foreach (var id in records.Ids("ui_style"))
+            if (records.TryGet(id, out UiStyleRecord style) && UiFonts.IsTrueType(style.Font) && fonts.Get(style.Font) is { } font) common.Add(font);
+        if (fonts.Quiet(UiFonts.EngineFont) is { } engineFont) common.Add(engineFont);
+
+        foreach (string language in languages)
+        {
+            if (language == Localisation.DefaultLanguage) continue;
+            var texts = Localisation.Read(vfs, language);
+            var missing = english.Keys.Where(k => !texts.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+            if (missing.Count > 0)
+                Warn($"strings/{language}: {missing.Count} of {english.Count} key(s) have no '{language}' text and show in English: " +
+                     string.Join(", ", missing.Take(10)) + (missing.Count > 10 ? $", and {missing.Count - 10} more" : ""));
+
+            var uses = PluralRules.Uses(language);
+            foreach (var (key, entry) in texts.OrderBy(t => t.Key, StringComparer.Ordinal))
+            {
+                if (!english.TryGetValue(key, out var source))
+                {
+                    Warn($"{entry.File}: '{key[1..]}' is in strings/{language} but not strings/{Localisation.DefaultLanguage}, so no content names it" +
+                         Spelling.Suggest(key, english.Keys));
+                    continue;
+                }
+                var theirs = Placeholders(source);
+                var ours = Placeholders(entry);
+                foreach (string name in ours.Except(theirs).OrderBy(n => n, StringComparer.Ordinal))
+                    Warn($"{entry.File}: '{key[1..]}' names {{{name}}}, which the English text does not, so nothing fills it");
+                foreach (string name in theirs.Except(ours).OrderBy(n => n, StringComparer.Ordinal))
+                    Warn($"{entry.File}: '{key[1..]}' leaves out {{{name}}}, which the English text shows");
+                if (source.IsPlural && !entry.IsPlural)
+                    Warn($"{entry.File}: '{key[1..]}' has plural forms in English and one text in '{language}': give it the forms {string.Join(", ", uses.Select(Name))}");
+                else if (entry.IsPlural)
+                {
+                    var lacking = uses.Where(c => c != PluralCategory.Other && !entry.HasForm(c)).ToList();
+                    if (lacking.Count > 0)
+                        Warn($"{entry.File}: '{key[1..]}' has no {string.Join(", ", lacking.Select(Name))} form(s), which counts in '{language}' take; they show its 'other'");
+                }
+            }
+
+            // Characters no font that could draw them has: the language's own fonts, the styles' and the engine's.
+            var chainFonts = (FindLanguage(records, language)?.Record.Fonts ?? new List<AssetPath>())
+                .Select(fonts.Get).Where(f => f != null).Select(f => f!).Concat(common).ToList();
+            if (chainFonts.Count == 0) continue;
+            var chain = new FontChain(chainFonts[0], chainFonts.Skip(1));
+            var lacked = new SortedSet<int>();
+            foreach (var entry in texts.Values)
+                foreach (string text in entry.Texts)
+                    foreach (var rune in Scripts.Shape(text).EnumerateRunes())
+                        if (!Rune.IsWhiteSpace(rune) && !Rune.IsControl(rune) && !chain.Covers(rune.Value)) lacked.Add(rune.Value);
+            if (lacked.Count > 0)
+                Warn($"strings/{language}: {lacked.Count} character(s) no font has, drawn as boxes: " +
+                     string.Join(" ", lacked.Take(20).Select(c => $"{char.ConvertFromUtf32(c)} U+{c:X4}")) + (lacked.Count > 20 ? " ..." : "") +
+                     $"; name a font that has them in a `language` record for '{language}'");
+        }
+        return problems;
+    }
+
+    private static string Name(PluralCategory category) => category.ToString().ToLowerInvariant();
+
+    // The {placeholders} a text (every form of it) names, without their formats.
+    private static HashSet<string> Placeholders(LocalisedText entry)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string text in entry.Texts)
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] != '{') continue;
+                if (i + 1 < text.Length && text[i + 1] == '{') { i++; continue; }
+                int close = text.IndexOf('}', i + 1);
+                if (close < 0) break;
+                string name = text[(i + 1)..close];
+                int colon = name.IndexOf(':');
+                names.Add(colon < 0 ? name : name[..colon]);
+                i = close;
+            }
+        return names;
+    }
 
     // "@ns.key": a namespace and at least one more part, names only — so "@" in an e-mail address or a
     // prose line starting with it is not taken for a key.

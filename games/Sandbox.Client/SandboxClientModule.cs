@@ -62,9 +62,8 @@ public sealed class SandboxClientModule : IModule
         var screens = world.Resources.Get<ScreenStack>();
         screens.Bind(_actions!.Get("Inventory"), new InventoryScreen());
         screens.Bind(_actions!.Get("Spellbook"), new SpellbookScreen());
-        // The spellmaker is the RPG kit's screen (16 §3.3, issue #27): what a spellmaker is belongs to the
-        // feature, not to this game, and the kit registers it by id. Binding it to a key is the game's call.
-        screens.Bind(_actions!.Get("Spellmaker"), _screens!.Create(RpgKitClientModule.Spellmaker)!);
+        // The spellmaker is the RPG kit's screen (16 §3.3, issue #27), bound to its default key by the kit's
+        // client half (issue #354); the spellbook is this game's own, and its key is the kit's default too.
 
         // The widget screens (13 "As built (drawing)", #97, and "As built (the HUD, journal, map and
         // menus)", #99), built from records in content/data/ui.json: `sandbox:status` (C), the kit's
@@ -79,8 +78,7 @@ public sealed class SandboxClientModule : IModule
         // F10 is the RPG kit's pause menu (issue #342): Resume, Save, Load, Options, Quit, the world stood
         // still while it is open. The Sandbox's own menu of #99 is still `ui_open main_menu`.
         widgets.Bind(_actions!.Get("MainMenu"), RpgKitModule.PauseScreen);
-        // The RPG kit's rest screen (4g-7), its own layout from the kit's content: T.
-        widgets.Bind(_actions!.Get("Rest"), RpgKitModule.RestScreen);
+        // The kit's rest screen (4g-7) is bound to T by the kit itself (issue #354).
         widgets.TooltipStyle = "sandbox:ui_tooltip";
         widgets.OpenHud(Hud, new Sage.UI.UiBindContext(world));
         widgets.Activated += (layer, widget) =>

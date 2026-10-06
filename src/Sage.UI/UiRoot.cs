@@ -91,9 +91,32 @@ public sealed class UiRoot
     // How text in `font` at `size` measures: the font's own metrics for a TTF, Text (scaled) otherwise.
     internal ITextMeasure MeasureFor(AssetPath font, float size)
     {
-        if (font.IsEmpty && (size <= 0f || size == UiFonts.DefaultSize)) return _text;
+        if (font.IsEmpty && (size <= 0f || size == UiFonts.DefaultSize) && (_fonts == null || _fonts.Fallbacks.Count == 0)) return _text;
         return (_fonts ?? (_noFonts ??= new UiFonts(static _ => null))).Measure(font, size, _text);
     }
+
+    // Right to left (issue #345): what an Arabic or Hebrew translation needs. Every rect is mirrored
+    // across the screen — a row stacks from the right, a box anchored top-left sits top-right, padding
+    // and margins swap sides — and text aligned to its start sits at the right. Pictures are not
+    // flipped; a bar fills, and a slider runs, from the right. Localisation.IsRightToLeft is what
+    // UiScreenStack sets it from.
+    public bool RightToLeft
+    {
+        get => _rightToLeft;
+        set
+        {
+            if (_rightToLeft == value) return;
+            _rightToLeft = value;
+            Content.InvalidateTree();
+            Tooltip.InvalidateTree();
+            LayoutChanged();
+        }
+    }
+
+    private bool _rightToLeft;
+
+    // `rect` mirrored across the screen when the tree is right to left; itself otherwise.
+    internal Rect Mirror(Rect rect) => _rightToLeft ? new Rect(Size.X - rect.X - rect.Width, rect.Y, rect.Width, rect.Height) : rect;
 
     // Lines a label breaks its text into while it measures (TextLayout): one list per tree, reused.
     internal List<TextLine> TextLines { get; } = new();
@@ -213,7 +236,7 @@ public sealed class UiRoot
         float x = Math.Clamp(target.X, 0f, MathF.Max(screen.Width - size.X, 0f));
         float y = target.Bottom + Tooltip.Offset;
         if (y + size.Y > screen.Height) y = MathF.Max(target.Y - Tooltip.Offset - size.Y, 0f);
-        Tooltip.Arrange(new Rect(x, y, size.X, size.Y), screen);
+        Tooltip.Arrange(Mirror(new Rect(x, y, size.X, size.Y)), screen);   // placed on screen already
     }
 
     // ---- Input ----------------------------------------------------------------------------------------
