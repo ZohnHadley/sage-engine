@@ -1,0 +1,27 @@
+# rpg:options: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on nothing
+rect 320,311.75 640x96.5 #141414e0 @window
+border 320,311.75 640x96.5 #5a4a30ff width 1 @window
+text 328,321.75 63x13.5 #f0e0b0ff scale 1.5 "Options" @title
+rect 328,343.25 60x15 #2a2620ff>#5a4a30ff
+border 328,343.25 60x15 #5a4a30ff>#f0e0b0ff width 1
+text 334,346.25 48x9 #e0d8c8ff scale 1 "Graphics"
+rect 388,343.25 42x15 #2a2620ff
+border 388,343.25 42x15 #5a4a30ff width 1
+text 394,346.25 30x9 #e0d8c8ff scale 1 "Audio"
+rect 430,343.25 60x15 #2a2620ff
+border 430,343.25 60x15 #5a4a30ff width 1
+text 436,346.25 48x9 #e0d8c8ff scale 1 "Controls"
+rect 490,343.25 60x15 #2a2620ff
+border 490,343.25 60x15 #5a4a30ff width 1
+text 496,346.25 48x9 #e0d8c8ff scale 1 "Gameplay"
+rect 328,370.25 42x15 #2a2620ff @apply
+border 328,370.25 42x15 #5a4a30ff width 1 @apply
+text 334,373.25 30x9 #707070ff scale 1 "Apply" @apply
+rect 378,370.25 48x15 #2a2620ff @revert
+border 378,370.25 48x15 #5a4a30ff width 1 @revert
+text 384,373.25 36x9 #707070ff scale 1 "Revert" @revert
+rect 434,370.25 60x15 #2a2620ff @defaults
+border 434,370.25 60x15 #5a4a30ff width 1 @defaults
+text 440,373.25 48x9 #e0d8c8ff scale 1 "Defaults" @defaults
+text 328,391.25 246x9 #908878ff scale 1 "Changes take effect on Apply.    B: close" @hint

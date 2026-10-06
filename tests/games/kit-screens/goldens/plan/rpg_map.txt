@@ -1,0 +1,34 @@
+# rpg:map: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on zoom_in
+rect 412,91.75 456x536.5 #141414e0 @window
+border 412,91.75 456x536.5 #5a4a30ff width 1 @window
+text 420,101.75 27x13.5 #f0e0b0ff scale 1.5 "Map" @title
+rect 420,123.25 440x440 #0a0c14e6 @area
+border 420,123.25 440x440 #3a3e52ff width 1 @area
+pushclip 420,123.25 440x440 @area
+rect 624,338.25 10x10 #60c0ffff @youDot
+text 638,338.75 18x9 #d8d8e0ff scale 1 "you" @youName
+popclip 0,0 0x0 @area
+rect 550,569.25 18x15 #2a2620ff>#5a4a30ff @zoom_in
+border 550,569.25 18x15 #5a4a30ff>#f0e0b0ff width 1 @zoom_in
+text 556,572.25 6x9 #e0d8c8ff scale 1 "+" @zoom_in
+rect 572,569.25 18x15 #2a2620ff @zoom_out
+border 572,569.25 18x15 #5a4a30ff width 1 @zoom_out
+text 578,572.25 6x9 #e0d8c8ff scale 1 "-" @zoom_out
+rect 594,569.25 18x15 #2a2620ff @pan_west
+border 594,569.25 18x15 #5a4a30ff width 1 @pan_west
+text 600,572.25 6x9 #e0d8c8ff scale 1 "W" @pan_west
+rect 616,569.25 18x15 #2a2620ff @pan_north
+border 616,569.25 18x15 #5a4a30ff width 1 @pan_north
+text 622,572.25 6x9 #e0d8c8ff scale 1 "N" @pan_north
+rect 638,569.25 18x15 #2a2620ff @pan_south
+border 638,569.25 18x15 #5a4a30ff width 1 @pan_south
+text 644,572.25 6x9 #e0d8c8ff scale 1 "S" @pan_south
+rect 660,569.25 18x15 #2a2620ff @pan_east
+border 660,569.25 18x15 #5a4a30ff width 1 @pan_east
+text 666,572.25 6x9 #e0d8c8ff scale 1 "E" @pan_east
+rect 682,569.25 48x15 #2a2620ff @recentre
+border 682,569.25 48x15 #5a4a30ff width 1 @recentre
+text 688,572.25 36x9 #e0d8c8ff scale 1 "Centre" @recentre
+text 420,596.25 156x9 #908878ff scale 1 "Nothing marked within 20 m" @range
+text 420,611.25 318x9 #908878ff scale 1 "North is up. Choose a waystone to travel.    B: close" @hint

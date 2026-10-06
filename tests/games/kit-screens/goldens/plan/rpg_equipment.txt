@@ -1,0 +1,16 @@
+# rpg:equipment: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on slot
+rect 430,291.25 420x137.5 #141414e0 @window
+border 430,291.25 420x137.5 #5a4a30ff width 1 @window
+text 438,301.25 81x13.5 #f0e0b0ff scale 1.5 "Equipment" @title
+rect 438,322.75 404x15 #2a2620ff>#5a4a30ff @slot
+border 438,322.75 404x15 #5a4a30ff>#f0e0b0ff width 1 @slot
+text 444,325.75 108x9 #e0d8c8ff scale 1 "Main hand: nothing" @slot
+rect 438,339.75 404x15 #2a2620ff @slot
+border 438,339.75 404x15 #5a4a30ff width 1 @slot
+text 444,342.75 102x9 #e0d8c8ff scale 1 "Off hand: nothing" @slot
+text 438,360.75 60x9 #e0d8c8ff scale 1 "Could wear" @wearable
+rect 438,375.75 404x15 #2a2620ff @candidate
+border 438,375.75 404x15 #5a4a30ff width 1 @candidate
+text 444,378.75 108x9 #e0d8c8ff scale 1 "dagger (Main hand)" @candidate
+text 438,411.75 378x9 #908878ff scale 1 "A on a slot: take it off    A on an item: put it on    B: close" @hint

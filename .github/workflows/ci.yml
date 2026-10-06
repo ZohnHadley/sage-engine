@@ -4,7 +4,8 @@
 #            the projects target, the docs checked against the registry dump (every name the host registered,
 #            written by -dump-registry) with the real test count, each game's content through `sage validate`,
 #            the committed JSON Schemas against a fresh `sage schema`, and the real executable run for a few
-#            seconds on each game under Xvfb (tools/smoke_run.sh); then the SDK, the Player and the templates
+#            seconds on each game under Xvfb (tools/smoke_run.sh), and every RPG kit screen opened and its frame
+#            compared with a golden (tools/kit_screens_check.sh, issue #355); then the SDK, the Player and the templates
 #            packed into a local feed and a game made from each template outside the checkout: built against
 #            the packages alone, validated, and run with `dotnet run` under Xvfb (issue #32); then packaged in
 #            Shipping (`sage package`, issue #293) and run from the package's folder
@@ -164,6 +165,8 @@ jobs:
           "$sage" validate tests/games/editor
           # The render check's scene (issue #318): a `.map` yard, a sky and a placed camera, no C#.
           "$sage" validate tests/games/render-check
+          # The kit screens check's game (issue #355): a player, a trader, a chest, a ferryman and a quest, no C#.
+          "$sage" validate tests/games/kit-screens
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -171,11 +174,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens --out schemas' and commit the result"
             exit 1
           fi
 
@@ -318,6 +321,25 @@ jobs:
           # rest with the Windows job's shaders. This proves the readback, the regions and the specs in the host.
           SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+r_shadows 1\n+wait 2\n+r_pixelcheck checks/drawing.json\n+wait\n+r_post 1\n+r_post_vignette 0\n+wait 1\n+r_pixelcheck checks/post.json\n+wait 1' \
             tools/smoke_run.sh "$host" tests/games/render-check 5 Shaders Audio Records Input
+
+      # Every RPG kit screen drawn by the real client (issue #355): tests/games/kit-screens/screens.txt, each opened
+      # over the kit-screens game at 960x540 and its frame compared, a grid of cell colours, with its golden in
+      # goldens/frame (r_framecheck, FrameGrid). A screen that draws differently is an ERROR, so the run fails; the
+      # frames, and the grid of each that failed (the new golden, if the change is meant), are uploaded. Taken
+      # without shaders, as this job's host is built: the world behind each screen is its clear colour.
+      # KitScreenGoldenTests checks the same screens' render plans headlessly, in the tests above.
+      - name: Check the kit screens' drawing (Development host, Xvfb)
+        run: tools/kit_screens_check.sh src/Sage.Host/bin/Development/net8.0
+
+      - name: Upload the kit screens' frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kit-screens
+          path: |
+            user/kitscreens/screenshots/framecheck-*
+            user/kitscreens/logs/*.log
+          if-no-files-found: ignore
 
       # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
       # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.

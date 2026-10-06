@@ -4,3 +4,6 @@
 # Generated JSON Schemas (sage schema, issue #21) are compared byte for byte with what the tool writes,
 # which is `\n` everywhere: keep them so on a Windows checkout too.
 schemas/*.json text eol=lf
+
+# The kit screens check's goldens (issue #355) are compared line by line: keep them `\n` on Windows too.
+tests/games/kit-screens/goldens/** text eol=lf

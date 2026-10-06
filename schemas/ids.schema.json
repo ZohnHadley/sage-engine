@@ -189,6 +189,7 @@
         "ferryman_talk",
         "hermit_talk",
         "keeper_talk",
+        "kitscreens:ferryman_talk",
         "sandbox:hermit_talk",
         "scriptedsequence:keeper_talk",
         "topicsgame:ferryman_talk"
@@ -198,6 +199,7 @@
       "description": "The id of a dialogue_topic record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "kitscreens:the_river",
         "sandbox:the_lanterns",
         "sandbox:the_watchers",
         "the_lanterns",
@@ -344,7 +346,12 @@
         "bow",
         "bread",
         "crossbow",
+        "dagger",
         "hammer",
+        "kitscreens:bread",
+        "kitscreens:dagger",
+        "kitscreens:lantern",
+        "kitscreens:rope",
         "lantern",
         "openworld:hammer",
         "openworld:sword",
@@ -354,6 +361,7 @@
         "pistol_rounds",
         "practice_sword",
         "ring",
+        "rope",
         "sandbox:bolt",
         "sandbox:crossbow",
         "sandbox:pelt",
@@ -615,6 +623,7 @@
         "cameracut:trigger_zone",
         "campfire",
         "casualty",
+        "chest",
         "crate",
         "crossbow_pickup",
         "crypt_door",
@@ -657,6 +666,11 @@
         "hut_yard",
         "jogger",
         "keeper",
+        "kitscreens:chest",
+        "kitscreens:ferryman",
+        "kitscreens:floor",
+        "kitscreens:player",
+        "kitscreens:trader",
         "lake",
         "lamp",
         "lamp_link",
@@ -827,6 +841,8 @@
       "description": "The id of a quest record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "crossing",
+        "kitscreens:crossing",
         "sandbox:thin_the_wood",
         "thin_the_wood"
       ]
@@ -882,9 +898,12 @@
       ]
     },
     "record:rpg_item": {
-      "description": "The id of a rpg_item record (none is loaded).",
+      "description": "The id of a rpg_item record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "kitscreens:rope",
+        "rope"
+      ]
     },
     "record:rumble": {
       "description": "The id of a rumble record (none is loaded).",
@@ -903,6 +922,7 @@
         "ferry",
         "hall",
         "hello:main",
+        "kitscreens:hall",
         "level",
         "main",
         "openworld:crypt",
@@ -1544,6 +1564,7 @@
         "ferryman_talk",
         "hermit_talk",
         "keeper_talk",
+        "kitscreens:ferryman_talk",
         "sandbox:hermit_talk",
         "scriptedsequence:keeper_talk",
         "topicsgame:ferryman_talk"
@@ -1553,6 +1574,7 @@
       "description": "Another dialogue_topic record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "kitscreens:the_river",
         "sandbox:the_lanterns",
         "sandbox:the_watchers",
         "the_lanterns",
@@ -1699,7 +1721,12 @@
         "bow",
         "bread",
         "crossbow",
+        "dagger",
         "hammer",
+        "kitscreens:bread",
+        "kitscreens:dagger",
+        "kitscreens:lantern",
+        "kitscreens:rope",
         "lantern",
         "openworld:hammer",
         "openworld:sword",
@@ -1709,6 +1736,7 @@
         "pistol_rounds",
         "practice_sword",
         "ring",
+        "rope",
         "sandbox:bolt",
         "sandbox:crossbow",
         "sandbox:pelt",
@@ -1970,6 +1998,7 @@
         "cameracut:trigger_zone",
         "campfire",
         "casualty",
+        "chest",
         "crate",
         "creature",
         "crossbow_pickup",
@@ -2013,6 +2042,11 @@
         "hut_yard",
         "jogger",
         "keeper",
+        "kitscreens:chest",
+        "kitscreens:ferryman",
+        "kitscreens:floor",
+        "kitscreens:player",
+        "kitscreens:trader",
         "lake",
         "lamp",
         "lamp_link",
@@ -2184,6 +2218,8 @@
       "description": "Another quest record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "crossing",
+        "kitscreens:crossing",
         "sandbox:thin_the_wood",
         "thin_the_wood"
       ]
@@ -2239,9 +2275,12 @@
       ]
     },
     "base:rpg_item": {
-      "description": "The id of a rpg_item record (none is loaded).",
+      "description": "Another rpg_item record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "kitscreens:rope",
+        "rope"
+      ]
     },
     "base:rumble": {
       "description": "The id of a rumble record (none is loaded).",
@@ -2260,6 +2299,7 @@
         "ferry",
         "hall",
         "hello:main",
+        "kitscreens:hall",
         "level",
         "main",
         "openworld:crypt",

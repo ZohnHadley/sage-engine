@@ -1,0 +1,10 @@
+# rpg:save: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on new
+rect 340,310.25 600x99.5 #141414e0 @window
+border 340,310.25 600x99.5 #5a4a30ff width 1 @window
+text 348,320.25 36x13.5 #f0e0b0ff scale 1.5 "Save" @title
+rect 348,341.75 584x15 #2a2620ff>#5a4a30ff @new
+border 348,341.75 584x15 #5a4a30ff>#f0e0b0ff width 1 @new
+text 616,344.75 48x9 #e0d8c8ff scale 1 "New save" @new
+text 348,362.75 78x9 #908878ff scale 1 "No saves yet." @none
+text 348,392.75 42x9 #908878ff scale 1 "B: back" @hint

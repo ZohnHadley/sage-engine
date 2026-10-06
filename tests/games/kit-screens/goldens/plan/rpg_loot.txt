@@ -1,0 +1,208 @@
+# rpg:loot: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on their_cell
+rect 226,154.25 828x411.5 #141414e0 @window
+border 226,154.25 828x411.5 #5a4a30ff width 1 @window
+text 234,164.25 45x13.5 #f0e0b0ff scale 1.5 "chest" @their_title
+rect 234,183.75 48x48 #3a3020ff>#5a4a30ff @their_cell
+border 234,183.75 48x48 #3a3428ff>#f0e0b0ff width 1 @their_cell
+text 242.25,204.38 31.5x6.75 #f0e8d8ff scale 0.75 "lantern" @their_cell
+rect 284,183.75 48x98 #3a3020ff @their_cell
+border 284,183.75 48x98 #3a3428ff width 1 @their_cell
+text 299,229.38 18x6.75 #f0e8d8ff scale 0.75 "rope" @their_cell
+rect 334,183.75 48x48 #1c1a16ff @their_cell
+border 334,183.75 48x48 #3a3428ff width 1 @their_cell
+rect 384,183.75 48x48 #1c1a16ff @their_cell
+border 384,183.75 48x48 #3a3428ff width 1 @their_cell
+rect 434,183.75 48x48 #1c1a16ff @their_cell
+border 434,183.75 48x48 #3a3428ff width 1 @their_cell
+rect 484,183.75 48x48 #1c1a16ff @their_cell
+border 484,183.75 48x48 #3a3428ff width 1 @their_cell
+rect 534,183.75 48x48 #1c1a16ff @their_cell
+border 534,183.75 48x48 #3a3428ff width 1 @their_cell
+rect 584,183.75 48x48 #1c1a16ff @their_cell
+border 584,183.75 48x48 #3a3428ff width 1 @their_cell
+rect 234,233.75 48x48 #1c1a16ff @their_cell
+border 234,233.75 48x48 #3a3428ff width 1 @their_cell
+rect 334,233.75 48x48 #1c1a16ff @their_cell
+border 334,233.75 48x48 #3a3428ff width 1 @their_cell
+rect 384,233.75 48x48 #1c1a16ff @their_cell
+border 384,233.75 48x48 #3a3428ff width 1 @their_cell
+rect 434,233.75 48x48 #1c1a16ff @their_cell
+border 434,233.75 48x48 #3a3428ff width 1 @their_cell
+rect 484,233.75 48x48 #1c1a16ff @their_cell
+border 484,233.75 48x48 #3a3428ff width 1 @their_cell
+rect 534,233.75 48x48 #1c1a16ff @their_cell
+border 534,233.75 48x48 #3a3428ff width 1 @their_cell
+rect 584,233.75 48x48 #1c1a16ff @their_cell
+border 584,233.75 48x48 #3a3428ff width 1 @their_cell
+rect 234,283.75 48x48 #1c1a16ff @their_cell
+border 234,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 284,283.75 48x48 #1c1a16ff @their_cell
+border 284,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 334,283.75 48x48 #1c1a16ff @their_cell
+border 334,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 384,283.75 48x48 #1c1a16ff @their_cell
+border 384,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 434,283.75 48x48 #1c1a16ff @their_cell
+border 434,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 484,283.75 48x48 #1c1a16ff @their_cell
+border 484,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 534,283.75 48x48 #1c1a16ff @their_cell
+border 534,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 584,283.75 48x48 #1c1a16ff @their_cell
+border 584,283.75 48x48 #3a3428ff width 1 @their_cell
+rect 234,333.75 48x48 #1c1a16ff @their_cell
+border 234,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 284,333.75 48x48 #1c1a16ff @their_cell
+border 284,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 334,333.75 48x48 #1c1a16ff @their_cell
+border 334,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 384,333.75 48x48 #1c1a16ff @their_cell
+border 384,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 434,333.75 48x48 #1c1a16ff @their_cell
+border 434,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 484,333.75 48x48 #1c1a16ff @their_cell
+border 484,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 534,333.75 48x48 #1c1a16ff @their_cell
+border 534,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 584,333.75 48x48 #1c1a16ff @their_cell
+border 584,333.75 48x48 #3a3428ff width 1 @their_cell
+rect 234,383.75 48x48 #1c1a16ff @their_cell
+border 234,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 284,383.75 48x48 #1c1a16ff @their_cell
+border 284,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 334,383.75 48x48 #1c1a16ff @their_cell
+border 334,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 384,383.75 48x48 #1c1a16ff @their_cell
+border 384,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 434,383.75 48x48 #1c1a16ff @their_cell
+border 434,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 484,383.75 48x48 #1c1a16ff @their_cell
+border 484,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 534,383.75 48x48 #1c1a16ff @their_cell
+border 534,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 584,383.75 48x48 #1c1a16ff @their_cell
+border 584,383.75 48x48 #3a3428ff width 1 @their_cell
+rect 234,433.75 48x48 #1c1a16ff @their_cell
+border 234,433.75 48x48 #3a3428ff width 1 @their_cell
+rect 284,433.75 48x48 #1c1a16ff @their_cell
+border 284,433.75 48x48 #3a3428ff width 1 @their_cell
+rect 334,433.75 48x48 #1c1a16ff @their_cell
+border 334,433.75 48x48 #3a3428ff width 1 @their_cell
+rect 384,433.75 48x48 #1c1a16ff @their_cell
+border 384,433.75 48x48 #3a3428ff width 1 @their_cell
+rect 434,433.75 48x48 #1c1a16ff @their_cell
+border 434,433.75 48x48 #3a3428ff width 1 @their_cell
+rect 484,433.75 48x48 #1c1a16ff @their_cell
+border 484,433.75 48x48 #3a3428ff width 1 @their_cell
+rect 534,433.75 48x48 #1c1a16ff @their_cell
+border 534,433.75 48x48 #3a3428ff width 1 @their_cell
+rect 584,433.75 48x48 #1c1a16ff @their_cell
+border 584,433.75 48x48 #3a3428ff width 1 @their_cell
+text 648,164.25 45x13.5 #f0e0b0ff scale 1.5 "Yours" @your_title
+text 648,183.75 108x9 #e0d8c8ff scale 1 "Weight 4.5 / 30 kg" @weight
+rect 648,196.75 398x8 #202020ff @weight_bar
+border 648,196.75 398x8 #5a4a30ff width 1 @weight_bar
+rect 648,196.75 59.7x8 #b09050ff @weight_bar
+rect 648,208.75 48x48 #3a3020ff @your_cell
+border 648,208.75 48x48 #3a3428ff width 1 @your_cell
+text 654,229.38 36x6.75 #f0e8d8ff scale 0.75 "bread ×3" @your_cell
+rect 698,208.75 48x98 #3a3020ff @your_cell
+border 698,208.75 48x98 #3a3428ff width 1 @your_cell
+text 713,254.38 18x6.75 #f0e8d8ff scale 0.75 "rope" @your_cell
+rect 748,208.75 48x48 #3a3020ff @your_cell
+border 748,208.75 48x48 #3a3428ff width 1 @your_cell
+text 758.5,229.38 27x6.75 #f0e8d8ff scale 0.75 "dagger" @your_cell
+rect 798,208.75 48x48 #1c1a16ff @your_cell
+border 798,208.75 48x48 #3a3428ff width 1 @your_cell
+rect 848,208.75 48x48 #1c1a16ff @your_cell
+border 848,208.75 48x48 #3a3428ff width 1 @your_cell
+rect 898,208.75 48x48 #1c1a16ff @your_cell
+border 898,208.75 48x48 #3a3428ff width 1 @your_cell
+rect 948,208.75 48x48 #1c1a16ff @your_cell
+border 948,208.75 48x48 #3a3428ff width 1 @your_cell
+rect 998,208.75 48x48 #1c1a16ff @your_cell
+border 998,208.75 48x48 #3a3428ff width 1 @your_cell
+rect 648,258.75 48x48 #1c1a16ff @your_cell
+border 648,258.75 48x48 #3a3428ff width 1 @your_cell
+rect 748,258.75 48x48 #1c1a16ff @your_cell
+border 748,258.75 48x48 #3a3428ff width 1 @your_cell
+rect 798,258.75 48x48 #1c1a16ff @your_cell
+border 798,258.75 48x48 #3a3428ff width 1 @your_cell
+rect 848,258.75 48x48 #1c1a16ff @your_cell
+border 848,258.75 48x48 #3a3428ff width 1 @your_cell
+rect 898,258.75 48x48 #1c1a16ff @your_cell
+border 898,258.75 48x48 #3a3428ff width 1 @your_cell
+rect 948,258.75 48x48 #1c1a16ff @your_cell
+border 948,258.75 48x48 #3a3428ff width 1 @your_cell
+rect 998,258.75 48x48 #1c1a16ff @your_cell
+border 998,258.75 48x48 #3a3428ff width 1 @your_cell
+rect 648,308.75 48x48 #1c1a16ff @your_cell
+border 648,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 698,308.75 48x48 #1c1a16ff @your_cell
+border 698,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 748,308.75 48x48 #1c1a16ff @your_cell
+border 748,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 798,308.75 48x48 #1c1a16ff @your_cell
+border 798,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 848,308.75 48x48 #1c1a16ff @your_cell
+border 848,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 898,308.75 48x48 #1c1a16ff @your_cell
+border 898,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 948,308.75 48x48 #1c1a16ff @your_cell
+border 948,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 998,308.75 48x48 #1c1a16ff @your_cell
+border 998,308.75 48x48 #3a3428ff width 1 @your_cell
+rect 648,358.75 48x48 #1c1a16ff @your_cell
+border 648,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 698,358.75 48x48 #1c1a16ff @your_cell
+border 698,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 748,358.75 48x48 #1c1a16ff @your_cell
+border 748,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 798,358.75 48x48 #1c1a16ff @your_cell
+border 798,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 848,358.75 48x48 #1c1a16ff @your_cell
+border 848,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 898,358.75 48x48 #1c1a16ff @your_cell
+border 898,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 948,358.75 48x48 #1c1a16ff @your_cell
+border 948,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 998,358.75 48x48 #1c1a16ff @your_cell
+border 998,358.75 48x48 #3a3428ff width 1 @your_cell
+rect 648,408.75 48x48 #1c1a16ff @your_cell
+border 648,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 698,408.75 48x48 #1c1a16ff @your_cell
+border 698,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 748,408.75 48x48 #1c1a16ff @your_cell
+border 748,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 798,408.75 48x48 #1c1a16ff @your_cell
+border 798,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 848,408.75 48x48 #1c1a16ff @your_cell
+border 848,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 898,408.75 48x48 #1c1a16ff @your_cell
+border 898,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 948,408.75 48x48 #1c1a16ff @your_cell
+border 948,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 998,408.75 48x48 #1c1a16ff @your_cell
+border 998,408.75 48x48 #3a3428ff width 1 @your_cell
+rect 648,458.75 48x48 #1c1a16ff @your_cell
+border 648,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 698,458.75 48x48 #1c1a16ff @your_cell
+border 698,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 748,458.75 48x48 #1c1a16ff @your_cell
+border 748,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 798,458.75 48x48 #1c1a16ff @your_cell
+border 798,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 848,458.75 48x48 #1c1a16ff @your_cell
+border 848,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 898,458.75 48x48 #1c1a16ff @your_cell
+border 898,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 948,458.75 48x48 #1c1a16ff @your_cell
+border 948,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 998,458.75 48x48 #1c1a16ff @your_cell
+border 998,458.75 48x48 #3a3428ff width 1 @your_cell
+rect 610,512.75 60x15 #2a2620ff @take_all
+border 610,512.75 60x15 #5a4a30ff width 1 @take_all
+text 616,515.75 48x9 #e0d8c8ff scale 1 "Take all" @take_all
+text 234,548.75 402x9 #908878ff scale 1 "A: pick up / put down    Take all: everything that fits    B: close" @hint
+text 234,235.75 78x9 #ffffffff scale 1 "lantern, 1 kg"

@@ -1,0 +1,20 @@
+# rpg:title: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on new_game
+rect 480,277.25 320x165.5 #141414e0 @window
+border 480,277.25 320x165.5 #5a4a30ff width 1 @window
+text 488,287.25 135x13.5 #f0e0b0ff scale 1.5 "A New Adventure" @title
+rect 488,310.75 304x15 #2a2620ff>#5a4a30ff @new_game
+border 488,310.75 304x15 #5a4a30ff>#f0e0b0ff width 1 @new_game
+text 616,313.75 48x9 #e0d8c8ff scale 1 "New game" @new_game
+rect 488,333.75 304x15 #2a2620ff @load
+border 488,333.75 304x15 #5a4a30ff width 1 @load
+text 628,336.75 24x9 #e0d8c8ff scale 1 "Load" @load
+rect 488,356.75 304x15 #2a2620ff @options
+border 488,356.75 304x15 #5a4a30ff width 1 @options
+text 619,359.75 42x9 #e0d8c8ff scale 1 "Options" @options
+rect 488,379.75 304x15 #2a2620ff @mods
+border 488,379.75 304x15 #5a4a30ff width 1 @mods
+text 628,382.75 24x9 #e0d8c8ff scale 1 "Mods" @mods
+rect 488,402.75 304x15 #2a2620ff @quit
+border 488,402.75 304x15 #5a4a30ff width 1 @quit
+text 628,405.75 24x9 #e0d8c8ff scale 1 "Quit" @quit
