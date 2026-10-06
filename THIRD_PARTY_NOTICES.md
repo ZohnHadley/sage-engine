@@ -16,6 +16,7 @@ licences were read from each package's metadata (NuGet `nuspec`), not assumed; u
 | ↳ MonoGame.Library.OpenAL | 1.24.3.4 | see the package's `LICENSE` (OpenAL Soft; parts BSD-3-Clause) | native audio |
 | ↳ NVorbis | 0.10.4 | MIT | Ogg Vorbis decoding; also referenced by `Sage.Simulation`, which decodes a sound's `.ogg` to PCM (issue #302) |
 | [StbImageSharp](https://github.com/StbSharp/StbImageSharp) | 2.30.16 | Unlicense OR MIT | `Sage.Simulation` — PNG/JPEG decoding for `sage cook` (issue #302) |
+| [StbTrueTypeSharp](https://github.com/StbSharp/StbTrueTypeSharp) | 1.26.12 | Public Domain (the project's README; the nuspec names no licence) | `Sage.UI` — TrueType/OpenType fonts, measured and rasterised headlessly (issue #338) |
 | [SharpGLTF.Core](https://github.com/vpenades/SharpGLTF) | 1.0.7 | MIT | `Sage.Simulation` — glTF skins and clips, read headlessly (issue #116); `Sage.Client` — glTF meshes, through it |
 
 **LGPL note.** The three Friflo.Json packages are LGPL-3.0-only. They are used as unmodified,

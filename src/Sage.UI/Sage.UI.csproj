@@ -12,10 +12,14 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <SageBaseAssembly>true</SageBaseAssembly>
+    <!-- stb_truetype's port takes pointers for its metrics and glyph bitmaps (TrueTypeFont, #338). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sage.Simulation\Sage.Simulation.csproj" />
+    <!-- TTF/OTF fonts read and rasterised headlessly (issue #338). -->
+    <PackageReference Include="StbTrueTypeSharp" />
   </ItemGroup>
 
   <ItemGroup>

@@ -192,12 +192,17 @@ public sealed class UiScreenStack
     // what the client measures with too, so a layout is the same headless and on screen.
     internal static readonly MonospaceTextMeasure FontCells = new(6f, 9f);
 
-    internal UiScreenStack(UiScreens? screens, UiStyles? styles, World? world = null)
+    internal UiScreenStack(UiScreens? screens, UiStyles? styles, World? world = null, UiFonts? fonts = null)
     {
         _screens = screens;
         _styles = styles;
         _world = world;
+        Fonts = fonts;
     }
+
+    // The fonts a style names (#338), for every layer's layout and for the client that draws them;
+    // none for a stack of tests and tools that set no fonts (every label in the engine font).
+    public UiFonts? Fonts { get; }
 
     // A stack with no records behind it: Push only (tests, tools).
     public UiScreenStack() : this(null, null) { }
@@ -364,7 +369,7 @@ public sealed class UiScreenStack
 
     private UiLayer Add(Widget content, UiScreen? screen, bool modal, Widget? focus = null)
     {
-        var root = new UiRoot(_text) { UiScale = _uiScale, TextScale = _textScale };
+        var root = new UiRoot(_text) { Fonts = Fonts, UiScale = _uiScale, TextScale = _textScale };
         root.SetViewport(_viewport);
         if (TooltipStyle != null)
         {
@@ -374,6 +379,8 @@ public sealed class UiScreenStack
             {
                 var style = _styles.Get(TooltipStyle);
                 root.Tooltip.TextScale = style.TextScale;
+                root.Tooltip.Font = style.Font;
+                root.Tooltip.FontSize = style.FontSize;
                 root.Tooltip.Padding = style.Padding;
             }
         }
