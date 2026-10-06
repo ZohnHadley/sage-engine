@@ -380,9 +380,12 @@ public class AttachmentAndIkTests
             Assert.Equal(name == HumanoidSkeletonBuilder.FootL ? -HumanoidSkeletonBuilder.Stance : HumanoidSkeletonBuilder.Stance, ankle.X, 3);
             Assert.Equal(0f, ankle.Z, 3);
         }
-        // The uphill knee bent forward (toward -Z), and the foot stayed level.
+        // The uphill knee bent forward (toward -Z), and the foot tilted to lie along the ramp (issue #361:
+        // its up is the ramp's normal, 30°, within the part's default maxFootTilt of 30°).
         Assert.True(pose.ModelSpace[skeleton.IndexOf(HumanoidSkeletonBuilder.ShinR)].Translation.Z < -0.05f);
-        Assert.True(MathF.Abs(Quaternion.Dot(Quaternion.Identity, ModelRotation(pose, skeleton.IndexOf(HumanoidSkeletonBuilder.FootR)))) > 1 - Eps);
+        var rampNormal = Vector3.Normalize(new Vector3(-Slope, 1, 0));
+        Near(rampNormal, Vector3.Normalize(Vector3.TransformNormal(Vector3.UnitY, pose.ModelSpace[skeleton.IndexOf(HumanoidSkeletonBuilder.FootR)])), 1e-3f);
+        Assert.Equal(30f, ik.RightTilt, 1);
 
         // On flat ground at the walker's feet, nothing moves.
         var flat = world.Spawn(new RecordId("sage", "walker"), new Vector3(0, 0, 20));
