@@ -5,3 +5,4 @@ Sage.Client.RenderStats.Lightmapped -> int
 Sage.Client.RenderStats.Instanced -> int
 Sage.Client.RenderStats.InstancedDraws -> int
 Sage.Client.RenderStats.InstancedSprites -> int
+Sage.Client.RenderStats.ShadowMaps -> int

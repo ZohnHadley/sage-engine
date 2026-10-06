@@ -20,7 +20,9 @@ namespace Sage.Simulation;
 //                                      into it over that many seconds from the view the screen had
 //                                      (issue #90; CameraBlend), along the named easing curve (`SineInOut`;
 //                                      Easing.TryParse); none: the entity's BlendTime, which is 0 — a cut
-//            CameraOff                 disable the camera
+//            CameraOff [blend [ease]]  disable the camera; with a number, blend out of it over that many seconds
+//                                      to whatever has its target and slot next (issue 4n-19; CameraBlend.Out),
+//                                      along the named curve; none: the entity's BlendOutTime, which is 0 — a cut
 //   outputs  OnCameraOn / OnCameraOff  fired on the change only: turning on a camera that is on restarts
 //                                      its hold and fires nothing
 //
@@ -30,7 +32,9 @@ namespace Sage.Simulation;
 // **A cut unless asked for a blend.** The view switches on the first frame after the tick the input was
 // delivered in. With a blend time (the parameter's second number, or ScriptedCamera.BlendTime) the screen
 // eases from the view it had — the main view, whatever drew it — to the camera's own over that long
-// (issue #90, CameraBlend); only a camera that draws to the screen blends. Turning it off is a cut.
+// (issue #90, CameraBlend); only a camera that draws to the screen blends. Turning it off is a cut too,
+// unless it says otherwise: `CameraOff`'s blend time or ScriptedCamera.BlendOutTime (also used when the
+// hold runs out) eases from where the camera was to what comes back (issue 4n-19).
 //
 // **Ownership: the engine (`sage.core`)**, like the `camera` component, part and director. The inputs
 // only toggle components the engine owns, so every game has them whatever plugins it lists, the scene
@@ -64,6 +68,10 @@ public struct ScriptedCamera : IComponent
     public float BlendTime;
     [Property(Tooltip = "The easing curve of that blend")]
     public Ease BlendEase;
+    // How CameraOff (or the hold running out) gives the view back when the wire does not say (issue 4n-19):
+    // 0 = a cut. Along BlendEase.
+    [Property(Min = 0, Unit = "s", Tooltip = "Seconds CameraOff (or the hold ending) blends back to what had the screen when the wire gives none; 0 = a cut")]
+    public float BlendOutTime;
 }
 
 // "scripted_camera": { "holdTime": 3, "lockInput": true }
@@ -82,6 +90,8 @@ public sealed class ScriptedCameraPart : IPrefabPart
     public float BlendTime;
     [Property(Tooltip = "The easing curve of that blend")]
     public Ease BlendEase = Ease.SmoothStep;
+    [Property(Min = 0, Unit = "s", Tooltip = "Seconds CameraOff (or the hold ending) blends back to what had the screen when the wire gives none; 0 = a cut")]
+    public float BlendOutTime;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -89,12 +99,15 @@ public sealed class ScriptedCameraPart : IPrefabPart
             ctx.Warn($"holdTime {HoldTime} is not a time in seconds; 0 (until CameraOff) is used");
         if (!(BlendTime >= 0f) || !float.IsFinite(BlendTime))
             ctx.Warn($"blendTime {BlendTime} is not a time in seconds; 0 (a cut) is used");
+        if (!(BlendOutTime >= 0f) || !float.IsFinite(BlendOutTime))
+            ctx.Warn($"blendOutTime {BlendOutTime} is not a time in seconds; 0 (a cut) is used");
         ctx.World.Add(ctx.Entity, new ScriptedCamera
         {
             HoldTime = HoldTime >= 0f && float.IsFinite(HoldTime) ? HoldTime : 0f,
             LockInput = LockInput,
             BlendTime = BlendTime >= 0f && float.IsFinite(BlendTime) ? BlendTime : 0f,
             BlendEase = BlendEase,
+            BlendOutTime = BlendOutTime >= 0f && float.IsFinite(BlendOutTime) ? BlendOutTime : 0f,
         });
     }
 }
@@ -133,7 +146,7 @@ internal static class CameraIO
         float hold = hasScripted ? scripted.HoldTime : 0f;
         float blend = hasScripted ? scripted.BlendTime : 0f;
         var ease = hasScripted ? scripted.BlendEase : Ease.SmoothStep;
-        ReadParameter(io.Parameter, self, ref hold, ref blend, ref ease);
+        ReadParameter(On, io.Parameter, self, first: 0, ref hold, ref blend, ref ease);
 
         // A hold needs somewhere to count down. Structural, which is allowed here: inputs are delivered
         // outside any query (EntityIO.Run).
@@ -151,7 +164,7 @@ internal static class CameraIO
         // From the view the screen has now, to this camera's: a blend, or a cut that ends any blend left
         // over from the last time it came on. Before the camera is switched on, and through a fresh ref
         // after: adding the blend moves the entity's components.
-        if (blend > 0f && camera.IsScreen && world.TryGetMainView(out var from) && from.Entity != self)
+        if (blend > 0f && camera.IsScreen && ScreenView(world, camera.Slot, out var from) && from.Entity != self)
             CameraBlends.Begin(world, self, from, blend, ease);
         else
             CameraBlends.End(world, self);
@@ -160,13 +173,26 @@ internal static class CameraIO
         world.FireOutput(self, OnCameraOn, io.Activator);
     }
 
-    // `hold [blend [ease]]`, space-separated (a `.map` wire is comma-separated). A word that is not what it
-    // should be is a warning, and the entity's own value stands.
-    private static void ReadParameter(string parameter, Entity self, ref float hold, ref float blend, ref Ease ease)
+    // What a camera in screen `slot` blends from: that slot's view (a split-screen partner's own), else
+    // the main view.
+    private static bool ScreenView(World world, int slot, out CameraView view)
+    {
+        if (world.Resources.TryGet<CameraViews>(out var views) && views != null)
+        {
+            int at = views.IndexOf("", Math.Max(0, slot));
+            if (at >= 0) { view = views[at]; return true; }
+        }
+        return world.TryGetMainView(out view);
+    }
+
+    // `hold [blend [ease]]` (CameraOn, from field 0) or `blend [ease]` (CameraOff, from field 1),
+    // space-separated (a `.map` wire is comma-separated). A word that is not what it should be is a
+    // warning, and the entity's own value stands.
+    private static void ReadParameter(string input, string parameter, Entity self, int first, ref float hold, ref float blend, ref Ease ease)
     {
         if (parameter.Length == 0) return;
         ReadOnlySpan<char> rest = parameter;
-        for (int field = 0; field < 3; field++)
+        for (int field = first; field < 3; field++)
         {
             rest = rest.TrimStart();
             if (rest.IsEmpty) return;
@@ -178,7 +204,7 @@ internal static class CameraIO
             if (field == 2)
             {
                 if (!Easing.TryParse(token, out ease))
-                    Log.Warn(LogCat.Events, $"I/O: {On}({parameter}) at {World.Describe(self)}: '{token.ToString()}' is not an "
+                    Log.Warn(LogCat.Events, $"I/O: {input}({parameter}) at {World.Describe(self)}: '{token.ToString()}' is not an "
                                           + $"easing curve; {ease} is used");
                 continue;
             }
@@ -189,13 +215,15 @@ internal static class CameraIO
             }
             else
             {
-                Log.Warn(LogCat.Events, $"I/O: {On}({parameter}) at {World.Describe(self)}: the parameter is a hold "
-                                      + (field == 0 ? $"time in seconds; {hold} is used" : $"time and a blend time in seconds; a blend of {blend} is used"));
-                if (field == 0) return;
+                Log.Warn(LogCat.Events, $"I/O: {input}({parameter}) at {World.Describe(self)}: the parameter is "
+                                      + (field == 0 ? $"a hold time in seconds; {hold} is used"
+                                         : first == 0 ? $"a hold time and a blend time in seconds; a blend of {blend} is used"
+                                         : $"a blend time in seconds; a blend of {blend} is used"));
+                if (field == first) return;
             }
         }
         if (!rest.TrimStart().IsEmpty)
-            Log.Warn(LogCat.Events, $"I/O: {On}({parameter}) at {World.Describe(self)}: expected \"hold [blend [ease]]\"; the rest is ignored");
+            Log.Warn(LogCat.Events, $"I/O: {input}({parameter}) at {World.Describe(self)}: expected \"{(first == 0 ? "hold [blend [ease]]" : "blend [ease]")}\"; the rest is ignored");
     }
 
     private static void TurnOff(World world, in IOContext io)
@@ -206,17 +234,39 @@ internal static class CameraIO
             Log.Warn(LogCat.Events, $"I/O: {Off} at {World.Describe(self)}, which has no camera");
             return;
         }
-        if (world.Has<ScriptedCamera>(self)) world.Get<ScriptedCamera>(self).Remaining = 0f;
+        bool hasScripted = world.TryGet<ScriptedCamera>(self, out var scripted);
+        if (hasScripted) world.Get<ScriptedCamera>(self).Remaining = 0f;
 
-        ref var camera = ref world.Get<Camera>(self);
-        if (!camera.Enabled) return;
-        camera.Enabled = false;
+        // The blend out (issue 4n-19): the wire's `blend [ease]`, else the entity's own, else a cut.
+        float blend = hasScripted ? scripted.BlendOutTime : 0f;
+        var ease = hasScripted ? scripted.BlendEase : Ease.SmoothStep;
+        float hold = 0f;
+        ReadParameter(Off, io.Parameter, self, first: 1, ref hold, ref blend, ref ease);
+
+        if (!world.Get<Camera>(self).Enabled) return;
+        // Structural (the blend may be added), which inputs may be: they are delivered outside any query.
+        if (BlendOut(world, self, blend, out var from)) CameraBlends.BeginOut(world, self, from, blend, ease);
+        world.Get<Camera>(self).Enabled = false;
         world.FireOutput(self, OnCameraOff, io.Activator);
+    }
+
+    // Whether turning `camera` off blends out of it (issue 4n-19), and from where: a blend time, and the
+    // view the camera drew last frame (it was winning its target and slot). A camera that was not drawing
+    // gives nothing back to blend into, so it is a cut.
+    internal static bool BlendOut(World world, Entity camera, float seconds, out CameraView from)
+    {
+        from = default;
+        if (!(seconds > 0f) || !float.IsFinite(seconds)) return false;
+        if (!world.Resources.TryGet<CameraViews>(out var views) || views == null) return false;
+        int at = views.IndexOf(camera);
+        if (at < 0) return false;
+        from = views[at];
+        return true;
     }
 }
 
 // EntityIO phase, before the dispatch: counts down every scripted camera's hold and turns the camera off
-// when it runs out, firing OnCameraOff. Before the dispatch so that a hold of N seconds ends on the same
+// when it runs out (blending out over its BlendOutTime, issue 4n-19), firing OnCameraOff. Before the dispatch so that a hold of N seconds ends on the same
 // tick as a `CameraOff` wired with a delay of N: the input that set the hold is delivered after this
 // has run for its tick, so the first second counted is the next tick's.
 [Experimental("SAGE0123")]
@@ -250,8 +300,13 @@ internal sealed class ScriptedCameraSystem : ISystem
 
                 s[i].Remaining = 0f;
                 c[i].Enabled = false;
+                // Its blend out (issue 4n-19), recorded: adding the component is structural, and this is
+                // inside a query. Played back at the end of the phase, before the frame the director eases.
+                var self = entities.EntityAt(i);
+                if (CameraIO.BlendOut(_world, self, s[i].BlendOutTime, out var from))
+                    ctx.Commands.Add(self, CameraBlends.Make(from, s[i].BlendOutTime, s[i].BlendEase, blendOut: true));
                 // Queued, not run: firing only adds to entity I/O's list, which is safe inside a query.
-                _world.FireOutput(entities.EntityAt(i), CameraIO.OnCameraOff, s[i].Activator);
+                _world.FireOutput(self, CameraIO.OnCameraOff, s[i].Activator);
             }
         }
     }
