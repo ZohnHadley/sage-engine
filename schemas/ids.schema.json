@@ -1005,6 +1005,11 @@
         "topics"
       ]
     },
+    "record:skeleton_map": {
+      "description": "The id of a skeleton_map record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:skeleton_sockets": {
       "description": "The id of a skeleton_sockets record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -2419,6 +2424,11 @@
         "title",
         "topics"
       ]
+    },
+    "base:skeleton_map": {
+      "description": "The id of a skeleton_map record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:skeleton_sockets": {
       "description": "Another skeleton_sockets record to inherit every field from, abstract or not.",
