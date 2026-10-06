@@ -1,1 +1,9 @@
 #nullable enable
+Sage.UI.ScreenRecord.Sounds -> Sage.Core.RecordRef<Sage.UI.UiSoundsRecord!>
+Sage.UI.UiSoundsRecord
+Sage.UI.UiSoundsRecord.Close -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.UI.UiSoundsRecord.Move -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.UI.UiSoundsRecord.Open -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.UI.UiSoundsRecord.Select -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.UI.UiSoundsRecord.UiSoundsRecord() -> void
+static readonly Sage.UI.UiSoundsRecord.DefaultId -> Sage.Core.RecordId

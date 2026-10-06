@@ -1,4 +1,10 @@
 #nullable enable
+Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
+Sage.Gameplay.DamageInfo.Sound.init -> void
+Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
+Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
+Sage.Gameplay.EffectRecord.TickCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.LightPart.Cone -> float
 Sage.Gameplay.LightPart.InnerCone -> float
 Sage.Gameplay.LightPart.Pattern -> string!
@@ -11,3 +17,5 @@ Sage.Gameplay.HitResult.Surface.get -> Sage.Core.RecordId
 Sage.Gameplay.HitResult.Surface.init -> void
 Sage.Gameplay.LightPart.Baked -> bool
 Sage.Gameplay.LightPart.Shadows -> bool
+static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
+*REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!

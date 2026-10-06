@@ -107,11 +107,10 @@ internal sealed class AudioSystem : ISystem
     }
 
     // A hit makes the *damage type's* noise: one entry for fire covers a fireball, a torch and a trap,
-    // and an attack record can override it for a particular weapon.
+    // and an attack record overrides it for a particular weapon (`sound`, issue #330).
     private void Damage(in Damaged hit)
     {
-        RecordId sound = default;
-        if (!hit.Hit.Type.IsEmpty && _records.TryGet(hit.Hit.Type, out DamageTypeRecord type)) sound = type.Sound;
+        var sound = Combat.HitSound(_records, hit.Hit);
         if (sound.IsEmpty) return;
         Play(sound, hit.Hit.Point, positional: true);
     }
