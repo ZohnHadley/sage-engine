@@ -36,6 +36,18 @@ internal sealed class AnimatorPoses
         // Per layer, the frozen pose a PlayFrom fade starts from (issue #244); rented from the snapshot
         // pool while the fade runs and handed back when it ends.
         public SkeletonPose?[] Snapshots = Array.Empty<SkeletonPose?>();
+        // Root motion (issue #357): the joint it is taken from (-1: none), and the travel left last tick
+        // for a character controller to take (Animators.TryTakeRootMotion).
+        public int RootJoint = -1;
+        public Vector3 RootTravel;
+        public bool RootVertical;
+        public bool RootPending;
+        public long RootTick = -1;
+        // What the last Step took (model space, the turn in radians), before the system hands it on.
+        public Vector3 StepTravel;
+        public float StepTurn;
+        public bool StepActive;
+        public bool StepVertical;
     }
 
     // Snapshot poses no fade holds, per skeleton: PlayFrom rents one, and it comes back when the fade
@@ -217,6 +229,14 @@ internal static class AnimatorStepper
         var set = instance.Set;
         instance.Clips = new AnimationClip?[g.ClipNames.Length];
         instance.Masks = new JointMask?[g.Layers.Length];
+        instance.RootJoint = -1;
+        if (set != null && g.HasRootMotion && set.Skeleton.JointCount > 0)
+        {
+            instance.RootJoint = string.IsNullOrEmpty(g.RootJoint) ? 0 : set.Skeleton.IndexOf(g.RootJoint);
+            if (instance.RootJoint < 0)
+                Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-root:{a.Graph}:{a.Model}:{g.RootJoint}",
+                    $"Animator {a.Graph}: rootJoint '{g.RootJoint}' is not a joint of {set.Source}'s skeleton; its states take no root motion");
+        }
         if (set == null)
         {
             // A sprite's graph (issue #119): its leaves are the sheet's clips, which have no joints.
@@ -268,6 +288,10 @@ internal static class AnimatorStepper
         var values = a.Params!;
         if (drive && g.HasSources) Drive(world, entity, g, values, instance, dt);
         var events = new EventContext(world, entity, g, values, instance, sink, dt);
+        // The base layer's phase ranges this tick, for root motion (issue #357): the state it shows and
+        // the one it is fading from (-1: none).
+        int rootCur = -1, rootFrom = -1;
+        float curBefore = 0f, curAfter = 0f, fromBefore0 = 0f, fromAfter0 = 0f;
 
         for (int l = 0; l < g.Layers.Length; l++)
         {
@@ -283,6 +307,12 @@ internal static class AnimatorStepper
             s.Entered = false;
             s.Phase = Advance(state, before, dt, values, instance);
             if (raise) Raise(in events, state, before, s.Phase, entered, pending: false);
+            if (l == 0)
+            {
+                rootCur = s.Index;
+                curBefore = before;
+                curAfter = s.Phase;
+            }
             if (s.FromSnapshot)
             {
                 // A frozen pose (PlayFrom): only the fade's clock moves, and it raises nothing.
@@ -294,6 +324,12 @@ internal static class AnimatorStepper
                 var from = layer.States[s.FromIndex];
                 float fromBefore = s.FromPhase;
                 s.FromPhase = Advance(from, fromBefore, dt, values, instance);
+                if (l == 0)
+                {
+                    rootFrom = s.FromIndex;
+                    fromBefore0 = fromBefore;
+                    fromAfter0 = s.FromPhase;
+                }
                 s.Fade += dt;
                 if (s.Fade + Epsilon >= s.FadeDuration) EndFade(ref s);
                 // The state being left raises its events while it still shows more than the one entered.
@@ -321,15 +357,58 @@ internal static class AnimatorStepper
                 var entered = layer.States[s.Index];
                 s.Entered = false;
                 s.Phase = Advance(entered, 0f, dt, values, instance);
+                if (l == 0)
+                {
+                    // The state left fades out over what it played this tick; the one entered starts from 0.
+                    if (s.From != null) { rootFrom = rootCur; fromBefore0 = curBefore; fromAfter0 = curAfter; }
+                    else rootFrom = -1;
+                    rootCur = s.Index;
+                    curBefore = 0f;
+                    curAfter = s.Phase;
+                }
                 if (l == 0 || layer.Weight > 0f) Raise(in events, entered, 0f, s.Phase, entered: true, pending: true);
             }
             if (then != null && taken.Then is { Count: > 0 }) then.Add((entity, taken));
         }
 
+        if (g.HasRootMotion) TakeRootMotion(g, in a.Layers![0], values, instance, rootCur, curBefore, curAfter, rootFrom, fromBefore0, fromAfter0);
+        else instance.StepActive = false;
+
         // Triggers are used up by the tick after they were set, taken or not; one an event set while a
         // state was being entered, after the transitions had been tried, is there for the next tick.
         for (int p = 0; p < values.Length; p++)
             if (g.ParamKinds[p] == AnimParamKind.Trigger) values[p].Value = values[p].Value == TriggerPending ? TriggerSet : 0f;
+    }
+
+    // The base layer's root motion this tick into the instance (StepTravel, StepTurn, StepActive,
+    // StepVertical): the state shown and the state left, weighted by the cross-fade's eased weight.
+    private static void TakeRootMotion(AnimGraphRecord.Compiled g, in AnimatorLayer s, AnimatorParam[] values, AnimatorPoses.Instance instance,
+                                       int cur, float curBefore, float curAfter, int from, float fromBefore, float fromAfter)
+    {
+        var layer = g.Layers[0];
+        var travel = Vector3.Zero;
+        float turn = 0f;
+        float f = s.Fading ? Easing.Apply(s.FadeEase, s.FadeDuration > 0f ? Math.Clamp(s.Fade / s.FadeDuration, 0f, 1f) : 1f) : 1f;
+        if (!s.Fading || s.FromSnapshot) from = -1;
+        var curState = cur >= 0 && cur < layer.States.Length ? layer.States[cur] : null;
+        var fromState = from >= 0 && from < layer.States.Length ? layer.States[from] : null;
+        bool active = false, vertical = false;
+        if (curState != null && curState.RootMotion != RootMotionMode.None)
+        {
+            RootMotion.State(curState, curBefore, curAfter, f, values, instance, ref travel, ref turn);
+            active = true;
+            vertical = curState.RootMotionY;
+        }
+        if (fromState != null && fromState.RootMotion != RootMotionMode.None)
+        {
+            RootMotion.State(fromState, fromBefore, fromAfter, 1f - f, values, instance, ref travel, ref turn);
+            active = true;
+            if (f < 0.5f || curState == null || curState.RootMotion == RootMotionMode.None) vertical = fromState.RootMotionY;
+        }
+        instance.StepTravel = travel;
+        instance.StepTurn = turn;
+        instance.StepActive = active;
+        instance.StepVertical = vertical;
     }
 
     // A trigger's value: set (a transition may take it this tick), or set by an event after this tick's
@@ -675,7 +754,8 @@ internal static class AnimatorStepper
     private static float Layer(AnimGraphRecord.Layer layer, int index, in AnimatorLayer s, AnimatorParam[] values, AnimatorPoses.Instance instance,
                                SkeletonPose into, AnimatorScratch scratch)
     {
-        bool current = s.Index >= 0 && State(layer.States[s.Index], s.Phase, values, instance, into, scratch.Clip);
+        int root = index == 0 ? instance.RootJoint : -1;            // root motion is the base layer's
+        bool current = s.Index >= 0 && State(layer.States[s.Index], s.Phase, values, instance, into, scratch.Clip, root);
         if (s.FromSnapshot)
         {
             if (index >= instance.Snapshots.Length || instance.Snapshots[index] is not { } snapshot || snapshot.JointCount != into.JointCount)
@@ -690,22 +770,24 @@ internal static class AnimatorStepper
         var from = layer.States[s.FromIndex];
         if (current)
         {
-            if (!State(from, s.FromPhase, values, instance, scratch.From, scratch.Clip)) return f;
+            if (!State(from, s.FromPhase, values, instance, scratch.From, scratch.Clip, root)) return f;
             PoseSampler.Blend(scratch.From, into, f, null, into);
             return 1f;
         }
-        return State(from, s.FromPhase, values, instance, into, scratch.Clip) ? 1f - f : 0f;
+        return State(from, s.FromPhase, values, instance, into, scratch.Clip, root) ? 1f - f : 0f;
     }
 
     // A state at a phase into `into` (a blend's other clips through `clip`). False when it plays nothing.
+    // With root motion (`root`, the joint; -1: none), each clip's root is held where it started.
     private static bool State(AnimGraphRecord.State state, float phase, AnimatorParam[] values, AnimatorPoses.Instance instance,
-                              SkeletonPose into, SkeletonPose clip)
+                              SkeletonPose into, SkeletonPose clip, int root)
     {
         var clips = instance.Clips;
         if (state.Clip >= 0)
         {
             if (state.Clip >= clips.Length || clips[state.Clip] is not { } c) return false;
             PoseSampler.Sample(c, phase * c.Duration, state.Loop, into);
+            if (root >= 0) RootMotion.Strip(c, root, state, PoseSampler.ClipTime(c, phase * c.Duration, state.Loop), into);
             return true;
         }
         if (!state.IsBlend) return false;
@@ -720,10 +802,12 @@ internal static class AnimatorStepper
             if (total <= 0f)
             {
                 PoseSampler.Sample(c, time, state.Loop, into);
+                if (root >= 0) RootMotion.Strip(c, root, state, PoseSampler.ClipTime(c, time, state.Loop), into);
                 total = weights[i];
                 continue;
             }
             PoseSampler.Sample(c, time, state.Loop, clip);
+            if (root >= 0) RootMotion.Strip(c, root, state, PoseSampler.ClipTime(c, time, state.Loop), clip);
             total += weights[i];
             PoseSampler.Blend(into, clip, weights[i] / total, null, into);
         }
@@ -823,6 +907,8 @@ internal sealed class AnimatorSystem : ISystem
                 continue;
             }
             AnimatorStepper.Step(_world, entity, ref a, g, instance, dt, _then, sink, _drive);
+            if (instance.StepActive) ApplyRootMotion(entity, instance, tick);
+            else instance.RootPending = false;
             // A snapshot whose fade ended (or was replaced by a state's) goes back to the pool.
             for (int l = 0; l < instance.Snapshots.Length; l++)
                 if (instance.Snapshots[l] != null && (l >= a.Layers!.Length || !a.Layers[l].FromSnapshot)) _poses.ReturnSnapshots(instance, l);
@@ -857,6 +943,34 @@ internal sealed class AnimatorSystem : ISystem
             if (_world.IsAlive(entity)) Conditions.Run(transition.Then, new ActionContext(_world, entity, entity));
         }
         _then.Clear();
+    }
+
+    // Root motion (issue #357): the turn into PawnIntent.Yaw (and, with no character controller to face
+    // it, the Transform), the travel in the parent's space left for the controller to take, or with none
+    // added to the Transform here.
+    private void ApplyRootMotion(Entity entity, AnimatorPoses.Instance instance, long tick)
+    {
+        if (!_world.Has<Transform>(entity)) return;
+        ref var transform = ref _world.Get<Transform>(entity);
+        var scale = transform.LocalScale == Vector3.Zero ? Vector3.One : transform.LocalScale;
+        var travel = Vector3.Transform(instance.StepTravel * scale, transform.LocalRotation);
+        float turn = instance.StepTurn;
+        bool character = _world.Has<CharacterController>(entity);
+        if (character)
+        {
+            instance.RootTravel = travel;
+            instance.RootVertical = instance.StepVertical;
+            instance.RootPending = true;
+            instance.RootTick = tick;
+        }
+        else transform.LocalPosition += travel;
+        if (turn == 0f) return;
+        if (!character) transform.LocalRotation = Quaternion.Normalize(Quaternion.CreateFromAxisAngle(Vector3.UnitY, turn) * transform.LocalRotation);
+        if (_world.Has<PawnIntent>(entity))
+        {
+            ref var intent = ref _world.Get<PawnIntent>(entity);
+            intent.Yaw = SageMath.WrapPi(intent.Yaw + turn);
+        }
     }
 
     // The sample interval at `distance` from the camera: every tick within `lod` metres, every 2nd

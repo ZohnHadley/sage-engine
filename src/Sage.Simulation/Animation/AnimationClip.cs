@@ -127,6 +127,24 @@ public sealed class AnimationClip
         if (s.Keys > 0) local.Scale = s.SampleVector(time);
     }
 
+    // One joint's translation or rotation channel alone, at a time already wrapped or clamped (root
+    // motion, issue #357). False when the clip has no such channel for the joint.
+    internal bool TrySampleTranslation(int joint, float time, out Vector3 value)
+    {
+        value = default;
+        if ((uint)joint >= (uint)JointCount || _translation[joint].Keys == 0) return false;
+        value = _translation[joint].SampleVector(time);
+        return true;
+    }
+
+    internal bool TrySampleRotation(int joint, float time, out Quaternion value)
+    {
+        value = Quaternion.Identity;
+        if ((uint)joint >= (uint)JointCount || _rotation[joint].Keys == 0) return false;
+        value = _rotation[joint].SampleRotation(time);
+        return true;
+    }
+
     // One channel: key times, and either vectors (translation, scale) or rotations.
     private readonly struct Track
     {

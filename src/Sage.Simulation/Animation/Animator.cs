@@ -489,6 +489,8 @@ public static partial class Animators
               .Append(CultureInfo.InvariantCulture, $" t={s.Time:F2}s phase={s.Phase:F2}");
             if (s.Fading)
                 sb.Append(CultureInfo.InvariantCulture, $", fading from {s.From ?? "a pose snapshot"} ({s.Fade:F2}/{s.FadeDuration:F2}s {s.FadeEase})");
+            if (s.Index >= 0 && layer.States[s.Index].RootMotion != RootMotionMode.None)
+                sb.Append(", root motion ").Append(layer.States[s.Index].RootMotion).Append(layer.States[s.Index].RootMotionY ? " (with height)" : "");
             if (s.Index >= 0 && layer.States[s.Index].IsBlend)
             {
                 var state = layer.States[s.Index];
@@ -569,6 +571,11 @@ public static partial class Animators
                 check.Error(path, "a state plays a clip or a blend, not both");
             if (source.Fade is { } fade && (!(fade >= 0f) || !float.IsFinite(fade))) check.Error($"{path}.Fade", $"{fade} is not a time in seconds");
             if (!float.IsFinite(source.Speed)) check.Error($"{path}.Speed", $"{source.Speed} is not a rate");
+            // Root motion (issue #357) is the base layer's: a layer over it moves joints, never the body.
+            if (source.RootMotion != RootMotionMode.None && at.Length > 0)
+                check.Warn($"{path}.RootMotion", "root motion is taken from the base layer's states only; this layer's is ignored");
+            if (source.RootMotionY && source.RootMotion is not (RootMotionMode.Translation or RootMotionMode.Full))
+                check.Warn($"{path}.RootMotionY", "rootMotionY moves the body up and down only with a rootMotion of Translation or Full");
             if (source.Blend is { } blend && string.IsNullOrEmpty(source.Clip)) CheckBlend(g, blend, $"{path}.Blend", check);
             CheckTransitions(g, layer, source.Transitions, $"{path}.Transitions", check, s);
         }
