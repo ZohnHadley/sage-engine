@@ -30,6 +30,9 @@ public sealed class UiModule : IModule
     public Localisation Localisation { get; } = new();
     public UiStyles Styles { get; } = new();
 
+    // From Init on: the input glyphs `{action:...}` shows in text (issue #352).
+    public InputPrompts Prompts { get; private set; } = null!;
+
     // From Init on.
     public UiScreens Screens { get; private set; } = null!;
 
@@ -38,9 +41,22 @@ public sealed class UiModule : IModule
         _engine = ctx.Engine;
         var viewModels = ctx.Engine.Vocabularies.Of<IViewModel>();   // made now, so it is sealed with the rest
         Screens = new UiScreens(ctx.Engine.Records, viewModels, Styles, Localisation);
+        Prompts = new InputPrompts(ctx.Engine, Localisation);
+        Localisation.Prompts = Prompts;
         ctx.Provide(Localisation);
         ctx.Provide(Styles);
         ctx.Provide(Screens);
+        ctx.Provide(Prompts);
+
+        var glyphs = ctx.Engine.CVars.Register("joy_glyphs", "auto", CVarFlags.Archive,
+            "Whose button names prompts show for a pad: auto (the pad's own, from its name), xbox or playstation (issue #352).");
+        void ApplyGlyphs()
+        {
+            if (InputPrompts.TryParse(glyphs.Value, out var pad)) Prompts.ForcedPad = pad;
+            else Log.Warn(LogCat.Console, $"joy_glyphs '{glyphs.Value}': auto, xbox or playstation");
+        }
+        glyphs.Changed += _ => ApplyGlyphs();
+        ApplyGlyphs();
 
         _lang = ctx.Engine.CVars.Register("lang", Localisation.DefaultLanguage, CVarFlags.Archive,
             "The language text is shown in: strings/<lang>/*.json in any mount, English for what it lacks (05 §3.7).");
@@ -108,6 +124,7 @@ public sealed class UiModule : IModule
     public void OnWorldCreated(World world)
     {
         world.Resources.Add(Localisation);
+        world.Resources.Add(Prompts);
         world.Resources.Add(Styles);
         world.Resources.Add(Screens);
         // The widget screens this world has open (#97): headless here, drawn and fed by the client.
