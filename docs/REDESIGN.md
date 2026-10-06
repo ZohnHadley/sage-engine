@@ -328,7 +328,8 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   hands as equipment slots, and an optional `rpg_conventions` record (`spellNamespace`, formerly the
   fixed `custom`; `castAction`) (test: AGameChoosesTheNamespaceItsComposedSpellsLiveIn). Its client half
   registers the screens by id in the client's new **`ScreenRegistry`**, and the client's
-  `DialogueSystem` asks for `"dialogue"` instead of making `DialogueScreen`. What the base keeps:
+  `DialogueSystem` asks for `"dialogue"` instead of making `DialogueScreen` (all three retired by #350: the kit's
+  screens are widget screens, `rpg:dialogue` among them). What the base keeps:
   ability use (`world.Cast`, the AI's casting), `Abilities.Selected` as data only (saves carry it under
   `sage:abilities`; the base never reads it), and equipment **by slot name**: `ItemRecord.Slot` is a
   string, `sage:equipment` a list of `{ Slot, Item }` (version 2, whose upgrader brings the golden
@@ -963,7 +964,7 @@ because it edits the live play world (`DevTools.cs:84-87`).
     (docs/design/13 "As built (drawing)"). The panel screens and the HUD move onto it in #98/#99.
   - *As built (issue #99, 2026-09-30).* The hand-placed HUD (`Sandbox.Client/Hud.cs`) is the
     `sandbox:hud` layout over `HudView`, on a layer that is drawn and never takes input
-    (`UiScreenStack.OpenHud`; only the first-person hands are still drawn by hand); the journal and a
+    (`UiScreenStack.OpenHud`; only the first-person hands were still drawn by hand, until #350); the journal and a
     markers-only map are the kit's `JournalView`/`MapView` (`sage:map_marker`); a main menu lists
     `SaveSystem.Slots` and loads one; the shop is a shell over a stub price rule until 4f
     (docs/design/13 "As built (the HUD, journal, map, main menu and shop)").
@@ -1061,8 +1062,9 @@ because it edits the live play world (`DevTools.cs:84-87`).
   `-options` are read by `HostOptions.cs` under test (README, "Docs are checked"; design 01 §5.1).
 
   *As built (issue #354, 2026-10-06).* A layer above the simulation adds a top-level section to the dump with
-  `Engine.DumpSections.Add(name, build)` in its `Init`: the client adds `screens`, each screen id it can make with the
-  plugin that registered it, and the checker reads it (test: ALayerAboveTheSimulationAddsASectionToTheRegistryDump).
+  `Engine.DumpSections.Add(name, build)` in its `Init` (test: ALayerAboveTheSimulationAddsASectionToTheRegistryDump):
+  the client added `screens`, each screen id it could make with the plugin that registered it, until #350 deleted the
+  screen registry (every screen is a record, and records are in the dump already).
 - **CI (GitHub Actions), on Windows and Linux:**
   - `dotnet tool restore`, then build all three configurations;
   - tests with coverage;
@@ -1273,8 +1275,9 @@ save and load screens (#342), focus scopes and confirm prompts (#343), loot, top
 non-Latin scripts and `loc_check` (#345), drag and drop with item pictures, split and rotate (#346), buttons that run
 actions and layouts that include layouts (#347), world views in widgets (#348), the map's picture and fog and the
 journal's history (#349), UI scale, style sets and subtitles (#351), input glyphs in prompts (#352), the Shipping
-drop-down console (#353), the kit's default keys and a `screens` section in the registry dump (#354), and every kit
-screen checked against a golden (#355). #341 shipped with #328. Left: #350, one UI path. The exit (boot to a title,
+drop-down console (#353), the kit's default keys and a `screens` section in the registry dump (#354; gone with #350), every kit
+screen checked against a golden (#355), and one UI path: the panel screens, the crosshair and the Sandbox's hands on
+widgets (#350). #341 shipped with #328. The exit (boot to a title,
 change options and controls, load a slot, loot a corpse and trade, from records) is met in the Sandbox. Next is 4p
 (#356).
 

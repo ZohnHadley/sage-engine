@@ -238,9 +238,9 @@ spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L
 | | `sage.kits.rpg` (`Sage.Kits.Rpg`, simulation) | `sage.kits.rpg.client` (`Sage.Kits.Rpg.Client`) |
 |---|---|---|
 | Casting | the **readied spell** — `world.Ready(e, id)`, `world.Readied(e)` — which the `Cast` button fires; `ready`, `spells` | |
-| Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects` | the `"spellmaker"` screen |
+| Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects`; the `rpg:spellmaker` screen | |
 | Things you carry | the two hands, `MainHand` and `OffHand`, as equipment slots; `inv` | |
-| Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook); the `Spellbook`, `Spellmaker`, `Journal` and `Rest` actions with default keys (B, M, J, T) in its `rpg:ui` and `rpg:gameplay` input maps (#354) | registers the panels as `"spellmaker"`, `"journal"`, `"dialogue"` and binds the spellmaker's and journal's keys to them |
+| Screens | `rpg:spellbook`, `rpg:bag`, `rpg:dialogue` and `rpg:spellmaker` over `SpellbookView`, `BagView`, `DialogueView` and `SpellmakerView`, whose rows are `GameplayPanels`' and the rules' (#350); the `Spellbook`, `Spellmaker`, `Journal` and `Rest` actions with default keys (B, M, J, T) in its `rpg:ui` and `rpg:gameplay` input maps (#354), bound to `rpg:spellbook`, `rpg:spellmaker`, `rpg:journal` and `rpg:rest`; using somebody with a `dialogue` opens `rpg:dialogue` | nothing since #350; a client module may still depend on it |
 | Screens from records (#98) | `rpg:inventory` (a grid with weight), `rpg:equipment`, `rpg:loot` (take all), `rpg:topics`: `screen`/`ui_layout` records in the kit's content over `InventoryView`, `EquipmentView`, `LootView`, `TopicsView`; `ItemGrid`, the `rpg_item` record (`grid` footprint, `icon` picture since #346) and the saved `rpg:item_grid` | drawing them is #97's |
 | Journal, map, shop (#99, #349) | `rpg:journal` over `rpg_journal` (`JournalView`: a line per quest, stage and objective, the stages it moved on from, tracking), `rpg:map` over `rpg_map` (`MapView`: the scene's `area_map` picture under fog the saved `map_discovery` lifts, markers round the player, north up, zoom and pan, a tracked quest's targets) over the `sage:map_marker` component, and `rpg:shop` over `rpg_shop` (`ShopView`, a shell: two grids priced by `IPriceRule`, the `StubPriceRule` until 4f) | |
 | Menus (#342, #339) | `rpg:title`, `rpg:pause` (`"pauses": true`), `rpg:save` and `rpg:load` over `rpg_title`, `rpg_pause`, `rpg_save` and `rpg_load`; `rpg:options` over the base's `ui_options`, with the kit's `ui_option` records; `rpg:controls` | |
@@ -1961,24 +1961,24 @@ The engine draws **no** part of your HUD. It gives you three things and your cli
 - **`MessageLog`** — `world.Say("Picked up a sword", MessageKind.Good)` from anywhere in the simulation,
   including a headless server where nothing draws it. Your HUD decides how a message looks.
 - **The crosshair**, which is the one thing the engine draws, because combat and Use both aim from the
-  middle of the screen (`ui_crosshair`).
+  middle of the screen: `sage:crosshair`, a HUD layer the client opens in every world, shown while a player's
+  rig aims and no window is up, and hidden by `ui_crosshair 0` (a `sage.ui` cvar). Restyle it by patching the
+  `sage:crosshair` style, or its layout for another shape (issue #350).
 
-**Screens** — an inventory, a spellbook, a journal — are a panel model in the *simulation* (what a row
-says and whether it can be used is a rule, not a drawing) with the client drawing them. A game binds one
-to an action in its client module:
+**Screens** — an inventory, a spellbook, a journal — are `screen` records over view-models (below): what a
+row says and whether it can be used is a rule, read by the view-model; how it looks is the record's. A game
+binds one to an action, and the key that opens it closes it:
 
 ```csharp
-var screens = world.Resources.Get<ScreenStack>();
-screens.Bind(actions.Get("Inventory"), new InventoryScreen());
-// A kit's screen, by its id in the client's ScreenRegistry (ctx.Get<ScreenRegistry>() in Start):
-screens.Bind(actions.Get("Journal"), registry.Create("journal")!);
+var widgets = world.Resources.Get<UiScreenStack>();
+widgets.Bind(actions.Get("Inventory"), new RecordId("rpg", "bag"));   // a kit's screen, or one of yours
 ```
 
 While a screen is open it takes the input, so gameplay does not also react. The base client ships no
-screen of its own: when somebody with a `dialogue` is used it asks the `ScreenRegistry` for
-`"dialogue"`, which the RPG kit's client half registers, and with none registered nobody is talked to.
-A game registers its own screens there in its client module's `Init` (`registry.Register("map", () =>
-new MapScreen())`).
+screen of its own. The RPG kit binds its own keys (B `rpg:spellbook`, M `rpg:spellmaker`, J `rpg:journal`, T
+`rpg:rest`) and opens `rpg:dialogue` when somebody with a `dialogue` is used; without a `UiScreenStack` nobody
+is talked to. There is no registry of screens by id any more (#350): a screen is a record, so a game adds
+one in its content.
 
 ### Screens from records, and text in other languages
 
@@ -2027,7 +2027,7 @@ record hot reload rebuilds every open screen. Three record types, from the `sage
   Declare view-models in your game's simulation half, so `sage validate` knows them.
 - **Showing it** (#97): every world has a `UiScreenStack`, which the client draws and feeds the `ui`
   input context (D-pad or arrows, Tab, Enter, Escape, the mouse). Bind a key to the screen in your
-  client module, as a panel screen is bound — the key that opens it closes it — or open it by hand:
+  client module — the key that opens it closes it — or open it by hand:
 
   ```csharp
   var widgets = world.Resources.Get<UiScreenStack>();
@@ -2046,6 +2046,11 @@ record hot reload rebuilds every open screen. Three record types, from the `sage
   player up in the view-model each frame, since a load replaces the entity. The Sandbox's `sandbox:hud`
   (`HudView`) is the example, and a frame of it allocates nothing. A node in a `box` can bind `x` and
   `y` (0..1 of the box) to place itself — the map's markers do.
+- **A part of a picture** (issue #350): an image's source may end in `#x,y,w,h`, a rectangle in the texture's
+  pixels, so a sprite sheet's frame is an image like any other (the Sandbox's first-person hands bind
+  `HudView.HandSource` to one). A fragment that is not four numbers draws the whole texture and warns once.
+- **A text field holds the keyboard**: while one has focus (`UiScreenStack.Typing`), the keys that open
+  screens do nothing, so a letter typed is a letter; Escape still closes the screen.
 - **How a style draws** (13 "As built (drawing)"): its `background`, then its `image` (nine-sliced by
   `slice`, in texture pixels, and multiplied by `tint`), then a `border` `borderWidth` wide, then the
   widget's content. Text sizes are in font pixels: `"textScale": 2` is an 18-unit line. A node without a
@@ -2442,7 +2447,7 @@ quietly not happening. The engine's own history is mostly this list, so it is wo
 2. **`[SavedResource]` without `Saves.RegisterResource<T>()`** used to save nothing — this exact bug
    shipped three times. Gone the same way: the attribute registers it.
 3. **An action that is not `Actions.Register`ed** makes every binding to it ignored (with a warning), and
-   `ScreenStack.Bind` to it does nothing at all. Register actions in `Init`.
+   `UiScreenStack.Bind` to it warns and does nothing. Register actions in `Init`.
 4. **Rules come from `CreateRules`.** Since 2026-09-27 a game module returns its `GameRules` from
    `CreateRules(World)`, which the engine calls at the right moment. The older way — installing them as a
    resource inside `OnWorldCreated` — still works, but set them any later than that and the engine has
@@ -2627,9 +2632,6 @@ Worth knowing before you plan around it:
   strongest four, chosen per draw). A brush level can bake its unswitched lamps into a lightmap, with
   shadows (issue #313, no bounce light), the sun casts cascaded shadows and lamps that say `shadows` cast
   too (issue #315, the nearest two by default).
-- **Two ways to build a screen, for now.** The widget screens of §7 are the way; the older panel screens
-  (`Screen`, `ScreenStack`, `Panel`) still host the RPG kit's conversation, spellmaker and journal panels, and the
-  first-person hands are still drawn with `UiDraw`. Issue #350 moves those onto widgets and retires the panels.
 - **No multiplayer.** The engine follows rules that keep it possible (fixed tick, data-only components,
   no gameplay in rendering), but there is no networking. That is Phase 7.
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`

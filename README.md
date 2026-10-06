@@ -64,7 +64,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; TrueType fonts with wrap, form widgets, focus scopes and confirm prompts, non-Latin scripts, UI scale and subtitles; the kit's title, pause, save, load and options screens, its inventory grid with drag and drop, equipment, loot and shop reachable from play, topics, a journal and a map under fog, and the HUD — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices; written in the background, optionally compressed, with a thumbnail and a title |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2351 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2329 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: code mods, the editor's brushes and asset
 browser (its first half, phase 10a, is a mode of the dev host: [`docs/EDITOR.md`](docs/EDITOR.md)), and
@@ -111,7 +111,7 @@ pressing `E` would pick up, and what just hit you.
 | `E` | use |
 | `V` | first person / third person over the shoulder |
 | `R` | reload |
-| `I`, `B`, `M` | your bag, your spellbook, the spellmaker (↑↓ or the mouse to choose, Enter or click to use, Del or right-click, Esc or click away to close) |
+| `I`, `B`, `M` | your bag, your spellbook, the spellmaker (↑↓ or the mouse to choose, Enter or click to use, Del to drop from the bag, Esc or click away to close) |
 | `C`, `J`, `N`, `T` | status, the RPG kit's journal, map and rest screens |
 | `F10` | the RPG kit's pause menu: resume, save, load, options, quit (the world stands still while it is open) |
 | `Escape` | quit (closes the console, or an open screen, first) |
