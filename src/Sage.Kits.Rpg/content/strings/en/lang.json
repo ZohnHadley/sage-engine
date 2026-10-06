@@ -1,0 +1,5 @@
+{
+  // Each language's name, for the options screen's Language list (issue #339): `@lang.<code>`. A
+  // translation adds its own line here, in English, and may name every language in its own table.
+  "en": "English"
+}

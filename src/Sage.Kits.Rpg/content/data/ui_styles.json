@@ -26,6 +26,12 @@
   { "type": "ui_style", "id": "topic", "base": "button", "background": "#00000000", "borderWidth": 0, "textColour": "#F0D890" },
   { "type": "ui_style", "id": "topic_asked", "base": "topic", "textColour": "#A09880" },
 
+  // The form widgets of the options screen (issue #339): a tab, drawn `selected` while its page is open,
+  // and a slider, a bar the player moves (bordered while focused).
+  { "type": "ui_style", "id": "tab", "base": "button", "states": { "selected": { "background": "#5A4A30", "textColour": "#F0E0B0" } } },
+  { "type": "ui_style", "id": "slider", "base": "weight_bar", "borderWidth": 1, "border": "#3A3428",
+    "states": { "focused": { "border": "#F0E0B0" } } },
+
   // A discovered travel point on a map that has no map_marker of its own to draw it with (issue 4g-7).
   { "type": "ui_style", "id": "map_travel", "background": "#60A0F0" }
 ]

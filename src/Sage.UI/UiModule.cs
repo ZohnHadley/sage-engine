@@ -128,6 +128,7 @@ public sealed class UiModule : IModule
         ctx.Engine.Records.AddCheck<UiLayoutRecord>(UiContentChecks.Layout);
         ctx.Engine.Records.AddCheck<UiStyleSetRecord>(UiAccessibilityChecks.StyleSet);
         ctx.Engine.Records.AddCheck<ScreenRecord>((screen, check) => UiContentChecks.ScreenViewModel(screen, check, viewModels));
+        ctx.Engine.Records.AddCheck<OptionRecord>(OptionChecks.Check);   // the options screen's settings (issue #339)
 
         ctx.Engine.CVars.RegisterCommand("loc", CVarFlags.None,
             "loc <@ns.key> [count]: what a localisation key shows in the current language; loc alone: the language and how many keys it has.", a =>
@@ -146,7 +147,7 @@ public sealed class UiModule : IModule
             "loc_check: every language's tables against English's (missing and stray keys, placeholders, plural forms) and its characters against the fonts that draw them, as `sage validate` does.", _ =>
         {
             int problems = UiContentChecks.Languages(ctx.Engine.Records, ctx.Engine.Vfs, Fonts);
-            Log.Info(LogCat.Console, $"loc_check: {problems} problem(s) in {Localisation.Languages(ctx.Engine.Vfs).Count} language(s)");
+            Log.Info(LogCat.Console, $"loc_check: {problems} problem(s) in {Localisation.LanguagesIn(ctx.Engine.Vfs).Count} language(s)");
         });
     }
 
@@ -433,7 +434,7 @@ internal static class UiContentChecks
     {
         int problems = 0;
         void Warn(string message) { Log.Warn(LogCat.UI, message); problems++; }
-        var languages = Localisation.Languages(vfs);
+        var languages = Localisation.LanguagesIn(vfs);
 
         foreach (var id in records.Ids("language"))
         {

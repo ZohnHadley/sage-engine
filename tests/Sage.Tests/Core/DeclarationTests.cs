@@ -67,6 +67,7 @@ public class DeclarationTests
             ["language"] = "sage.ui",   // a translation's direction and fonts (#345)
             ["ui_style_set"] = "sage.ui",                                                             // accessibility (#351)
             ["ui_sounds"] = "sage.ui",   // what screens sound like (#330)
+            ["ui_option"] = "sage.ui",   // the options screen's settings (#339)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)

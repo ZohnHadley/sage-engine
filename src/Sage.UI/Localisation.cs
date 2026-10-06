@@ -196,6 +196,7 @@ public sealed class Localisation
         Culture = CultureOf(language);
         Direction = DirectionOf(language, TextDirection.Auto);
         Fonts = Array.Empty<AssetPath>();
+        Languages = Available(vfs);
         _texts = texts;
         _fallback = language == DefaultLanguage ? new Dictionary<string, LocalisedText>(StringComparer.Ordinal) : english;
         _warned.Clear();
@@ -228,7 +229,7 @@ public sealed class Localisation
     }
 
     // Every language some mount has tables for (the folders under strings/), sorted.
-    public static IReadOnlyList<string> Languages(VirtualFileSystem vfs)
+    public static IReadOnlyList<string> LanguagesIn(VirtualFileSystem vfs)
     {
         var found = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var (path, _) in vfs.Enumerate(VirtualPath.Parse("strings"), "*.json", recursive: true))
@@ -237,6 +238,16 @@ public sealed class Localisation
             if (parts.Length >= 3) found.Add(parts[1]);
         }
         return found.ToList();
+    }
+
+    // The languages some mount has strings for (`strings/<lang>/`), English always among them, in order:
+    // what an options screen offers for `lang` (issue #339). Read at each Load.
+    public IReadOnlyList<string> Languages { get; private set; } = new[] { DefaultLanguage };
+
+    private static string[] Available(VirtualFileSystem vfs)
+    {
+        var found = new SortedSet<string>(LanguagesIn(vfs), StringComparer.OrdinalIgnoreCase) { DefaultLanguage };
+        return found.ToArray();
     }
 
     // The same language again, from the same mounts: hot reload.

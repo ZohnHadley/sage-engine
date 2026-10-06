@@ -10206,7 +10206,7 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_rest, rpg_save, rpg_shop, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods.",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_rest, rpg_save, rpg_shop, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods, ui_options.",
       "type": "string",
       "enum": [
         "RpgEquipment",
@@ -10226,6 +10226,7 @@
         "SandboxStatus",
         "UiControls",
         "UiMods",
+        "UiOptions",
         "rpg_equipment",
         "rpg_inventory",
         "rpg_journal",
@@ -10242,7 +10243,8 @@
         "sandbox_main_menu",
         "sandbox_status",
         "ui_controls",
-        "ui_mods"
+        "ui_mods",
+        "ui_options"
       ]
     },
     "view_model": {
@@ -10857,6 +10859,40 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'ui_mods' (ModsView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "ui_options",
+                      "UiOptions"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "description": "(int, default 0)",
+                    "default": 0,
+                    "type": "integer"
+                  },
+                  "viewModel": {
+                    "description": "The view_model: ui_options.",
+                    "enum": [
+                      "ui_options",
+                      "UiOptions"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'ui_options' (OptionsView)."
               }
             }
           ]
