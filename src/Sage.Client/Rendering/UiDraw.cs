@@ -25,6 +25,8 @@ public sealed class UiDraw
         public Rectangle Source;
         public Color Colour;
         public string? Text;
+        public int Start, Length;
+        public BitmapFont? Font;
         public float Scale;
         public Texture2D? Texture;
     }
@@ -123,6 +125,13 @@ public sealed class UiDraw
     public void Text(float x, float y, string text, Color colour, float scale = 1f)
     {
         if (string.IsNullOrEmpty(text)) return;
+        Text(x, y, text, 0, text.Length, colour, scale);
+    }
+
+    // text[start..start+length], in `font` (a grid atlas a ui_style names, #338) or the engine's own.
+    internal void Text(float x, float y, string text, int start, int length, Color colour, float scale, BitmapFont? font = null)
+    {
+        if (length <= 0) return;
         ref var command = ref _commands.Add();
         command = new Command
         {
@@ -130,6 +139,9 @@ public sealed class UiDraw
             Destination = new Rectangle((int)MathF.Round(x), (int)MathF.Round(y), 0, 0),
             Colour = colour,
             Text = text,
+            Start = start,
+            Length = length,
+            Font = font,
             Scale = scale,
         };
     }
@@ -168,9 +180,9 @@ public sealed class UiDraw
                 case Kind.Rect:
                     if (command.Destination.Width > 0 && command.Destination.Height > 0) batch.Draw(white, command.Destination, command.Colour);
                     break;
-                case Kind.Text when _font != null && command.Text != null:
-                    _font.Draw(batch, command.Text, new Vector2(command.Destination.X, command.Destination.Y),
-                               command.Colour, command.Scale);
+                case Kind.Text when (command.Font ?? _font) != null && command.Text != null:
+                    (command.Font ?? _font)!.Draw(batch, command.Text.AsSpan(command.Start, command.Length),
+                               new Vector2(command.Destination.X, command.Destination.Y), command.Colour, command.Scale);
                     break;
                 case Kind.Image when command.Texture != null:
                     batch.Draw(command.Texture, command.Destination, command.Source, command.Colour);

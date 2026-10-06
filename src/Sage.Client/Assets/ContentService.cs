@@ -47,6 +47,9 @@ public sealed class ContentService : IDisposable
     private readonly Dictionary<AssetPath, Microsoft.Xna.Framework.Audio.SoundEffect?> _sounds = new();
     private readonly HashSet<AssetPath> _streamed = new();   // files opened to stream, for hot reload (issue #326)
 
+    // The device textures are made on: what a glyph atlas's texture is made on too (#338).
+    internal GraphicsDevice Device => _device;
+
     internal ContentService(ClientHost host, VirtualFileSystem vfs)
     {
         _device = host.GraphicsDevice;
