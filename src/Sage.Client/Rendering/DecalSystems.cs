@@ -33,7 +33,10 @@ internal sealed class DecalExtract : ISystem
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _renderer = renderer;
         _ceiling = ceiling;
+        _scope = Renderer.ScopeOf(world);
     }
+
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public void Run(in SystemContext ctx)
     {
@@ -58,9 +61,9 @@ internal sealed class DecalExtract : ISystem
                 if (Vector3.Dot(relative, decal.Normal) > 0f) continue;   // behind the surface it is on
                 var centre = relative + decal.Normal * (Lift + relative.Length() * LiftPerMetre);
 
-                int texture = _renderer.ResolveTexture(decal.Record.Texture);
+                if (!_renderer.TryResolveTexture(decal.Record.Texture, _scope, out int texture)) continue;   // over the upload budget: next frame
                 int material = _renderer.Materials.Resolve(decal.Record.Material.IsEmpty
-                    ? DecalRecord.DefaultMaterial : decal.Record.Material);
+                    ? DecalRecord.DefaultMaterial : decal.Record.Material, _scope);
                 var pass = _renderer.Materials.Get(material)?.Pass ?? RenderPass.Transparent;
 
                 // Every field, every time: `Add()` hands back last frame's slot as it was (06 §3.1).
