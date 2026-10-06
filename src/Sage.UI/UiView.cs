@@ -22,6 +22,7 @@ public readonly record struct UiBindContext(World? World, Entity Subject = defau
 public sealed class UiView
 {
     private readonly BoundNode _root;
+    private readonly UiScopes _scopes = new();
 
     internal UiView(RecordId layout, BoundNode root)
     {
@@ -38,7 +39,11 @@ public sealed class UiView
     public T? Find<T>(string name) where T : Widget => Root.Find<T>(name);
 
     // Reads `source` (the view-model) into the bound properties, and asks each condition.
-    public void Refresh(object? source, in UiBindContext context) => _root.Refresh(source, in context);
+    public void Refresh(object? source, in UiBindContext context)
+    {
+        _scopes.Clear();
+        _root.Refresh(source, _scopes, in context);
+    }
 }
 
 // ---- build ----------------------------------------------------------------------------------------
@@ -49,16 +54,19 @@ internal sealed class LayoutBuilder
 {
     private readonly UiStyles _styles;
     private readonly Localisation _text;
+    private readonly RecordStore? _records;
 
-    public LayoutBuilder(UiStyles styles, Localisation text)
+    // `records`: where the layouts a node includes are found (issue #347); none, and nothing is included.
+    public LayoutBuilder(UiStyles styles, Localisation text, RecordStore? records = null)
     {
         _styles = styles;
         _text = text;
+        _records = records;
     }
 
     public UiView Build(RecordId id, UiLayoutRecord layout)
     {
-        var tree = new LayoutTree(layout);
+        var tree = new LayoutTree(layout, _records);
         // The root is the whole screen and carries no style of its own: the layout's style is what its
         // nodes inherit, and a background there would otherwise be painted over the whole screen (#97).
         var root = new Box { Name = id.Name, Anchors = Anchors.Fill };
@@ -148,6 +156,7 @@ internal sealed class LayoutBuilder
         w.FocusLeft = NameOrNull(n.FocusLeft);
         w.FocusRight = NameOrNull(n.FocusRight);
         if (n.Tooltip.Length > 0) w.TooltipText = _text.Text(n.Tooltip);
+        w.Actions = n.Actions.Count > 0 ? n.Actions : null;
 
         switch (w)
         {
@@ -217,6 +226,7 @@ internal sealed class LayoutBuilder
     {
         bound.VisibleIf = node.VisibleIf;
         bound.EnabledIf = node.EnabledIf;
+        if (node.Scope.Length > 0) bound.Scope = new BindingReader(node.Scope);
         foreach (var (target, path) in UiBindings.Of(node))
         {
             var reader = new BindingReader(path);
@@ -254,28 +264,151 @@ internal sealed class LayoutBuilder
     }
 }
 
-// A layout's nodes by parent, in order: as written, then by `order`.
+// A layout's nodes by parent, in order: as written, then by `order`. A node that includes another
+// layout (`include`, issue #347) has that layout's nodes inside it, before its own children, named
+// `node/inner` (and so on down, for an include inside an include) and with its `params` put in for
+// `{$name}` in their text and paths; a layout including itself, through however many others, is
+// included once and stops there (UiContentChecks.Includes says so at load).
 internal sealed class LayoutTree
 {
-    private readonly Dictionary<string, List<(string Name, UiNode Node)>> _children = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<(string Name, UiNode Node, int Rank)>> _children = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<(string Name, UiNode Node)>> _sorted = new(StringComparer.Ordinal);
 
-    public LayoutTree(UiLayoutRecord layout)
+    public LayoutTree(UiLayoutRecord layout, RecordStore? records = null)
     {
-        foreach (var (name, node) in layout.Nodes)
-        {
-            if (!_children.TryGetValue(node.Parent, out var list)) _children[node.Parent] = list = new();
-            list.Add((name, node));
-        }
-        foreach (var list in _children.Values)
-        {
-            var sorted = list.Select((child, index) => (child, index)).OrderBy(c => c.child.Node.Order).ThenBy(c => c.index).Select(c => c.child).ToList();
-            list.Clear();
-            list.AddRange(sorted);
-        }
+        Add(layout, "", "", null, records, new List<UiLayoutRecord> { layout }, rank: 1);
+        foreach (var (parent, list) in _children)
+            _sorted[parent] = list.Select((child, index) => (child, index)).OrderBy(c => c.child.Node.Order).ThenBy(c => c.child.Rank).ThenBy(c => c.index)
+                                  .Select(c => (c.child.Name, c.child.Node)).ToList();
     }
 
     public IReadOnlyList<(string Name, UiNode Node)> ChildrenOf(string parent) =>
-        _children.TryGetValue(parent, out var list) ? list : Array.Empty<(string, UiNode)>();
+        _sorted.TryGetValue(parent, out var list) ? list : Array.Empty<(string, UiNode)>();
+
+    // Every node, included ones too, by its full name.
+    public IEnumerable<(string Name, UiNode Node)> All => _sorted.Values.SelectMany(l => l);
+
+    // `prefix`: what an included layout's names start with ("" for the layout itself); `host`: the node
+    // its top-level nodes go in; `values`: its params, or null for the layout itself.
+    private void Add(UiLayoutRecord layout, string prefix, string host, Dictionary<string, string>? values, RecordStore? records,
+                     List<UiLayoutRecord> including, int rank)
+    {
+        foreach (var (name, written) in layout.Nodes)
+        {
+            var node = written;
+            if (prefix.Length > 0) node = Instantiate(written, prefix, values, layout);
+            if (node.Include.IsEmpty == false && node.Widget.Length == 0)
+            {
+                node = ReferenceEquals(node, written) ? node.Copy() : node;
+                node.Widget = "stack";   // an include names no widget: its nodes go in a column
+            }
+            string full = prefix + name;
+            string parent = written.Parent.Length == 0 ? host : prefix + written.Parent;
+            if (!_children.TryGetValue(parent, out var list)) _children[parent] = list = new();
+            list.Add((full, node, written.Parent.Length == 0 ? rank : 1));
+
+            if (node.Include.IsEmpty || records == null || !records.TryGet(node.Include.Id, out UiLayoutRecord included)) continue;
+            if (including.Any(l => ReferenceEquals(l, included))) continue;   // a loop: UiContentChecks.Includes says so
+            var merged = new Dictionary<string, string>(included.Params, StringComparer.Ordinal);
+            foreach (var (key, value) in node.Params) merged[key] = value;
+            including.Add(included);
+            Add(included, full + "/", full, merged, records, including, rank: 0);
+            including.RemoveAt(including.Count - 1);
+        }
+    }
+
+    // A node of an included layout, as it is where it is included: its names prefixed, its params put in,
+    // and a top-level node that names no style given the included layout's.
+    private static UiNode Instantiate(UiNode written, string prefix, Dictionary<string, string>? values, UiLayoutRecord layout)
+    {
+        var node = written.Copy();
+        node.Parent = written.Parent.Length == 0 ? "" : prefix + written.Parent;
+        if (written.Parent.Length == 0 && node.Style.IsEmpty) node.Style = layout.Style;
+        string Named(string name) => name.Length == 0 ? name : prefix + name;
+        node.FocusUp = Named(written.FocusUp);
+        node.FocusDown = Named(written.FocusDown);
+        node.FocusLeft = Named(written.FocusLeft);
+        node.FocusRight = Named(written.FocusRight);
+        if (values == null || values.Count == 0) return node;
+        string Put(string text) => UiParams.Fill(text, values);
+        node.Text = Put(node.Text);
+        node.Tooltip = Put(node.Tooltip);
+        node.Title = Put(node.Title);
+        node.Placeholder = Put(node.Placeholder);
+        node.Bind = Put(node.Bind);
+        node.Scope = Put(node.Scope);
+        node.Options = node.Options.Select(Put).ToList();
+        node.Args = node.Args.ToDictionary(a => a.Key, a => Put(a.Value));
+        node.Bindings = node.Bindings.ToDictionary(b => b.Key, b => Put(b.Value));
+        node.Params = node.Params.ToDictionary(p => p.Key, p => Put(p.Value));
+        if (node.Actions.Count > 0) node.Actions = node.Actions.Select(a => UiParams.Fill(a, values)).ToList();
+        return node;
+    }
+}
+
+// `{$name}` in an included layout's text, paths and its actions' text (a var's name, a command): what
+// the including node's `params` (or the layout's own, as defaults) say (issue #347). A name is letters,
+// digits, '_' and '-', and never `root` or `parent`, so a command's `{$root.title}` is left for the press.
+internal static class UiParams
+{
+    public static string Fill(string text, IReadOnlyDictionary<string, string> values)
+    {
+        if (text.IndexOf("{$", StringComparison.Ordinal) < 0) return text;
+        var builder = new StringBuilder(text.Length);
+        int i = 0;
+        foreach (var (start, length, name) in Find(text))
+        {
+            builder.Append(text, i, start - i);
+            if (values.TryGetValue(name, out var value)) builder.Append(value);
+            else builder.Append(text, start, length);
+            i = start + length;
+        }
+        builder.Append(text, i, text.Length - i);
+        return builder.ToString();
+    }
+
+    // The `{$name}`s a text says.
+    public static IEnumerable<string> Named(string text) => Find(text).Select(f => f.Name);
+
+    // An action with `{$name}` in a text field: a copy with them put in; otherwise the action itself.
+    public static IAction Fill(IAction action, IReadOnlyDictionary<string, string> values)
+    {
+        IAction? copy = null;
+        foreach (var field in TextFields(action.GetType()))
+        {
+            if (field.GetValue(action) is not string text || text.IndexOf("{$", StringComparison.Ordinal) < 0) continue;
+            copy ??= (IAction)Clone.Invoke(action, null)!;
+            field.SetValue(copy, Fill(text, values));
+        }
+        return copy ?? action;
+    }
+
+    // The text an action's fields say, for UiContentChecks.Includes.
+    public static IEnumerable<string> Texts(IAction action) =>
+        TextFields(action.GetType()).Select(f => f.GetValue(action) as string).OfType<string>();
+
+    private static readonly System.Reflection.MethodInfo Clone =
+        typeof(object).GetMethod("MemberwiseClone", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+
+    private static IEnumerable<System.Reflection.FieldInfo> TextFields(Type type) =>
+        type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance).Where(f => f.FieldType == typeof(string));
+
+    private static IEnumerable<(int Start, int Length, string Name)> Find(string text)
+    {
+        int i = 0;
+        while ((i = text.IndexOf("{$", i, StringComparison.Ordinal)) >= 0)
+        {
+            int close = text.IndexOf('}', i + 2);
+            if (close < 0) yield break;
+            string name = text[(i + 2)..close];
+            if (name.Length > 0 && name is not ("root" or "parent") && name.All(c => char.IsLetterOrDigit(c) || c is '_' or '-'))
+            {
+                yield return (i, close + 1 - i, name);
+                i = close + 1;
+            }
+            else i += 2;
+        }
+    }
 }
 
 // What a node's `bind` and `bindings` may name, and which property `bind` alone means for each widget.
@@ -364,13 +497,13 @@ internal sealed class BoundNode
     public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
     public BindingReader? Checked, Selected, Options, Content;   // the form widgets' (issue #340)
     public RowsSlot? Rows;
+    public BindingReader? Scope;    // what this node and everything inside it read from (issue #347)
     private string? _source, _style, _content;
-    private object? _read;          // what this node last read: where the player's changes are written
     private IList? _options;
     private int _optionCount = -1;
     private bool _selectedIsText;
 
-    public bool Dynamic => _children.Length > 0 || Rows != null || VisibleIf != null || EnabledIf != null || Text != null || Tooltip != null
+    public bool Dynamic => _children.Length > 0 || Rows != null || Scope != null || VisibleIf != null || EnabledIf != null || Text != null || Tooltip != null
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
                            || Enabled != null || Data != null || Columns != null || X != null || Y != null
                            || Checked != null || Selected != null || Options != null || Content != null;
@@ -389,66 +522,79 @@ internal sealed class BoundNode
         if (bound) Widget.ValueChanged += Written;
     }
 
+    // Into what each binding last read from: the view-model, the row, or the scope its path named.
     private void Written(Widget widget)
     {
-        var target = _read;
-        if (target == null) return;
         switch (widget)
         {
-            case Slider slider: Value!.Write(target, UiValue.Double(slider.Value)); break;
-            case Checkbox checkbox: Checked!.Write(target, UiValue.Flag(checkbox.Checked)); break;
+            case Slider slider: Value!.Write(UiValue.Double(slider.Value)); break;
+            case Checkbox checkbox: Checked!.Write(UiValue.Flag(checkbox.Checked)); break;
             case Dropdown dropdown:
-                Selected!.Write(target, _selectedIsText ? UiValue.Text(dropdown.SelectedOption) : UiValue.Integer(dropdown.Selected));
+                Selected!.Write(_selectedIsText ? UiValue.Text(dropdown.SelectedOption) : UiValue.Integer(dropdown.Selected));
                 break;
-            case Tabs tabs: Selected!.Write(target, UiValue.Integer(tabs.Selected)); break;
+            case Tabs tabs: Selected!.Write(UiValue.Integer(tabs.Selected)); break;
             case TextBox field:
                 _content = field.Text;   // what is written is what will be read back: no change then
-                Content!.Write(target, UiValue.Text(field.Text));
+                Content!.Write(UiValue.Text(field.Text));
                 break;
         }
     }
 
     public void SetChildren(List<BoundNode> children) => _children = children.ToArray();
 
-    public void Refresh(object? source, in UiBindContext context)
+    public void Refresh(object? source, UiScopes scopes, in UiBindContext context)
     {
-        _read = source;
+        // A `scope` (issue #347): this node and what is inside it read from there, the one around it
+        // still reachable as `$parent.`; Data is the scope, as a row's is its row.
+        if (Scope == null) RefreshIn(source, scopes, in context);
+        else
+        {
+            var inner = Scope.Read(source, scopes).Ref;
+            Widget.Data = inner;
+            scopes.Push(source);
+            RefreshIn(inner, scopes, in context);
+            scopes.Pop();
+        }
+    }
+
+    private void RefreshIn(object? source, UiScopes scopes, in UiBindContext context)
+    {
         if (Node != null)
         {
-            bool visible = Node.Visible && Holds(VisibleIf, in context) && (Visible == null || Visible.Read(source).IsTrue);
+            bool visible = Node.Visible && Holds(VisibleIf, in context) && (Visible == null || Visible.Read(source, scopes).IsTrue);
             // A page of tabs is shown by the tabs, not by its node or its conditions; it is read while
             // hidden, so a tab opens on what is current.
             if (Widget.Parent is not Tabs) Widget.Visible = visible;
             if (!visible) return;   // nothing below a hidden widget is read
-            Widget.Enabled = _enabled && Holds(EnabledIf, in context) && (Enabled == null || Enabled.Read(source).IsTrue);
+            Widget.Enabled = _enabled && Holds(EnabledIf, in context) && (Enabled == null || Enabled.Read(source, scopes).IsTrue);
         }
 
-        if (Text != null && Widget is Label label) label.Text = Text.Resolve(source);
-        if (Tooltip != null) Widget.TooltipText = Tooltip.Resolve(source);
+        if (Text != null && Widget is Label label) label.Text = Text.Resolve(source, scopes);
+        if (Tooltip != null) Widget.TooltipText = Tooltip.Resolve(source, scopes);
         if (Widget is Bar bar)
         {
-            if (Min != null) bar.Min = Min.Read(source).AsFloat;
-            if (Max != null) bar.Max = Max.Read(source).AsFloat;
-            if (Value != null) bar.Value = Value.Read(source).AsFloat;
+            if (Min != null) bar.Min = Min.Read(source, scopes).AsFloat;
+            if (Max != null) bar.Max = Max.Read(source, scopes).AsFloat;
+            if (Value != null) bar.Value = Value.Read(source, scopes).AsFloat;
         }
         if (Source != null && Widget is Image image)
         {
             // An asset path as the view-model holds it; compared by reference, so the same string costs nothing.
-            string? path = Source.Read(source).AsString;
+            string? path = Source.Read(source, scopes).AsString;
             if (!ReferenceEquals(path, _source)) { _source = path; image.Source = path; }
         }
         if (Style != null)
         {
-            string? style = Style.Read(source).AsString;
+            string? style = Style.Read(source, scopes).AsString;
             if (!ReferenceEquals(style, _style)) { _style = style; Widget.Style = style; }
         }
-        if (Checked != null && Widget is Checkbox checkbox) checkbox.Checked = Checked.Read(source).IsTrue;
+        if (Checked != null && Widget is Checkbox checkbox) checkbox.Checked = Checked.Read(source, scopes).IsTrue;
         if (Widget is Dropdown dropdown)
         {
             if (Options != null)
             {
                 // Worked out again when the list is another one or its length changed (not per frame).
-                var list = Options.Read(source).Ref as IList;
+                var list = Options.Read(source, scopes).Ref as IList;
                 int count = list?.Count ?? 0;
                 if (!ReferenceEquals(list, _options) || count != _optionCount)
                 {
@@ -459,34 +605,34 @@ internal sealed class BoundNode
             }
             if (Selected != null)
             {
-                var value = Selected.Read(source);
+                var value = Selected.Read(source, scopes);
                 _selectedIsText = value.Kind == UiValueKind.Text;
                 dropdown.Selected = _selectedIsText ? IndexOf(dropdown.Options, value.AsString!) : value.Kind == UiValueKind.None ? -1 : (int)value.Number;
             }
         }
         if (Selected != null && Widget is Tabs tabs)
         {
-            var value = Selected.Read(source);
+            var value = Selected.Read(source, scopes);
             if (value.Kind != UiValueKind.None) tabs.Selected = (int)value.Number;
         }
         if (Content != null && Widget is TextBox field)
         {
             // Compared by reference: the string written back is the one read next frame, costing nothing.
-            string text = Content.Read(source).AsString ?? "";
+            string text = Content.Read(source, scopes).AsString ?? "";
             if (!ReferenceEquals(text, _content)) { _content = text; field.Text = text; }
         }
-        if (Data != null) Widget.Data = Data.Read(source).Ref;
-        if (Columns != null && Widget is Grid grid) grid.Columns = (int)Columns.Read(source).AsFloat;   // Grid keeps at least 1
+        if (Data != null) Widget.Data = Data.Read(source, scopes).Ref;
+        if (Columns != null && Widget is Grid grid) grid.Columns = (int)Columns.Read(source, scopes).AsFloat;   // Grid keeps at least 1
         if (X != null || Y != null)
         {
             var at = Widget.Anchors;
-            float x = X != null ? Math.Clamp(X.Read(source).AsFloat, 0f, 1f) : at.MinX;
-            float y = Y != null ? Math.Clamp(Y.Read(source).AsFloat, 0f, 1f) : at.MinY;
+            float x = X != null ? Math.Clamp(X.Read(source, scopes).AsFloat, 0f, 1f) : at.MinX;
+            float y = Y != null ? Math.Clamp(Y.Read(source, scopes).AsFloat, 0f, 1f) : at.MinY;
             Widget.Anchors = new Anchors(x, y, x, y);   // unchanged: no layout (Anchors compares)
         }
 
-        Rows?.Refresh(source, in context);
-        for (int i = 0; i < _children.Length; i++) _children[i].Refresh(source, in context);
+        Rows?.Refresh(source, scopes, in context);
+        for (int i = 0; i < _children.Length; i++) _children[i].Refresh(source, scopes, in context);
     }
 
     private static int IndexOf(IReadOnlyList<string> options, string option)
@@ -520,17 +666,17 @@ internal sealed class TextSlot
         _args = args == null ? Array.Empty<Arg>() : args.Select(a => new Arg(a.Key, new BindingReader(a.Value))).ToArray();
     }
 
-    public string Resolve(object? source)
+    public string Resolve(object? source, UiScopes? scopes = null)
     {
         bool changed = _version != _text.Version;
         if (_reader != null)
         {
-            var value = _reader.Read(source);
+            var value = _reader.Read(source, scopes);
             if (!value.Same(in _last)) { _last = value; changed = true; }
         }
         for (int i = 0; i < _args.Length; i++)
         {
-            var value = _args[i].Reader.Read(source);
+            var value = _args[i].Reader.Read(source, scopes);
             if (!value.Same(in _args[i].Last)) { _args[i].Last = value; changed = true; }
         }
         if (!changed) return _current;
@@ -619,9 +765,10 @@ internal sealed class RowsSlot
 
     public int Count => _rows.Count;
 
-    public void Refresh(object? source, in UiBindContext context)
+    // The rows read their items, with `source` the scope around them (`$parent.`, issue #347).
+    public void Refresh(object? source, UiScopes scopes, in UiBindContext context)
     {
-        var list = _reader.Read(source).Ref as IList;
+        var list = _reader.Read(source, scopes).Ref as IList;
         int count = list?.Count ?? 0;
         while (_rows.Count < count)
         {
@@ -645,11 +792,14 @@ internal sealed class RowsSlot
             _host.Remove(row.Widget);
             _spare.Add(row);
         }
+        if (count == 0) return;
+        scopes.Push(source);
         for (int i = 0; i < count; i++)
         {
             object? item = list![i];
             _rows[i].Widget.Data = item;
-            _rows[i].Refresh(item, in context);
+            _rows[i].Refresh(item, scopes, in context);
         }
+        scopes.Pop();
     }
 }

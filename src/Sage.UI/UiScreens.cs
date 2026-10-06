@@ -118,14 +118,19 @@ public sealed class UiScreen
         return used;
     }
 
-    // The actions of the nearest node, from the widget up to the screen's root, that names any.
+    // The actions of the nearest node, from the widget up to the screen's root, that names any — an
+    // included part's own, or those of the node that includes it (issue #347). While they run, a
+    // `command`'s {placeholders} read the pressed widget's row (or scope) and the view-model.
     private bool RunActions(Widget widget, in UiBindContext context)
     {
-        if (context.World is not { } world || !_owner.Records.TryGet(Record.Layout.Id, out UiLayoutRecord layout)) return false;
+        if (context.World is not { } world) return false;
         for (var w = widget; w != null && w != Root; w = w.Parent)
         {
-            if (string.IsNullOrEmpty(w.Name) || !layout.Nodes.TryGetValue(w.Name, out var node) || node.Actions.Count == 0) continue;
-            Conditions.Run(node.Actions, new ActionContext(world, context.Subject, context.Other));
+            if (w.Actions is not { Count: > 0 } actions) continue;
+            var outer = UiActionScope.Current;
+            UiActionScope.Current = new UiActionScope(widget, Root, ViewModel);
+            try { Conditions.Run(actions, new ActionContext(world, context.Subject, context.Other)); }
+            finally { UiActionScope.Current = outer; }
             return true;
         }
         return false;
@@ -203,7 +208,7 @@ public sealed class UiScreens
         _records = records;
         _viewModels = viewModels;
         Text = text;
-        _builder = new LayoutBuilder(styles, text);
+        _builder = new LayoutBuilder(styles, text, records);
     }
 
     public IReadOnlyList<UiScreen> Open => _open;

@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, command, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -194,6 +194,7 @@
         "ApplyEffect",
         "ChangeStanding",
         "CloseScreen",
+        "Command",
         "Cue",
         "Destroy",
         "FinishQuest",
@@ -224,6 +225,7 @@
         "apply_effect",
         "change_standing",
         "close_screen",
+        "command",
         "cue",
         "destroy",
         "finish_quest",
@@ -460,6 +462,40 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'close_screen' (CloseScreenAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "command",
+                      "Command"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: command.",
+                    "enum": [
+                      "command",
+                      "Command"
+                    ]
+                  },
+                  "line": {
+                    "description": "The console line to run, as typed; from a button, {path} is read from its row or the view-model. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'command' (UiCommandAction)."
               }
             },
             {
@@ -2031,6 +2067,76 @@
           },
           "required": [
             "CloseScreen"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "anyOf": [
+                {
+                  "description": "The console line to run, as typed; from a button, {path} is read from its row or the view-model. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "line": {
+                      "description": "The console line to run, as typed; from a button, {path} is read from its row or the view-model. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'command' (UiCommandAction), in shorthand."
+            },
+            "line": {
+              "description": "The console line to run, as typed; from a button, {path} is read from its row or the view-model. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Command": {
+              "anyOf": [
+                {
+                  "description": "The console line to run, as typed; from a button, {path} is read from its row or the view-model. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "line": {
+                      "description": "The console line to run, as typed; from a button, {path} is read from its row or the view-model. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'command' (UiCommandAction), in shorthand."
+            },
+            "line": {
+              "description": "The console line to run, as typed; from a button, {path} is read from its row or the view-model. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Command"
           ],
           "additionalProperties": false
         },
@@ -10206,7 +10312,7 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods.",
+      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_loot, rpg_map, rpg_rest, rpg_shop, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods, ui_world.",
       "type": "string",
       "enum": [
         "RpgEquipment",
@@ -10222,6 +10328,7 @@
         "SandboxStatus",
         "UiControls",
         "UiMods",
+        "UiWorld",
         "rpg_equipment",
         "rpg_inventory",
         "rpg_journal",
@@ -10234,7 +10341,8 @@
         "sandbox_main_menu",
         "sandbox_status",
         "ui_controls",
-        "ui_mods"
+        "ui_mods",
+        "ui_world"
       ]
     },
     "view_model": {
@@ -10733,6 +10841,35 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'ui_mods' (ModsView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "ui_world",
+                      "UiWorld"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: ui_world.",
+                    "enum": [
+                      "ui_world",
+                      "UiWorld"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'ui_world' (WorldView)."
               }
             }
           ]
