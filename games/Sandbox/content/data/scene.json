@@ -1087,7 +1087,10 @@
       { "prefab": "road_sign",    "at": [-10, 0.8, 10], "name": "road_sign" },
       { "prefab": "spot",         "at": [-8.5, 1, 11],  "yaw": 0, "name": "road_end" },
       { "prefab": "waystone",     "at": [-2, 0.8, 9],   "name": "clearing_stone",
-        "overrides": { "parts": { "travel_point": { "label": "Clearing" } } } }
+        "overrides": { "parts": { "travel_point": { "label": "Clearing" } } } },
+      // The lake in the basin east of the clearing (engine issue #411; content/data/water.json): placed
+      // from the origin, not the ground, because its surface is a height of its own (-8 m).
+      { "prefab": "lake",         "at": [137, -11.75, 13], "relativeTo": "Origin", "name": "lake" }
     ]
   }
 ]

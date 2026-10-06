@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -23,10 +24,10 @@ internal sealed class PostChain
     // the picture it reads, that picture's size (w, h, 1/w, 1/h), and how far into the night the sky is.
     // Issue #316 adds the bloom (`Bloom`, the chain's top level, and `BloomOn`, 0 when there is none), `Hdr`
     // (1 while the scene is HDR) and, for an effect that declares `depth`, `SceneDepth` and `DepthParams`.
-    public static readonly HashSet<string> EngineParams = new(StringComparer.Ordinal)
+    public static readonly HashSet<string> EngineParams = new(new[]
     {
         "Source", "SourceSize", "Night", "Bloom", "BloomOn", "Hdr", "SceneDepth", "DepthParams",
-    };
+    }.Concat(WaterShading.EngineParams), StringComparer.Ordinal);   // and the water step's (issue #411)
 
     // The materials of the engine's own steps (engine_content/data/post.json), by PostStepKind.
     public static readonly RecordId[] StepMaterials =
@@ -37,6 +38,7 @@ internal sealed class PostChain
         new("sage", "post_bloom_up"),
         new("sage", "post_tonemap"),
         new("sage", "post_fxaa"),
+        new("sage", "post_water"),                // issue #411: shaders/water.fx
     };
 
     private readonly RecordStore _records;
@@ -81,8 +83,9 @@ internal sealed class PostChain
     // Plans the frame for a back buffer of `back`: true when the chain is on, and the screen's views
     // must draw into `sage:scene` at `SceneSize`. `r_post` switches the effects; `r_scale`, `r_hdr`,
     // `r_bloom` and `r_aa` work with or without them. What the device cannot draw (`hdrSupported`,
-    // `maxSamples`) falls back, with one warning (PostChainPlan.Fallback).
-    public bool Prepare(Point back, bool hdrSupported, int maxSamples)
+    // `maxSamples`) falls back, with one warning (PostChainPlan.Fallback). `water` (issue #411): the frame
+    // has water to draw, which turns the chain on by itself, like r_scale, while `sage:post_water` built.
+    public bool Prepare(Point back, bool hdrSupported, int maxSamples, bool water = false)
     {
         if (_dirty) Rebuild();
         bool post = _settings.Post.Value;
@@ -92,13 +95,22 @@ internal sealed class PostChain
         var (w, h) = PostChainPlan.ScaledSize(back.X, back.Y, scale);
         SceneSize = new Point(w, h);
 
-        var asked = new PostOptions(scale, _settings.Hdr.Value, _settings.Bloom.Value ? PostChainPlan.BloomLevels(w, h) : 0, _settings.Aa.Value);
+        water = water && Built(PostStepKind.Water);
+        var asked = new PostOptions(scale, _settings.Hdr.Value, _settings.Bloom.Value ? PostChainPlan.BloomLevels(w, h) : 0, _settings.Aa.Value, water);
         var options = PostChainPlan.Fallback(asked, hdrSupported, maxSamples, out string? warning);
         if (warning != null) Log.Once(LogCat.Render, LogLevel.Warn, "post-fallback:" + warning, warning);
         Options = options;
         Count = PostChainPlan.Plan(_enabled, options, _steps);
-        NeedsDepth = Count > 0 && PostChainPlan.NeedsDepth(_enabled, _depth);
+        NeedsDepth = Count > 0 && PostChainPlan.NeedsDepth(_enabled, _depth, options.Water);
         return Count > 0;
+    }
+
+    // Whether one of the engine's steps has a material that built (no shaders: none does).
+    public bool Built(PostStepKind kind)
+    {
+        if (_dirty) Rebuild();
+        var m = _materials.Get(_stepMaterials[(int)kind]);
+        return m != null && !m.IsError;
     }
 
     // How far into the night the world's sky is (0 with none): the grade's night tint.

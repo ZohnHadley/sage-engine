@@ -58,13 +58,14 @@ internal enum PostStepKind : byte
     BloomUp,          // a level back up into the one above it, added to what that holds
     Tonemap,          // the HDR scene (plus the bloom) into an LDR picture
     Fxaa,             // r_aa fxaa: the last step, on the LDR picture
+    Water,            // the frame's water surfaces and the underwater view (issue #411), first of the LDR steps
 }
 
 // What the frame asks of the chain beyond its post_effects (issue #316): the render scale, an HDR scene
 // with a tonemap, bloom with how many levels the scene's size allows (PostChainPlan.BloomLevels), and
-// anti-aliasing.
+// anti-aliasing; and (issue #411) water to draw: a surface in reach, or the camera under one.
 internal readonly record struct PostOptions(float Scale = 1f, bool Hdr = false, int BloomLevels = 0,
-                                            AntiAliasing Aa = AntiAliasing.Off)
+                                            AntiAliasing Aa = AntiAliasing.Off, bool Water = false)
 {
     public bool Bloom => BloomLevels > 0;
     public bool Msaa => Aa >= AntiAliasing.Msaa2;
@@ -150,6 +151,8 @@ internal static class PostChainPlan
     //             back up it, each level added into the one above; these write only the bloom targets
     //   tonemap   with HDR or bloom: the scene plus bloom0 into an LDR picture (HDR: the tonemap curve;
     //             LDR: clamped)
+    //   water     the frame's water surfaces and the underwater view (issue #411), reading the scene's
+    //             depth; before the effects, so a grade or a haze falls on the water too
     //   effects   the enabled post_effects in order, LDR in and out
     //   fxaa      r_aa fxaa, last
     //
@@ -164,7 +167,7 @@ internal static class PostChainPlan
         int levels = Math.Clamp(options.BloomLevels, 0, MaxBloomLevels);
         bool tonemap = options.Hdr || levels > 0;
         bool fxaa = options.Aa == AntiAliasing.Fxaa;
-        int ldr = on + (tonemap ? 1 : 0) + (fxaa ? 1 : 0);
+        int ldr = on + (tonemap ? 1 : 0) + (options.Water ? 1 : 0) + (fxaa ? 1 : 0);
 
         if (ldr == 0)
         {
@@ -196,6 +199,7 @@ internal static class PostChainPlan
             source = destination;
         }
         if (tonemap) Add(steps, ref n, -1, PostStepKind.Tonemap);
+        if (options.Water) Add(steps, ref n, -1, PostStepKind.Water);
         for (int i = 0; i < enabled.Length; i++)
             if (enabled[i]) Add(steps, ref n, i, PostStepKind.Effect);
         if (fxaa) Add(steps, ref n, -1, PostStepKind.Fxaa);
@@ -203,8 +207,8 @@ internal static class PostChainPlan
     }
 
     // How many steps a chain of `effects` post_effects can need at most: every effect, the full bloom
-    // chain, the tonemap and FXAA.
-    public static int Capacity(int effects) => Math.Max(1, effects) + 2 * MaxBloomLevels + 1;
+    // chain, the tonemap, the water (issue #411) and FXAA.
+    public static int Capacity(int effects) => Math.Max(1, effects) + 2 * MaxBloomLevels + 2;
 
     // How many bloom levels fit a scene of this size (issue #316): level 0 is half the scene, each next
     // half the one before, while both sides stay at least MinBloomSize; at most `max` (and MaxBloomLevels).
@@ -227,7 +231,10 @@ internal static class PostChainPlan
         (Math.Max(1, width >> (level + 1)), Math.Max(1, height >> (level + 1)));
 
     // Whether a frame's chain draws the scene's depth for an effect (issue #316): an enabled effect that
-    // declares `depth`. The chain must also be on (some step).
+    // declares `depth`. The chain must also be on (some step). The water step (issue #411) reads it too.
+    public static bool NeedsDepth(ReadOnlySpan<bool> enabled, ReadOnlySpan<bool> readsDepth, bool water) =>
+        water || NeedsDepth(enabled, readsDepth);
+
     public static bool NeedsDepth(ReadOnlySpan<bool> enabled, ReadOnlySpan<bool> readsDepth)
     {
         for (int i = 0; i < enabled.Length && i < readsDepth.Length; i++)
