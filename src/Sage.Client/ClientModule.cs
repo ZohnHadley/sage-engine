@@ -91,6 +91,17 @@ public sealed class ClientModule : IModule
         // Which screen is which, by id (issue #27). In Init, so a module that depends on this one can
         // register its screens in its own Init.
         ctx.Provide(Screens);
+        // The registry dump lists them with the plugin that registered each (issue #354), so check_docs and
+        // tooling see which screen ids a game can ask for.
+        Screens.Ledger = ctx.Engine.Registrations;
+        var ledger = ctx.Engine.Registrations;
+        ctx.Engine.DumpSections.Add("screens", () =>
+        {
+            var array = new System.Text.Json.Nodes.JsonArray();
+            foreach (string id in Screens.Ids)
+                array.Add(new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["owner"] = ledger.OwnerOf("screen", id) });
+            return array;
+        });
 
         // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
         // registered in Start does not exist yet when the saved value is read — the line is dropped

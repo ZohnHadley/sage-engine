@@ -26,3 +26,5 @@ Sage.Client.RenderStats.InstancedDraws -> int
 Sage.Client.RenderStats.InstancedSprites -> int
 Sage.Client.RenderStats.ShadowMaps -> int
 static readonly Sage.Client.GamepadListener.None -> Sage.Client.GamepadListener!
+Sage.Client.ScreenRegistry.Ledger.get -> Sage.Core.RegistrationLedger?
+Sage.Client.ScreenRegistry.Ledger.set -> void

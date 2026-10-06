@@ -95,6 +95,7 @@ def read_registry(path):
         # registers an event, so the host finds the `[GameEvent]` structs (TODO #62, issue #298).
         'event': {entry['name'].split('<')[0] for entry in events},
         'action': names('inputActions'),
+        'screen': names('screens', 'id'),     # the client's screens by id (issue #354); absent from a headless dump
         'part': names('prefabParts', 'id'),
         'component': names('components', 'id'),
         'system': names('systems', 'id'),
