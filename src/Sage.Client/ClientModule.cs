@@ -286,6 +286,10 @@ public sealed class ClientModule : IModule
         voices.Changed += _ => _audioSettings!.MaxVoices = Math.Max(voices.Value, 1);
         _audioSettings.MaxVoices = Math.Max(voices.Value, 1);
 
+        var doppler = ctx.Engine.CVars.Register("snd_doppler", 1f, CVarFlags.Archive,
+            "Doppler shift scale for moving sounds and listeners: 0 turns it off, 1 is physical (11 §3).");
+        doppler.Changed += _ => _audioSettings!.DopplerScale = Math.Max(doppler.Value, 0f);
+        _audioSettings.DopplerScale = Math.Max(doppler.Value, 0f);
         // Occlusion's budget (issue #329): rays per frame from the listener to the voices, round-robin.
         var occlusion = ctx.Engine.CVars.Register("snd_occlusion_rays", 8, CVarFlags.Archive,
             "Occlusion rays per frame, listener to voice, shared round-robin by the voices; 0 turns occlusion off.");

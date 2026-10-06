@@ -486,3 +486,23 @@ Sage.Simulation.AudioMonitor.Refresh(Sage.Simulation.AudioMixer! mixer) -> void
 Sage.Simulation.AudioMonitor.Voices.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.VoiceRow>!
 Sage.Simulation.AudioMixer.BusVolume(Sage.Simulation.AudioBus bus) -> float
 Sage.Simulation.AudioMixer.Preview(Sage.Core.RecordId sound, Sage.Simulation.SoundRecord? record) -> Sage.Simulation.VoiceHandle
+Sage.Simulation.AudioMixer.Aim(Sage.Simulation.VoiceHandle handle, System.Numerics.Vector3 direction) -> void
+Sage.Simulation.AudioMixer.ListenerVelocity.get -> System.Numerics.Vector3
+Sage.Simulation.AudioMixer.SetListenerVelocity(System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.AudioMixer.SetVelocity(Sage.Simulation.VoiceHandle handle, System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.AudioSettings.DopplerScale.get -> float
+Sage.Simulation.AudioSettings.DopplerScale.set -> void
+Sage.Simulation.AudioSettings.SpeedOfSound.get -> float
+Sage.Simulation.AudioSettings.SpeedOfSound.set -> void
+Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Custom = 2 -> Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Linear = 0 -> Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Log = 1 -> Sage.Simulation.Rolloff
+Sage.Simulation.SoundRecord.ConeInner -> float
+Sage.Simulation.SoundRecord.ConeOuter -> float
+Sage.Simulation.SoundRecord.ConeOuterGain -> float
+Sage.Simulation.SoundRecord.Doppler -> float
+Sage.Simulation.SoundRecord.Rolloff -> Sage.Simulation.Rolloff
+Sage.Simulation.SoundRecord.RolloffCurve -> System.Collections.Generic.List<float>!
+Sage.Simulation.Voice.Direction -> System.Numerics.Vector3
+Sage.Simulation.Voice.Velocity -> System.Numerics.Vector3

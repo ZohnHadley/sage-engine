@@ -148,6 +148,7 @@ internal sealed class AudioSystem : ISystem
                 if (handle.IsValid && _mixer.Find(handle) != null)
                 {
                     _mixer.Move(handle, t[n].LocalPosition);
+                    _mixer.Aim(handle, Vector3.Transform(TransformMath.Forward, t[n].LocalRotation));
                     _seen.Add(handle.Id);
                     continue;
                 }
@@ -156,7 +157,11 @@ internal sealed class AudioSystem : ISystem
                 _records.TryGet(s[n].Sound, out SoundRecord record);
                 s[n].Voice = _mixer.Play(s[n].Sound, record, t[n].LocalPosition, positional: true,
                                          volume: s[n].Volume <= 0f ? 1f : s[n].Volume, loop: s[n].Loop).Id;
-                if (s[n].Voice != 0) _seen.Add(s[n].Voice);
+                if (s[n].Voice != 0)
+                {
+                    _seen.Add(s[n].Voice);
+                    _mixer.Aim(new VoiceHandle(s[n].Voice), Vector3.Transform(TransformMath.Forward, t[n].LocalRotation));
+                }
             }
         }
 
