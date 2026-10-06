@@ -471,6 +471,9 @@ public sealed class UiScreenStack
         // Subtitles stay over everything, a window opened after them included.
         if (_subtitleLayer != null && _layers.Remove(_subtitleLayer)) _layers.Add(_subtitleLayer);
         if (modal && (focus == null || !root.Focus(focus))) root.Navigate(UiNavigation.Next);
+        // The first focus is a focus change like any other: the view-model hears it (a list's reason for its
+        // greyed first row shows from the start, not after the player moves).
+        if (modal && screen != null && root.Focused != null) screen.Handle(new UiResult { FocusChanged = true });
         layer.Opened(this);
         if (modal) UiSounds.Raise(_world, _screens, screen, UiSound.Open);
         return layer;

@@ -52,7 +52,7 @@ public class KitScreenGoldenTests
     }
 
     public static IEnumerable<object[]> WidgetScreens() =>
-        Screens().Where(s => s.How == "ui").Select(s => new object[] { s.Screen, s.Argument });
+        Screens().Where(s => s.How is "ui" or "tap").Select(s => new object[] { s.Screen, s.How == "ui" ? s.Argument : "" });
 
     private static HeadlessApp Boot()
     {

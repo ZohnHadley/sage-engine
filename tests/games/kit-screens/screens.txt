@@ -1,11 +1,12 @@
 # The kit screens checked (issue #355), one line each. Read by tools/kit_screens_check.sh, which opens each in
 # the real client and compares the drawn frame with goldens/frame/<name>.json (r_framecheck), and by
-# tests/Sage.Tests/Kits/KitScreenGoldenTests.cs, which opens each `ui` screen headlessly and compares its render
-# plan with goldens/plan/<name>.txt (a panel screen has no plan). <name> is the screen with ':' as '_'.
+# tests/Sage.Tests/Kits/KitScreenGoldenTests.cs, which opens each `ui` and `tap` screen headlessly and compares its
+# render plan with goldens/plan/<name>.txt (a `use` screen has no plan: it needs the conversation the Use button
+# starts). <name> is the screen with ':' as '_'. Every kit screen is a widget screen since issue #350.
 #
 #   <screen> ui [other]     a screen record, opened with `ui_open <screen> [other]` (other: an entity, by name)
-#   <name> tap <action>     a panel screen a button opens (the kit's keys), closed with MenuBack
-#   <name> use              what the Use button opens on the ferryman, a step in front of the player
+#   <screen> tap <action>   a screen record a button opens (the kit's keys), closed with MenuBack
+#   <screen> use            what the Use button opens on the ferryman, a step in front of the player
 #
 # A new kit screen is one line here, then its goldens: `tools/kit_screens_check.sh <host> --update` and
 # `SAGE_UPDATE_GOLDENS=1 dotnet test tests/Sage.Tests --filter KitScreenGoldenTests`; look at the frames
@@ -27,6 +28,7 @@ rpg:topics        ui    ferryman
 rpg:rest          ui
 rpg:map           ui
 rpg:journal       ui
-dialogue          use
-journal           tap   Journal
-spellmaker        tap   Spellmaker
+rpg:bag           ui
+rpg:spellbook     tap   Spellbook
+rpg:spellmaker    tap   Spellmaker
+rpg:dialogue      use

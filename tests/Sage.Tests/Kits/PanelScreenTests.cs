@@ -79,8 +79,8 @@ public class PanelScreenTests
 
     private static string Text(RpgScreenTests.Pad pad, string node) => pad.Screen.View.Find<Label>(node)!.Text;
 
-    private static void FocusRow(RpgScreenTests.Pad pad, System.Func<ListRow, bool> which) =>
-        pad.NavUntil(UiNavigation.Down, p => p.Focused is ListRow row && which(row));
+    private static void FocusRow(RpgScreenTests.Pad pad, System.Func<ListRow, bool> which, UiNavigation direction = UiNavigation.Down) =>
+        pad.NavUntil(direction, p => p.Focused is ListRow row && which(row));
 
     // The spellbook (B): what the hero knows, the spell he cannot afford greyed with the cast rule's own
     // reason under the list while it has focus, and A readies it all the same — readying is choosing what to
@@ -125,8 +125,8 @@ public class PanelScreenTests
         using var app = Boot();
         var world = app.World;
         var hero = Hero(app);
-        Assert.True(world.Give(hero, Id("sword")));
         Assert.True(world.Give(hero, Id("bread"), 3));
+        Assert.True(world.Give(hero, Id("sword")));
         var bag = Open(world, RpgKitModule.BagScreen, hero);
         var view = Assert.IsType<BagView>(bag.Screen.ViewModel);
 
@@ -135,6 +135,8 @@ public class PanelScreenTests
         var bread = view.Rows.Single(r => r.Id == Id("bread"));
         Assert.False(bread.Enabled);                                           // greyed with the rule's own reason
         Assert.Equal("not something you can wear or wield", bread.Reason);
+        Assert.Same(bread, view.Rows[0]);                                      // focused as it opens: its reason shows
+        Assert.Equal(bread.Reason, Text(bag, "reason"));
         FocusRow(bag, r => r.Id == Id("sword"));
         bag.A();
         Assert.Equal(Id("sword"), world.Get<Equipment>(hero).In(RpgKitModule.MainHand));
@@ -142,7 +144,7 @@ public class PanelScreenTests
         bag.A();
         Assert.True(world.Get<Equipment>(hero).In(RpgKitModule.MainHand).IsEmpty);
 
-        FocusRow(bag, r => r.Id == Id("bread"));
+        FocusRow(bag, r => r.Id == Id("bread"), UiNavigation.Up);
         bag.Press(UiInput.Do(UiCommand.Alternate));
         Assert.Equal(2, world.CountOf(hero, Id("bread")));
         Assert.Contains(view.Rows, r => r.Text == "bread ×2");

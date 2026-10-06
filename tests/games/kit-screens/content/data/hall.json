@@ -9,12 +9,17 @@
   { "type": "item", "id": "dagger", "label": "dagger", "slot": "MainHand", "weight": 1, "value": 12 },
   { "type": "rpg_item", "id": "rope", "grid": [1, 2] },
 
-  // The player: a bag with a few things in it, a dagger to wear.
+  // A spell the player knows (rpg:spellbook) and an effect a spell can be made of (rpg:spellmaker).
+  { "type": "effect", "id": "glow", "cost": 5, "modifiers": [] },
+  { "type": "ability", "id": "light", "name": "Light", "targeting": "Self", "effects": ["glow"] },
+
+  // The player: a bag with a few things in it, a dagger to wear, and a spell.
   {
     "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
     "parts": {
       "character": { "layer": "player" },
       "attributes": {},
+      "abilities": ["light"],
       "inventory": { "items": [ { "item": "bread", "count": 3 }, { "item": "rope" }, { "item": "dagger" } ], "capacity": 30 }
     }
   },
@@ -29,7 +34,7 @@
     "parts": { "inventory": { "items": [ { "item": "lantern" }, { "item": "rope" } ] }, "use_screen": "rpg:loot" }
   },
 
-  // The ferryman: a conversation (the kit's panel screen, `dialogue`) and a topic (rpg:topics's other).
+  // The ferryman: a conversation (the kit's rpg:dialogue, opened by Use) and a topic (rpg:topics's other).
   { "type": "prefab", "id": "ferryman", "name": "ferryman", "parts": { "character": { "layer": "enemy" }, "dialogue": "ferryman_talk" } },
   { "type": "dialogue", "id": "ferryman_talk",
     "nodes": [ { "id": "hello", "text": "Well?", "options": [

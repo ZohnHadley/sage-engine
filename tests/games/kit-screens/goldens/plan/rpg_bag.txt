@@ -1,0 +1,16 @@
+# rpg:bag: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on row
+rect 400,197.75 480x324.5 #141414e0 @window
+border 400,197.75 480x324.5 #5a4a30ff width 1 @window
+text 408,207.75 198x13.5 #f0e0b0ff scale 1.5 "Carrying — 4.5 / 30 kg" @title
+pushclip 408,229.25 464x240 @page
+rect 408,229.25 464x11 #00000000>#5a4a30ff @row
+text 430,230.25 48x9 #787882ff scale 1 "bread ×3" @name
+text 832,230.25 36x9 #787882ff scale 1 "1.5 kg" @detail
+text 430,242.25 24x9 #787882ff scale 1 "rope" @name
+text 844,242.25 24x9 #787882ff scale 1 "2 kg" @detail
+text 430,254.25 36x9 #e0d8c8ff scale 1 "dagger" @name
+text 844,254.25 24x9 #a0afc8ff scale 1 "1 kg" @detail
+popclip 0,0 0x0 @page
+text 408,475.25 210x9 #e07050ff scale 1 "not something you can wear or wield" @reason
+text 408,505.25 390x9 #908878ff scale 1 "D-pad: choose    A: equip / take off    X / Del: drop    B: close" @hint
