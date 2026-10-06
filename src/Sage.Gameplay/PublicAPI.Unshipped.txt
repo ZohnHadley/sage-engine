@@ -1,1 +1,5 @@
 #nullable enable
+Sage.Gameplay.LightPart.Cone -> float
+Sage.Gameplay.LightPart.InnerCone -> float
+Sage.Gameplay.LightPart.Pattern -> string!
+Sage.Gameplay.LightPart.PatternRate -> float

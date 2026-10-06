@@ -1,7 +1,12 @@
 #nullable enable
+const Sage.Simulation.LightStyles.DefaultRate = 10 -> float
 const Sage.Simulation.MeshLod.Culled = -1 -> int
 const Sage.Simulation.MeshLod.Unknown = -2 -> int
 readonly Sage.Simulation.RenderEnvironment.LayerDrawDistance -> float[]!
+Sage.Simulation.LightSample.ConeAt(System.Numerics.Vector3 at) -> float
+Sage.Simulation.LightSample.Spot.get -> System.Numerics.Vector4
+Sage.Simulation.LightSample.Spot.init -> void
+Sage.Simulation.LightStyles
 Sage.Simulation.LodMetric
 Sage.Simulation.LodMetric.Distance = 0 -> Sage.Simulation.LodMetric
 Sage.Simulation.LodMetric.ScreenSize = 1 -> Sage.Simulation.LodMetric
@@ -20,6 +25,13 @@ Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Sim
 Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+Sage.Simulation.PointLight.Cone -> float
+Sage.Simulation.PointLight.InnerCone -> float
+Sage.Simulation.PointLight.Pattern -> string?
+Sage.Simulation.PointLight.PatternRate -> float
+static Sage.Simulation.LightStyles.Brightness(string? pattern, float rate, double seconds) -> float
+static Sage.Simulation.LightStyles.PresetNames.get -> System.Collections.Generic.IEnumerable<string!>!
+static Sage.Simulation.LightStyles.TryResolve(string? pattern, out string! letters) -> bool
 static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
 static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
 static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float

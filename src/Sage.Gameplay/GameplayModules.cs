@@ -159,6 +159,7 @@ public sealed class LightsModule : IModule
     internal const string TurnOn = "TurnOn";
     internal const string TurnOff = "TurnOff";
     internal const string Toggle = "Toggle";
+    internal const string SetPattern = "SetPattern";
 
     // LightPart is declared ([PrefabPart], issue #17). The switch is entity I/O (issue 4h-7), routed to
     // lights so a branch's or a door's `Toggle` is untouched: a lamp lit at night is a state machine whose
@@ -172,6 +173,18 @@ public sealed class LightsModule : IModule
         {
             ref var light = ref world.Get<PointLight>(io.Self);
             light.Off = !light.Off;
+        });
+        // A flicker (issue #314): the parameter is a pattern or a preset (LightStyles), empty for steady.
+        // One that is neither is refused with a warning, and the light keeps what it had.
+        inputs.Register<PointLight>(SetPattern, static (World world, in IOContext io) =>
+        {
+            string pattern = io.Parameter ?? "";
+            if (!LightStyles.TryResolve(pattern, out _))
+            {
+                Log.Warn(LogCat.Gameplay, $"{World.Describe(io.Self)}: SetPattern \"{pattern}\" is neither letters a..z nor a preset ({string.Join(", ", LightStyles.PresetNames)})");
+                return;
+            }
+            world.Get<PointLight>(io.Self).Pattern = pattern.Length == 0 ? null : pattern;
         });
     }
 }
