@@ -332,4 +332,6 @@ Sage.Simulation.WeatherRecord.Drying -> float
 Sage.Simulation.WeatherRecord.Wetting -> float
 Sage.Simulation.ParticleRecord.Soft -> float
 Sage.Simulation.PointLight.Shadows -> bool
+Sage.Simulation.PhysicsMaterialRecord.Jump -> Sage.Core.RecordId
+Sage.Simulation.PhysicsMaterialRecord.Land -> Sage.Core.RecordId
 Sage.Simulation.SoundRecord.Stream -> bool

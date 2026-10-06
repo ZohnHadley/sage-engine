@@ -1236,6 +1236,27 @@
           "default": 0.4,
           "type": "number",
           "minimum": 0
+        },
+        "landSpeed": {
+          "description": "How fast a character must be falling when it reaches the ground for a landing noise. Unit: m/s. At least 0. (float, default 2.5)",
+          "default": 2.5,
+          "type": "number",
+          "minimum": 0
+        },
+        "event": {
+          "description": "The animation event that is a step under the entity's feet; empty = none. (string, default \"footstep\")",
+          "default": "footstep",
+          "type": "string"
+        },
+        "left": {
+          "description": "The animation event that is a step of the left foot (under foot_ik's left foot); empty = none. (string, default \"foot_left\")",
+          "default": "foot_left",
+          "type": "string"
+        },
+        "right": {
+          "description": "The animation event that is a step of the right foot (under foot_ik's right foot); empty = none. (string, default \"foot_right\")",
+          "default": "foot_right",
+          "type": "string"
         }
       },
       "additionalProperties": false,
