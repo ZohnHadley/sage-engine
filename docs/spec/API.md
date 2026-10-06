@@ -36,8 +36,8 @@ CLI's C# API, the editor host (`Sage.Editor`) and the generators. Nothing compil
   symbol was removed or changed, or a record, component or save format changed without an upgrader.
 - **Release state.** 0.1.0's API is frozen: it is in the Shipped files (#295 R1-3), and the release workflow
   (`.github/workflows/release.yml`) builds, tests and packs the tagged commit and attaches the packages to a
-  GitHub release. The `v0.1.0` tag itself is the owner's push and has not been pushed; until it is, builds
-  report `0.1.0-alpha.0.N`, and after it `0.1.1-alpha.0.N`.
+  GitHub release. `v0.1.0` is tagged (on `main` 3bf1881) and released with its packages; builds after it
+  report `0.1.1-alpha.0.N`.
 
 ### 1.3 The declared API files
 

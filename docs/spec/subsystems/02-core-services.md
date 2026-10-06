@@ -115,7 +115,7 @@ Not built: a general job system (`JobSystem`), Tracy, and visual-log recording f
 | REQ-CORE-14 | Offer a job system on the thread pool for decoding and generation, with main-thread completion. | Should | Partial: terrain generation on the thread pool with main-thread completion (test: `GenerationOnJobsIsTheSameGroundAsOnTheMainThread`); jobs, loads and uploads are counted (`WorkStats`; test: `ATerrainJobIsCountedAsAJobAndALoadUntilItIsDone`, `UploadsAreCountedInTheFrameTheyHappen`); no general job API | design 02 §4.5 |
 | REQ-CORE-15 | Expose content errors in a shipped game without the editor (`problems` command and badge). | Should | Done (#301): `ContentProblems`; `problems` is in every build, the badge (`ui_problems`) in dev builds' overlay | test: `ProblemsListsTheSameEntriesAsValidate`, `ProblemsListsTheLoadErrorsWithFileAndLine`, `ACleanLoadSaysSo_AndModConflictsAreWarnings` |
 | REQ-CORE-16 | Offer world and per-system time scale, pause and hit-stop. | Should | Done | `src/Sage.Simulation/World/WorldTime.cs`; per system: the world's time, or real time by `RunCondition.Always` (no per-system factor); test: HalfScaleHalvesTimerTweenAndClockProgress, AHitStopFreezesTheWorldForRealSeconds |
-| REQ-CORE-17 | Version the engine from git tags and check plugin, kit and game ranges against it. | Must | Done | `BuildInfo.EngineSemVersion`; first tag pending (#295) |
+| REQ-CORE-17 | Version the engine from git tags and check plugin, kit and game ranges against it. | Must | Done | `BuildInfo.EngineSemVersion`; 0.1.0 tagged (#295) |
 
 ## 10. Open work
 
