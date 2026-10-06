@@ -129,6 +129,14 @@ internal sealed class CharacterMovementSystem : ISystem
         // into a lake (issue #262).
         if (inWater) character.Velocity = BuoyancySystem.Drag(character.Velocity, water.Current, water.Drag * character.Immersion, dt);
 
+        // Root motion (issue #357): an animator whose state takes it says how far the clip's root went last
+        // tick, and that is the move across the ground (and up, for a climb with rootMotionY, instead of
+        // gravity), swept and stepped like any other. Taken every tick so it never goes stale; a swimmer swims.
+#pragma warning disable SAGE0126 // root motion: experimental with the rest of the animation API
+        if (Animators.TryTakeRootMotion(_world, entity, out var root, out bool rootVertical) && !character.Swimming && dt > 0f)
+            character.Velocity = new Vector3(root.X / dt, rootVertical ? root.Y / dt : character.Velocity.Y, root.Z / dt);
+#pragma warning restore SAGE0126
+
         // The body faces where its controller is looking. One yaw convention engine-wide (SageMath),
         // so this is all of it: no correction between movement, sprites and the camera.
         transform.LocalRotation = SageMath.RotationFromYaw(yaw);
