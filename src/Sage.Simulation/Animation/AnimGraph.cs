@@ -44,7 +44,14 @@ namespace Sage.Simulation;
 //
 // **Layers** are machines of their own over the base (the record's top-level states): each blends its
 // pose over what is below it, on the joints its `mask` names and every joint beneath them
-// (JointMask.SetBranch; no mask: the whole body), at its `weight`.
+// (JointMask.SetBranch; no mask: the whole body), at its `weight`. An `"blend": "Additive"` layer
+// (issue #358) adds instead: what its clips do relative to their first frame goes on top of the pose
+// below (a flinch, breathing, a lean over whatever the legs are doing).
+//
+// **Sync markers** (issue #358): a blend's `sync` names clip events (anim_events) that mark matching
+// moments in every clip — `["foot_l", "foot_r"]`, the foot plants — and the blend's clips then line up
+// at those markers rather than at the same fraction of their length. **Per-transition fades:** a
+// transition's own `fade` and `ease` win over the state's.
 //
 // **Morph targets** (issue #363) are animated like joints: a clip's weight tracks are sampled, blended and
 // cross-faded with it, and a layer's `mask` may name morph targets as well as joints (a face layer:
@@ -151,12 +158,12 @@ public sealed class AnimGraphRecord
 
             var clips = new List<string>();
             Layers = new Layer[1 + _layers.Count];
-            Layers[0] = new Layer(this, Animators.BaseLayer, null, 1f, _initial, _states, _any, clips);
+            Layers[0] = new Layer(this, Animators.BaseLayer, null, 1f, _initial, _states, _any, clips, AnimLayerBlend.Override);
             for (int i = 0; i < _layers.Count; i++)
             {
                 var l = _layers[i] ?? new AnimLayer();
                 Layers[i + 1] = new Layer(this, string.IsNullOrEmpty(l.Name) ? $"layer{i + 1}" : l.Name, l.Mask, l.Weight,
-                                          l.Initial ?? "", l.States ?? new(), l.Transitions ?? new(), clips);
+                                          l.Initial ?? "", l.States ?? new(), l.Transitions ?? new(), clips, l.Blend);
             }
             ClipNames = clips.ToArray();
             foreach (var state in Layers[0].States) HasRootMotion |= state.RootMotion != RootMotionMode.None;
@@ -207,6 +214,7 @@ public sealed class AnimGraphRecord
         public readonly string Name;
         public readonly List<string>? Mask;
         public readonly float Weight;
+        public readonly bool Additive;                            // issue #358: adds its clips' motion over what is below
         public readonly string InitialName;
         public readonly int Initial;                              // -1: no such state (a load error)
         public readonly string[] Names;
@@ -216,10 +224,11 @@ public sealed class AnimGraphRecord
         private readonly Dictionary<StateTransition, int> _targets = new(ReferenceEqualityComparer.Instance);
 
         public Layer(Compiled graph, string name, List<string>? mask, float weight, string initial,
-                     Dictionary<string, AnimState> states, List<StateTransition> any, List<string> clips)
+                     Dictionary<string, AnimState> states, List<StateTransition> any, List<string> clips, AnimLayerBlend blend)
         {
             Name = name;
             Mask = mask;
+            Additive = blend == AnimLayerBlend.Additive;
             Weight = float.IsFinite(weight) ? Math.Clamp(weight, 0f, 1f) : 0f;
             InitialName = initial;
             Any = any;
@@ -266,6 +275,7 @@ public sealed class AnimGraphRecord
         public readonly List<string>? Tags;
         public readonly RootMotionMode RootMotion;
         public readonly bool RootMotionY;
+        public readonly string[]? Sync;                           // a looping blend's sync marker names (issue #358); null: by normalised time
 
         public State(Compiled graph, AnimState source, List<string> clips)
         {
@@ -290,6 +300,13 @@ public sealed class AnimGraphRecord
             foreach (var point in blend.Points)
                 if (point != null && !string.IsNullOrEmpty(point.Clip) && points.Count < Animators.MaxBlendPoints) points.Add(point);
             if (string.IsNullOrEmpty(blend.Y)) points.Sort(static (a, b) => a.X.CompareTo(b.X));
+            if (Loop && blend.Sync is { Count: > 0 } sync)
+            {
+                var names = new List<string>(sync.Count);
+                foreach (var name in sync)
+                    if (!string.IsNullOrEmpty(name) && !names.Contains(name)) names.Add(name);
+                if (names.Count > 0) Sync = names.ToArray();
+            }
             PointClips = new int[points.Count];
             PointX = new float[points.Count];
             PointY = new float[points.Count];
@@ -352,6 +369,8 @@ public sealed class AnimBlendSpace
     public string Y = "";
     [Property(Tooltip = "The clips and where each sits")]
     public List<AnimBlendPoint> Points = new();
+    [Property(Tooltip = "Sync markers: clip event names (anim_events) at matching moments in every clip, such as the foot plants [\"foot_l\", \"foot_r\"]; the clips line up at them (counted from each clip's first of the first name) instead of by fraction of their length. Looping blends only")]
+    public List<string> Sync = new();
 }
 
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
@@ -375,12 +394,24 @@ public sealed class AnimLayer
     public List<string> Mask = new();
     [Property(Min = 0, Max = 1, Tooltip = "How much of its pose shows over what is below it")]
     public float Weight = 1f;
+    [Property(Tooltip = "Override (its pose replaces what is below, on its mask) or Additive (what its clips do relative to their first frame is added on top: a flinch, breathing, a lean)")]
+    public AnimLayerBlend Blend = AnimLayerBlend.Override;
     [Property(Tooltip = "Its first state")]
     public string Initial = "";
     [Property(Tooltip = "Its states, by name; one with no clip and no blend lets what is below show")]
     public Dictionary<string, AnimState> States = new();
     [Property(Tooltip = "Its transitions from any state, tried after the state's own")]
     public List<StateTransition> Transitions = new();
+}
+
+// How a layer goes over what is below it (issue #358).
+[Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+public enum AnimLayerBlend
+{
+    // Its pose replaces what is below, on its mask, at its weight.
+    Override,
+    // Its clips' motion relative to their first frame is added to what is below, on its mask, scaled by its weight.
+    Additive,
 }
 
 [Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]

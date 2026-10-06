@@ -291,6 +291,11 @@ public sealed class StateTransition
     public float After;
     [Property(Tooltip = "What taking it does, between the old state's exit and the new one's enter")]
     public List<IAction> Then = new();
+    // anim_graph only (issue #358): this transition's own cross-fade, over the state's; a state_machine ignores them.
+    [Property(Min = 0, Unit = "s", Tooltip = "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's")]
+    public float? Fade;
+    [Property(Tooltip = "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's")]
+    public Ease? Ease;
 }
 
 // The machine on an entity. Saved:

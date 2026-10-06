@@ -136,6 +136,27 @@
                   },
                   "additionalProperties": false
                 }
+              },
+              "sync": {
+                "description": "Sync markers: clip event names (anim_events) at matching moments in every clip, such as the foot plants [\"foot_l\", \"foot_r\"]; the clips line up at them (counted from each clip's first of the first name) instead of by fraction of their length. Looping blends only. (List<string>)",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sync+": {
+                "description": "Adds to \"sync\": what a base or an earlier definition listed, then these.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sync-": {
+                "description": "Removes these from \"sync\" (as a base or an earlier definition listed it).",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "additionalProperties": false
@@ -285,6 +306,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -337,6 +413,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -389,6 +520,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -445,6 +631,61 @@
             "items": {
               "$ref": "vocabularies.schema.json#/definitions/action"
             }
+          },
+          "fade": {
+            "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ease": {
+            "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Linear",
+                  "QuadIn",
+                  "QuadOut",
+                  "QuadInOut",
+                  "CubicIn",
+                  "CubicOut",
+                  "CubicInOut",
+                  "QuartIn",
+                  "QuartOut",
+                  "QuartInOut",
+                  "QuintIn",
+                  "QuintOut",
+                  "QuintInOut",
+                  "SineIn",
+                  "SineOut",
+                  "SineInOut",
+                  "ExpoIn",
+                  "ExpoOut",
+                  "ExpoInOut",
+                  "BackIn",
+                  "BackOut",
+                  "BackInOut",
+                  "ElasticIn",
+                  "ElasticOut",
+                  "ElasticInOut",
+                  "BounceIn",
+                  "BounceOut",
+                  "BounceInOut",
+                  "SmoothStep",
+                  "SmootherStep"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -497,6 +738,61 @@
             "items": {
               "$ref": "vocabularies.schema.json#/definitions/action"
             }
+          },
+          "fade": {
+            "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ease": {
+            "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Linear",
+                  "QuadIn",
+                  "QuadOut",
+                  "QuadInOut",
+                  "CubicIn",
+                  "CubicOut",
+                  "CubicInOut",
+                  "QuartIn",
+                  "QuartOut",
+                  "QuartInOut",
+                  "QuintIn",
+                  "QuintOut",
+                  "QuintInOut",
+                  "SineIn",
+                  "SineOut",
+                  "SineInOut",
+                  "ExpoIn",
+                  "ExpoOut",
+                  "ExpoInOut",
+                  "BackIn",
+                  "BackOut",
+                  "BackInOut",
+                  "ElasticIn",
+                  "ElasticOut",
+                  "ElasticInOut",
+                  "BounceIn",
+                  "BounceOut",
+                  "BounceInOut",
+                  "SmoothStep",
+                  "SmootherStep"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -549,6 +845,61 @@
             "items": {
               "$ref": "vocabularies.schema.json#/definitions/action"
             }
+          },
+          "fade": {
+            "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ease": {
+            "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Linear",
+                  "QuadIn",
+                  "QuadOut",
+                  "QuadInOut",
+                  "CubicIn",
+                  "CubicOut",
+                  "CubicInOut",
+                  "QuartIn",
+                  "QuartOut",
+                  "QuartInOut",
+                  "QuintIn",
+                  "QuintOut",
+                  "QuintInOut",
+                  "SineIn",
+                  "SineOut",
+                  "SineInOut",
+                  "ExpoIn",
+                  "ExpoOut",
+                  "ExpoInOut",
+                  "BackIn",
+                  "BackOut",
+                  "BackInOut",
+                  "ElasticIn",
+                  "ElasticOut",
+                  "ElasticInOut",
+                  "BounceIn",
+                  "BounceOut",
+                  "BounceInOut",
+                  "SmoothStep",
+                  "SmootherStep"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -628,6 +979,14 @@
             "minimum": 0,
             "maximum": 1
           },
+          "blend": {
+            "description": "Override (its pose replaces what is below, on its mask) or Additive (what its clips do relative to their first frame is added on top: a flinch, breathing, a lean) (AnimLayerBlend)",
+            "type": "string",
+            "enum": [
+              "Override",
+              "Additive"
+            ]
+          },
           "initial": {
             "description": "Its first state. (string)",
             "type": "string"
@@ -718,6 +1077,27 @@
                           }
                         },
                         "additionalProperties": false
+                      }
+                    },
+                    "sync": {
+                      "description": "Sync markers: clip event names (anim_events) at matching moments in every clip, such as the foot plants [\"foot_l\", \"foot_r\"]; the clips line up at them (counted from each clip's first of the first name) instead of by fraction of their length. Looping blends only. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sync+": {
+                      "description": "Adds to \"sync\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sync-": {
+                      "description": "Removes these from \"sync\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
                       }
                     }
                   },
@@ -868,6 +1248,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -920,6 +1355,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -972,6 +1462,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -1028,6 +1573,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1080,6 +1680,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1132,6 +1787,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1178,6 +1888,14 @@
             "minimum": 0,
             "maximum": 1
           },
+          "blend": {
+            "description": "Override (its pose replaces what is below, on its mask) or Additive (what its clips do relative to their first frame is added on top: a flinch, breathing, a lean) (AnimLayerBlend)",
+            "type": "string",
+            "enum": [
+              "Override",
+              "Additive"
+            ]
+          },
           "initial": {
             "description": "Its first state. (string)",
             "type": "string"
@@ -1268,6 +1986,27 @@
                           }
                         },
                         "additionalProperties": false
+                      }
+                    },
+                    "sync": {
+                      "description": "Sync markers: clip event names (anim_events) at matching moments in every clip, such as the foot plants [\"foot_l\", \"foot_r\"]; the clips line up at them (counted from each clip's first of the first name) instead of by fraction of their length. Looping blends only. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sync+": {
+                      "description": "Adds to \"sync\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sync-": {
+                      "description": "Removes these from \"sync\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
                       }
                     }
                   },
@@ -1418,6 +2157,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -1470,6 +2264,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -1522,6 +2371,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -1578,6 +2482,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1630,6 +2589,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1682,6 +2696,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1728,6 +2797,14 @@
             "minimum": 0,
             "maximum": 1
           },
+          "blend": {
+            "description": "Override (its pose replaces what is below, on its mask) or Additive (what its clips do relative to their first frame is added on top: a flinch, breathing, a lean) (AnimLayerBlend)",
+            "type": "string",
+            "enum": [
+              "Override",
+              "Additive"
+            ]
+          },
           "initial": {
             "description": "Its first state. (string)",
             "type": "string"
@@ -1818,6 +2895,27 @@
                           }
                         },
                         "additionalProperties": false
+                      }
+                    },
+                    "sync": {
+                      "description": "Sync markers: clip event names (anim_events) at matching moments in every clip, such as the foot plants [\"foot_l\", \"foot_r\"]; the clips line up at them (counted from each clip's first of the first name) instead of by fraction of their length. Looping blends only. (List<string>)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sync+": {
+                      "description": "Adds to \"sync\": what a base or an earlier definition listed, then these.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sync-": {
+                      "description": "Removes these from \"sync\" (as a base or an earlier definition listed it).",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
                       }
                     }
                   },
@@ -1968,6 +3066,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -2020,6 +3173,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -2072,6 +3280,61 @@
                         "items": {
                           "$ref": "vocabularies.schema.json#/definitions/action"
                         }
+                      },
+                      "fade": {
+                        "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "Linear",
+                              "QuadIn",
+                              "QuadOut",
+                              "QuadInOut",
+                              "CubicIn",
+                              "CubicOut",
+                              "CubicInOut",
+                              "QuartIn",
+                              "QuartOut",
+                              "QuartInOut",
+                              "QuintIn",
+                              "QuintOut",
+                              "QuintInOut",
+                              "SineIn",
+                              "SineOut",
+                              "SineInOut",
+                              "ExpoIn",
+                              "ExpoOut",
+                              "ExpoInOut",
+                              "BackIn",
+                              "BackOut",
+                              "BackInOut",
+                              "ElasticIn",
+                              "ElasticOut",
+                              "ElasticInOut",
+                              "BounceIn",
+                              "BounceOut",
+                              "BounceInOut",
+                              "SmoothStep",
+                              "SmootherStep"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -2128,6 +3391,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -2180,6 +3498,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -2232,6 +3605,61 @@
                   "items": {
                     "$ref": "vocabularies.schema.json#/definitions/action"
                   }
+                },
+                "fade": {
+                  "description": "anim_graph only: how long taking it cross-fades, over the state's fade; left out, the state's. Unit: s. At least 0. (float?)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ease": {
+                  "description": "anim_graph only: the curve taking it cross-fades along, over the state's ease; left out, the state's. (Ease?)",
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Linear",
+                        "QuadIn",
+                        "QuadOut",
+                        "QuadInOut",
+                        "CubicIn",
+                        "CubicOut",
+                        "CubicInOut",
+                        "QuartIn",
+                        "QuartOut",
+                        "QuartInOut",
+                        "QuintIn",
+                        "QuintOut",
+                        "QuintInOut",
+                        "SineIn",
+                        "SineOut",
+                        "SineInOut",
+                        "ExpoIn",
+                        "ExpoOut",
+                        "ExpoInOut",
+                        "BackIn",
+                        "BackOut",
+                        "BackInOut",
+                        "ElasticIn",
+                        "ElasticOut",
+                        "ElasticInOut",
+                        "BounceIn",
+                        "BounceOut",
+                        "BounceInOut",
+                        "SmoothStep",
+                        "SmootherStep"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
