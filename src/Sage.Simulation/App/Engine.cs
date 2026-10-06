@@ -69,6 +69,8 @@ public sealed class Engine : IDisposable
         Records.AddCheck<MaterialRecord>(MaterialSurface.Check);
         // A water surface's colours, waves and fogs make sense (issue #411).
         Records.AddCheck<WaterSurfaceRecord>(WaterSurfaceRecord.Check);
+        // A sound's files are .wav or .ogg, and only .ogg when it streams (issue #326).
+        Records.AddCheck<SoundRecord>(SoundRecord.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the

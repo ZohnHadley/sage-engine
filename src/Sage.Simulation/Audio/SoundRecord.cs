@@ -42,7 +42,30 @@ public sealed class SoundRecord
     // Higher wins when voices are stolen. A death rattle outranks a footstep.
     public int Priority;
 
+    // Decoded as it plays, a few buffers at a time, instead of whole when it loads (issue #326): music,
+    // ambience beds and dialogue, minutes long, which would be tens of megabytes each as PCM. Ogg Vorbis
+    // only; a loop wraps without a gap.
+    [Property(Tooltip = "Decode as it plays instead of whole: for music, ambience and dialogue. Ogg Vorbis (.ogg) only")]
+    public bool Stream;
+
     public bool Is2D => MaxDistance <= 0f;
+
+    // What a sound's files are (issue #326): a `.wav` or an `.ogg`, which are what the client can play, and
+    // only `.ogg` when it streams. Run wherever the record type is registered (the client, `sage validate`).
+    internal static void Check(SoundRecord sound, RecordCheck check)
+    {
+        for (int i = 0; i < sound.Variations.Count; i++)
+        {
+            var asset = sound.Variations[i];
+            if (asset.IsEmpty) continue;
+            string path = asset.Path.Value;
+            bool ogg = path.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase);
+            if (!ogg && !path.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+                check.Error($"variations[{i}]", $"'{path}' is neither a .wav nor an .ogg, which are the sounds the engine plays");
+            else if (sound.Stream && !ogg)
+                check.Error($"variations[{i}]", $"'{path}' is a .wav, and only Ogg Vorbis streams; encode it as .ogg or drop \"stream\"");
+        }
+    }
 }
 
 // A sound that lives on an entity: a waterfall, a campfire, a torch (11 §3). The system starts it when

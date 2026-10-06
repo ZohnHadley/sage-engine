@@ -17,7 +17,8 @@ internal sealed class PcmSound
 // Ogg Vorbis, decoded headlessly (issue #302, docs/design/11 §3): a sound's `asset` may be a `.ogg` as well as a
 // `.wav`. MonoGame's SoundEffect takes PCM, so the whole file is decoded to it when it loads (NVorbis, the
 // decoder MonoGame itself depends on); a `.ogg` is smaller on disk and in a package, and the same in memory
-// once loaded. Streaming long music from the file as it plays is the audio area's next step, not this.
+// once loaded. Long music, ambience and dialogue stream from the file as they play instead (`"stream": true`
+// on the sound, PcmStreamer, issue #326).
 internal static class OggVorbis
 {
     // The longest sound decoded whole: ten minutes of 48 kHz stereo is 110 MB of PCM, past which a file is
@@ -41,7 +42,7 @@ internal static class OggVorbis
             if (channels is < 1 or > 2) throw new InvalidDataException($"{channels} channels; a sound is mono or stereo");
             if (rate <= 0) throw new InvalidDataException($"a sample rate of {rate}");
             long total = reader.TotalSamples;   // per channel; an estimate on a file without a granule at its end
-            if (total > MaxSeconds * rate) throw new InvalidDataException($"{total / (double)rate:F0} s long; a sound is decoded whole, up to {MaxSeconds:F0} s");
+            if (total > MaxSeconds * rate) throw new InvalidDataException($"{total / (double)rate:F0} s long; a sound is decoded whole, up to {MaxSeconds:F0} s (\"stream\": true plays it as it decodes)");
 
             var output = new MemoryStream((int)Math.Max(0, Math.Min(total * channels * 2, int.MaxValue / 2)));
             var buffer = new float[4096 * channels];
