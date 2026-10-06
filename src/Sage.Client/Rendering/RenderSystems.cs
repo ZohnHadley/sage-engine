@@ -65,6 +65,11 @@ internal sealed class CameraExtract : ISystem
         env.DrawSky = e.DrawSky;
         env.Zenith = e.Zenith;
         env.Stars = e.Stars;
+        env.HazeBand = e.HazeBand; env.HazeAbove = e.HazeAbove; env.StarTurn = e.StarTurn; env.StarAxis = e.StarAxis;
+        env.MoonTexture = e.MoonTexture; env.MoonDirection = e.MoonDirection; env.MoonAge = e.MoonAge;
+        env.MoonSize = e.MoonSize; env.MoonLevel = e.MoonLevel;
+        env.CloudTexture = e.CloudTexture; env.CloudCover = e.CloudCover; env.CloudScale = e.CloudScale;
+        env.CloudScroll = e.CloudScroll; env.CloudColor = SkyRules.CloudColor(e);
         env.SunDirection = Vector3.Normalize(e.SunDirection);
         env.SunColor = e.SunColor;
         env.AmbientSky = e.AmbientSky;

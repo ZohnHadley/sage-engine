@@ -43,6 +43,10 @@ public sealed class SandboxModule : IGameModule
     public void OnWorldCreated(World world)
     {
         // Terrain first: the engine places the scene on the ground once this returns (14 §3, TODO F13).
+        // The calendar starts the moon eleven days into its cycle: a waxing gibbous, high in the sky by night (issue 4n-16).
+#pragma warning disable SAGE0130   // the world clock is the sky's experimental API
+        WorldClock.Of(world).Calendar = new RecordId("sandbox", "moon");
+#pragma warning restore SAGE0130
         var terrain = world.Resources.Get<Terrain>();
         terrain.Generator = new HillsGenerator();
         terrain.Seed = 1;
