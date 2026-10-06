@@ -95,6 +95,25 @@
               }
             ]
           },
+          "include": {
+            "description": "Another layout whose nodes go inside this one, before its own children, named 'this/inner': a part made once and used anywhere (a titled window, a labelled bar); with no widget, this node is a stack. Names a ui_layout record. (RecordRef<UiLayoutRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ui_layout"
+              }
+            ]
+          },
+          "params": {
+            "description": "For an include: what `{$name}` in the included layout's text and paths is. (Dictionary<string, string>)",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "description": "A path into the view-model (or the row) that this node and everything inside it read from; '$parent.' reaches back out. (string)",
+            "type": "string"
+          },
           "text": {
             "description": "A label's, button's or checkbox's text, or what a text field starts with; '@ns.key' is a localisation key. (string)",
             "type": "string"
@@ -705,7 +724,7 @@
             }
           },
           "bind": {
-            "description": "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to. (string)",
+            "description": "A path into the view-model for its main value (`name`, `items[0].name`, `stats[health]`; in a row, `$parent.` or `$root.` for the view-model): a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to. (string)",
             "type": "string"
           },
           "bindings": {
@@ -717,6 +736,13 @@
           }
         },
         "additionalProperties": false
+      }
+    },
+    "params": {
+      "description": "When another layout includes this one: what `{$name}` in its nodes' text and paths is unless the including node's `params` say otherwise. (Dictionary<string, string>)",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
       }
     }
   },

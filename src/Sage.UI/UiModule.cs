@@ -231,6 +231,7 @@ public sealed class UiModule : IModule
         _fontsRead = true;
         Styles.Rebuild(engine.Records);
         LoadLanguage();
+        UiContentChecks.Includes(engine.Records);
         UiContentChecks.Screens(engine.Records, engine.Vocabularies.Of<IViewModel>());
         if (BuildInfo.IsDevBuild) UiContentChecks.Keys(engine.Records, Localisation);
         // Every translation's completeness (#345): `sage validate` (and loc_check) only, as it reads
@@ -253,7 +254,11 @@ internal static class UiContentChecks
         foreach (var (name, node) in layout.Nodes)
         {
             string at = $"Nodes['{name}']";
-            if (node.Widget.Length == 0) check.Error(at, $"node '{name}' needs a widget: one of {string.Join(", ", WidgetTypes.Names)}");
+            if (node.Widget.Length == 0 && node.Include.IsEmpty) check.Error(at, $"node '{name}' needs a widget: one of {string.Join(", ", WidgetTypes.Names)}");
+            if (!node.Include.IsEmpty && Array.IndexOf(Leaves, node.Widget) >= 0)
+                check.Error($"{at}.Include", $"node '{name}' is a {node.Widget}, which holds no children, so it cannot include a layout");
+            if (node.Params.Count > 0 && node.Include.IsEmpty)
+                check.Error($"{at}.Params", $"node '{name}' has params but includes no layout to fill in");
 
             if (node.Parent.Length > 0)
             {
@@ -278,9 +283,11 @@ internal static class UiContentChecks
                     check.Error($"{at}.Bindings['{target}']", $"no property '{target}' to bind" + Spelling.Suggest(target, UiBindings.All) + $" (there are: {string.Join(", ", UiBindings.All)})");
                 else if (!UiBindings.Applies(node.Widget, key))
                     check.Error($"{at}.Bindings['{target}']", $"a {node.Widget} has no '{key}'");
-                if (path.Split('.').Any(s => s.Length == 0) && !BindingPaths.IsSelf(path))
-                    check.Error($"{at}.Bindings['{target}']", $"'{path}' is not a path: names separated by '.', or '.' for the object itself");
+                if (!IsPath(path, out string? problem))
+                    check.Error($"{at}.Bindings['{target}']", problem!);
             }
+            foreach (var (field, path) in new[] { ("Bind", node.Bind), ("Scope", node.Scope) })
+                if (path.Length > 0 && !IsPath(path, out string? problem)) check.Error($"{at}.{field}", problem!);
 
             if (UiBindings.Of(node).Any(b => b.Target == UiBindings.Rows) && children != 1)
                 check.Error(at, $"'{name}' binds its rows, so it holds one node, the template each row is made from; it has {children}");
@@ -303,6 +310,63 @@ internal static class UiContentChecks
                     check.Error($"{at}.{field}", $"node '{name}' goes to '{neighbour}', which is not a node of this layout" + Spelling.Suggest(neighbour, layout.Nodes.Keys));
         }
     }
+
+    // A path as content writes it (issue #347): `$root.`/`$parent.` first, then names separated by '.',
+    // each with any [index]es; a `{$param}` of an included layout is put in before it is read.
+    private static bool IsPath(string path, out string? problem)
+    {
+        problem = null;
+        if (path.Contains("{$", StringComparison.Ordinal)) return true;
+        if (BindingPaths.TryParse(BindingScope.Split(path, out _), out _, out string? why)) return true;
+        problem = $"{why}: a path is names separated by '.', each with any [index], '$parent.' or '$root.' first, or '.' for the object itself";
+        return false;
+    }
+
+    // Every node's `include` (issue #347), which reads two records: the layout is there, does not include
+    // itself through others, is given only params it has, and is given every `{$name}` it says that it
+    // has no default for. After the load, like Screens.
+    public static void Includes(RecordStore records)
+    {
+        foreach (var id in records.Ids("ui_layout"))
+        {
+            if (!records.TryGet(id, out UiLayoutRecord layout)) continue;
+            foreach (var (name, node) in layout.Nodes)
+            {
+                if (node.Include.IsEmpty || !records.TryGet(node.Include.Id, out UiLayoutRecord included)) continue;
+                string where = records.Where("ui_layout", id, $"Nodes['{name}'].Include");
+                if (Loops(records, id, node.Include.Id, new HashSet<RecordId>()))
+                {
+                    Log.Error(LogCat.Records, $"{where}: ui_layout {id}: node '{name}' includes {node.Include.Id}, which includes {id} again: a layout cannot be inside itself");
+                    continue;
+                }
+                var said = included.Nodes.Values.SelectMany(Texts).SelectMany(UiParams.Named).ToHashSet(StringComparer.Ordinal);
+                foreach (var param in node.Params.Keys)
+                    if (!said.Contains(param) && !included.Params.ContainsKey(param))
+                        Log.Error(LogCat.Records, $"{records.Where("ui_layout", id, $"Nodes['{name}'].Params")}: ui_layout {id}: node '{name}' gives {node.Include.Id} " +
+                                                  $"a param '{param}' it has not got" + Spelling.Suggest(param, said.Concat(included.Params.Keys)));
+                foreach (var param in said)
+                    if (!node.Params.ContainsKey(param) && !included.Params.ContainsKey(param))
+                        Log.Error(LogCat.Records, $"{where}: ui_layout {id}: node '{name}' includes {node.Include.Id}, which says {{${param}}}, " +
+                                                  $"and neither its params nor the layout's own give '{param}'");
+            }
+        }
+    }
+
+    // Whether `layout`, through the layouts it includes, comes back to `start`.
+    private static bool Loops(RecordStore records, RecordId start, RecordId layout, HashSet<RecordId> seen)
+    {
+        if (layout == start) return true;
+        if (!seen.Add(layout) || !records.TryGet(layout, out UiLayoutRecord record)) return false;
+        foreach (var node in record.Nodes.Values)
+            if (!node.Include.IsEmpty && Loops(records, start, node.Include.Id, seen)) return true;
+        return false;
+    }
+
+    // The text and paths of a node that `{$name}` is put into, and its actions' text.
+    private static IEnumerable<string> Texts(UiNode node) =>
+        new[] { node.Text, node.Tooltip, node.Title, node.Placeholder, node.Bind, node.Scope }
+            .Concat(node.Options).Concat(node.Args.Values).Concat(node.Bindings.Values).Concat(node.Params.Values)
+            .Concat(node.Actions.SelectMany(UiParams.Texts));
 
     private static bool Cycles(UiLayoutRecord layout, string start)
     {
@@ -331,27 +395,50 @@ internal static class UiContentChecks
             if (!records.TryGet(id, out ScreenRecord screen) || !records.TryGet(screen.Layout.Id, out UiLayoutRecord layout)) continue;
             Type? type = screen.ViewModel.Length > 0 && viewModels.TryFind(screen.ViewModel, out var entry) ? entry.Type : null;
             if (screen.ViewModel.Length > 0 && type == null) continue;   // the screen check said so
-            var tree = new LayoutTree(layout);
-            CheckPaths(records, id, screen, layout, tree, "", type);
+            var tree = new LayoutTree(layout, records);
+            CheckPaths(records, id, screen, tree, "", type, new List<Type?>());
         }
     }
 
-    private static void CheckPaths(RecordStore records, RecordId id, ScreenRecord screen, UiLayoutRecord layout, LayoutTree tree, string parent, Type? source)
+    // `outer`: the types of the scopes around `source` (`$parent.`, `$root.`; issue #347), outermost first.
+    private static void CheckPaths(RecordStore records, RecordId id, ScreenRecord screen, LayoutTree tree, string parent, Type? source, List<Type?> outer)
     {
-        foreach (var (name, node) in tree.ChildrenOf(parent))
+        foreach (var (name, written) in tree.ChildrenOf(parent))
         {
+            var node = written;
             Type? rows = null;
+            // A `scope`: the node and what is inside it read from there.
+            Type? nodeSource = source;
+            bool scoped = node.Scope.Length > 0 && source != null;
+            if (scoped)
+            {
+                if (!Walk(source, outer, node.Scope, out var leaf, out string? problem))
+                {
+                    Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' reads its scope from '{node.Scope}': {problem}");
+                    continue;
+                }
+                if (leaf == null) continue;   // read from a scope that cannot be told: nothing below is checked
+                if (leaf.IsValueType || leaf == typeof(string))
+                {
+                    Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' reads its scope from '{node.Scope}', " +
+                                              $"a {leaf.Name}: a scope is an object whose members its paths name");
+                    continue;
+                }
+                outer.Add(source);
+                nodeSource = leaf;
+            }
             foreach (var (target, path) in UiBindings.Of(node).Concat(node.Args.Select(a => ("arg " + a.Key, a.Value))))
             {
-                if (source == null)
+                if (nodeSource == null)
                 {
                     Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                               $"{target} to '{path}', and the screen names no view-model");
                     continue;
                 }
-                if (!BindingPaths.TryWalk(source, path, out _, out var leaf, out string? problem))
+                if (!Walk(nodeSource, outer, path, out var leaf, out string? problem))
                     Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                               $"{target} to '{path}': {problem}");
+                else if (leaf == null) { if (target == UiBindings.Rows) rows = typeof(object); }
                 else if (target == UiBindings.Rows)
                 {
                     if (!typeof(IList).IsAssignableFrom(leaf))
@@ -364,14 +451,58 @@ internal static class UiContentChecks
                                               $"{target} to '{path}', a {leaf.Name}: a binding reads a number, a flag, text or an object");
                 // A form widget writes what the player sets back to its binding (issue #340): a path
                 // that cannot be written shows the value and forgets every change, which is a warning.
-                else if (target == UiBindings.Written(node.Widget) && !BindingPaths.IsWritable(source, path, out string? readOnly))
+                else if (target == UiBindings.Written(node.Widget) && !IsWritable(nodeSource, outer, path, out string? readOnly))
                     Log.Warn(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                              $"{target} to '{path}': {readOnly}, so what the player changes is not kept");
             }
-            // A row template's paths are into its row, not the view-model; a plain IList's rows can't be told.
-            if (rows != null) { if (rows != typeof(object)) CheckPaths(records, id, screen, layout, tree, name, rows); }
-            else CheckPaths(records, id, screen, layout, tree, name, source);
+            // A row template's paths are into its row, not the view-model, with the view-model around it;
+            // a plain IList's rows can't be told.
+            if (rows != null)
+            {
+                if (rows != typeof(object))
+                {
+                    outer.Add(nodeSource);
+                    CheckPaths(records, id, screen, tree, name, rows, outer);
+                    outer.RemoveAt(outer.Count - 1);
+                }
+            }
+            else CheckPaths(records, id, screen, tree, name, nodeSource, outer);
+            if (scoped) outer.RemoveAt(outer.Count - 1);
         }
+    }
+
+    // The type `path` starts from — this scope's, one further out per `$parent.`, the view-model's for
+    // `$root.` — and where it ends. A scope that cannot be told (a plain IList's rows) passes.
+    private static bool Walk(Type? source, List<Type?> outer, string path, out Type? leaf, out string? problem)
+    {
+        leaf = null;
+        problem = null;
+        string rest = BindingScope.Split(path, out int up);
+        if (!From(source, outer, up, out var start, out problem)) return false;
+        if (start == null) return true;   // leaf null: not known
+        bool found = BindingPaths.TryWalk(start, rest, out _, out var end, out problem);
+        leaf = end;
+        return found;
+    }
+
+    private static bool IsWritable(Type? source, List<Type?> outer, string path, out string? problem)
+    {
+        string rest = BindingScope.Split(path, out int up);
+        if (!From(source, outer, up, out var start, out problem)) return false;
+        return start == null || BindingPaths.IsWritable(start, rest, out problem);
+    }
+
+    private static bool From(Type? source, List<Type?> outer, int up, out Type? start, out string? problem)
+    {
+        problem = null;
+        start = up == 0 ? source : up < 0 ? (outer.Count == 0 ? source : outer[0]) : up <= outer.Count ? outer[^up] : null;
+        if (up > outer.Count)
+        {
+            problem = up == 1 ? "there is no scope around this one: '$parent.' reaches out of a list's rows or a `scope`"
+                              : $"there are not {up} scopes around this one";
+            return false;
+        }
+        return true;
     }
 
     // Every '@key' any record says that no string table has: a warning each, at its line (issue #96,

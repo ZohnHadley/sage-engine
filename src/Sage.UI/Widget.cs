@@ -42,6 +42,10 @@ public abstract class Widget
     // Whatever the game hangs on it: the record id an inventory cell shows, a view-model (#98).
     public object? Data { get; set; }
 
+    // What its layout node's `actions` say to do when it is pressed (issue #344; carried on the widget
+    // since #347, so a row's copy and an included layout's node have them too). Null: none.
+    internal IReadOnlyList<IAction>? Actions { get; set; }
+
     public Widget? Parent { get; private set; }
     public UiRoot? Root { get; private set; }
 
