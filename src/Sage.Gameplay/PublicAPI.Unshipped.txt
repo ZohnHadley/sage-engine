@@ -1,4 +1,8 @@
 #nullable enable
+Sage.Gameplay.LightPart.Cone -> float
+Sage.Gameplay.LightPart.InnerCone -> float
+Sage.Gameplay.LightPart.Pattern -> string!
+Sage.Gameplay.LightPart.PatternRate -> float
 Sage.Gameplay.CueRecord.Decal -> Sage.Core.RecordRef<Sage.Simulation.DecalRecord!>
 Sage.Gameplay.CueTriggered.Normal.get -> System.Numerics.Vector3
 Sage.Gameplay.CueTriggered.Normal.init -> void

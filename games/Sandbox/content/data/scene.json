@@ -516,7 +516,9 @@
     "sizeStart": 0.07, "sizeEnd": 0.01,
     // White-hot, cooling to orange as it fades. (Written as packed numbers until issue #22, these two
     // had their bytes in the wrong order and drew a pale blue spark turning green.)
-    "colourStart": "#FFE380", "colourEnd": "#FF7F0000"
+    "colourStart": "#FFE380", "colourEnd": "#FF7F0000",
+    // They skitter off the floor rather than falling through it (issue 4n-6): a ray each a frame.
+    "collision": "Bounce", "restitution": 0.35, "friction": 0.3
   },
   {
     "type": "particle", "id": "blood",
@@ -604,7 +606,21 @@
     "skyColor": [0.26, 0.29, 0.27],
     "sunScale": 0.45, "ambientScale": 0.7,
     "fogTint": [0.55, 0.6, 0.6], "skyTint": [0.5, 0.55, 0.55], "fogStartScale": 0.4, "fogEndScale": 0.5,
-    "sound": "rain_loop", "soundVolume": 0.55
+    "sound": "rain_loop", "soundVolume": 0.55, "shelteredVolume": 0.25
+  },
+  {
+    // Rain with lightning (issue #311): a flash on the sky and the ambient every so often, outdoors only, and
+    // the thunder some seconds after by how far off it struck. `weather storm 6`.
+    "type": "weather", "id": "storm", "label": "storm",
+    "particles": "raindrop", "rate": 1400,
+    "volume": [26, 14, 26], "ceiling": 10,
+    "wind": [-6, 0, 2.5],
+    "fogColor": [0.22, 0.24, 0.24], "fogStart": 6, "fogEnd": 75,
+    "skyColor": [0.18, 0.2, 0.2],
+    "sunScale": 0.3, "ambientScale": 0.55,
+    "fogTint": [0.45, 0.5, 0.5], "skyTint": [0.4, 0.45, 0.45], "fogStartScale": 0.3, "fogEndScale": 0.4,
+    "sound": "rain_loop", "soundVolume": 0.8, "shelteredVolume": 0.2,
+    "lightningRate": 6, "lightningFlash": 0.9, "thunder": "thunder", "thunderVolume": 0.9
   },
   {
     "type": "weather", "id": "snow", "label": "snow",
@@ -615,6 +631,19 @@
     "skyColor": [0.58, 0.61, 0.66],
     "sunScale": 0.7, "ambientScale": 1.15,
     "fogTint": [1.0, 1.05, 1.15], "skyTint": [0.85, 0.9, 0.95], "fogStartScale": 0.5, "fogEndScale": 0.55
+  },
+
+  // What the weather can be, by the clock and the region (issue #311). A world draws from its pattern every
+  // `slotHours` game hours and rolls into the draw over `transition` seconds; a pick names the hours it can
+  // begin in (wrapping past midnight) and, optionally, a region. Nothing uses it until a scene says
+  // `"environment": { "weatherPattern": "sandbox:changeable" }` (and `"weatherRegion": "north"` for snow).
+  {
+    "type": "weather_pattern", "id": "changeable", "label": "changeable", "slotHours": 3, "transition": 40, "picks": [
+      { "weather": "clear", "weight": 5, "from": 6, "to": 20 },
+      { "weather": "rain", "weight": 2 },
+      { "weather": "storm", "weight": 1, "from": 14, "to": 24 },
+      { "weather": "snow", "weight": 6, "region": "north" }
+    ]
   },
 
   // ---- the sky (engine issues 4h-2, 4h-5; phase 4h's exit, 4h-7) ------------------------------------
@@ -675,6 +704,11 @@
     "type": "sound", "id": "pickup",
     "variations": ["audio/pickup.wav"],
     "volume": 0.6, "bus": "Ui", "maxDistance": 0, "priority": 4
+  },
+  {
+    "type": "sound", "id": "thunder",
+    "variations": ["audio/thunder.wav"],
+    "volume": 0.9, "bus": "Ambient", "maxDistance": 0, "maxInstances": 3
   },
   {
     // 2D on purpose: rain is not *somewhere*, it is everywhere, so it neither pans nor fades (11 \u00a73).

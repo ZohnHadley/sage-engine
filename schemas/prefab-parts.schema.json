@@ -1474,6 +1474,31 @@
           "description": "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night) (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "pattern": {
+          "description": "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. SetPattern changes it. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "patternRate": {
+          "description": "Letters of the pattern a second; 0 = 10, Quake's. Unit: 1/s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "cone": {
+          "description": "Spot light: the cone's half-angle around the entity's forward; 0 = all round (a point light) Unit: deg. Range: 0 to 179. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
+        },
+        "innerCone": {
+          "description": "Spot light: full strength inside this half-angle, fading to the cone's edge; 0 = three quarters of the cone. Unit: deg. Range: 0 to 179. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
         }
       },
       "additionalProperties": false,

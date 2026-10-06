@@ -182,7 +182,13 @@ public class DuskToNightExitTests
                 Assert.True(app.Engine.Saves.Save("dusk"));
 
                 clock.Hour = 9; clock.Day = 7; clock.Sky = default; clock.Scale = 0;
-                foreach (var lamp in lamps) world.Get<PointLight>(lamp).Off = true;
+                foreach (var lamp in lamps)
+                {
+                    // Lit, the machine set it flickering (SetPattern "torch", issue #314): saved with the switch.
+                    Assert.Equal("torch", world.Get<PointLight>(lamp).Pattern);
+                    world.Get<PointLight>(lamp).Off = true;
+                    world.Get<PointLight>(lamp).Pattern = null;
+                }
                 Assert.True(app.Engine.Saves.Load("dusk"));
 
                 clock = WorldClock.Of(world);
@@ -196,6 +202,7 @@ public class DuskToNightExitTests
                 lamps = Lamps(world);
                 Assert.Equal(2, lamps.Count);
                 Assert.All(lamps, lamp => Assert.True(world.Get<PointLight>(lamp).Lit, "a lamp came back dark"));
+                Assert.All(lamps, lamp => Assert.Equal("torch", world.Get<PointLight>(lamp).Pattern));
                 var expected = SkyRules.Evaluate(app.Records.Get<SkyRecord>(day), clock.Hour);
                 Assert.Equal(expected.AmbientSky, environment.AmbientSky);
                 Assert.Equal(expected.Horizon, environment.ClearColor);

@@ -97,6 +97,9 @@ def main():
     write('cast_fire', tone(220, 0.45, release=0.18, harmonics=(1.0, 0.4, 0.2), noise=0.25, sweep=1.6))
     write('boom_fire', tone(70, 0.7, release=0.35, harmonics=(1.0, 0.5), noise=0.7, sweep=-0.4))
 
+    # Thunder: a long low rumble (the weather's lightning cue, issue #311).
+    write('thunder', tone(48, 2.6, release=1.9, harmonics=(1.0, 0.6, 0.3), noise=0.85, sweep=-0.35))
+
     # Items. Nothing for screens yet: a menu sound needs a game to say which sound a screen uses
     # (13 §3), and a WAV nothing plays is dead weight, not a head start.
     write('pickup', tone(660, 0.18, release=0.09, harmonics=(1.0, 0.5, 0.25)))

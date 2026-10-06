@@ -900,9 +900,10 @@ public sealed class Renderer : IDisposable
     {
         var s = ctx.Snapshot;
         ref var view = ref s.Views[ctx.View];
-        var lights = s.Lights.AsSpan().Slice(view.LightStart, view.LightCount);
-        DrawItems(s, view, lights, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
-        DrawSprites(s, view, lights, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
+        // The view's lights, bucketed by cell (issue #314): each draw looks at the lamps that reach it.
+        _lightGrid.Build(s.Lights.AsSpan().Slice(view.LightStart, view.LightCount));
+        DrawItems(s, view, _lightGrid, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
+        DrawSprites(s, view, _lightGrid, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
     }
 
     // `sage:debug` (06 §3.4, pass 5): debug geometry, over everything the world drew and under the UI.
@@ -1047,7 +1048,9 @@ public sealed class Renderer : IDisposable
         return m;
     }
 
-    private void DrawItems(RenderSnapshot s, in RenderView view, ReadOnlySpan<LightSample> lights, int from, int to, bool wire, ref RenderStats stats)
+    private readonly LightGrid _lightGrid = new();
+
+    private void DrawItems(RenderSnapshot s, in RenderView view, LightGrid lights, int from, int to, bool wire, ref RenderStats stats)
     {
         for (int k = from; k < to; k++)
         {
@@ -1063,7 +1066,7 @@ public sealed class Renderer : IDisposable
             // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
             // translation is where it is relative to the camera — the same frame the view's lights are in.
             var at = new System.Numerics.Vector3(item.World.M41, item.World.M42, item.World.M43);
-            int lit = LightRules.Nearest(lights, at, _lights);
+            int lit = lights.Nearest(at, _lights);
             m.Effect.SetLights(_lights.AsSpan(0, lit));
             if (lit > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = lit;
             var part = Mesh(item.Mesh).Parts[item.Part];
@@ -1109,7 +1112,7 @@ public sealed class Renderer : IDisposable
     // A run of sprites sharing a material and a texture is one draw, split where the lamps lighting them
     // change (06 §3.9): a draw carries one set of four, so sprites far from any lamp still batch, and
     // only the ones in a lamp's reach pay for their own lights.
-    private void DrawSprites(RenderSnapshot s, in RenderView view, ReadOnlySpan<LightSample> lights, int from, int to, bool wire, ref RenderStats stats)
+    private void DrawSprites(RenderSnapshot s, in RenderView view, LightGrid lights, int from, int to, bool wire, ref RenderStats stats)
     {
         int run = from;
         while (run < to)
@@ -1130,18 +1133,18 @@ public sealed class Renderer : IDisposable
                 m.Drawn += end - run;
                 m.Effect.World?.SetValue(Matrix.Identity);   // sprite vertices are already in camera-relative space
                 m.Effect.Tint?.SetValue(Vector4.One);
-                bool lit = m.Effect.LightCount != null && lights.Length > 0;
+                bool lit = m.Effect.LightCount != null && lights.Count > 0;
                 int start = run;
                 while (start < end)
                 {
                     int stop = end, count = 0;
                     if (lit)
                     {
-                        count = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[start]]), _lights);
+                        count = lights.Nearest(LitAt(s.Sprites[s.SpriteOrder[start]]), _lights);
                         stop = start + 1;
                         while (stop < end)
                         {
-                            int c = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[stop]]), _nextLights);
+                            int c = lights.Nearest(LitAt(s.Sprites[s.SpriteOrder[stop]]), _nextLights);
                             if (!LightRules.SameSet(_lights.AsSpan(0, count), _nextLights.AsSpan(0, c))) break;
                             stop++;
                         }
