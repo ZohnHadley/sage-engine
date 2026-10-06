@@ -261,6 +261,7 @@ internal sealed class MeshExtract : ISystem
                         item.SortKey = RenderSortKey.Make(material.Pass, mr.Layer, materialId, meshId, Vector3.Dot(center, view.Forward), view.Far);
                         item.View = v;
                         item.BoneStart = item.BoneCount = 0;   // pooled: the slot may have been a skinned draw
+                        item.Morph = 0;
                     }
                 }
             }
@@ -354,12 +355,15 @@ internal sealed class SkinnedMeshExtract : ISystem
                 int id = entities.EntityAt(n).Id;
                 var skin = mesh.Skin;
                 ReadOnlySpan<System.Numerics.Matrix4x4> joints = default, inverseBind = default;
+                int morph = 0;
                 if (skin != null)
                 {
                     inverseBind = skin.InverseBind;
                     joints = skin.RestJoints;
                     if (_poses.TryGet(id, out var pose))
                     {
+                        // Morph targets move the vertices on the CPU before the GPU skins them (issue #363).
+                        if (mesh.Morphs != null) morph = _renderer.Morphed.Update(id, meshId, mesh, pose);
                         int count = skin.RestJoints.Length;
                         if (_skinJoints.Length < count) _skinJoints = new System.Numerics.Matrix4x4[count];
                         if (SkinPoses.ToSkinOrder(pose, _skinJoints.AsSpan(0, count))) joints = _skinJoints.AsSpan(0, count);
@@ -377,11 +381,12 @@ internal sealed class SkinnedMeshExtract : ISystem
                     Pose = g[n].Interpolated(alpha).ToMatrix(),   // System.Numerics → MonoGame (implicit)
                     Hidden = hiding ? id : 0,
                     Casts = ShadowMath.Casts(material.Pass, material.CastShadows),
-                    Environment = _environment, LodView = lodView,
+                    Environment = _environment, LodView = lodView, Morph = morph,
                 };
                 SkinnedExtract.Emit(ref draws, joints, inverseBind, mesh.Name);
             }
         }
+        _renderer.Morphed.Sweep();
     }
 
     // One renderer's views and items, for SkinnedExtract.Emit.
@@ -397,6 +402,7 @@ internal sealed class SkinnedMeshExtract : ISystem
         public bool Casts;   // drawn into the sun's view too (4h-4)
         public RenderEnvironment Environment;
         public int LodView;  // RenderSnapshot.LodView: the camera the sun's view measures draw distance from
+        public int Morph;    // Renderer.Morphed's handle for this renderer's morphed vertices (issue #363), 0: none
 
         public readonly int Views => Snapshot.Views.Count;
 
@@ -455,6 +461,7 @@ internal sealed class SkinnedMeshExtract : ISystem
                 bool skinned = part.Skinned && boneCount > 0;
                 item.BoneStart = skinned ? boneStart : 0;
                 item.BoneCount = skinned ? boneCount : 0;
+                item.Morph = skinned ? Morph : 0;
             }
         }
     }

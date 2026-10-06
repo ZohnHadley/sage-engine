@@ -21,7 +21,7 @@ internal sealed record GltfFeature(string Id, GltfSupport Support, string Descri
 // file to it. `Features` is the single source: the checks below name rows of it, the error a modder sees is
 // the row's message, and a guide's table is copied from it (`Table`). The check reads the file's JSON chunk
 // itself, before SharpGLTF decodes anything, so a feature the library would quietly decode wrongly (sparse
-// accessors, morph targets, compressed geometry) is caught by name.
+// accessors, compressed geometry) is caught by name.
 internal static class GltfSubset
 {
     public const string BinaryGlb = "glb";
@@ -61,6 +61,7 @@ internal static class GltfSubset
         new(SecondUv, GltfSupport.Supported, "TEXCOORD_1: a second UV set (lightmaps), kept beside the vertices as `Uv1`", "read"),
         new("skinning", GltfSupport.Supported, "One skin of up to 64 joints, JOINTS_0 and WEIGHTS_0 (four influences per vertex)", "read"),
         new("primitive-triangles", GltfSupport.Supported, "Primitive modes TRIANGLES, TRIANGLE_STRIP and TRIANGLE_FAN", "read"),
+        new(MorphTargets, GltfSupport.Supported, "Morph targets (blend shapes): POSITION and NORMAL deltas, named by the mesh's extras.targetNames, at the mesh's weights; a skinned mesh's are animated by clips' weight tracks (TANGENT deltas are not read)", "read"),
         new(Materials, GltfSupport.Ignored, "The file's materials and textures: the material record named by whatever draws the mesh decides", "ignored"),
         new(Animations, GltfSupport.Ignored, "Animation clips are read by the animation reader, not the mesh reader; cameras and lights are not read", "ignored"),
         new(ExtraUvOrColour, GltfSupport.Ignored, "TEXCOORD_2 and up, COLOR_1 and up: dropped, with a warning", "ignored"),
@@ -68,7 +69,6 @@ internal static class GltfSubset
         new(NotGltf, GltfSupport.Rejected, "A file that is not glTF 2.0 (bad header, broken JSON chunk)", "is not a readable glTF 2.0 binary"),
         new(TextGltf, GltfSupport.Rejected, "Text .gltf with its buffers in separate files", "is a text .gltf; only the binary .glb is read, so export it as 'glTF Binary (.glb)' with the buffers embedded"),
         new(ExternalBuffers, GltfSupport.Rejected, "A buffer stored in a separate file (a `uri` that is not a data: URI)", "keeps a buffer in a separate file; embed it by exporting 'glTF Binary (.glb)'"),
-        new(MorphTargets, GltfSupport.Rejected, "Morph targets (blend shapes)", "has morph targets, which the engine cannot draw; bake the shape you want into the mesh or use a skin"),
         new(SparseAccessors, GltfSupport.Rejected, "Sparse accessors", "has sparse accessors, which are not read; export without 'sparse' accessors"),
         new(Draco, GltfSupport.Rejected, "KHR_draco_mesh_compression", "uses Draco mesh compression (KHR_draco_mesh_compression); export without compression"),
         new(Meshopt, GltfSupport.Rejected, "EXT_meshopt_compression / KHR_meshopt_compression", "uses meshopt compression; export without compression"),
@@ -82,7 +82,7 @@ internal static class GltfSubset
 
     private static GltfFeature Feature(string id) => Features.First(f => f.Id == id);
 
-    // "Model 'x': glTF feature 'morph-targets' is not supported: has morph targets ...". One per feature per file.
+    // "Model 'x': glTF feature 'draco' is not supported: uses Draco mesh compression ...". One per feature per file.
     public static string Error(string id, string model, string? detail = null) =>
         $"Model '{model}': glTF feature '{id}' is not supported: the file {Feature(id).Message}" + (detail == null ? "" : $" ({detail})");
 
@@ -160,7 +160,6 @@ internal static class GltfSubset
                     {
                         if (prim.TryGetProperty("mode", out var mode) && mode.TryGetInt32(out int m) && m is >= 0 and <= 3)
                             Add(PrimitiveMode, m switch { 0 => "POINTS", 1 => "LINES", 2 => "LINE_LOOP", _ => "LINE_STRIP" });
-                        if (ArrayOf(prim, "targets") is { } targets && targets.GetArrayLength() > 0) Add(MorphTargets);
                         if (prim.TryGetProperty("extensions", out var ex) && ex.ValueKind == JsonValueKind.Object)
                         {
                             if (ex.TryGetProperty("KHR_draco_mesh_compression", out _)) Add(Draco);

@@ -757,3 +757,18 @@ Sage.Simulation.RootMotionMode.None = 0 -> Sage.Simulation.RootMotionMode
 Sage.Simulation.RootMotionMode.Rotation = 1 -> Sage.Simulation.RootMotionMode
 Sage.Simulation.RootMotionMode.Translation = 2 -> Sage.Simulation.RootMotionMode
 static Sage.Simulation.Animators.TryTakeRootMotion(Sage.Simulation.World! world, Sage.Simulation.Entity entity, out System.Numerics.Vector3 travel, out bool vertical) -> bool
+Sage.Simulation.AnimationClip.AnimatesMorph(int target) -> bool
+Sage.Simulation.AnimationClip.AnimationClip(string! name, int jointCount, int morphTargetCount, float duration) -> void
+Sage.Simulation.AnimationClip.MorphTargetCount.get -> int
+Sage.Simulation.AnimationClip.SetMorphWeights(int target, Sage.Simulation.AnimationInterpolation interpolation, float[]! times, float[]! values) -> void
+Sage.Simulation.AnimGraphRecord.Morphs -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.Simulation.JointMask.MorphWeights.get -> System.ReadOnlySpan<float>
+Sage.Simulation.JointMask.SetMorph(string! target, float weight) -> bool
+Sage.Simulation.Skeleton.MorphIndexOf(string! name) -> int
+Sage.Simulation.Skeleton.MorphTargetCount.get -> int
+Sage.Simulation.Skeleton.MorphTargetName(int target) -> string!
+Sage.Simulation.Skeleton.RestMorphWeights.get -> System.ReadOnlySpan<float>
+Sage.Simulation.Skeleton.Skeleton(string![]! names, int[]! parents, Sage.Simulation.Pose[]! restPose, System.Numerics.Matrix4x4[]! inverseBind, string![]! morphTargets, float[]? restMorphWeights) -> void
+Sage.Simulation.SkeletonPose.MorphCount.get -> int
+Sage.Simulation.SkeletonPose.MorphWeights.get -> System.Span<float>
+static Sage.Simulation.Animators.GetMorphWeight(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! target) -> float?
