@@ -79,3 +79,4 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+Sage.Simulation.PostEffectRecord.Depth -> bool

@@ -61,6 +61,11 @@
       "description": "A cvar that switches it: a bool, or a number where 0 is off. Empty: on whenever r_post is. (string, default \"\")",
       "default": "",
       "type": "string"
+    },
+    "depth": {
+      "description": "Reads the scene's depth: the engine hands it SceneDepth (z/w, 1 is the sky) and DepthParams (near, far, orthographic) (bool, default false)",
+      "default": false,
+      "type": "boolean"
     }
   },
   "additionalProperties": false

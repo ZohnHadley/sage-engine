@@ -18,11 +18,38 @@
     "params": {
       "Exposure": 0, "Contrast": 1.05, "Saturation": 1.05, "ColorFilter": [1, 1, 1],
       "NightColor": [0.45, 0.6, 1.0], "NightStrength": 0.55,
-      "VignetteStrength": 0.35, "VignetteRadius": 0.45, "VignetteSoftness": 0.55
+      "VignetteStrength": 0.35, "VignetteRadius": 0.45, "VignetteSoftness": 0.55,
+      "BloomThreshold": 0.9, "BloomKnee": 0.4, "BloomIntensity": 0.5, "HdrExposure": 0, "FxaaSpan": 8
     }
   },
   { "type": "material", "id": "post_grade", "base": "post_copy", "technique": "Grade" },
   { "type": "material", "id": "post_vignette", "base": "post_copy", "technique": "Vignette" },
+
+  // The engine's own steps (issue #316), which no post_effect names: the chain draws them when `r_bloom`,
+  // `r_hdr` or `r_aa fxaa` asks. A game tunes them by overriding these materials' params (BloomThreshold,
+  // BloomKnee, BloomIntensity, HdrExposure, FxaaSpan). The bloom and FXAA sample their source smoothly.
+  { "type": "material", "id": "post_bloom_prefilter", "base": "post_copy", "technique": "BloomPrefilter", "sampler": { "filter": "Linear", "address": "Clamp" } },
+  { "type": "material", "id": "post_bloom_down", "base": "post_copy", "technique": "BloomDown", "sampler": { "filter": "Linear", "address": "Clamp" } },
+  { "type": "material", "id": "post_bloom_up", "base": "post_copy", "technique": "BloomUp", "sampler": { "filter": "Linear", "address": "Clamp" } },
+  { "type": "material", "id": "post_tonemap", "base": "post_copy", "technique": "Tonemap" },
+  { "type": "material", "id": "post_fxaa", "base": "post_copy", "technique": "Fxaa", "sampler": { "filter": "Linear", "address": "Clamp" } },
+
+  // The depth hook's sample (issue #316): a haze that thickens with distance, reading the scene's depth
+  // (shaders/depth_haze.fx). No engine post_effect uses it; the Sandbox's does, and a game's can:
+  //   { "type": "post_effect", "id": "haze", "material": "sage:post_depth_haze", "order": 50, "depth": true }
+  {
+    "type": "material",
+    "id": "post_depth_haze",
+    "effect": "shaders/depth_haze.mgfxo",
+    "technique": "Haze",
+    "pass": "Opaque",
+    "cull": "None",
+    "depthTest": false,
+    "depthWrite": false,
+    "fog": false,
+    "sampler": { "filter": "Point", "address": "Clamp" },
+    "params": { "HazeColor": [0.62, 0.68, 0.76], "HazeStart": 15, "HazeDensity": 0.012, "HazeSky": 0 }
+  },
 
   // Colour grade and exposure, with a blue night tint from the sky (none without a sky).
   { "type": "post_effect", "id": "grade", "material": "sage:post_grade", "order": 100, "cvar": "r_post_grade" },

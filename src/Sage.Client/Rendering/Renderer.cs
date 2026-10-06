@@ -76,7 +76,7 @@ internal sealed class MeshData
 //
 // **One world draws to the screen** (`ScreenWorld`): with several worlds, each used to clear the back
 // buffer and the last one won. Now the others draw only their views into render targets.
-public sealed class Renderer : IDisposable
+public sealed partial class Renderer : IDisposable
 {
     private readonly GraphicsDevice _device;
     private readonly ContentService _content;
@@ -186,7 +186,7 @@ public sealed class Renderer : IDisposable
 
     // The r_stats line's tail: the post chain, when it drew last frame (issue 4h-6).
     private string PostStats() => LastFrame.PostSteps == 0 ? "" :
-        $"; post {LastFrame.PostSteps} step(s), scene {_sceneSize.X}x{_sceneSize.Y}";
+        $"; post {LastFrame.PostSteps} step(s), scene {_sceneSize.X}x{_sceneSize.Y}" + PostOptionStats();
 
     // ---- Screen and render targets (issue #77) ----
 
@@ -590,6 +590,7 @@ public sealed class Renderer : IDisposable
             else if (_bound != NotBound) _device.SetRenderTarget(null);
         }
         var back = TargetSize(RenderViewPlan.Screen);
+        if (_toScene && _post.NeedsDepth) DrawSceneDepth(s);   // for effects that read it (issue #316)
         if (_toScene)
         {
             // The scene is drawn; from here "the screen" is the back buffer again, which the chain binds.
@@ -707,24 +708,7 @@ public sealed class Renderer : IDisposable
         _stats.Triangles += 2;
     }
 
-    // ---- Post-processing (issue 4h-6) ----
-
-    // Plans this frame's chain (PostChain, PostChainPlan): true when it is on, with `sage:scene` declared
-    // at the render scale's size (colour and depth: the views draw into it as into the screen) and the
-    // ping-pong pair beside it (colour only) when a step writes them.
-    private bool PreparePost()
-    {
-        if (!_post.Prepare(TargetSize(RenderViewPlan.Screen))) return false;
-        _sceneSize = _post.SceneSize;
-        _sceneTarget = _targets.Declare(PostChainPlan.SceneTarget, _sceneSize.X, _sceneSize.Y, SurfaceFormat.Color, DepthFormat.Depth24);
-        foreach (var step in _post.Steps)
-            if (step.Destination is PostTarget.Post0 or PostTarget.Post1)
-                _targets.Declare(PostChainPlan.TargetName(step.Destination), _sceneSize.X, _sceneSize.Y, SurfaceFormat.Color, DepthFormat.None);
-        return true;
-    }
-
-    private int PostTargetId(PostTarget target) =>
-        target == PostTarget.Scene ? _sceneTarget : _targets.Id(PostChainPlan.TargetName(target));
+    // ---- Post-processing (issue 4h-6; the chain itself is in Renderer.Post.cs) ----
 
     // Where a view draws in its target: its viewport, scaled down with the scene when the screen's
     // views draw into `sage:scene` at a render scale below 1 (a split screen's halves stay halves).
@@ -738,59 +722,6 @@ public sealed class Renderer : IDisposable
         int x0 = (int)MathF.Round(r.X * sx), y0 = (int)MathF.Round(r.Y * sy);
         int x1 = (int)MathF.Round(r.Right * sx), y1 = (int)MathF.Round(r.Bottom * sy);
         return new Rectangle(x0, y0, Math.Max(1, x1 - x0), Math.Max(1, y1 - y0));
-    }
-
-    // A full-screen quad, already in clip space: what post.fx's vertex shader passes through.
-    private static readonly VertexPositionTexture[] PostQuad =
-    {
-        new(new Vector3(-1f, 1f, 0f), new Vector2(0f, 0f)),
-        new(new Vector3(1f, 1f, 0f), new Vector2(1f, 0f)),
-        new(new Vector3(-1f, -1f, 0f), new Vector2(0f, 1f)),
-        new(new Vector3(1f, -1f, 0f), new Vector2(1f, 1f)),
-    };
-
-    // `sage:post`: the frame's chain, a full-screen draw a step, each reading the target the one before
-    // wrote and the last writing the back buffer at full size (the UI draws over it in Overlay). An
-    // effect's material is drawn with its own technique, params and sampler (point by default, so a
-    // render scale upscales as big pixels); the engine sets Source, SourceSize and Night.
-    internal void DrawPostChain(RenderContext ctx)
-    {
-        var steps = _post.Steps;
-        if (steps.Length == 0) return;
-        float night = _post.Night(ctx.World);
-        for (int i = 0; i < steps.Length; i++)
-        {
-            var step = steps[i];
-            var source = _targets.Texture(PostTargetId(step.Source));
-            Rebind(step.Destination == PostTarget.Screen ? RenderViewPlan.Screen : PostTargetId(step.Destination));
-            var m = step.Effect < 0 ? null : Materials.Get(_post.Material(step.Effect));
-            if (m == null || m.IsError)
-            {
-                // A plain copy: the render scale's upscale with no effect on, or an effect whose material
-                // did not build (the material cache logged why) - the picture goes through unchanged.
-                DrawFullScreen(source, null, null, SamplerState.PointClamp);
-                continue;
-            }
-
-            MaterialCache.Apply(_device, m, wireframe: false);
-            _device.BlendState = BlendState.Opaque;
-            _device.DepthStencilState = DepthStencilState.None;
-            _device.RasterizerState = RasterizerState.CullNone;
-            var effect = m.Effect.Effect;
-            effect.Parameters["Source"]?.SetValue(source);
-            effect.Parameters["SourceSize"]?.SetValue(new Vector4(source.Width, source.Height, 1f / source.Width, 1f / source.Height));
-            effect.Parameters["Night"]?.SetValue(night);
-            foreach (var pass in m.Technique.Passes)
-            {
-                pass.Apply();
-                _device.DrawUserPrimitives(PrimitiveType.TriangleStrip, PostQuad, 0, 2);
-                _stats.DrawCalls++;
-                _stats.Triangles += 2;
-            }
-            if (m.DrawnFrame != _frame) { m.DrawnFrame = _frame; m.Drawn = 0; }
-            m.Drawn++;
-        }
-        _current = -1;   // the chain set its own device state
     }
 
     // Plans the frame (RenderViewPlan): the views' draw order, and each view's run of items and sprites
@@ -1226,6 +1157,12 @@ internal sealed class RendererCVars
     public readonly CVar<bool> PostGrade;
     public readonly CVar<bool> PostVignette;
 
+    // HDR, bloom and anti-aliasing (issue #316). Each turns the chain on by itself, like r_scale; HDR and
+    // bloom are off by default until they have been tried on more GPUs (decision 6).
+    public readonly CVar<bool> Hdr;
+    public readonly CVar<bool> Bloom;
+    public readonly CVar<AntiAliasing> Aa;
+
     // Texture filtering (issue #317): the anisotropy smooth-filtered materials sample with.
     public readonly CVar<int> Anisotropy;
     // The per-frame upload budget for streamed content (05 §3.4, issue #308).
@@ -1260,6 +1197,15 @@ internal sealed class RendererCVars
             "The colour grade and exposure post effect (sage:grade), with the sky's night tint; needs r_post 1.");
         PostVignette = cvars.Register("r_post_vignette", true, CVarFlags.Archive,
             "The vignette post effect (sage:vignette); needs r_post 1.");
+        Hdr = cvars.Register("r_hdr", false, CVarFlags.Archive,
+            "HDR (issue #316): the scene is drawn into a half-float sage:scene and tonemapped (ACES) to the screen; a device " +
+            "without half-float targets falls back to 8-bit colour with a warning.");
+        Bloom = cvars.Register("r_bloom", false, CVarFlags.Archive,
+            "Bloom (issue #316): the scene's bright parts, blurred down and back up a chain of half-size targets (sage:bloom0..), " +
+            "added before the tonemap. Brightest with r_hdr 1.");
+        Aa = cvars.Register("r_aa", AntiAliasing.Off, CVarFlags.Archive,
+            "Anti-aliasing (issue #316): off, fxaa (a post step, last in the chain), or msaa2/msaa4/msaa8 (sage:scene drawn with " +
+            "that many samples a pixel; 2, 4 or 8 also work). A device that has fewer samples uses what it has, with a warning.");
         Anisotropy = cvars.Register("r_anisotropy", 4, CVarFlags.Archive,
             "Anisotropic filtering for materials with a Linear or Anisotropic sampler (issue #317): up to this many taps along a " +
             "surface seen at a slant, so a floor stays sharp into the distance; 1 is plain trilinear. Point-sampled pixel art is not affected.",
