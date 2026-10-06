@@ -190,7 +190,8 @@ public sealed class CVarRegistry
 Rules:
 - `Cheat` cvars can only change when `sv_cheats 1`.
 - `DevOnly` cvars and commands exist only in dev builds (`Debug`/`Development`); they're not compiled into `Shipping`.
-- Console availability per build is defined in 01 §3.2 (`con_enable` in `Shipping`).
+- Console availability per build is defined in 01 §3.2 (`con_enable` in `Shipping`). Shipping's console is the drop-down of #353, `DropDownConsole`, drawn by the client in the game UI's font (13 "As built (the Shipping console)").
+- `CVarRegistry.Version` moves whenever any cvar's value changes (#339), so a screen showing settings compares one number a frame instead of holding a handler on every cvar (test: RevertPutsBackWhatTheCvarsSay_DefaultsStagesTheDefaults_AndTheConsoleShowsAtOnce).
 - Game and mod cvars are prefixed with their game id (`sandbox_spawn_rate`).
 
 Built-in commands (engine): `help [name]`, `find <text>`, `cvarlist [prefix]`, `cmdlist`, `echo`, `exec <file>`, `log_level <cat|*> [level|default]`, `log_list`, `mem`, `crash` (`DevOnly`). Host/editor: `quit`, `stat <fps|mem|all|none>`, `clear`, `toggleconsole`. `profile_start`/`profile_stop` come with the profiler (§4.4).

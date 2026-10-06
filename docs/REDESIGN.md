@@ -75,14 +75,14 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | Sprites, sorting, tilemaps, 2D layer | ○ | | ● | ● | ○ | ● | ● | ◐ billboards and sprite sheets; no ortho, sorting layers or tilemaps |
 | Meshes, materials, lights, particles, weather | ● | ● | ● | ○ | ● | ○ | ● | ✅ |
 | **Render pass registry**, render targets, post-processing | ● | ● | ○ | ○ | ○ | ○ | ● | ❌ `Passes` is a private static array |
-| **UI toolkit**: widgets, layout, focus and gamepad navigation, styling, localisation | ● | ● | ● | ● | ● | ●● | ● | ◐ list-style `Screen`/`Panel` only; HUD hand-drawn |
+| **UI toolkit**: widgets, layout, focus and gamepad navigation, styling, localisation | ● | ● | ● | ● | ● | ●● | ● | ◐ `Sage.UI` widgets, layouts, styles, focus and gamepad navigation, TTF fonts, form widgets, localisation with non-Latin scripts, accessibility, the menus (4c, 4q); the legacy `Screen`/`Panel` layer still hosts a few panels (#350) |
 | Input: actions, gamepad, mouse picking, rebinding | ● | ● | ● | ● | ●● | ● | ● | ◐ actions, scripted input, rebinding (`bind`, `user://input.json`, a controls screen), several pads with rumble, mouse capture and `.sagedemo` replay done (4o); picking missing |
 | Navigation: grid now, navmesh later, groups | ● | ● | ● | | ●● | | ● | ◐ navmesh (#264) and grid A* inside Gameplay; groups missing |
 | Timers, tweens, state machines, conditions/actions | ● | ● | ● | ● | ● | ●● | ● | ❌ (only I/O `delay`) |
 | Large worlds and streaming | | | ○ | | ○ | | ● | ✅ (keep as an optional plugin) |
 | Audio (mixer, 3D, music) | ● | ● | ● | ● | ● | ● | ● | ✅ one-shots and loops, streamed OGG, music with crossfades, footsteps by surface, occlusion and reverb, doppler and cones, an audio panel (4o) |
 | Stats, effects, damage, inventory, factions, AI (BT) | ● | ● | ● | ○ | ● | ○ | ● | ◐ built but RPG-shaped and closed (§4.3) |
-| Dialogue and quest *models* | ○ | ○ | ● | | ○ | | ● | ◐ closed enums; screens in engine |
+| Dialogue and quest *models* | ○ | ○ | ● | | ○ | | ● | ◐ closed enums; screens in the RPG kit, reachable from play (4q) |
 | Spellmaker, readied spell, journal, Daggerfall sprite rules | | | | | | | ● | ✅ in `Sage.Kits.Rpg` since #27 (the sprite clip names are `gameplay_conventions`) |
 
 ● needs it · ●● leans on it hard · ○ nice to have · ✅ have · ◐ partial · ❌ missing
@@ -1059,6 +1059,10 @@ because it edits the live play world (`DevTools.cs:84-87`).
   *As built (issue #298, 2026-10-05).* The checker's vocabulary now includes output and game-event names (the
   registry dump has a `gameEvents` section), the checker has its own unit tests, run in CI, and the host's
   `-options` are read by `HostOptions.cs` under test (README, "Docs are checked"; design 01 §5.1).
+
+  *As built (issue #354, 2026-10-06).* A layer above the simulation adds a top-level section to the dump with
+  `Engine.DumpSections.Add(name, build)` in its `Init`: the client adds `screens`, each screen id it can make with the
+  plugin that registered it, and the checker reads it (test: ALayerAboveTheSimulationAddsASectionToTheRegistryDump).
 - **CI (GitHub Actions), on Windows and Linux:**
   - `dotnet tool restore`, then build all three configurations;
   - tests with coverage;
@@ -1261,6 +1265,18 @@ occlusion and reverb zones on OpenAL's EFX (#329), mouse capture (#334), the bin
 doppler, rolloff and cones (#335) and the audio panel and `snd_debug` (#336). 4o is complete; the next phase is
 4q (#337). What is left is in each sheet's "Open work" and the handoff's §2: replays are not exact in the real
 Sandbox client, there is no rumble content, axis actions cannot be rebound.
+
+**4q (#337) as of 2026-10-06:** #338–#349 and #351–#355 are built (spec sheet [13](spec/subsystems/13-ui.md),
+design 13 "As built", [`history/handoff-2026-10-06-4q.md`](history/handoff-2026-10-06-4q.md)): TTF fonts per style
+with wrap and clip (#338), the options screen over `ui_option` records (#339), form widgets (#340), the title, pause,
+save and load screens (#342), focus scopes and confirm prompts (#343), loot, topics and shop from play (#344),
+non-Latin scripts and `loc_check` (#345), drag and drop with item pictures, split and rotate (#346), buttons that run
+actions and layouts that include layouts (#347), world views in widgets (#348), the map's picture and fog and the
+journal's history (#349), UI scale, style sets and subtitles (#351), input glyphs in prompts (#352), the Shipping
+drop-down console (#353), the kit's default keys and a `screens` section in the registry dump (#354), and every kit
+screen checked against a golden (#355). #341 shipped with #328. Left: #350, one UI path. The exit (boot to a title,
+change options and controls, load a slot, loot a corpse and trade, from records) is met in the Sandbox. Next is 4p
+(#356).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,

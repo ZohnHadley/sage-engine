@@ -631,6 +631,14 @@ column copies, since PR #453), `SaveReport.cs`
 - **Not done here:** ~~a snapshot under a frame at 10k entities~~ (PR #453); the tagged binary format; thumbnails in the
   Sandbox's load menu; and `Slots`, which a menu reads every frame, blocks while a write is in flight.
 
+### As built (where a slot was saved, and the title, issue #342, 2026-10-06)
+- **The header says where.** A save's header has `scene`, the first world's scene, and `SaveSlot.Scene` reads it
+  for a load menu's "where"; a save from before has none and shows nothing there.
+- **Nothing to save at the title.** While a world waits at the title (`Scenes.AtTitle`, 13 "As built (the title,
+  the pause menu, and save and load slots)") a save is refused with a message: nothing has started. A load from
+  the title begins each waiting world first (`Engine.BeginGame`) and lays the save over it, as over any started
+  world (test: TheTitleLoadsASaveSlotAndTheGameGoesOnFromIt).
+
 ### As built (saved resources, F21/F27, 2026-09-23)
 A world is not only its entities. The first thing that proved it was the spellmaker (16 §3.3): the
 spells a player composed are the *world's*, not any one entity's.

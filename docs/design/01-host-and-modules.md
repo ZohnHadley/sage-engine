@@ -248,6 +248,17 @@ each MonoGame Update/Draw pair:
 ### 5.3 Worlds
 Several worlds can exist (Warband's overworld and battle scene, the editor's edit/play worlds, tests). The host runs every *active* world each frame. Inactive worlds are kept but not ticked. *As built:* `HostLoop` runs every world in creation order; a world created during a tick starts on the next one (test: AWorldCreatedDuringATickStartsOnTheNextOne). There is no *inactive* flag yet, and two worlds drawn at once need viewports (REDESIGN phase 4a).
 
+### 5.4 As built (a world that waits at the title, and fullscreen — 2026-10-06, #342 and #339)
+- **The title.** `game.json`'s `"title"` names a `screen` record (checked at load, in every app). A host with a
+  window sets `SageAppOptions.ShowTitle` unless it was launched with `-notitle`, and then each world is created
+  furnished but waiting — no scene placed, paused, its rules not started — with `Scenes.Title` set, and `sage.ui`
+  opens the title over it. `Engine.BeginGame(world)` (a title's New game, the `new_game` command, or a load)
+  places the start scene, starts the rules and lets time run (test: AWorldWaitsAtTheTitleUntilNewGame). Tests ask
+  for it with `HeadlessAppBuilder.AtTitle()`; a server, a tool and a test otherwise start at once. The smoke run
+  adds `-notitle` when it is given commands.
+- **`vid_fullscreen`** (archived) fills the screen borderless at the desktop's mode, so switching is quick; turned
+  off, the window goes back to `vid_width` by `vid_height`. The options screen sets it (#339).
+
 ## 6. Threading and memory
 - Boot, module `Init`, and the loop run on the main thread. `GraphicsDevice` is main-thread only (MonoGame).
 - Worlds tick on the main thread in v1. Systems may use the job layer (02) internally. *Since #288* a world runs the systems that declare their access in parallel stages on its own workers, inside its tick (03 §3.5).

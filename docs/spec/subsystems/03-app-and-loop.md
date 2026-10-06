@@ -50,11 +50,11 @@ The base plugins, by id: `sage.physics3d`, `sage.streaming`, `sage.maps`, the `s
 | `GameManifest` | `src/Sage.Core/GameManifest.cs` | `Locate`, `Load`. |
 | `RegistryDump` | `src/Sage.Simulation/App/RegistryDump.cs` | Everything registered, as JSON, for `-dump-registry` and `tools/check_docs.py`: commands, cvars, records, components, systems, entity inputs and outputs, game events (`gameEvents`, #298), input actions and vocabularies. |
 
-**`game.json` keys:** `name`, `id`, `assembly` (with `{config}`), `mounts`, `modsDirectory`, `modules.add`, `modules.disable`, `plugins`, `kits`, `scene`, `sage` (version range), `version`. A misspelt key is an error (test: AMisspeltGameJsonKeyIsAnError).
+**`game.json` keys:** `name`, `id`, `assembly` (with `{config}`), `mounts`, `modsDirectory`, `modules.add`, `modules.disable`, `plugins`, `kits`, `scene`, `title`, `sage` (version range), `version`. A misspelt key is an error (test: AMisspeltGameJsonKeyIsAnError). `title` (#342) names a `screen` the worlds wait at before they start, in a host with a window (`SageAppOptions.ShowTitle`, `-notitle` skips it): no scene placed, the world paused and its rules not started, until `Engine.BeginGame` (the title's New game, the `new_game` command) or a load (test: AWorldWaitsAtTheTitleUntilNewGame).
 
 **Console commands:** `plugins`, `modules`, `sys_list`, `sys_toggle`, `ev_stats`, `vfs_mounts`, `quit`, `pause`, `time_scale` (the clock's hours), `world_speed`, `hit_stop` (the world's time, #283).
 
-**Launch:** `Sage.Host -game <folder> [-mods ...] [-nomods] [-edit [doc]] [-dump-registry file] [+statement ...]` (options read by `HostOptions`, under test: sheet 01, #298). There is no implicit game: without `-game` or a `game/` folder beside the executable the host stops and lists the games it can see.
+**Launch:** `Sage.Host -game <folder> [-mods ...] [-nomods] [-notitle] [-edit [doc]] [-dump-registry file] [+statement ...]` (options read by `HostOptions`, under test: sheet 01, #298). There is no implicit game: without `-game` or a `game/` folder beside the executable the host stops and lists the games it can see.
 
 ## 5. Data model
 

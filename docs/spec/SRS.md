@@ -175,8 +175,8 @@ summary and the traceability index.
 | REQ-QUAL-06 | **API stability.** Public base and kit API shall change only with a declared entry and SemVer; unstable areas carry `[Experimental]` ids. | Must | Done |
 | REQ-QUAL-07 | **Honest documentation.** Claims that something exists shall cite the test that proves it, checked in CI. | Must | Done (`tools/check_docs.py`) |
 | REQ-QUAL-08 | **Moddability.** Every record type shall be patchable by a mod without copying the whole record. | Must | Done for data; keyed list merge in phase 9 |
-| REQ-QUAL-09 | **Accessibility.** Players shall be able to rebind every action, scale the UI, and read subtitles. | Should | Not started (4o, 4q) |
-| REQ-QUAL-10 | **Extensibility.** A game or kit shall add components, records, systems, render passes, vocabulary words and UI widgets without engine edits. | Must | Done except UI widgets from data and pass replacement (4q, 4n) |
+| REQ-QUAL-09 | **Accessibility.** Players shall be able to rebind every action, scale the UI, and read subtitles. | Should | Done: rebinding (4o, #328; axis actions excepted), UI and text scale, style sets, subtitles and captions (4q, #351) |
+| REQ-QUAL-10 | **Extensibility.** A game or kit shall add components, records, systems, render passes, vocabulary words and UI widgets without engine edits. | Must | Done except new widget types from data (screens and their buttons are data since #347) and pass replacement (4n) |
 
 ## 8. External interfaces
 

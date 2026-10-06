@@ -3,12 +3,12 @@
 A C#/MonoGame game engine, being redesigned into a base engine for game designers, developers and
 modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3D and 2D.
 
-**Start here:** [`docs/history/handoff-2026-10-06.md`](docs/history/handoff-2026-10-06.md) (where things
+**Start here:** [`docs/history/handoff-2026-10-06-4q.md`](docs/history/handoff-2026-10-06-4q.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
 tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h, done), #153 (4i, done), #182 (4g, done), #200 (4j, done), #215 (10a, the editor, done; guide docs/EDITOR.md), each with sub-issues.
 Since the 2026-10-02 replan (REDESIGN §5 "Stage B, part 2") every phase is a GitHub milestone with a parent issue,
 and issues carry `priority:`, `type:`, `area:` and `size:` labels: 4k #130 (in progress), 4l #258, 4m #274, R1 #292,
-4n #304, 4o #324, 4q #337, 4p #356, 10b #365, 4f #376, 4r #385, 9 #395. What "complete" means
+4n #304, 4o #324, 4q #337 (done but #350), 4p #356, 10b #365, 4f #376, 4r #385, 9 #395. What "complete" means
 for each system is in [`docs/spec/`](docs/spec/README.md) (SRS, TDD, API contract, a sheet per subsystem); when a PR
 finishes an issue, flip its requirement row in the sheet to Done.
 
@@ -25,9 +25,12 @@ python3 tools/check_docs.py --tests <count>             # docs against the regis
 src/Sage.Cli/bin/Debug/net8.0/sage validate games/Sandbox # content checks, headless; exits 1 on errors (--mounts dir[=ns] ...)
 src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut \
     tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves \
-    tests/games/open-world tests/games/mods tests/games/editor --out schemas   # JSON Schemas for VS Code; rerun
+    tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens \
+    --out schemas                                       # JSON Schemas for VS Code; rerun
                                                         # after adding a field/component/part/record (CI diffs schemas/)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
+tools/kit_screens_check.sh src/Sage.Host/bin/Development/net8.0 [--update]   # every kit screen drawn, vs its golden
+SAGE_UPDATE_GOLDENS=1 dotnet test tests/Sage.Tests -c Debug --filter KitScreenGoldenTests   # rewrite plan goldens
 dotnet run --project games/Hello -c Development         # a Sage.Sdk game runs itself (host -game <folder>);
                                                         # the host never guesses a game without -game
 tools/pack_sdk.sh /tmp/feed                             # Sage.Sdk + Sage.Player + templates -> local feed (after

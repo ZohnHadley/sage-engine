@@ -36,7 +36,7 @@ The core cvars and commands are registered by `CoreCVars.Register`, called by `S
 | `ILogSink`, `FileLogSink`, `StdoutLogSink`, `RingBufferLogSink` | `src/Sage.Core/Logging/LogSinks.cs` | Where entries go; `Log.AddSink` adds more. |
 | `Assert` | `src/Sage.Core/Diagnostics/Assert.cs` | The three asserts. `SageFatalException` is thrown by `Check` and `Log.Fatal`. |
 | `CrashReporter` | `src/Sage.Core/Diagnostics/CrashReporter.cs` | `Install`, `Write(exception, reason)`, `AddSection(name, provider)`, `LastReportPath`. |
-| `CVarRegistry`, `CVar<T>`, `CVarFlags` | `src/Sage.Core/Console/` | `Register`, `RegisterCommand`, `Execute`, `Pump`, `ExecFile`, `SaveArchived`, `Complete`, `Find`. Flags: `Archive`, `Cheat`, `DevOnly`, `ReadOnly`. |
+| `CVarRegistry`, `CVar<T>`, `CVarFlags` | `src/Sage.Core/Console/` | `Register`, `RegisterCommand`, `Execute`, `Pump`, `ExecFile`, `SaveArchived`, `Complete`, `Find`, `Version` (moves with any cvar's value, for a settings screen; #339). Flags: `Archive`, `Cheat`, `DevOnly`, `ReadOnly`. |
 | `ConsoleInput` | `src/Sage.Core/Console/ConsoleInput.cs` | The console's line editor without the keys (#299): `Submit`, Up/Down history (`MaxHistory` 100 lines, a repeat kept once, the draft restored), and Tab completion of the first word against commands and cvars and of later words against a cvar's enum or bool values and record ids. |
 | `FrameLimiter` | `src/Sage.Core/Console/FrameLimiter.cs` | `host_maxfps` arithmetic (#299): how long the rest of a frame still has to wait. |
 | `ContentProblems`, `ContentProblem` | `src/Sage.Core/Content/ContentProblems.cs` | The content's errors and warnings from the last load, with file and line, and mod conflicts as warnings (#301): what `problems`, the dev overlay's badge and the editor's `ProblemList` read. |
@@ -52,7 +52,7 @@ The core cvars and commands are registered by `CoreCVars.Register`, called by `S
 
 **Core commands:** `help`, `cvarlist`, `cmdlist`, `find`, `echo`, `version`, `wait`, `wait_cancel`, `exec`, `log_level`, `log_list`, `mem`, `crash` (dev only); `problems` comes with the record store (#301). `trace_start` and `trace_dump` (#300) are core commands too. The stat overlays (`stat fps|mem|frame|render|assets|all|none`) are registered by the editor assembly in dev builds; `sys_list`, `sys_toggle`, `ev_stats`, `plugins` and `modules` come from the simulation.
 
-The console is available when `BuildInfo.IsDevBuild` or `con_enable` is set (`CoreCVars.ConsoleAvailable`), so a Shipping game has no console unless the player opts in.
+The console is available when `BuildInfo.IsDevBuild` or `con_enable` is set (`CoreCVars.ConsoleAvailable`), so a Shipping game has no console unless the player opts in. Shipping's console is `DropDownConsole` (`src/Sage.Core/Console/`, #353), drawn by the client's `ConsoleSystem` in the game UI's font: a scrollback of the log, one line with a caret, history and Tab completion; a dev build has the ImGui window instead (test: Shipping_ConsoleOpensOnlyWithConEnable).
 
 ## 5. Data model
 

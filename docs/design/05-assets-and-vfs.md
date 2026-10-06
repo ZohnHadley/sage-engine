@@ -594,11 +594,14 @@ tables, one set per language, and is looked up when it is shown (`Localisation`,
   mod retranslates one line without copying the file (test: StringTablesNestFillPlaceholdersAndFallBackToEnglish).
 - **Placeholders** are `{name}`, filled by name (`Localisation.Format(key, ("current", 3))`, or a
   layout node's `args` from its view-model); `{{` and `}}` are braces; one nobody fills stays as written.
-  Numbers are written invariantly (`3.5`, never `3,5`).
+  Numbers are written invariantly (`3.5`, never `3,5`) unless the placeholder gives a format: since #345
+  `{gold:n0}` is written the language's way, "1,234" in English and "1.234" in German
+  (test: APlaceholderWithAFormatIsWrittenTheLanguagesWay). Since #352 `{action:Use}` is the key or pad button
+  the player presses for an action now (13 "As built (input glyphs in prompts)").
 - **Plural forms:** an object whose keys are CLDR categories — `zero`, `one`, `two`, `few`, `many`,
   `other`, with `other` required — is one key's forms, chosen by the `count` argument with the
-  language's rule (`PluralRules`: English's "exactly one" unless the language is listed, French's
-  "0 and 1"); `zero`, when a table has it, is used for 0 in any language.
+  language's rule — since #345 CLDR's rule for each language games ship in, English's for the rest
+  (test: PluralFormsFollowTheCldrRuleOfEachLanguage); `zero`, when a table has it, is used for 0 in any language.
 - **Fallback and missing keys:** a key the language lacks is looked up in English; a key no table has is
   shown **as the key itself** and logged once (test: AMissingKeyShowsTheKeyItselfAndWarnsOnce), and dev
   builds and `sage validate` warn about every `@key` any record names that no table has, at its line
@@ -607,8 +610,12 @@ tables, one set per language, and is looked up when it is shown (`Localisation`,
 - **Hot reload:** record hot reload watches `strings/` beside `data/`; the tables are read again with the
   records, and open screens are rebuilt (test: ChangingARecordReLaysOutAnOpenScreen). `loc <key> [count]`
   prints what a key shows.
-- **Fonts:** English only for now (D3). The bitmap font covers ASCII; a runtime TTF font (FontStashSharp)
-  waits for the first language that needs glyphs an atlas cannot hold, so no package was added.
+- **Fonts and scripts** (since #338 and #345): a style names a TTF or OTF; a `language` record
+  (`name`, `code`, `direction`, `fonts`) names the fonts that stand behind every style's for
+  the characters it lacks, and says which way the language runs; Arabic is joined, a line is reordered for right
+  to left, and a right-to-left screen is mirrored (13 "As built (non-Latin scripts and complete translations)").
+  `loc_check` and `sage validate` compare each language's tables with English's and its characters with its
+  fonts (test: ValidateReportsWhatATranslationLacks).
 
 ## 4. Public API sketch
 

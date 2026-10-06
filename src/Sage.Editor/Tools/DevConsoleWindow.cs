@@ -7,9 +7,9 @@ using ImGuiNET;
 namespace Sage.Editor;
 
 // The developer console (docs/design/02 §4.2, 01 §3.2), drawn with ImGui. Opened with `~`.
-// Available in dev builds always, and in Shipping only when con_enable is 1. The Shipping console is
-// meant to become a simple drop-down drawn with the game UI (docs/design/13); until the game UI exists,
-// Shipping reuses this window.
+// Available in dev builds only. Shipping has no ImGui: with con_enable 1 it opens the drop-down console
+// drawn with the game UI's font (Sage.Core's DropDownConsole, the client's ConsoleSystem; issue #353,
+// docs/design/13 "As built (the Shipping console)").
 //
 // Shows the in-memory log (Log.Ring) with level/category/text filters, and runs typed commands.
 internal sealed class DevConsoleWindow
