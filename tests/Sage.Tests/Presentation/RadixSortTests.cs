@@ -104,7 +104,9 @@ public class RadixSortMeasurementTests
 
     // Absolute times flake on a shared CI machine, so the bound is relative: the radix sort must not be
     // slower than the comparison sort it replaced (Span.Sort with items), measured as the best of several
-    // rounds each. On a quiet machine it is around 3-5x faster; the bound has plenty of slack.
+    // rounds each. The rounds alternate between the two sorts, so a burst of load on the machine slows both
+    // rather than only whichever was being measured. On a quiet machine it is around 3-5x faster; the bound
+    // has plenty of slack.
     [Fact]
     public void At20kItems_RadixIsNoSlowerThanTheComparisonSort()
     {
@@ -112,22 +114,23 @@ public class RadixSortMeasurementTests
         var keys = new ulong[N];
         var payload = new int[N];
         void Reset() { source.CopyTo(keys, 0); for (int i = 0; i < N; i++) payload[i] = i; }
-        long Best(Action sort)
+        long Time(Action sort)
         {
-            long best = long.MaxValue;
-            for (int round = 0; round < 15; round++)
-            {
-                Reset();
-                var watch = Stopwatch.StartNew();
-                sort();
-                best = Math.Min(best, watch.ElapsedTicks);
-            }
-            return best;
+            Reset();
+            var watch = Stopwatch.StartNew();
+            sort();
+            return watch.ElapsedTicks;
         }
-        Reset(); RadixSort.Sort(keys, payload); Reset(); keys.AsSpan().Sort(payload.AsSpan());   // warm both
+        Action radixSort = () => RadixSort.Sort(keys, payload);
+        Action comparisonSort = () => keys.AsSpan().Sort(payload.AsSpan());
+        Time(radixSort); Time(comparisonSort);   // warm both
 
-        long radix = Best(() => RadixSort.Sort(keys, payload));
-        long comparison = Best(() => keys.AsSpan().Sort(payload.AsSpan()));
+        long radix = long.MaxValue, comparison = long.MaxValue;
+        for (int round = 0; round < 25; round++)
+        {
+            radix = Math.Min(radix, Time(radixSort));
+            comparison = Math.Min(comparison, Time(comparisonSort));
+        }
 
         Assert.True(radix <= comparison * 1.5, $"radix {radix} ticks vs comparison {comparison} ticks");
     }
