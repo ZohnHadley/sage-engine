@@ -145,6 +145,10 @@ public sealed class Engine : IDisposable
     // code for their plugin; sealed when content loads.
     public Vocabularies Vocabularies { get; } = new();
 
+    // Sections a layer above the simulation adds to the registry dump (issue #354): the client's screens by id,
+    // which this assembly cannot name. A module adds one in Init; the dump calls it when it is written.
+    public RegistryDumpSections DumpSections { get; } = new();
+
     // Input actions registered by modules in Init (docs/design/08 §3.2); bindings are client-side.
     public ActionRegistry Actions { get; } = new();
 
