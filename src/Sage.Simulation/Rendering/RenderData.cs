@@ -27,6 +27,13 @@ public struct MeshRenderer : IComponent
     public MeshHandle Handle;
     [RecordRef("material")] public RecordId Material;
     public byte Layer;   // sort layer (0..15), before material in the sort key (06 §3.5)
+    // Its LOD group (issue 4n-1, MeshLod): the coarser meshes it switches to with distance, and where it
+    // stops being drawn. Empty: its own mesh at any distance, up to its layer's draw distance.
+    [RecordRef("mesh_lod"), Property(Tooltip = "Its LOD group (a mesh_lod record): coarser meshes with distance; empty = its own mesh always")]
+    public RecordId Lod;
+
+    // The LOD level the screen's view chose last frame (0: none yet, else level + 2), for the hysteresis.
+    [Transient] internal byte LodLevel;
 }
 
 // Draws a skinned mesh asset (a .glb with a skin, JOINTS_0 and WEIGHTS_0) at the entity's interpolated
@@ -102,6 +109,11 @@ public sealed class RenderEnvironment
     public FogMode FogMode = FogMode.Linear;
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public float FogDensity;                                 // exp² only, per metre; 0: complete at FogEnd
+
+    // Draw distance per sort layer (issue 4n-1, MeshLod.PastLayerDistance): a mesh on layer i farther from
+    // the camera than LayerDrawDistance[i] metres is not drawn. 0 (the default): no limit. Put small props
+    // on a layer of their own and give it a short one.
+    public readonly float[] LayerDrawDistance = new float[16];
 }
 
 public enum RenderPass { Opaque, AlphaTested, Transparent }
