@@ -7,6 +7,14 @@ const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
 const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
 const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
 const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
+Sage.Simulation.AudioMixer.Aim(Sage.Simulation.VoiceHandle handle, System.Numerics.Vector3 direction) -> void
+Sage.Simulation.AudioMixer.ListenerVelocity.get -> System.Numerics.Vector3
+Sage.Simulation.AudioMixer.SetListenerVelocity(System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.AudioMixer.SetVelocity(Sage.Simulation.VoiceHandle handle, System.Numerics.Vector3 velocity) -> void
+Sage.Simulation.AudioSettings.DopplerScale.get -> float
+Sage.Simulation.AudioSettings.DopplerScale.set -> void
+Sage.Simulation.AudioSettings.SpeedOfSound.get -> float
+Sage.Simulation.AudioSettings.SpeedOfSound.set -> void
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
 Sage.Simulation.Decal.Alpha.get -> float
@@ -134,6 +142,10 @@ Sage.Simulation.RebindStatus.CannotSave = 4 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Conflict = 2 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Invalid = 3 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Unchanged = 1 -> Sage.Simulation.RebindStatus
+Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Custom = 2 -> Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Linear = 0 -> Sage.Simulation.Rolloff
+Sage.Simulation.Rolloff.Log = 1 -> Sage.Simulation.Rolloff
 Sage.Simulation.SageAppOptions.InputFile.get -> string?
 Sage.Simulation.SageAppOptions.InputFile.init -> void
 Sage.Simulation.ShadowAtlas
@@ -145,6 +157,14 @@ Sage.Simulation.ShadowAtlas.Height.get -> int
 Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
+Sage.Simulation.SoundRecord.ConeInner -> float
+Sage.Simulation.SoundRecord.ConeOuter -> float
+Sage.Simulation.SoundRecord.ConeOuterGain -> float
+Sage.Simulation.SoundRecord.Doppler -> float
+Sage.Simulation.SoundRecord.Rolloff -> Sage.Simulation.Rolloff
+Sage.Simulation.SoundRecord.RolloffCurve -> System.Collections.Generic.List<float>!
+Sage.Simulation.Voice.Direction -> System.Numerics.Vector3
+Sage.Simulation.Voice.Velocity -> System.Numerics.Vector3
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool

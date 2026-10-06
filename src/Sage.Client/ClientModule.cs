@@ -286,6 +286,11 @@ public sealed class ClientModule : IModule
         voices.Changed += _ => _audioSettings!.MaxVoices = Math.Max(voices.Value, 1);
         _audioSettings.MaxVoices = Math.Max(voices.Value, 1);
 
+        var doppler = ctx.Engine.CVars.Register("snd_doppler", 1f, CVarFlags.Archive,
+            "Doppler shift scale for moving sounds and listeners: 0 turns it off, 1 is physical (11 §3).");
+        doppler.Changed += _ => _audioSettings!.DopplerScale = Math.Max(doppler.Value, 0f);
+        _audioSettings.DopplerScale = Math.Max(doppler.Value, 0f);
+
         ctx.Engine.CVars.RegisterCommand("snd_stats", CVarFlags.None,
             "What is playing, and what the mixer has refused or stolen.", _ =>
         {
