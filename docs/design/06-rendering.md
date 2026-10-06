@@ -357,9 +357,9 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
   - `r_stats`.
 - **Since v1 (built):** instancing (#309), sun shadows with cascades (4h-4, #315), the sky dome (4h-5, #320),
   lightmaps (#313), post-processing with HDR, bloom and anti-aliasing (4h-6, #316), mesh LOD and draw distance
-  per layer (#305), decals (#306), water surfaces (#411).
+  per layer (#305), decals (#306), water surfaces (#411), soft particles (#310), wet ground and puddles (#311),
+  point and spot light shadows (#315).
 - **Left:**
-  - point and spot light shadows (#315), soft particles (#310), puddles and wet surfaces (#311);
   - streaming-cell culling;
   - a move to MonoGame DesktopVK once it's proven, which the snapshot boundary makes a contained change.
 
@@ -402,9 +402,9 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   the sprite batcher had no roll — a knob that costs cycles and does nothing is the "field nobody reads"
   mistake in a new coat. `SpriteInstance.Roll` now turns the quad about the view axis; sprites write zero
   and mean it.
-- **Since built:** particles that collide and sheets over a life (#310), decals that stay (#306); see
-  their "As built" sections below.
-- **Not yet:** soft particles (#310) and GPU simulation.
+- **Since built:** particles that collide, run sheets over a life and are soft against the scene (#310), decals
+  that stay (#306); see their "As built" sections below.
+- **Not yet:** GPU simulation.
 
 ### As built (weather, 2026-09-24 — F40)
 - **Code:** `src/Sage.Simulation/Rendering/Weather.cs` (`weather` records, the `Weather` state, `WeatherRules`)
@@ -438,7 +438,7 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
 - **Since built (#311):** rain that stops under a roof, lightning and thunder, and a `weather_pattern`
   that picks the weather by the clock and region ("As built (weather under roofs, lightning and a
   weather picker)").
-- **Not yet:** puddles and wet surfaces (#311).
+- **Since built:** wet ground and puddles (#311, "As built (wet ground and puddles)").
 
 ### As built (point lights, 2026-09-24 — F2)
 Interiors that look like interiors: F16 gave the engine rooms with roofs on them, and a roof is what a
@@ -506,8 +506,8 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
   four lights change (`LightRules.SameSet`, `Renderer.DrawSprites`), so sprites away from any lamp still
   batch (test: TwoChoicesAreTheSameSetWhateverTheirOrder) (test: SpritesAreUnlitByDefault_AndLitIsOptIn).
 - **Since built:** lightmaps (#313), sun shadows (4h-4, #315), lamps that switch and flicker through entity
-  I/O, spot lights and a light grid (#314); see their "As built" sections below.
-- **Not yet:** point and spot light shadows (#315).
+  I/O, spot lights and a light grid (#314), shadows from point and spot lights (#315); see their "As built"
+  sections below.
 
 ### As built (camera components, 2026-09-29 — #76)
 Phase 4a's first piece (REDESIGN §5): cameras become entities, so rigs, several views, render targets and
@@ -1253,8 +1253,8 @@ Experimental, SAGE0129.
 
 ### As built (phase 4n, pack 1, 2026-10-06)
 Phase 4n's first pack (epic #304; REDESIGN §5): twenty issues, each its own PR, merged between 2026-10-05 and
-2026-10-06, and noted here in one docs PR. Each section names its code and tests; what is left of #310, #311
-and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.md) §10.
+2026-10-06, and noted here in one docs PR. Each section names its code and tests. The second pack (#310, #311
+and #315, finished the same day) is the last three sections of this list.
 
 ### As built (mesh LOD and draw distance per layer, 2026-10-06 — #305, 4n-1)
 - **Code:** `src/Sage.Simulation/Rendering/MeshLod.cs` (the `mesh_lod` record, `LodMetric`, `MeshLod`), the
@@ -1350,7 +1350,8 @@ and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.
   (test: ABadParticleRecordIsALoadError).
 - **Fog culling:** a particle wholly past the fog's cull distance is not drawn
   (test: FogHidesAParticleWhollyPastIt); `r_stats`' `fog culled` counts it.
-- **Not yet:** soft particles (#310); the ray budget is first come, not rotated; a hit leaves no decal.
+- **Since built:** soft particles ("As built (soft particles)").
+- **Not yet:** the ray budget is first come, not rotated; a hit leaves no decal.
 
 ### As built (flickering lamps, spot lights and a light grid, 2026-10-06 — #314, 4n-10)
 - **Code:** `src/Sage.Simulation/Rendering/Lights.cs` (`PointLight.Pattern`, `PatternRate`, `Cone`,
@@ -1371,7 +1372,7 @@ and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.
   listed in the 8 m cells their ranges touch and a draw reads its cell's list, which chooses what the full
   list chooses (test: TheGridChoosesWhatTheFullListChooses) and allocates nothing once warm
   (test: RebuildingAndAskingTheGridAllocatesNothingOnceWarm).
-- **Not yet:** no per-lamp phase offset; lamps cast no shadows (#315); the `.map` `style` key is not mapped;
+- **Not yet:** no per-lamp phase offset; lamps cast shadows only when asked (#315, "As built (lamp shadows)"); the `.map` `style` key is not mapped;
   a bad pattern is caught when the lamp is placed, not when the record loads.
 
 ### As built (weather under roofs, lightning and a weather picker, 2026-10-06 — #311, 4n-7)
@@ -1396,7 +1397,8 @@ and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.
   `PickedSlot`, and an older save has none (test: AnOldWeatherHasNoPatternAndNoRegion).
 - **The weather's blend is advanced by the simulation now** (`sage.world.weather`), so a headless world's
   weather moves too; the client only throws the drops and plays the sounds.
-- **Not yet:** puddles and wet surfaces (#311); the cover is asked for the camera, not per drop; a pattern
+- **Since built:** wet ground and puddles ("As built (wet ground and puddles)").
+- **Not yet:** the cover is asked for the camera, not per drop; a pattern
   overrides a scene's own `weather` on its next draw; no console command sets the pattern or region.
 
 ### As built (instancing, 2026-10-06 — #309, 4n-5)
@@ -1460,7 +1462,9 @@ and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.
   cast now, turned to face the sun (test: ALeafBillboardCastsACutOutShadow). Particles, decals, lights and
   debug lines do not. A custom effect that is alpha-tested needs its own `ShadowCasterAlphaTest` (and
   `…Skinned`) technique, or it casts nothing (said once).
-- **Not yet:** point and spot light shadows (#315); a custom effect's own vertex deformation in its shadow
+- **Since built:** lamp shadows ("As built (lamp shadows)"); the casters now write z/w per pixel, so
+  `sage:depth` is exact.
+- **Not yet:** a custom effect's own vertex deformation in its shadow
   (opaque casters draw with `lit.fx`).
 
 ### As built (HDR, bloom, anti-aliasing and the depth hook, 2026-10-06 — #316, 4n-12)
@@ -1489,8 +1493,9 @@ and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.
 - **What the device lacks** (half-float targets, MSAA samples) falls back with a warning
   (test: WhatTheDeviceLacks_FallsBackWithAWarning). `r_stats`' post tail adds `hdr`, `bloom N`, `fxaa`,
   `msaa Nx`, `water` and `depth`. CI's Linux smoke run turns them all on in the Sandbox.
-- **Not yet:** soft particles (they need the depth, #310); alpha-tested holes are solid in `sage:depth`; the
-  viewmodel's depth uses its own near and far.
+- **Since built:** soft particles read this depth (#310, "As built (soft particles)"); it is drawn before the
+  views now.
+- **Not yet:** alpha-tested holes are solid in `sage:depth`; the viewmodel's depth uses its own near and far.
 
 ### As built (water surfaces, 2026-10-06 — #411, 4n-21)
 - **Code:** `src/Sage.Simulation/Rendering/WaterSurfaces.cs` (the `water_surface` record, component and part,
@@ -1625,6 +1630,76 @@ and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.
   every constant after it (`common.fxh`'s cascade lookup now divides by `clip.w`, reading the whole matrix;
   `tools/check_glsl_constants.py` guards it); and GLSL prints constants to six decimals, so `1e-8` became 0
   (`lit.fx`'s tangent epsilon is `1e-4`). Design 07 §3.8 has the rules.
+
+### As built (soft particles, 2026-10-06 — #310, 4n-6)
+- **Code:** `src/Sage.Simulation/Rendering/SoftParticles.cs` (`Fade`, `DepthUv`, when it applies), the `soft` field
+  of `particle` (`Particles.cs`), `sprite.fx` (`UnlitBlendSoft` and `UnlitBlendSoftInstanced`; parameters
+  `SceneDepth` at `register(s2)`, `SoftParams`, `SoftRect`), `Renderer.Post.cs`. Tests:
+  `tests/Sage.Tests/Gameplay/SoftParticleTests.cs`.
+- **The fade:** a particle with `soft` metres (0, the default, is hard) is drawn with the soft twin of its
+  material's technique, which reads `sage:depth` under the pixel and scales the colour by how far the particle
+  is in front of the scene, over `soft` metres (test: AParticleFadesOverItsSoftDistanceInFrontOfTheScene). The
+  lookup is in the view's own rectangle of the depth (test: APixelReadsTheDepthUnderItInItsViewsRectangle).
+- **The depth hook is drawn first:** `sage:depth` (#316) is now drawn before the views, so a soft particle can
+  read it as its view draws, and a frame with a soft particle on screen draws it even with `r_post` off (at the
+  back buffer's size, with no chain).
+- **When it applies:** only a Transparent material's particle, in a screen view that is not depth-only, on a
+  frame whose depth was drawn; the rest are drawn hard, and `r_stats` ends `, soft particles N (M drawn hard)`
+  (test: OnlyATransparentParticleIsSoft_AndASoftOneAsksForTheDepth). The engine's particle materials have the
+  twins (test: TheEnginesParticleMaterialsHaveSoftTwins); a custom effect without one is drawn hard, said
+  once. A negative `soft` is a load error (test: SoftIsARecordFieldAndANegativeOneIsALoadError). The
+  Sandbox's `fire_burst` has `soft` 0.3.
+- **Not yet:** alpha-tested holes are solid in the depth, so a soft particle fades at a leaf's quad, not its
+  cut-out.
+
+### As built (wet ground and puddles, 2026-10-06 — #311, 4n-7)
+- **Code:** `src/Sage.Simulation/Rendering/Wetness.cs` (`WetnessRules`, `PuddleMask`), `Weather.cs` (`Wetting`,
+  `Drying`, `Weather.Wetness`), `MaterialSurface.cs` (`Weathering`), `common.fxh` (`WetParams`, `PuddleMask`,
+  `Wetting`), `lit.fx` and `terrain.fx`. Tests: `tests/Sage.Tests/Gameplay/WetnessTests.cs`.
+- **One wetness for the world:** `Weather.Wetness` (0 dry, 1 soaked) rises by the weather's `wetting` a second
+  and falls by its `drying`, blended as the weather changes, so rain wets the world and it dries after
+  (test: RainWetsTheWorldAndItDriesAfter) (test: WettingAndDryingAreNetAndBlend). It is saved
+  (test: TheWeatherSurvivesASave), an older weather is dry (test: AnOldWeatherIsDry), and an interior scene
+  shows none (test: AnInteriorShowsNoWetness).
+- **What is wet:** by how much a surface faces up and how much sky a lightmapped face sees (the bake's sky term),
+  so open flat ground is wet and walls and covered floors are not (test: FlatOpenGroundIsWet_WallsAndCoveredFloorsAreNot).
+  Past 0.4 wet, puddles gather on the flat where the mask is high and grow as it gets wetter
+  (test: PuddlesGatherOnTheFlatWhereTheMaskIsHigh_AndGrowAsItGetsWetter). The mask is a 64-texel tiling noise
+  picture, every 16 m, the same every run (test: ThePuddleMaskTilesAndIsTheSameEveryRun); it is `PuddleMask`
+  at `register(s7)`, and the client passes `WetParams` (wetness, puddle level, the mask's offset).
+- **What shows:** the albedo darkens, the gloss and highlights rise, the normal flattens and a puddle reflects
+  the sky. Skinned meshes use `PSSkinned` (`Default` without the rain), so characters never wet; a material's
+  `weathering` (0 to 1) scales it and only opaque materials wet
+  (test: AMaterialOptsOutAndOnlyOpaqueOnesWet).
+- **In the Sandbox:** the rain and the storm set `wetting`; the ground outdoors wets and the hut's floor does not
+  (test: RainWetsTheSandboxGroundOutdoorsButNotTheHutFloor_AndItDriesAfter).
+- **Not yet:** a surface without a lightmap (terrain, a model) counts as open sky, so ground under an overhang
+  gets wet and a doorway's floor may wet a little; terrain cannot opt out (`weathering` is a material's); the
+  puddle constants (start, size, sharpness, tile) are fixed, not tunable per scene.
+
+### As built (lamp shadows, 2026-10-06 — #315, 4n-11)
+- **Code:** `src/Sage.Simulation/Rendering/LampShadows.cs` (`Choose`, `Atlas`, `Fit`, `Project`, `QueryDepth`,
+  `DrawOrder`), `ShadowPass.cs`, `common.fxh` (`LampShadow`, `LampShadowMap` at `register(s8)`: s7 is the
+  puddle mask), `lit.fx`, and the `Shadows` field of the `light` part and `sage:point_light`. Tests:
+  `tests/Sage.Tests/Presentation/LampShadowTests.cs`.
+- **Opt-in and budgeted:** a lamp says `"shadows": true`; off costs no map, no view, no draw
+  (test: ALampWithShadowsOffCostsNoMap). Of the lamps that ask, the `r_shadow_lamps` nearest (default 2, at
+  most 4; 0 turns them off; needs `r_shadows 1`) get a map, nearest by the edge of their range, and the rest
+  light without shadows (test: TheNearestLampsGetMapsWithinTheBudget).
+- **One atlas:** a block of 3 x 2 tiles of `r_shadow_lamp_size` texels (512) for each lamp, stacked in one
+  R32F target `sage:shadow:lamps`, sized by the budget so it is never remade
+  (test: TheAtlasHoldsEachLampsBlockOfFaces). A spot of up to 60 degrees (half-angle) draws one perspective
+  view down its cone (test: ASpotMapLooksDownItsCone); a point light or a wider spot draws a cube of six
+  faces (test: ACubeMapsFacesCoverEveryDirection). The maps are fitted from the main view and counted in
+  `ShadowMaps`.
+- **The lookup is analytic:** the caster shaders write z/w per pixel (so `sage:depth` is exact now), and the
+  lit shaders turn a surface's distance along a face's axis into the same z/w and compare, with a 2x2 filter
+  (test: TheShaderLookupMatchesTheCasterMatrices) (test: APointBehindAnOccluderIsShadowed). A draw is lit by up
+  to four lamps and looks up at most two maps, the ones with maps first
+  (test: TheLampsWithMapsGoFirst), which keeps the pixel shader inside ps_3_0's budget; every lit pixel pays
+  the two lookups.
+- **In the Sandbox:** the crypt torches (a cube each) and the hut's lamp cast shadows.
+- **Not yet:** more than two shadowed lamps in one draw (ps_3_0's budget); more than four maps a frame.
 
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.

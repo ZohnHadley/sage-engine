@@ -242,9 +242,9 @@ public sealed class MaterialRecord
     public bool DepthTest = true;
     public bool Fog = true;
     // Sun shadows (issue 4h-4): whether meshes drawn with it are drawn into the shadow map. Only an opaque
-    // material casts (`ShadowMath.Casts`); off for glass that should let the light through.
+    // or alpha-tested material casts (`ShadowMath.Casts`); off for glass that should let the light through.
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
-    [Property(Tooltip = "Meshes drawn with it cast sun shadows (opaque materials only)")]
+    [Property(Tooltip = "Meshes drawn with it cast shadows (opaque and alpha-tested materials; alpha-tested ones cut out; sprites cast too)")]
     public bool CastShadows = true;
     public SamplerDesc Sampler = new();
     public Dictionary<string, MaterialParam> Params = new(StringComparer.Ordinal);
