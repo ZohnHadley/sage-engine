@@ -257,3 +257,11 @@ static Sage.Simulation.SkyRules.MoonLit(System.Numerics.Vector2 local, double mo
 static Sage.Simulation.SkyRules.RotateStars(System.Numerics.Vector3 direction, System.Numerics.Vector3 axis, float turn) -> System.Numerics.Vector3
 static Sage.Simulation.SkyRules.StarAxis(float tiltDegrees) -> System.Numerics.Vector3
 static Sage.Simulation.SkyRules.StarTurn(double hour) -> float
+Sage.Simulation.DebugDraw.CopyLabelsTo(System.Collections.Generic.List<Sage.Simulation.DebugLine>! into, System.Numerics.Vector3 right, System.Numerics.Vector3 up) -> void
+Sage.Simulation.DebugDraw.LabelCount.get -> int
+Sage.Simulation.DebugDraw.Text3D(System.Numerics.Vector3 at, string! text, uint colour = 4294967295, float height = 0.25, float seconds = 0) -> void
+Sage.Simulation.RenderPassInfo.By.get -> string?
+Sage.Simulation.RenderPassInfo.Replaces.get -> System.Type?
+Sage.Simulation.RenderPassRegistry<TPass>.Disable(string! id, string! by) -> void
+Sage.Simulation.RenderPassRegistry<TPass>.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.RenderPassInfo!>!
+Sage.Simulation.RenderPassRegistry<TPass>.Replace(string! id, TPass! pass, string? by = null) -> void

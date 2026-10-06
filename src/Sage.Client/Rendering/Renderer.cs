@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -182,6 +183,12 @@ public sealed partial class Renderer : IDisposable
                                       $"fog culled {LastFrame.FogCulled}, lod culled {LastFrame.LodCulled}, lod lowered {LastFrame.LodLowered}, skies {LastFrame.Skies}, " +
                                       InstancingStats() + "; " +
                                       $"{_meshes.Count} meshes, {_content.Textures.Count} textures, {Materials.Count} materials" + PostStats()));
+        cvars.RegisterCommand("r_snapshot_dump", CVarFlags.None,
+            "r_snapshot_dump [file]: write the next frame's views, items and passes as text (default logs/snapshot.txt).", a =>
+            {
+                _dumpFile = a.Count > 0 ? a[0] : Path.Combine("logs", "snapshot.txt");
+                Log.Info(LogCat.Console, "the next frame's snapshot will be written to " + _dumpFile);
+            });
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
             foreach (var (id, record, m) in Materials.Entries)
@@ -642,6 +649,44 @@ public sealed partial class Renderer : IDisposable
             _device.Viewport = new Viewport(0, 0, back.X, back.Y);
         }
         if (screen) LastFrame = _stats;
+        if (screen && _dumpFile != null) DumpSnapshot(s);
+    }
+
+    private string? _dumpFile;   // set by r_snapshot_dump; written once, at the end of the screen world's next frame
+
+    // r_snapshot_dump: the frame as `RenderFrameDump` text, with the passes that drew it.
+    private void DumpSnapshot(RenderSnapshot s)
+    {
+        string file = _dumpFile!;
+        _dumpFile = null;
+        try
+        {
+            var dump = new RenderFrameDump(_frame);
+            dump.Passes(_passes.Ordered, _passes.Disabled);
+            for (int v = 0; v < s.Views.Count; v++)
+            {
+                ref var view = ref s.Views[v];
+                dump.View(v, view.Target == RenderViewPlan.Screen ? null : TargetName(view.Target), view.Viewport.X, view.Viewport.Y,
+                    view.Viewport.Width, view.Viewport.Height, view.CameraPosition.ToNumerics(), view.ItemCount, view.SpriteCount);
+            }
+            for (int i = 0; i < s.Items.Count; i++)
+            {
+                ref var item = ref s.Items[i];
+                dump.Item(item.View, _meshes[item.Mesh]?.Name ?? "?", item.Part, Materials.NameOf(item.Material), item.SortKey, item.World.Translation.ToNumerics());
+            }
+            for (int i = 0; i < s.Sprites.Count; i++)
+            {
+                ref var sprite = ref s.Sprites[i];
+                dump.Sprite(sprite.View, Materials.NameOf(sprite.Material), sprite.SortKey, sprite.Center.ToNumerics());
+            }
+            dump.Totals(s.Culled, s.Lights.Count, s.DebugLines.Count / 2);
+            string path = dump.Write(UserPaths.Root, file);
+            Log.Info(LogCat.Console, $"snapshot written: {path} ({dump.Items} item(s), {dump.Sprites} sprite(s))");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warn(LogCat.Console, $"r_snapshot_dump: could not write {file}: {ex.Message}");
+        }
     }
 
     // The Overlay stage, in the Overlay phase (UiRenderSystem): the screen world's UI (`sage:ui`) and

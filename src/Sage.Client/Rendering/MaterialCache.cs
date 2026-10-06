@@ -194,6 +194,9 @@ internal sealed class MaterialCache : IDisposable
 
     public int Count => _idList.Count;
 
+    // The record behind a material id, for `r_snapshot_dump`: "?" past the end.
+    public string NameOf(int id) => (uint)id < (uint)_idList.Count ? _idList[id].ToString() : "?";
+
     public Texture2D MissingTexture => _missingTexture;
 
     public void Dispose() { }   // effects and textures (the checker too) belong to the ContentService
