@@ -503,6 +503,10 @@
             "description": "A grid's cells are all the size of the biggest. (bool)",
             "type": "boolean"
           },
+          "clip": {
+            "description": "A box cuts off what is inside it at its edges (a map's picture, zoomed in and panned) (bool)",
+            "type": "boolean"
+          },
           "horizontal": {
             "description": "A scroll scrolls across (default false) (bool?)",
             "anyOf": [

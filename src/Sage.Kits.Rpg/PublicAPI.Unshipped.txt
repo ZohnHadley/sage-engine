@@ -30,6 +30,10 @@ virtual Sage.Kits.Rpg.ItemGridView.Drop(in Sage.UI.UiDrag drag, in Sage.UI.UiBin
 virtual Sage.Kits.Rpg.ItemGridView.Focused(Sage.UI.Widget? widget, in Sage.UI.UiBindContext context) -> void
 virtual Sage.Kits.Rpg.ItemGridView.Moved(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, Sage.Kits.Rpg.ItemGrid! from, Sage.Kits.Rpg.ItemGrid! to) -> void
 abstract Sage.Kits.Rpg.SaveSlotsView.Saving.get -> bool
+const Sage.Kits.Rpg.MapView.MaxZoom = 8 -> float
+const Sage.Kits.Rpg.MapView.MinZoom = 0.25 -> float
+const Sage.Kits.Rpg.MapView.MostFogAcross = 32 -> int
+const Sage.Kits.Rpg.MapView.QuestStyle = "rpg:map_quest" -> string!
 const Sage.Kits.Rpg.RpgMenus.ContinueButton = "continue" -> string!
 const Sage.Kits.Rpg.RpgMenus.LoadButton = "load" -> string!
 const Sage.Kits.Rpg.RpgMenus.ModsButton = "mods" -> string!
@@ -43,8 +47,64 @@ const Sage.Kits.Rpg.SaveSlotsView.NewButton = "new" -> string!
 const Sage.Kits.Rpg.SaveSlotsView.UseButton = "use" -> string!
 override Sage.Kits.Rpg.LoadGameView.Saving.get -> bool
 override Sage.Kits.Rpg.SaveGameView.Saving.get -> bool
+Sage.Kits.Rpg.AreaMapRecord
+Sage.Kits.Rpg.AreaMapRecord.AreaMapRecord() -> void
+Sage.Kits.Rpg.AreaMapRecord.Cell -> float
+Sage.Kits.Rpg.AreaMapRecord.Fog -> bool
+Sage.Kits.Rpg.AreaMapRecord.From -> System.Numerics.Vector2
+Sage.Kits.Rpg.AreaMapRecord.Picture -> Sage.Core.AssetPath
+Sage.Kits.Rpg.AreaMapRecord.Reveal -> float
+Sage.Kits.Rpg.AreaMapRecord.To -> System.Numerics.Vector2
+Sage.Kits.Rpg.JournalView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.JournalView.Line.CanTrack.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Past.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Tracked.get -> bool
 Sage.Kits.Rpg.LoadGameView
 Sage.Kits.Rpg.LoadGameView.LoadGameView() -> void
+Sage.Kits.Rpg.MapDiscovery
+Sage.Kits.Rpg.MapDiscovery.Area
+Sage.Kits.Rpg.MapDiscovery.Area.Area() -> void
+Sage.Kits.Rpg.MapDiscovery.Area.Cell.get -> float
+Sage.Kits.Rpg.MapDiscovery.Area.Cell.set -> void
+Sage.Kits.Rpg.MapDiscovery.Area.Cells.get -> System.Collections.Generic.List<long>!
+Sage.Kits.Rpg.MapDiscovery.Area.Cells.set -> void
+Sage.Kits.Rpg.MapDiscovery.Area.Scene.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.MapDiscovery.Area.Scene.set -> void
+Sage.Kits.Rpg.MapDiscovery.Areas.get -> System.Collections.Generic.List<Sage.Kits.Rpg.MapDiscovery.Area!>!
+Sage.Kits.Rpg.MapDiscovery.Areas.set -> void
+Sage.Kits.Rpg.MapDiscovery.IsDiscovered(Sage.Core.RecordId scene, float cell, int x, int z) -> bool
+Sage.Kits.Rpg.MapDiscovery.IsDiscovered(Sage.Core.RecordId scene, float cell, System.Numerics.Vector3 absolute) -> bool
+Sage.Kits.Rpg.MapDiscovery.MapDiscovery() -> void
+Sage.Kits.Rpg.MapDiscovery.Reveal(Sage.Core.RecordId scene, float cell, System.Numerics.Vector3 absolute, float radius) -> int
+Sage.Kits.Rpg.MapDiscovery.Version.get -> int
+Sage.Kits.Rpg.MapView.CanZoomIn.get -> bool
+Sage.Kits.Rpg.MapView.CanZoomOut.get -> bool
+Sage.Kits.Rpg.MapView.Fog.get -> System.Collections.Generic.List<Sage.Kits.Rpg.MapView.FogSquare!>!
+Sage.Kits.Rpg.MapView.FogSquare
+Sage.Kits.Rpg.MapView.FogSquare.FogSquare() -> void
+Sage.Kits.Rpg.MapView.FogSquare.H.get -> float
+Sage.Kits.Rpg.MapView.FogSquare.W.get -> float
+Sage.Kits.Rpg.MapView.FogSquare.X.get -> float
+Sage.Kits.Rpg.MapView.FogSquare.Y.get -> float
+Sage.Kits.Rpg.MapView.HasFog.get -> bool
+Sage.Kits.Rpg.MapView.HasPicture.get -> bool
+Sage.Kits.Rpg.MapView.Marker.Discovered.get -> bool
+Sage.Kits.Rpg.MapView.Marker.Quest.get -> bool
+Sage.Kits.Rpg.MapView.Marker.QuestId.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.MapView.Pan.get -> System.Numerics.Vector2
+Sage.Kits.Rpg.MapView.PanBy(float east, float south) -> void
+Sage.Kits.Rpg.MapView.Panned.get -> bool
+Sage.Kits.Rpg.MapView.Picture.get -> string?
+Sage.Kits.Rpg.MapView.PictureH.get -> float
+Sage.Kits.Rpg.MapView.PictureW.get -> float
+Sage.Kits.Rpg.MapView.PictureX.get -> float
+Sage.Kits.Rpg.MapView.PictureY.get -> float
+Sage.Kits.Rpg.MapView.Recentre() -> void
+Sage.Kits.Rpg.MapView.YouX.get -> float
+Sage.Kits.Rpg.MapView.YouY.get -> float
+Sage.Kits.Rpg.MapView.Zoom.get -> float
+Sage.Kits.Rpg.MapView.ZoomIn() -> void
+Sage.Kits.Rpg.MapView.ZoomOut() -> void
 Sage.Kits.Rpg.PauseView
 Sage.Kits.Rpg.PauseView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
 Sage.Kits.Rpg.PauseView.HasMods.get -> bool
@@ -97,11 +157,17 @@ Sage.Kits.Rpg.TitleView.Message.get -> string!
 Sage.Kits.Rpg.TitleView.MessageSlot.get -> string!
 Sage.Kits.Rpg.TitleView.Refresh(in Sage.UI.UiBindContext context) -> void
 Sage.Kits.Rpg.TitleView.TitleView() -> void
+static readonly Sage.Kits.Rpg.RpgKitModule.JournalScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.LoadScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.MapScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.OptionsScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.PauseScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.SaveScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.TitleScreen -> Sage.Core.RecordId
+static Sage.Kits.Rpg.AreaMapRecord.Of(Sage.Simulation.World! world, Sage.Core.RecordId scene) -> Sage.Kits.Rpg.AreaMapRecord?
+static Sage.Kits.Rpg.MapDiscovery.IndexOf(float metres, float cell) -> int
+static Sage.Kits.Rpg.MapDiscovery.Key(int x, int z) -> long
+static Sage.Kits.Rpg.MapDiscovery.Of(Sage.Simulation.World! world) -> Sage.Kits.Rpg.MapDiscovery!
 static Sage.Kits.Rpg.RpgMenus.CloseMenus(Sage.Simulation.World! world) -> void
 static Sage.Kits.Rpg.RpgMenus.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen) -> bool
 static Sage.Kits.Rpg.RpgMenus.Quit(Sage.Simulation.Engine! engine) -> void

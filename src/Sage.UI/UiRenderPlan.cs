@@ -264,20 +264,23 @@ internal sealed class UiRenderPlan
             // are still entered — a child may overhang its parent's rect by a margin.
             if (!Shown(widget)) return false;
             if (Overlaps(widget.Rect, widget.Clip)) Draw(widget);
-            if (widget is Scroll) _plan.PushClip(widget, _root.ToPixels(RectMath.Intersect(widget.Clip, widget.ContentRect)));
+            if (Clips(widget)) _plan.PushClip(widget, _root.ToPixels(RectMath.Intersect(widget.Clip, widget.ContentRect)));
             return true;
         }
 
         // UiRoot.Walk calls Leave whatever Enter said, so this pops exactly what Enter pushed.
         public void Leave(Widget widget)
         {
-            if (widget is Scroll && Shown(widget)) _plan.PopClip(widget);
+            if (Clips(widget) && Shown(widget)) _plan.PopClip(widget);
         }
 
+        // A Scroll, or a Box that says so (`clip`, issue #349): what it holds is cut off at its content rect.
+        private static bool Clips(Widget widget) => widget is Scroll or Box { ClipChildren: true };
+
         // Whether anything of it can be on screen. A container's child may overhang it, so a container
-        // off screen is still entered — except a Scroll, which clips all it holds to itself.
+        // off screen is still entered — except one that clips all it holds to itself.
         private static bool Shown(Widget widget) =>
-            widget.ChildCount > 0 && widget is not Scroll || Overlaps(widget.Rect, widget.Clip);
+            widget.ChildCount > 0 && !Clips(widget) || Overlaps(widget.Rect, widget.Clip);
 
         private void Draw(Widget widget)
         {

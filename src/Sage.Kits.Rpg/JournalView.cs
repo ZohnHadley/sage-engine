@@ -14,6 +14,11 @@ namespace Sage.Kits.Rpg;
 // quest's), so a layout shows each kind with its own widget — `"bindings": { "visible": "quest" }` —
 // and localises the words around them ("done") itself. Nothing here is English.
 //
+// History and tracking (issue #349): under each quest, the text of the stages it has moved on from, oldest
+// first, as `past` lines — and a finished quest keeps them, with the stage it ended at, so the journal is
+// the story so far. A quest's line says whether it is `tracked` (a map marks its targets); activating an
+// unfinished quest's line tracks it or stops. The kit's layout is `rpg:journal`.
+//
 // Refresh reads the journal every frame and rebuilds its lines only when what they say changed (a quest
 // started, moved on or finished, an objective counted), reusing them, so an open journal allocates nothing.
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0125", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the RPG screens (#99): SAGE0125, as Sage.UI
@@ -33,6 +38,15 @@ public sealed class JournalView : IViewModel
 
         // A finished quest's line (and only that: a finished quest shows no stage or objectives).
         public bool Done { get; internal set; }
+
+        // A stage the quest has moved on from, or the one a finished quest ended at (issue #349).
+        public bool Past { get; internal set; }
+
+        // On a quest's line: the player tracks it (issue #349).
+        public bool Tracked { get; internal set; }
+
+        // On an unfinished quest's line: activating it tracks the quest or stops.
+        public bool CanTrack => Quest && !Done;
 
         public RecordId QuestId { get; internal set; }
     }
@@ -71,7 +85,12 @@ public sealed class JournalView : IViewModel
             quest.Text = record.Label.Length > 0 ? record.Label : entry.Quest.Name;
             quest.Quest = true;
             quest.Done = entry.Finished;
+            quest.Tracked = entry.Tracked && !entry.Finished;
             quest.QuestId = entry.Quest;
+
+            // The story so far: each stage it moved on from, and the one a finished quest ended at.
+            foreach (var past in entry.History) AddPast(ref used, record, entry.Quest, past);
+            if (entry.Finished) AddPast(ref used, record, entry.Quest, entry.Stage);
 
             var stage = record.Stage(entry.Stage);
             if (entry.Finished || stage == null) continue;
@@ -96,13 +115,29 @@ public sealed class JournalView : IViewModel
         }
     }
 
+    // Activating an unfinished quest's line tracks it, or stops (issue #349).
+    public bool Activate(Widget widget, in UiBindContext context)
+    {
+        if (context.World is not { } world || UiScreen.RowOf(widget) is not Line { CanTrack: true } line) return false;
+        return Quests.Track(world, line.QuestId, !Quests.IsTracked(world, line.QuestId));
+    }
+
+    private void AddPast(ref int used, QuestRecord record, RecordId quest, string id)
+    {
+        if (record.Stage(id) is not { Text.Length: > 0 } stage) return;
+        var line = Next(ref used);
+        line.Text = stage.Text;
+        line.Past = true;
+        line.QuestId = quest;
+    }
+
     // A line from the pool, cleared, added to Lines.
     private Line Next(ref int used)
     {
         if (used == _pool.Count) _pool.Add(new Line());
         var line = _pool[used++];
         line.Text = line.Progress = "";
-        line.Quest = line.Stage = line.Objective = line.Done = false;
+        line.Quest = line.Stage = line.Objective = line.Done = line.Past = line.Tracked = false;
         line.QuestId = default;
         Lines.Add(line);
         return line;
@@ -118,7 +153,8 @@ public sealed class JournalView : IViewModel
         {
             hash = hash * 31 + entry.Quest.GetHashCode();
             hash = hash * 31 + (entry.Stage?.GetHashCode() ?? 0);
-            hash = hash * 31 + (entry.Finished ? 1 : 2);
+            hash = hash * 31 + (entry.Finished ? 1 : 2) + (entry.Tracked ? 4 : 0);
+            hash = hash * 31 + entry.History.Count;
             if (entry.Finished || !records.TryGet(entry.Quest, out QuestRecord record)) continue;
             var stage = record.Stage(entry.Stage ?? "");
             if (stage == null) continue;

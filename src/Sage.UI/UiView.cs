@@ -196,6 +196,9 @@ internal sealed class LayoutBuilder
                 if (n.Direction is { } direction) stack.Direction = direction;
                 stack.Spacing = n.Spacing;
                 break;
+            case Box box:
+                box.ClipChildren = n.Clip;
+                break;
             case Scroll scroll:
                 if (n.Horizontal is { } across) scroll.Horizontal = across;
                 if (n.Vertical is { } down) scroll.Vertical = down;
@@ -280,6 +283,8 @@ internal sealed class LayoutBuilder
                 case UiBindings.Columns: bound.Columns = reader; break;
                 case UiBindings.X: bound.X = reader; break;
                 case UiBindings.Y: bound.Y = reader; break;
+                case UiBindings.W: bound.W = reader; break;
+                case UiBindings.H: bound.H = reader; break;
                 case UiBindings.Fog: bound.Fog = reader; break;
                 case UiBindings.Target: bound.Target = reader; break;
                 case UiBindings.Radius: bound.Radius = reader; break;
@@ -459,6 +464,9 @@ internal static class UiBindings
                         // Where in its parent Box it sits, 0..1 across and down: a point anchor there (a map's
                         // markers, issue #99). Kept inside the box: a point anchor places the widget proportionally.
                         X = "x", Y = "y",
+                        // With `x` and `y`, a rect rather than a point: anchors from (x, y) to (x + w, y + h), not kept
+                        // inside the box — a map's picture or a patch of its fog, cut off by a `clip` box (issue #349).
+                        W = "w", H = "h",
                         // A picture's discovery fog (a UiFogMask), a view's render target and its top-down
                         // camera's radius in metres (issue #348).
                         Fog = "fog", Target = "target", Radius = "radius",
@@ -466,7 +474,7 @@ internal static class UiBindings
                         // spans (issue #346: an item's picture across its footprint). Lower case: keys are.
                         Icon = "icon", IconTurned = "iconturned", ColumnSpan = "columnspan", RowSpan = "rowspan";
 
-    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, Checked, Selected, Options, Fog, Target, Radius,
+    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, W, H, Checked, Selected, Options, Fog, Target, Radius,
                                             Icon, IconTurned, ColumnSpan, RowSpan };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
@@ -542,7 +550,7 @@ internal sealed class BoundNode
 
     public ICondition? VisibleIf, EnabledIf;
     public TextSlot? Text, Tooltip;
-    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
+    public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y, W, H;
     public BindingReader? Checked, Selected, Options, Content;   // the form widgets' (issue #340)
     public BindingReader? Fog, Target, Radius;                     // a picture's fog, a view's (issue #348)
     public BindingReader? Icon, IconTurned, ColumnSpan, RowSpan;  // pictures across a grid's cells (issue #346)
@@ -556,7 +564,7 @@ internal sealed class BoundNode
 
     public bool Dynamic => _children.Length > 0 || Rows != null || Scope != null || VisibleIf != null || EnabledIf != null || Text != null || Tooltip != null
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
-                           || Enabled != null || Data != null || Columns != null || X != null || Y != null
+                           || Enabled != null || Data != null || Columns != null || X != null || Y != null || W != null || H != null
                            || Checked != null || Selected != null || Options != null || Content != null
                            || Fog != null || Target != null || Radius != null
                            || Icon != null || IconTurned != null || ColumnSpan != null || RowSpan != null;
@@ -697,7 +705,17 @@ internal sealed class BoundNode
         }
         if (Data != null) Widget.Data = Data.Read(source, scopes).Ref;
         if (Columns != null && Widget is Grid grid) grid.Columns = (int)Columns.Read(source, scopes).AsFloat;   // Grid keeps at least 1
-        if (X != null || Y != null)
+        if (W != null || H != null)
+        {
+            // A rect (issue #349): where it starts and how much of the box it spans, overhanging it as it may.
+            var at = Widget.Anchors;
+            float x = X != null ? X.Read(source, scopes).AsFloat : at.MinX;
+            float y = Y != null ? Y.Read(source, scopes).AsFloat : at.MinY;
+            float w = W != null ? MathF.Max(W.Read(source, scopes).AsFloat, 0f) : at.MaxX - at.MinX;
+            float h = H != null ? MathF.Max(H.Read(source, scopes).AsFloat, 0f) : at.MaxY - at.MinY;
+            Widget.Anchors = new Anchors(x, y, x + w, y + h);
+        }
+        else if (X != null || Y != null)
         {
             var at = Widget.Anchors;
             float x = X != null ? Math.Clamp(X.Read(source, scopes).AsFloat, 0f, 1f) : at.MinX;

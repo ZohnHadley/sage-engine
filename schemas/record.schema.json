@@ -29,6 +29,7 @@
             "ai_schedule",
             "anim_events",
             "anim_graph",
+            "area_map",
             "attack",
             "attribute",
             "calendar",
@@ -164,6 +165,21 @@
           },
           "then": {
             "$ref": "anim_graph.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "area_map"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "area_map.schema.json"
           }
         },
         {

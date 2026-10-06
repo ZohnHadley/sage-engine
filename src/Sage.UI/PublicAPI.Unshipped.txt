@@ -1,6 +1,9 @@
 #nullable enable
 const Sage.UI.InputPrompts.GlyphTablePrefix = "@input." -> string!
 const Sage.UI.InputPrompts.Placeholder = "action:" -> string!
+override Sage.UI.Box.ChildClip.get -> Sage.Simulation.Rect
+Sage.UI.Box.ClipChildren.get -> bool
+Sage.UI.Box.ClipChildren.set -> void
 const Sage.UI.UiFogMask.MaxSize = 1024 -> int
 const Sage.UI.View.Other = "other" -> string!
 const Sage.UI.View.Player = "player" -> string!
@@ -137,6 +140,7 @@ Sage.UI.UiFonts.UiFonts(System.Func<Sage.Core.AssetPath, byte[]?>! read) -> void
 Sage.UI.UiFonts.Version.get -> int
 Sage.UI.UiInput.Command -> Sage.UI.UiCommand
 Sage.UI.UiModule.Fonts.get -> Sage.UI.UiFonts!
+Sage.UI.UiNode.Clip -> bool
 Sage.UI.UiNode.Camera -> Sage.UI.UiViewCameraNode?
 Sage.UI.UiNode.FogColour -> uint?
 Sage.UI.UiNode.MaxWidth -> float
