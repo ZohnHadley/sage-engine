@@ -45,8 +45,15 @@
       "type": "boolean"
     },
     "font": {
-      "description": "The bitmap font atlas text is drawn with; empty: the client's own font. A font path. (AssetPath)",
+      "description": "The font text is drawn with: a .ttf or .otf, rasterised at run time, or a .png grid atlas like the engine's; empty: the engine's own font. A font path. (AssetPath)",
       "type": "string"
+    },
+    "fontSize": {
+      "description": "The font's size (its em) in virtual units at textScale 1; 0: 9, the engine font's line. Unit: units. Range: 0 to 200. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 200
     },
     "textScale": {
       "description": "Text size, 1 = the font's own; laid out, so a label measures with it. Range: 0.1 to 10. (float, default 1)",

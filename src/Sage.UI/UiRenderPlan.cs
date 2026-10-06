@@ -30,7 +30,15 @@ internal struct UiDrawCommand
     // pixels per texture pixel, for the corners of a nine-slice.
     public float Size;
 
+    // Text: the line drawn is Text[Start..Start+Length] (#338: a wrapped label is a command per line,
+    // each a slice of the one string), in Font at FontSize (0: UiFonts.DefaultSize) — so its em is
+    // FontSize × Size pixels. With Ellipsis, "…" follows it, EllipsisAt pixels from the line's left.
     public string? Text;
+    public int Start, Length;
+    public AssetPath Font;
+    public float FontSize;
+    public bool Ellipsis;
+    public float EllipsisAt;
     public AssetPath Texture;
 
     // Nine-slice insets in texture pixels; zero draws the texture stretched whole.
@@ -43,6 +51,7 @@ internal struct UiDrawCommand
 internal sealed class UiRenderPlan
 {
     private UiDrawCommand[] _commands = new UiDrawCommand[64];
+    private readonly System.Collections.Generic.List<TextLine> _lines = new();
     private Rect[] _clips = new Rect[8];
     private int _clipDepth;
 
@@ -248,21 +257,67 @@ internal sealed class UiRenderPlan
                     break;
 
                 case Label label when label.Text.Length > 0:
-                    var size = _root.Text.Measure(label.Text, label.TextScale);
-                    var content = widget.ContentRect;
-                    float x = label.TextAlign switch
-                    {
-                        Align.Center => content.X + (content.Width - size.X) * 0.5f,
-                        Align.End => content.Right - size.X,
-                        _ => content.X,
-                    };
-                    float y = content.Y + (content.Height - size.Y) * 0.5f;
-                    ref var text = ref _plan.Add(UiDrawKind.Text, widget, _root.ToPixels(new Rect(x, y, size.X, size.Y)));
-                    Colour(ref text, to.Text, from.Text, blend);
-                    text.Text = label.Text;
-                    text.Size = label.TextScale * scale;
+                    DrawText(label, to, from, blend, scale);
                     break;
             }
+        }
+
+        // A label's text, a command per line (#338). Lines are worked out again here, at the width the
+        // label was given rather than the one it measured in, so what is drawn always fits the rect.
+        private void DrawText(Label label, UiStyleColours to, UiStyleColours from, bool blend, float scale)
+        {
+            var measure = _root.MeasureFor(label.Font, label.FontSize);
+            var content = label.ContentRect;
+            var lines = _plan._lines;
+            Vector2 size;
+            if (label.Fitted)
+            {
+                float height = label.Overflow == TextOverflow.Visible ? float.PositiveInfinity : content.Height;
+                size = TextLayout.Break(label.Text, measure, label.TextScale, label.FitWidth(content.Width), height,
+                                        label.Wrap, label.Overflow, lines);
+            }
+            else
+            {
+                size = measure.Measure(label.Text, label.TextScale);
+                lines.Clear();
+                lines.Add(new TextLine(0, label.Text.Length, size.X, false));
+            }
+
+            bool clip = label.Overflow == TextOverflow.Clip;
+            if (clip) _plan.PushClip(label, _root.ToPixels(RectMath.Intersect(label.Clip, content)));
+
+            // Centred down the label, unless it is taller than the label: then from the top, so the
+            // first lines show and what does not fit is what is cut.
+            // Not fitted, the text is one command whatever its '\n's, as tall as all its lines.
+            float lineHeight = label.Fitted ? measure.LineHeight * label.TextScale : size.Y;
+            float y = size.Y <= content.Height ? content.Y + (content.Height - size.Y) * 0.5f : content.Y;
+            float ellipsis = 0f;
+            foreach (var line in lines)
+            {
+                if (line.Ellipsis && ellipsis == 0f) ellipsis = measure.Width(TextLayout.Ellipsis, label.TextScale);
+                if (line.Length > 0 || line.Ellipsis)
+                {
+                    float x = label.TextAlign switch
+                    {
+                        Align.Center => content.X + (content.Width - line.Width) * 0.5f,
+                        Align.End => content.Right - line.Width,
+                        _ => content.X,
+                    };
+                    ref var text = ref _plan.Add(UiDrawKind.Text, label, _root.ToPixels(new Rect(x, y, line.Width, lineHeight)));
+                    Colour(ref text, to.Text, from.Text, blend);
+                    text.Text = label.Text;
+                    text.Start = line.Start;
+                    text.Length = line.Length;
+                    text.Size = label.TextScale * scale;
+                    text.Font = label.Font;
+                    text.FontSize = label.FontSize;
+                    text.Ellipsis = line.Ellipsis;
+                    text.EllipsisAt = line.Ellipsis ? (line.Width - ellipsis) * scale : 0f;
+                }
+                y += lineHeight;
+            }
+
+            if (clip) _plan.PopClip(label);
         }
 
         private static void Colour(ref UiDrawCommand command, uint to, uint from, bool blend)

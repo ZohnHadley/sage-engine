@@ -131,6 +131,11 @@ internal sealed class LayoutBuilder
                 if (n.Text.Length > 0) label.Text = _text.Text(n.Text);
                 label.TextScale = n.TextScale ?? style.TextScale;
                 if (n.TextAlign is { } align) label.TextAlign = align;
+                label.Font = style.Font;
+                label.FontSize = style.FontSize;
+                label.Wrap = n.Wrap;
+                if (n.Overflow is { } overflow) label.Overflow = overflow;
+                label.MaxWidth = n.MaxWidth;
                 break;
             case Image image:
                 if (!n.Source.IsEmpty) image.Source = n.Source.ToString();

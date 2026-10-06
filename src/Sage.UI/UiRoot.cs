@@ -60,6 +60,32 @@ public sealed class UiRoot
         }
     }
 
+    // The fonts a label's Font names (#338); none: every label measures with Text, scaled to its FontSize.
+    public UiFonts? Fonts
+    {
+        get => _fonts;
+        set
+        {
+            if (ReferenceEquals(_fonts, value)) return;
+            _fonts = value;
+            Content.InvalidateTree();
+            Tooltip.InvalidateTree();
+            LayoutChanged();
+        }
+    }
+
+    private UiFonts? _fonts, _noFonts;
+
+    // How text in `font` at `size` measures: the font's own metrics for a TTF, Text (scaled) otherwise.
+    internal ITextMeasure MeasureFor(AssetPath font, float size)
+    {
+        if (font.IsEmpty && (size <= 0f || size == UiFonts.DefaultSize)) return _text;
+        return (_fonts ?? (_noFonts ??= new UiFonts(static _ => null))).Measure(font, size, _text);
+    }
+
+    // Lines a label breaks its text into while it measures (TextLayout): one list per tree, reused.
+    internal List<TextLine> TextLines { get; } = new();
+
     public Vector2 DesignSize { get; }
     public Vector2 Viewport { get; private set; }
     public float Scale { get; private set; }

@@ -30,6 +30,9 @@ public sealed class UiModule : IModule
     public Localisation Localisation { get; } = new();
     public UiStyles Styles { get; } = new();
 
+    // The fonts styles name (#338), read through the VFS; from Init on.
+    public UiFonts Fonts { get; private set; } = null!;
+
     // From Init on.
     public UiScreens Screens { get; private set; } = null!;
 
@@ -37,8 +40,10 @@ public sealed class UiModule : IModule
     {
         _engine = ctx.Engine;
         var viewModels = ctx.Engine.Vocabularies.Of<IViewModel>();   // made now, so it is sealed with the rest
+        Fonts = new UiFonts(ctx.Engine.Vfs);
         Screens = new UiScreens(ctx.Engine.Records, viewModels, Styles, Localisation);
         ctx.Provide(Localisation);
+        ctx.Provide(Fonts);
         ctx.Provide(Styles);
         ctx.Provide(Screens);
 
@@ -96,7 +101,7 @@ public sealed class UiModule : IModule
         });
     }
 
-    private bool _started;
+    private bool _started, _fontsRead;
 
     public void Start(ModuleContext ctx)
     {
@@ -110,8 +115,9 @@ public sealed class UiModule : IModule
         world.Resources.Add(Localisation);
         world.Resources.Add(Styles);
         world.Resources.Add(Screens);
+        world.Resources.Add(Fonts);
         // The widget screens this world has open (#97): headless here, drawn and fed by the client.
-        world.Resources.Add(new UiScreenStack(Screens, Styles, world));
+        world.Resources.Add(new UiScreenStack(Screens, Styles, world, Fonts));
     }
 
     // The entity a screen opened from the console is about: the first player-controlled one.
@@ -124,6 +130,8 @@ public sealed class UiModule : IModule
     private void ContentChanged()
     {
         var engine = _engine!;
+        if (_fontsRead) Fonts.Clear();   // a font file may have changed with the rest: read again on next use
+        _fontsRead = true;
         Styles.Rebuild(engine.Records);
         Localisation.Load(engine.Vfs, _lang!.Value);
         UiContentChecks.Screens(engine.Records, engine.Vocabularies.Of<IViewModel>());
@@ -177,6 +185,8 @@ internal static class UiContentChecks
                 check.Error(at, $"'{name}' binds its rows, so it holds one node, the template each row is made from; it has {children}");
             if (node.Args.Count > 0 && node.Widget is not ("label" or "button"))
                 check.Error($"{at}.Args", $"a {node.Widget} has no text to fill placeholders in");
+            if ((node.Wrap || node.Overflow != null || node.MaxWidth > 0f) && node.Widget is not ("label" or "button"))
+                check.Error($"{at}.{(node.Wrap ? "Wrap" : node.Overflow != null ? "Overflow" : "MaxWidth")}", $"a {node.Widget} has no text to wrap or cut");
         }
     }
 

@@ -71,7 +71,9 @@
   { "type": "ui_style", "id": "hud_fading", "base": "hud_text", "textColour": "#FFFFFF60" },
   { "type": "ui_style", "id": "hud_hands", "base": "hud_text", "textColour": "#D7D7D7E6" },
   { "type": "ui_style", "id": "hud_prompt", "base": "hud_text", "textColour": "#F5F0C8EB" },
-  { "type": "ui_style", "id": "hud_hint", "base": "hud_text", "textColour": "#D7D7D7AA" },
+  // The hint lines are drawn in a TrueType font (#338): the engine's own letters as fonts/sage.ttf,
+  // proportional and rasterised at the size they are drawn, through the same glyph atlases a game's TTF uses.
+  { "type": "ui_style", "id": "hud_hint", "base": "hud_text", "textColour": "#D7D7D7AA", "font": "fonts/sage.ttf" },
   { "type": "ui_style", "id": "hud_ammo", "base": "hud_text", "textScale": 3, "textColour": "#F5F0C8EB" },
   { "type": "ui_style", "id": "hud_bar", "background": "#0000008C", "fill": "#50C85AEB", "border": "#000000C8", "borderWidth": 1 },
   { "type": "ui_style", "id": "hud_bar_low", "base": "hud_bar", "fill": "#DC3C46EB" },

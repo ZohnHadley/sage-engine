@@ -24,6 +24,7 @@ public sealed class UiStyle
     {
         Id = id;
         Font = record.Font;
+        FontSize = record.FontSize;
         TextScale = record.TextScale;
         Padding = record.Padding;
         BorderWidth = record.BorderWidth;
@@ -39,6 +40,9 @@ public sealed class UiStyle
 
     public RecordId Id { get; }
     public AssetPath Font { get; }
+
+    // The font's em in virtual units at textScale 1; 0: UiFonts.DefaultSize (#338).
+    public float FontSize { get; }
     public float TextScale { get; }
     public Thickness Padding { get; }
     public float BorderWidth { get; }

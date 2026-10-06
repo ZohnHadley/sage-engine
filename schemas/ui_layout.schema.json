@@ -156,6 +156,31 @@
               }
             ]
           },
+          "wrap": {
+            "description": "A label's text breaks at spaces to fit its width (and maxWidth): a paragraph. (bool)",
+            "type": "boolean"
+          },
+          "overflow": {
+            "description": "What a label's text that still does not fit does: Visible (runs past), Clip, Ellipsis (ends in '…') (TextOverflow?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Visible",
+                  "Clip",
+                  "Ellipsis"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxWidth": {
+            "description": "A label is never wider than this; 0: no limit but its room. Unit: units. At least 0. (float)",
+            "type": "number",
+            "minimum": 0
+          },
           "minSize": {
             "description": "Never smaller than this. Unit: units. (Vector2)",
             "type": "array",

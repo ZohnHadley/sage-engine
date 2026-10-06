@@ -30,6 +30,7 @@ internal sealed class ScreenSystem : ISystem
     private readonly UiStyles? _styles;
     private readonly Localisation? _text;
     private readonly ContentService _content;
+    private readonly TrueTypeText _truetype;   // glyph atlases for the TTF fonts styles name (#338)
     private readonly UiDraw _ui;
     private readonly InputActions _actions;
     private readonly InputDevices _devices;
@@ -42,6 +43,7 @@ internal sealed class ScreenSystem : ISystem
     {
         _devices = devices;
         _content = content;
+        _truetype = new TrueTypeText(content.Device);
         _stack = world.Resources.Get<ScreenStack>();
         _ui = world.Resources.Get<UiDraw>();
         _actions = actions;
@@ -114,7 +116,7 @@ internal sealed class ScreenSystem : ISystem
         _widgets.SetViewport(new System.Numerics.Vector2(_ui.Size.X, _ui.Size.Y));
         var controls = widgetsOpen ? Controls(dt) : new UiControls { DeltaTime = dt };
         _widgets.Update(UiInputMap.From(in controls));
-        WidgetRenderer.Draw(_ui, _widgets, _styles!, _text!, _content);
+        WidgetRenderer.Draw(_ui, _widgets, _styles!, _text!, _content, _truetype);
     }
 
     // What the `ui` context's buttons and the mouse say this frame (issue #97). Menu* are the panel
