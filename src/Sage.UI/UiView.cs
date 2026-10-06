@@ -123,6 +123,11 @@ internal sealed class LayoutBuilder
         w.Enabled = n.Enabled;
         if (n.Focusable is { } focusable) w.Focusable = focusable;
         w.TabIndex = n.TabIndex;
+        w.FocusScope = n.FocusScope;
+        w.FocusUp = NameOrNull(n.FocusUp);
+        w.FocusDown = NameOrNull(n.FocusDown);
+        w.FocusLeft = NameOrNull(n.FocusLeft);
+        w.FocusRight = NameOrNull(n.FocusRight);
         if (n.Tooltip.Length > 0) w.TooltipText = _text.Text(n.Tooltip);
 
         switch (w)
@@ -163,6 +168,8 @@ internal sealed class LayoutBuilder
                 break;
         }
     }
+
+    private static string? NameOrNull(string name) => name.Length > 0 ? name : null;
 
     private void Bind(BoundNode bound, UiNode node, LayoutTree tree, string name, RecordId style)
     {

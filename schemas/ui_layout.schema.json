@@ -416,6 +416,26 @@
             "description": "Tab order: lower first, then tree order. (int)",
             "type": "integer"
           },
+          "focusScope": {
+            "description": "Traps focus while it shows: the D-pad, Tab and the pointer reach nothing outside it, and focus goes back where it was when it hides (a confirm prompt) (bool)",
+            "type": "boolean"
+          },
+          "focusUp": {
+            "description": "The node Up goes to from here, by name; empty: the nearest one above. (string)",
+            "type": "string"
+          },
+          "focusDown": {
+            "description": "The node Down goes to from here, by name; empty: the nearest one below. (string)",
+            "type": "string"
+          },
+          "focusLeft": {
+            "description": "The node Left goes to from here, by name; empty: the nearest one to the left. (string)",
+            "type": "string"
+          },
+          "focusRight": {
+            "description": "The node Right goes to from here, by name; empty: the nearest one to the right. (string)",
+            "type": "string"
+          },
           "visibleIf": {
             "description": "Shown only while this holds, asked about the screen's subject: { \"var\": \"alarm\", \"eq\": 1 }. (ICondition)",
             "allOf": [

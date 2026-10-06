@@ -187,6 +187,9 @@ internal static class UiContentChecks
                 check.Error($"{at}.Args", $"a {node.Widget} has no text to fill placeholders in");
             if ((node.Wrap || node.Overflow != null || node.MaxWidth > 0f) && node.Widget is not ("label" or "button"))
                 check.Error($"{at}.{(node.Wrap ? "Wrap" : node.Overflow != null ? "Overflow" : "MaxWidth")}", $"a {node.Widget} has no text to wrap or cut");
+            foreach (var (field, neighbour) in new[] { ("FocusUp", node.FocusUp), ("FocusDown", node.FocusDown), ("FocusLeft", node.FocusLeft), ("FocusRight", node.FocusRight) })
+                if (neighbour.Length > 0 && !layout.Nodes.ContainsKey(neighbour))
+                    check.Error($"{at}.{field}", $"node '{name}' goes to '{neighbour}', which is not a node of this layout" + Spelling.Suggest(neighbour, layout.Nodes.Keys));
         }
     }
 
