@@ -917,9 +917,10 @@ public sealed class Renderer : IDisposable
     {
         var s = ctx.Snapshot;
         ref var view = ref s.Views[ctx.View];
-        var lights = s.Lights.AsSpan().Slice(view.LightStart, view.LightCount);
-        DrawItems(s, view, lights, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
-        DrawSprites(s, view, lights, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
+        // The view's lights, bucketed by cell (issue #314): each draw looks at the lamps that reach it.
+        _lightGrid.Build(s.Lights.AsSpan().Slice(view.LightStart, view.LightCount));
+        DrawItems(s, view, _lightGrid, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
+        DrawSprites(s, view, _lightGrid, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
     }
 
     // `sage:debug` (06 §3.4, pass 5): debug geometry, over everything the world drew and under the UI.
@@ -1095,7 +1096,9 @@ public sealed class Renderer : IDisposable
         return m;
     }
 
-    private void DrawItems(RenderSnapshot s, in RenderView view, ReadOnlySpan<LightSample> lights, int from, int to, bool wire, ref RenderStats stats)
+    private readonly LightGrid _lightGrid = new();
+
+    private void DrawItems(RenderSnapshot s, in RenderView view, LightGrid lights, int from, int to, bool wire, ref RenderStats stats)
     {
         int n = to - from;
         if (!InstancingOn || n < _instancingMin.Value)
@@ -1105,7 +1108,7 @@ public sealed class Renderer : IDisposable
                 ref var item = ref s.Items[s.Order[k]];
                 // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
                 // translation is where it is relative to the camera — the same frame the view's lights are in.
-                int lit = LightRules.Nearest(lights, LitAt(item), _lights);
+                int lit = lights.Nearest(LitAt(item), _lights);
                 DrawItem(s, item, view, _lights.AsSpan(0, lit), wire, ref stats);
             }
             return;
@@ -1119,7 +1122,7 @@ public sealed class Renderer : IDisposable
         {
             ref var item = ref s.Items[s.Order[from + i]];
             var chosen = _itemLights.AsSpan(i * LightRules.PerObject, LightRules.PerObject);
-            int lit = _itemLightCounts[i] = LightRules.Nearest(lights, LitAt(item), chosen);
+            int lit = _itemLightCounts[i] = lights.Nearest(LitAt(item), chosen);
             if (i > 0)
             {
                 ref var previous = ref s.Items[s.Order[from + i - 1]];
@@ -1282,7 +1285,7 @@ public sealed class Renderer : IDisposable
     // A run of sprites sharing a material and a texture is one draw, split where the lamps lighting them
     // change (06 §3.9): a draw carries one set of four, so sprites far from any lamp still batch, and
     // only the ones in a lamp's reach pay for their own lights.
-    private void DrawSprites(RenderSnapshot s, in RenderView view, ReadOnlySpan<LightSample> lights, int from, int to, bool wire, ref RenderStats stats)
+    private void DrawSprites(RenderSnapshot s, in RenderView view, LightGrid lights, int from, int to, bool wire, ref RenderStats stats)
     {
         int run = from;
         while (run < to)
@@ -1303,18 +1306,18 @@ public sealed class Renderer : IDisposable
                 m.Drawn += end - run;
                 m.Effect.World?.SetValue(Matrix.Identity);   // sprite vertices are already in camera-relative space
                 m.Effect.Tint?.SetValue(Vector4.One);
-                bool lit = m.Effect.LightCount != null && lights.Length > 0;
+                bool lit = m.Effect.LightCount != null && lights.Count > 0;
                 int start = run;
                 while (start < end)
                 {
                     int stop = end, count = 0;
                     if (lit)
                     {
-                        count = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[start]]), _lights);
+                        count = lights.Nearest(LitAt(s.Sprites[s.SpriteOrder[start]]), _lights);
                         stop = start + 1;
                         while (stop < end)
                         {
-                            int c = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[stop]]), _nextLights);
+                            int c = lights.Nearest(LitAt(s.Sprites[s.SpriteOrder[stop]]), _nextLights);
                             if (!LightRules.SameSet(_lights.AsSpan(0, count), _nextLights.AsSpan(0, c))) break;
                             stop++;
                         }

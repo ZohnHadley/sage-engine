@@ -125,7 +125,7 @@ float3 PointLightsLit(float3 n, float3 v, float3 relative, float power, out floa
 
         float3 l = toLight / max(distance, 0.001);
         float falloff = 1.0 - distance / max(range, 0.001);
-        float3 c = LightColors[i].rgb * (falloff * falloff);
+        float3 c = LightColors[i].rgb * (falloff * falloff * SpotCone(i, -l));   // a spot's cone (issue #314)
         sum += c * saturate(dot(n, l));
         specular += c * Highlight(n, v, l, power);
     }

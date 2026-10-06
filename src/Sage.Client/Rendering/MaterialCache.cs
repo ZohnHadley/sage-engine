@@ -15,7 +15,7 @@ internal sealed class EffectBinding
     public static readonly HashSet<string> EngineParams = new(StringComparer.Ordinal)
     {
         "ViewProj", "SunDir", "SunColor", "AmbientSky", "AmbientGround", "FogColor", "FogParams", "Time",
-        "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount",
+        "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount", "LightSpots",
         "Bones",   // the skinned draw's palette (issue #117), set per draw
         "ShadowViewProj", "ShadowParams", "ShadowMap",   // the sun's shadow map (issue 4h-4), frame tier
     };
@@ -29,6 +29,7 @@ internal sealed class EffectBinding
         FogColor = P("FogColor"); FogParams = P("FogParams"); Time = P("Time");
         World = P("World"); Tint = P("Tint"); FogEnabled = P("FogEnabled");
         LightPositions = P("LightPositions"); LightColors = P("LightColors"); LightCount = P("LightCount");
+        LightSpots = P("LightSpots");   // spot lights' cones (issue #314); an effect without them lights all round
         Bones = P("Bones");
         ShadowViewProj = P("ShadowViewProj"); ShadowParams = P("ShadowParams"); ShadowMap = P("ShadowMap");
         ShadowCaster = effect.Techniques["ShadowCaster"];
@@ -39,7 +40,7 @@ internal sealed class EffectBinding
     public Effect Effect { get; }
     public long FrameStamp = -1;
     public readonly EffectParameter? ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time, World, Tint, FogEnabled;
-    public readonly EffectParameter? LightPositions, LightColors, LightCount;
+    public readonly EffectParameter? LightPositions, LightColors, LightCount, LightSpots;
     public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
     public readonly EffectParameter? ShadowViewProj, ShadowParams, ShadowMap;   // issue 4h-4
     public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
@@ -49,6 +50,7 @@ internal sealed class EffectBinding
     // with a thousand items would otherwise allocate two arrays a thousand times (02 §4.6).
     private readonly Vector3[] _positions = new Vector3[LightRules.PerObject];
     private readonly Vector4[] _colours = new Vector4[LightRules.PerObject];
+    private readonly Vector4[] _spots = new Vector4[LightRules.PerObject];
 
     public void SetLights(ReadOnlySpan<LightSample> chosen)
     {
@@ -58,6 +60,7 @@ internal sealed class EffectBinding
         {
             _positions[i] = new Vector3(chosen[i].Position.X, chosen[i].Position.Y, chosen[i].Position.Z);
             _colours[i] = new Vector4(chosen[i].Colour.X, chosen[i].Colour.Y, chosen[i].Colour.Z, chosen[i].Range);
+            _spots[i] = new Vector4(chosen[i].Spot.X, chosen[i].Spot.Y, chosen[i].Spot.Z, chosen[i].Spot.W);
         }
 
         LightCount.SetValue((float)chosen.Length);
@@ -65,6 +68,7 @@ internal sealed class EffectBinding
 
         LightPositions?.SetValue(_positions);
         LightColors?.SetValue(_colours);
+        LightSpots?.SetValue(_spots);
     }
 
     public void SetFrame(in RenderView view, in EnvironmentParams env, in ShadowFrame shadow, Texture2D? shadowMap, Texture2D none)
