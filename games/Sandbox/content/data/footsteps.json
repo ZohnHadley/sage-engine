@@ -1,0 +1,102 @@
+[
+  // Footsteps (engine issue #327, docs/design/10 "As built (surfaces)"): every step, landing and jump
+  // makes the noise of the surface under the foot, picked by the ground's physics_material. No C#: the
+  // `footsteps` part on the player (a step every stride walked, and a noise when it jumps and lands) and
+  // on the hut's walker (a step on each of its walk clip's foot events), the surfaces' cues below, and
+  // the sounds' variations so a walk is not one sample on repeat. Sounds: tools/make_placeholder_audio.py.
+
+  // ---- what the ground is made of -----------------------------------------------------------------
+  //
+  // The hills name no surface (SandboxModule's own generator paints none), so they sound like the
+  // gameplay conventions' `surface`, the engine's `sage:default`, which is also what a surface with no
+  // cue falls back to: here, grass.
+  { "type": "physics_material", "id": "sage:default", "patch": true,
+    "footstep": "step_grass", "land": "land_grass", "jump": "jump" },
+  // The hut's floor is planks (its texture is `floor`; the walls and roof are scene.json's plaster).
+  { "type": "physics_material", "id": "planks", "friction": 0.6, "restitution": 0.1, "penetration": 0.4,
+    "footstep": "step_wood", "land": "land_wood", "jump": "jump", "impact": "bullet_impact", "textures": ["floor"] },
+
+  { "type": "cue", "id": "step_grass", "description": "A foot in the grass", "sound": "step_grass" },
+  { "type": "cue", "id": "step_wood",  "description": "A foot on a plank",   "sound": "step_wood" },
+  { "type": "cue", "id": "land_grass", "description": "Landing in the grass", "sound": "land_grass" },
+  { "type": "cue", "id": "land_wood",  "description": "Landing on planks",    "sound": "land_wood" },
+  { "type": "cue", "id": "jump",       "description": "Pushing off to jump",  "sound": "jump" },
+
+  // Three of each step, picked at random with a little volume and pitch jitter; quiet, short-ranged and
+  // low priority, so a crowd's feet never steal a voice from anything that matters.
+  { "type": "sound", "id": "step_grass",
+    "variations": ["audio/step_grass_a.wav", "audio/step_grass_b.wav", "audio/step_grass_c.wav"],
+    "volume": 0.35, "volumeJitter": 0.08, "pitchJitter": 0.2, "maxInstances": 6, "minDistance": 2, "maxDistance": 20 },
+  { "type": "sound", "id": "step_wood",
+    "variations": ["audio/step_wood_a.wav", "audio/step_wood_b.wav", "audio/step_wood_c.wav"],
+    "volume": 0.45, "volumeJitter": 0.08, "pitchJitter": 0.15, "maxInstances": 6, "minDistance": 2, "maxDistance": 22 },
+  { "type": "sound", "id": "land_grass", "variations": ["audio/land_grass.wav"],
+    "volume": 0.5, "pitchJitter": 0.1, "minDistance": 2, "maxDistance": 25, "priority": 1 },
+  { "type": "sound", "id": "land_wood", "variations": ["audio/land_wood.wav"],
+    "volume": 0.6, "pitchJitter": 0.1, "minDistance": 2, "maxDistance": 25, "priority": 1 },
+  { "type": "sound", "id": "jump", "variations": ["audio/jump.wav"],
+    "volume": 0.3, "pitchJitter": 0.2, "minDistance": 2, "maxDistance": 15 },
+
+  // ---- the hut's walker ---------------------------------------------------------------------------
+  //
+  // The skeletal test game's box mannequin (tools/make_mannequin.py writes it here too), pacing the hut
+  // (maps/hut.map places it, and wires its OnTweenDone to its own `Arrived`). Its graph is idle or a
+  // walk-run blend on how fast it moves; its clips say where each foot comes down, and the `footsteps`
+  // part (stride 0: the clips say when) looks under that foot, where foot IK put it, for the surface.
+  { "type": "material", "id": "mannequin", "base": "sage:lit_default", "params": { "AlbedoColor": [0.62, 0.55, 0.45, 1] } },
+  {
+    "type": "anim_graph",
+    "id": "walker",
+    "initial": "idle",
+    "fade": 0.25,
+    "params": { "speed": { "from": "Speed" } },
+    "states": {
+      "idle": { "clip": "idle", "transitions": [ { "to": "move", "when": { "anim_param": "speed", "min": 0.3 } } ] },
+      "move": { "blend": { "x": "speed", "points": [ { "clip": "walk", "x": 1.5 }, { "clip": "run", "x": 4.5 } ] },
+                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] }
+    }
+  },
+  {
+    // Heel strikes: the walk and the run both put the left foot down as the clip starts and the right
+    // half way through.
+    "type": "anim_events",
+    "id": "mannequin",
+    "model": "models/mannequin.glb",
+    "clips": {
+      "walk": [ { "time": 0, "name": "foot_left" }, { "time": 0.5, "name": "foot_right" } ],
+      "run":  [ { "time": 0, "name": "foot_left" }, { "time": 0.35, "name": "foot_right" } ]
+    }
+  },
+  {
+    "type": "prefab", "id": "hut_walker", "name": "hut walker",
+    "parts": {
+      "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "mannequin" },
+      "animator": { "graph": "walker" },
+      "foot_ik": {
+        "pelvis": "pelvis",
+        "left": { "hip": "thigh_l", "knee": "shin_l", "foot": "foot_l" },
+        "right": { "hip": "thigh_r", "knee": "shin_r", "foot": "foot_r" },
+        "footHeight": 0.08, "rayAbove": 0.3, "rayBelow": 0.12, "maxPelvisDrop": 0.3
+      },
+      "footsteps": { "stride": 0 },
+      "tween": { "duration": 4, "ease": "Linear" },
+      "state_machine": { "machine": "hut_walker" }
+    }
+  },
+  {
+    // Six metres along the room at a walk (1.5 m/s), a half turn, and back.
+    "type": "state_machine",
+    "id": "hut_walker",
+    "initial": "out",
+    "states": {
+      "out":       { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset 6 0 0" } ],
+                     "transitions": [ { "to": "turn_back", "on": "Arrived" } ] },
+      "turn_back": { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ],
+                     "transitions": [ { "to": "back", "on": "Arrived" } ] },
+      "back":      { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset -6 0 0" } ],
+                     "transitions": [ { "to": "turn_out", "on": "Arrived" } ] },
+      "turn_out":  { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ],
+                     "transitions": [ { "to": "out", "on": "Arrived" } ] }
+    }
+  }
+]

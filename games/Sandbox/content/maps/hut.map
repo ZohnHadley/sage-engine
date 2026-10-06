@@ -94,6 +94,13 @@
 "angle" "0"
 }
 {
+"classname" "hut_walker"
+"targetname" "hut_walker"
+"origin" "-80 104 0"
+"angle" "0"
+"OnTweenDone" "!self,Arrived"
+}
+{
 "classname" "door"
 "targetname" "hut_door"
 "OnUse" "!self,Open"

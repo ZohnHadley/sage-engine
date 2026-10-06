@@ -496,9 +496,9 @@
     "lifetime": 20, "fade": 4, "colour": "#6E0000D0", "reach": 2.5 },
   { "type": "cue", "id": "bullet_impact", "description": "A round meeting plaster",
     "particles": "sparks", "particleCount": 4, "decal": "bullet_hole" },
-  // What the maps' walls, floors and roofs are made of (engine #270): the door is left out, because it
-  // moves and a mark on it would stay where it was.
-  { "type": "physics_material", "id": "plaster", "impact": "bullet_impact", "textures": ["wall", "floor", "roof"] },
+  // What the maps' walls and roofs are made of (engine #270): the door is left out, because it moves and
+  // a mark on it would stay where it was. The floors are planks (footsteps.json, engine #327).
+  { "type": "physics_material", "id": "plaster", "impact": "bullet_impact", "textures": ["wall", "roof"] },
 
   // ---- particles (docs/design/06 \u00a73.9, F39) ------------------------------------------------------
   //
@@ -852,7 +852,10 @@
       "attributes": {},
       "melee": { "attack": "sage:default_attack" },
       "inventory": { "capacity": 60 },
-      "abilities": ["fireball"]
+      "abilities": ["fireball"],
+      // A step every 1.6 m walked on the ground, and a noise when it jumps and lands, each the sound of
+      // what is underfoot (footsteps.json, engine issue #327).
+      "footsteps": {}
     }
   },
 
