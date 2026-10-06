@@ -182,6 +182,7 @@ public class Game1 : Game
         // has no pawn to command, and its PlayerInput is only ever written (issue #13).
         playerInput = world.Resources.GetOrAdd(() => new PlayerInput());
         inputWorld = world;
+        engine.Demos.PlayerWorld = () => PlayerWorld;   // what `record` records (issue #333)
 
 #if SAGE_DEV
         dev.OnWorldCreated(world);

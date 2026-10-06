@@ -302,6 +302,7 @@ public sealed class SageApp : IDisposable
         VirtualFileSystem.RegisterCommands(CVars, Engine.Vfs);
         Engine.Records.RegisterCommands(CVars);
         Engine.Saves.RegisterCommands(CVars);
+        Engine.Demos.RegisterCommands(CVars);   // record, stop, playdemo, demos, world_hash (#333)
         Engine.Scenes.RegisterCommands(CVars);   // scene_load (issue #29)
         Engine.Rebinds.RegisterCommands(CVars);   // bind, unbind, bind_reset (#328)
         Engine.ModManager.RegisterCommands(CVars);   // mod_list, mod_order, mod_enable/disable/move (4j-3)
