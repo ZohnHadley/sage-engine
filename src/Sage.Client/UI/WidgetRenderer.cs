@@ -55,7 +55,7 @@ internal static class WidgetRenderer
                 case UiDrawKind.Image:
                     // Asked every frame, as the font is: a hot reload disposes the texture under a
                     // reference kept (UiRenderSystem). A dictionary lookup on an interned path.
-                    if (command.Texture.IsEmpty || content.LoadTexture(command.Texture) is not { } texture) break;
+                    if (command.Texture.IsEmpty || content.LoadTexture(command.Texture, AssetScope.Ui) is not { } texture) break;
                     var colour = Colour(command, blend, opacity);
                     var slice = command.Slice;
                     if (slice == Thickness.Zero)

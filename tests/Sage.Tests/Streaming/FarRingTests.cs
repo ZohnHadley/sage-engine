@@ -168,7 +168,7 @@ public class FarRingTests
         var assets = world.Resources.Get<SectorAssets>();
         var released = new List<AssetPath>();
         var handles = new List<MeshHandle>();
-        assets.Released += released.Add;
+        assets.Released += key => released.Add(key.Path);
         assets.HandleReleased += handles.Add;
 
         var rock = AssetPath.Intern("models/rock.glb");
