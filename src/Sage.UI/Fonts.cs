@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Text;
 using StbTrueTypeSharp;
 
@@ -123,18 +124,74 @@ public sealed unsafe class TrueTypeFont : IDisposable
     public override string ToString() => Name;
 }
 
-// A TrueType font at one size, for layout: what a label whose style names the font measures with.
+// A font and the fonts behind it (issue #345): for each character, the first of them that has it — so
+// a label in a Latin font shows the Japanese or Arabic a translation puts in it from the language's own
+// fonts. Line height and baseline are the first font's. An Arabic presentation form (Scripts.Shape) that
+// no font has is drawn as its letter, unjoined, from whichever font has that.
+[Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
+public sealed class FontChain
+{
+    private readonly TrueTypeFont[] _fonts;
+    private readonly Dictionary<int, (TrueTypeFont Font, int Codepoint)> _resolved = new();
+
+    public FontChain(TrueTypeFont primary, IEnumerable<TrueTypeFont>? fallbacks = null)
+    {
+        ArgumentNullException.ThrowIfNull(primary);
+        var fonts = new List<TrueTypeFont> { primary };
+        if (fallbacks != null)
+            foreach (var font in fallbacks)
+                if (font != null && !fonts.Contains(font)) fonts.Add(font);
+        _fonts = fonts.ToArray();
+    }
+
+    public TrueTypeFont Primary => _fonts[0];
+
+    // The primary font, then each fallback in order.
+    public IReadOnlyList<TrueTypeFont> Fonts => _fonts;
+
+    // Whether any font in the chain draws `codepoint` (or, for a presentation form, its letter).
+    public bool Covers(int codepoint)
+    {
+        var (font, drawn) = Resolve(codepoint);
+        return font.HasGlyph(drawn);
+    }
+
+    // The font that draws `codepoint`, and the character it draws: the first that has it; else, for an
+    // Arabic form, the first with its letter; else the primary font's missing-glyph box.
+    public (TrueTypeFont Font, int Codepoint) Resolve(int codepoint)
+    {
+        if (_resolved.TryGetValue(codepoint, out var found)) return found;
+        found = (_fonts[0], codepoint);
+        bool have = false;
+        foreach (var font in _fonts)
+            if (font.HasGlyph(codepoint)) { found = (font, codepoint); have = true; break; }
+        if (!have && Scripts.BaseOf(codepoint) is var letter and not '\0')
+            foreach (var font in _fonts)
+                if (font.HasGlyph(letter)) { found = (font, letter); break; }
+        _resolved[codepoint] = found;
+        return found;
+    }
+
+    public override string ToString() => string.Join(" > ", (IEnumerable<TrueTypeFont>)_fonts);
+}
+
+// A TrueType font at one size, for layout: what a label whose style names the font measures with. With
+// a chain (#345), each character is measured in the font that draws it.
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class FontTextMeasure : ITextMeasure
 {
-    public FontTextMeasure(TrueTypeFont font, float size)
+    public FontTextMeasure(TrueTypeFont font, float size) : this(new FontChain(font ?? throw new ArgumentNullException(nameof(font))), size) { }
+
+    public FontTextMeasure(FontChain chain, float size)
     {
-        Font = font ?? throw new ArgumentNullException(nameof(font));
+        Chain = chain ?? throw new ArgumentNullException(nameof(chain));
         Size = size;
-        LineHeight = font.LineHeight(size);
+        LineHeight = chain.Primary.LineHeight(size);
     }
 
-    public TrueTypeFont Font { get; }
+    public TrueTypeFont Font => Chain.Primary;
+
+    public FontChain Chain { get; }
 
     // The em, in virtual units.
     public float Size { get; }
@@ -155,20 +212,23 @@ public sealed class FontTextMeasure : ITextMeasure
         return new System.Numerics.Vector2(longest, lines * LineHeight * scale);
     }
 
-    // One line's width: advances, and the kerning between each pair. A '\n' in it is skipped.
+    // One line's width: advances, and the kerning between each pair in the same font. A '\n' in it is skipped.
     public float Width(ReadOnlySpan<char> text, float scale)
     {
         float width = 0f;
         int previous = -1;
+        TrueTypeFont? previousFont = null;
         float size = Size * scale;
         while (!text.IsEmpty)
         {
             Rune.DecodeFromUtf16(text, out var rune, out int used);
             text = text[used..];
             if (rune.Value == '\n') { previous = -1; continue; }
-            if (previous >= 0) width += Font.Kerning(previous, rune.Value, size);
-            width += Font.Advance(rune.Value, size);
-            previous = rune.Value;
+            var (font, codepoint) = Chain.Resolve(rune.Value);
+            if (previous >= 0 && ReferenceEquals(font, previousFont)) width += font.Kerning(previous, codepoint, size);
+            width += font.Advance(codepoint, size);
+            previous = codepoint;
+            previousFont = font;
         }
         return width;
     }
@@ -187,10 +247,16 @@ public sealed class UiFonts
 {
     public const float DefaultSize = 9f;
 
+    // The engine's own letters as a TrueType font (engine_content/fonts/sage.ttf): the last font a label
+    // with no font of its own falls back to while a language names fonts (#345).
+    public static readonly AssetPath EngineFont = AssetPath.Intern("fonts/sage.ttf");
+
     private readonly Func<AssetPath, byte[]?> _read;
     private readonly Dictionary<AssetPath, TrueTypeFont?> _fonts = new();
     private readonly Dictionary<(AssetPath, float), FontTextMeasure> _measures = new();
+    private readonly Dictionary<AssetPath, FontChain?> _chains = new();
     private readonly HashSet<AssetPath> _warned = new();
+    private AssetPath[] _fallbacks = Array.Empty<AssetPath>();
 
     // Fonts read from `vfs` (what UiModule makes).
     public UiFonts(VirtualFileSystem vfs) : this(path => ReadFile(vfs, path)) { }
@@ -233,15 +299,47 @@ public sealed class UiFonts
         return font;
     }
 
+    // The fonts tried after a label's own for a character it lacks, and what a label with no TrueType
+    // font of its own is drawn in (#345): the shown language's `language` record's fonts. Setting
+    // different ones drops every chain and measure, and moves Version.
+    public IReadOnlyList<AssetPath> Fallbacks => _fallbacks;
+
+    public void SetFallbacks(IEnumerable<AssetPath> fonts)
+    {
+        var next = (fonts ?? Array.Empty<AssetPath>()).Where(f => !f.IsEmpty).ToArray();
+        if (next.AsSpan().SequenceEqual(_fallbacks)) return;
+        _fallbacks = next;
+        _chains.Clear();
+        _measures.Clear();
+        Version++;
+    }
+
+    // What text in `font` is drawn with: the font and the fallbacks behind it, or, when `font` is not a
+    // TrueType font that can be read, the fallbacks and then the engine's TTF. Null when there is no
+    // TrueType font in it at all — the engine's cells or a grid atlas draw it.
+    public FontChain? Chain(AssetPath font)
+    {
+        if (_chains.TryGetValue(font, out var chain)) return chain;
+        var own = IsTrueType(font) ? Get(font) : null;
+        var fonts = new List<TrueTypeFont>();
+        if (own != null) fonts.Add(own);
+        foreach (var path in _fallbacks)
+            if (Get(path) is { } fallback) fonts.Add(fallback);
+        if (own == null && fonts.Count > 0 && Quiet(EngineFont) is { } engine) fonts.Add(engine);
+        chain = fonts.Count == 0 ? null : new FontChain(fonts[0], fonts.Skip(1));
+        _chains[font] = chain;
+        return chain;
+    }
+
     // How text in `font` at `size` (0: DefaultSize) measures; `engine` (the engine font's measure, at
-    // its own size) when the font is not a TTF it can read. Allocates only the first time a font and
-    // size are asked for.
+    // its own size) when the font is not a TTF it can read and the language names no fonts. Allocates
+    // only the first time a font and size are asked for.
     public ITextMeasure Measure(AssetPath font, float size, ITextMeasure engine)
     {
         if (size <= 0f) size = DefaultSize;
-        if (IsTrueType(font) && Get(font) is { } ttf)
+        if ((IsTrueType(font) || _fallbacks.Length > 0) && Chain(font) is { } chain)
         {
-            if (!_measures.TryGetValue((font, size), out var measure)) _measures[(font, size)] = measure = new FontTextMeasure(ttf, size);
+            if (!_measures.TryGetValue((font, size), out var measure)) _measures[(font, size)] = measure = new FontTextMeasure(chain, size);
             return measure;
         }
         if (!font.IsEmpty && !IsTrueType(font) && !IsAtlas(font)) Warn(font, "a font is a .ttf, .otf or a .png grid atlas");
@@ -260,9 +358,23 @@ public sealed class UiFonts
         foreach (var font in _fonts.Values) font?.Dispose();
         _fonts.Clear();
         _measures.Clear();
+        _chains.Clear();
         _scaled.Clear();
         _warned.Clear();
         Version++;
+    }
+
+    // A font read without a word when it is not there: the engine's own, which a game need not ship.
+    internal TrueTypeFont? Quiet(AssetPath path)
+    {
+        if (_fonts.TryGetValue(path, out var font)) return font;
+        try
+        {
+            if (_read(path) is { } data) font = TrueTypeFont.Load(data, path.ToString());
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException) { }
+        _fonts[path] = font;
+        return font;
     }
 
     private void Warn(AssetPath path, string why)

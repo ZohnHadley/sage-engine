@@ -35,5 +35,6 @@ Sage.Core.DropDownConsole.Submit() -> void
 Sage.Core.DropDownConsole.Toggle() -> void
 Sage.Core.DropDownConsole.Type(System.ReadOnlySpan<char> typed) -> void
 Sage.Core.DropDownConsole.Update(float seconds) -> void
+Sage.Core.CVarRegistry.Version.get -> int
 Sage.Core.GameManifest.Title.get -> string?
 Sage.Core.GameManifest.Title.set -> void

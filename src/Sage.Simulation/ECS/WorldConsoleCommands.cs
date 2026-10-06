@@ -17,6 +17,10 @@ internal static class WorldConsoleCommands
         engine.Scheduling = new SchedulingCVars(cvars);   // sys_parallel, sys_threads, sys_access_check (#288)
         engine.VisualLogSettings = new VisualLogCVars(cvars);   // vlog_record, vlog_ticks, vlog_show (#300)
         RegisterVisualLog(cvars, engine);
+        // The player's field of view (issue #339, the options screen's): over the player camera's own
+        // (`sage:player_camera`'s fovY) while it is above 0. Archived: a player sets it once.
+        engine.PlayerFov = cvars.Register("fov", 0f, CVarFlags.Archive,
+            "The player camera's vertical field of view in degrees; 0 = the camera's own (sage:player_camera's fovY).", 0f, 170f);
 
         cvars.RegisterCommand("ent_list", CVarFlags.None, "ent_list [filter]: list entities in every world.", a =>
         {

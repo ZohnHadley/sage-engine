@@ -75,6 +75,20 @@ internal readonly struct UiValue
         _ => Ref?.ToString() ?? "",
     };
 
+    // As AppendTo, with a format string in a language (#345): a number ("n0", "p0", "f1") or anything
+    // formattable an object binding reads (a date's "d"); text and flags as they are.
+    public void AppendTo(StringBuilder builder, ReadOnlySpan<char> format, IFormatProvider culture)
+    {
+        switch (Kind)
+        {
+            case UiValueKind.Integer: builder.Append(ArrayArgs.Formatted((long)Number, format, culture)); break;
+            case UiValueKind.Single: builder.Append(ArrayArgs.Formatted((float)Number, format, culture)); break;
+            case UiValueKind.Double: builder.Append(ArrayArgs.Formatted(Number, format, culture)); break;
+            case UiValueKind.Object when Ref is IFormattable formattable: builder.Append(ArrayArgs.Formatted(formattable, format, culture)); break;
+            default: AppendTo(builder); break;
+        }
+    }
+
     public void AppendTo(StringBuilder builder)
     {
         switch (Kind)

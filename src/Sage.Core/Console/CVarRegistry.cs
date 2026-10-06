@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace Sage.Core;
 
@@ -29,6 +30,12 @@ public sealed class CVarRegistry
     public IEnumerable<ConsoleCommand> Commands => _commands.Values.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase);
 
     public bool CheatsEnabled => _cheats?.Value ?? false;
+
+    // Goes up by one whenever any registered cvar's value changes (issue #339): what a screen showing
+    // settings compares, once a frame, to know it must read them again — without holding a handler on
+    // each cvar for as long as the engine lives.
+    public int Version => _version;
+    private int _version;
 
     // Closed once config.cfg has been read (SageApp.Configure): a cvar registered after that would
     // never see its saved value. Commands stay open — a late command misses nothing.
@@ -66,6 +73,7 @@ public sealed class CVarRegistry
         CVarSeal.Check(cvar.Name);
         CheckNameFree(cvar.Name);
         _cvars[cvar.Name] = cvar;
+        cvar.Changed += _ => Interlocked.Increment(ref _version);
         Ledger?.Record("cvar", cvar.Name);
         if (cvar.Name.Equals("sv_cheats", StringComparison.OrdinalIgnoreCase) && cvar is CVar<bool> cheats)
             _cheats = cheats;

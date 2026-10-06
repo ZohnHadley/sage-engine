@@ -11,6 +11,7 @@ internal sealed class HostCVars
     public CVar<float> ExitAfter { get; }
     public CVar<int> Width { get; }
     public CVar<int> Height { get; }
+    public CVar<bool> Fullscreen { get; }
     public const int MinWidth = 320, MaxWidth = 7680, MinHeight = 200, MaxHeight = 4320;
 
     public HostCVars(CVarRegistry r)
@@ -31,5 +32,7 @@ internal sealed class HostCVars
         // `+vid_width 1600 +vid_height 900`. Applied when it changes.
         Width = r.Register("vid_width", 800, CVarFlags.Archive, "Window width in pixels.", MinWidth, MaxWidth);
         Height = r.Register("vid_height", 410, CVarFlags.Archive, "Window height in pixels.", MinHeight, MaxHeight);
+        // Fullscreen (issue #339, the options screen's): borderless, at vid_width x vid_height.
+        Fullscreen = r.Register("vid_fullscreen", false, CVarFlags.Archive, "Fill the screen (borderless) instead of a window.");
     }
 }

@@ -121,6 +121,7 @@ public class Game1 : Game
         hostCVars.VSync.Changed += _ => ApplyVSync();
         hostCVars.Width.Changed += _ => ApplyWindowSize();
         hostCVars.Height.Changed += _ => ApplyWindowSize();
+        hostCVars.Fullscreen.Changed += _ => ApplyFullscreen();
         // The window can be resized by dragging its edges (or maximised), in a game and in the editor:
         // the back buffer follows, and everything that draws reads its size every frame (the views,
         // the UI, ImGui), so nothing else has to be told.
@@ -158,6 +159,7 @@ public class Game1 : Game
         app.Configure();   // config.cfg, now that every cvar and command exists
         ApplyVSync();
         ApplyWindowSize();
+        ApplyFullscreen();
         Log.Info(LogCat.Render, $"Graphics: {GraphicsAdapter.DefaultAdapter.Description}, {graphics.PreferredBackBufferWidth}x{graphics.PreferredBackBufferHeight}");
 
         // Records, module Start, then the main world (01 §5.1). Modules install their resources and
@@ -272,6 +274,22 @@ public class Game1 : Game
         graphics.ApplyChanges();
     }
 
+    // `vid_fullscreen` (issue #339): borderless, so switching is quick and the desktop's mode is kept.
+    private void ApplyFullscreen()
+    {
+        bool on = hostCVars.Fullscreen.Value;
+        if (graphics.IsFullScreen == on) return;
+        graphics.HardwareModeSwitch = false;
+        graphics.IsFullScreen = on;
+        if (!on)
+        {
+            graphics.PreferredBackBufferWidth = hostCVars.Width.Value;   // back to the window it was
+            graphics.PreferredBackBufferHeight = hostCVars.Height.Value;
+        }
+        graphics.ApplyChanges();
+        Log.Info(LogCat.Render, on ? "Fullscreen" : "Windowed");
+    }
+
     // `vid_width` / `vid_height`: the back buffer follows, and the screen's views with it (each view
     // takes its aspect from its own viewport, 06 §3.4a).
     private void ApplyWindowSize()
@@ -299,6 +317,7 @@ public class Game1 : Game
             graphics.PreferredBackBufferWidth = bounds.Width;
             graphics.PreferredBackBufferHeight = bounds.Height;
             graphics.ApplyChanges();
+            if (graphics.IsFullScreen) return;   // the screen's size is not the window's to remember
             hostCVars.Width.Value = Math.Clamp(bounds.Width, HostCVars.MinWidth, HostCVars.MaxWidth);
             hostCVars.Height.Value = Math.Clamp(bounds.Height, HostCVars.MinHeight, HostCVars.MaxHeight);
         }

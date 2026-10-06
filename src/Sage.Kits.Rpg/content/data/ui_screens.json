@@ -245,6 +245,90 @@
       "resetAll":   { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.controls.reset_all" },
       "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.controls.hint" }
     } }
+  ,
+
+  // ---- options: graphics, audio, controls and gameplay, each setting a ui_option record over a cvar (#339) --
+  // Over `ui_options` (Sage.UI OptionsView): a page of rows per tab, each row a slider, a toggle or a choice
+  // as its option's kind says. Changes are staged (a `*` marks one) until Apply writes them to the cvars;
+  // Revert puts back what the cvars say, Defaults stages every default, and Back with changes asks. The
+  // options themselves are content: data/ui_options.json. Key bindings opens rpg:controls (#328).
+  { "type": "screen", "id": "options", "layout": "options", "viewModel": "ui_options" },
+  { "type": "ui_layout", "id": "options", "style": "panel",
+    "nodes": {
+      "window":     { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [640, 0] },
+      "title":      { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.options.title" },
+      "pages":      { "widget": "tabs", "parent": "window", "bind": "page", "spacing": 6, "tabStyle": "tab" },
+
+      "graphics":   { "widget": "stack", "parent": "pages", "title": "@rpg.options.graphics", "spacing": 2 },
+      "g_list":   { "widget": "item_list", "parent": "graphics", "bind": "graphics", "spacing": 2 },
+      "g_row":    { "widget": "stack", "parent": "g_list", "direction": "row", "spacing": 8 },
+      "g_label":  { "widget": "label", "parent": "g_row", "style": "text", "bind": "label", "minSize": [220, 0], "vAlign": "center" },
+      "g_slider": { "widget": "slider", "parent": "g_row", "style": "slider", "bind": "value",
+                     "bindings": { "min": "min", "max": "max", "visible": "isSlider" }, "minSize": [200, 12], "vAlign": "center" },
+      "g_value":  { "widget": "label", "parent": "g_row", "style": "hint", "bind": "valueText",
+                     "bindings": { "visible": "isSlider" }, "minSize": [90, 0], "vAlign": "center" },
+      "g_toggle": { "widget": "checkbox", "parent": "g_row", "style": "button", "bind": "checked",
+                     "bindings": { "visible": "isToggle" } },
+      "g_choice": { "widget": "dropdown", "parent": "g_row", "style": "button", "bind": "selected",
+                     "bindings": { "options": "choices", "visible": "isChoice" }, "minSize": [200, 0] },
+      "g_dirty":  { "widget": "label", "parent": "g_row", "style": "warning", "text": "*",
+                     "bindings": { "visible": "dirty" }, "vAlign": "center" },
+
+      "audio":      { "widget": "stack", "parent": "pages", "title": "@rpg.options.audio", "spacing": 2 },
+      "a_list":   { "widget": "item_list", "parent": "audio", "bind": "audio", "spacing": 2 },
+      "a_row":    { "widget": "stack", "parent": "a_list", "direction": "row", "spacing": 8 },
+      "a_label":  { "widget": "label", "parent": "a_row", "style": "text", "bind": "label", "minSize": [220, 0], "vAlign": "center" },
+      "a_slider": { "widget": "slider", "parent": "a_row", "style": "slider", "bind": "value",
+                     "bindings": { "min": "min", "max": "max", "visible": "isSlider" }, "minSize": [200, 12], "vAlign": "center" },
+      "a_value":  { "widget": "label", "parent": "a_row", "style": "hint", "bind": "valueText",
+                     "bindings": { "visible": "isSlider" }, "minSize": [90, 0], "vAlign": "center" },
+      "a_toggle": { "widget": "checkbox", "parent": "a_row", "style": "button", "bind": "checked",
+                     "bindings": { "visible": "isToggle" } },
+      "a_choice": { "widget": "dropdown", "parent": "a_row", "style": "button", "bind": "selected",
+                     "bindings": { "options": "choices", "visible": "isChoice" }, "minSize": [200, 0] },
+      "a_dirty":  { "widget": "label", "parent": "a_row", "style": "warning", "text": "*",
+                     "bindings": { "visible": "dirty" }, "vAlign": "center" },
+
+      "controls":   { "widget": "stack", "parent": "pages", "title": "@rpg.options.controls", "spacing": 2 },
+      "c_list":   { "widget": "item_list", "parent": "controls", "bind": "controls", "spacing": 2 },
+      "c_row":    { "widget": "stack", "parent": "c_list", "direction": "row", "spacing": 8 },
+      "c_label":  { "widget": "label", "parent": "c_row", "style": "text", "bind": "label", "minSize": [220, 0], "vAlign": "center" },
+      "c_slider": { "widget": "slider", "parent": "c_row", "style": "slider", "bind": "value",
+                     "bindings": { "min": "min", "max": "max", "visible": "isSlider" }, "minSize": [200, 12], "vAlign": "center" },
+      "c_value":  { "widget": "label", "parent": "c_row", "style": "hint", "bind": "valueText",
+                     "bindings": { "visible": "isSlider" }, "minSize": [90, 0], "vAlign": "center" },
+      "c_toggle": { "widget": "checkbox", "parent": "c_row", "style": "button", "bind": "checked",
+                     "bindings": { "visible": "isToggle" } },
+      "c_choice": { "widget": "dropdown", "parent": "c_row", "style": "button", "bind": "selected",
+                     "bindings": { "options": "choices", "visible": "isChoice" }, "minSize": [200, 0] },
+      "c_dirty":  { "widget": "label", "parent": "c_row", "style": "warning", "text": "*",
+                     "bindings": { "visible": "dirty" }, "vAlign": "center" },
+      "keys":       { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.options.keys",
+                      "bindings": { "visible": "hasControls" }, "hAlign": "start" },
+
+      "gameplay":   { "widget": "stack", "parent": "pages", "title": "@rpg.options.gameplay", "spacing": 2 },
+      "p_list":   { "widget": "item_list", "parent": "gameplay", "bind": "gameplay", "spacing": 2 },
+      "p_row":    { "widget": "stack", "parent": "p_list", "direction": "row", "spacing": 8 },
+      "p_label":  { "widget": "label", "parent": "p_row", "style": "text", "bind": "label", "minSize": [220, 0], "vAlign": "center" },
+      "p_slider": { "widget": "slider", "parent": "p_row", "style": "slider", "bind": "value",
+                     "bindings": { "min": "min", "max": "max", "visible": "isSlider" }, "minSize": [200, 12], "vAlign": "center" },
+      "p_value":  { "widget": "label", "parent": "p_row", "style": "hint", "bind": "valueText",
+                     "bindings": { "visible": "isSlider" }, "minSize": [90, 0], "vAlign": "center" },
+      "p_toggle": { "widget": "checkbox", "parent": "p_row", "style": "button", "bind": "checked",
+                     "bindings": { "visible": "isToggle" } },
+      "p_choice": { "widget": "dropdown", "parent": "p_row", "style": "button", "bind": "selected",
+                     "bindings": { "options": "choices", "visible": "isChoice" }, "minSize": [200, 0] },
+      "p_dirty":  { "widget": "label", "parent": "p_row", "style": "warning", "text": "*",
+                     "bindings": { "visible": "dirty" }, "vAlign": "center" },
+
+      "buttons":    { "widget": "stack", "parent": "window", "direction": "row", "spacing": 8 },
+      "apply":      { "widget": "button", "parent": "buttons", "style": "button", "text": "@rpg.options.apply", "bindings": { "enabled": "hasChanges" } },
+      "revert":     { "widget": "button", "parent": "buttons", "style": "button", "text": "@rpg.options.revert", "bindings": { "enabled": "hasChanges" } },
+      "defaults":   { "widget": "button", "parent": "buttons", "style": "button", "text": "@rpg.options.defaults" },
+      "message":    { "widget": "label", "parent": "window", "style": "text", "bind": "message",
+                      "args": { "problems": "messageDetail" }, "bindings": { "visible": "hasMessage" } },
+      "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.options.hint" }
+    } }
 ,
   // ---- the title, the pause menu, and the save and load slots (issue #342) --------------------------
   // `rpg:title` is what game.json's `"title": "rpg:title"` opens over a world that waits (Scenes.Title)
