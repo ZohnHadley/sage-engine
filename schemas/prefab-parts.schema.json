@@ -183,6 +183,14 @@
         }
       ]
     },
+    "hand_ik": {
+      "description": "Prefab part 'hand_ik' (HandIkPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/hand_ik"
+        }
+      ]
+    },
     "hitboxes": {
       "description": "Prefab part 'hitboxes' (HitboxesPart). A bare value is its \"model\".",
       "anyOf": [
@@ -310,6 +318,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/logic_relay"
+        }
+      ]
+    },
+    "look_at_ik": {
+      "description": "Prefab part 'look_at_ik' (LookAtIkPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/look_at_ik"
         }
       ]
     },
@@ -1241,6 +1257,19 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "maxFootTilt": {
+          "description": "How far a planted foot may tilt to lie along the ground; 0 = feet stay as animated. Unit: deg. Range: 0 to 90. (float, default 30)",
+          "default": 30,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "pelvisSmoothing": {
+          "description": "How long the pelvis takes to ease to a new height (about two thirds of the way); 0 = at once. Unit: s. At least 0. (float, default 0.1)",
+          "default": 0.1,
+          "type": "number",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
@@ -1285,6 +1314,96 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'footsteps' (FootstepsPart)."
+    },
+    "hand_ik": {
+      "type": "object",
+      "properties": {
+        "left": {
+          "description": "The left arm: shoulder, elbow and hand joints, and what it reaches. (HandIkArm)",
+          "type": "object",
+          "properties": {
+            "shoulder": {
+              "description": "The upper arm (the chain's root) (string)",
+              "type": "string"
+            },
+            "elbow": {
+              "description": "The forearm (where the arm bends) (string)",
+              "type": "string"
+            },
+            "hand": {
+              "description": "The wrist (what reaches the target) (string)",
+              "type": "string"
+            },
+            "bone": {
+              "description": "A joint of the same skeleton to reach (a grip on what the other hand holds); empty = the component's target. (string)",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Where the hand goes, in the space of `bone` or of the target. Unit: m. (Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "weight": {
+              "description": "How much of the reach to apply over the animation. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "right": {
+          "description": "The right arm: shoulder, elbow and hand joints, and what it reaches. (HandIkArm)",
+          "type": "object",
+          "properties": {
+            "shoulder": {
+              "description": "The upper arm (the chain's root) (string)",
+              "type": "string"
+            },
+            "elbow": {
+              "description": "The forearm (where the arm bends) (string)",
+              "type": "string"
+            },
+            "hand": {
+              "description": "The wrist (what reaches the target) (string)",
+              "type": "string"
+            },
+            "bone": {
+              "description": "A joint of the same skeleton to reach (a grip on what the other hand holds); empty = the component's target. (string)",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Where the hand goes, in the space of `bone` or of the target. Unit: m. (Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "weight": {
+              "description": "How much of the reach to apply over the animation. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "weight": {
+          "description": "How much of both arms' reach to apply over the animation. Range: 0 to 1. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'hand_ik' (HandIkPart)."
     },
     "hitboxes": {
       "type": "object",
@@ -1788,6 +1907,134 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'logic_relay' (LogicRelayPart)."
+    },
+    "look_at_ik": {
+      "type": "object",
+      "properties": {
+        "joints": {
+          "description": "The joints that turn, from the hips up (the neck and head, usually) (List<AimIkJoint>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints+": {
+          "description": "Adds to \"joints\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints-": {
+          "description": "Removes these from \"joints\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "eye": {
+          "description": "The joint the look is measured from; empty = the last joint. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "weight": {
+          "description": "How much of the look to apply over the animation. Range: 0 to 1. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maxAngle": {
+          "description": "A target further round than this from the character's forward is ignored (it looks ahead) Unit: deg. Range: 0 to 180. (float, default 120)",
+          "default": 120,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 180
+        },
+        "smoothing": {
+          "description": "How long the head takes to turn to a new look (about two thirds of the way); 0 = at once. Unit: s. At least 0. (float, default 0.15)",
+          "default": 0.15,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'look_at_ik' (LookAtIkPart)."
     },
     "math_remap": {
       "type": "object",
