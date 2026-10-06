@@ -197,6 +197,12 @@ public sealed partial class SaveSystem
     // whether the client's thumbnail hook is asked for one.
     private SaveSnapshot? Snapshot(string slot, SaveKind kind, string? title, string? directory = null, bool picture = true)
     {
+        // Nothing has started at the title (issue #342): there is no game to save yet.
+        if (_engine.Worlds.Any(Scenes.AtTitle))
+        {
+            Log.Info(LogCat.Save, $"Save '{slot}': nothing to save at the title");
+            return null;
+        }
         var clock = System.Diagnostics.Stopwatch.StartNew();
         try
         {
@@ -225,6 +231,10 @@ public sealed partial class SaveSystem
                 }).ToArray()),
             };
             if (!string.IsNullOrWhiteSpace(title)) header["title"] = title.Trim();
+            // Where the player is, for a load menu (issue #342): the first world's scene. The load itself
+            // reads each world's own from its file; this is only what a slot shows.
+            if (_engine.Worlds.Count > 0 && _engine.Worlds[0].Resources.TryGet<ActiveScene>(out var where) && where is { Id.IsEmpty: false })
+                header["scene"] = where.Id.ToString();
 
             bool compress = _compress is { Value: true };
             if (compress) header["compression"] = "gzip";
@@ -558,6 +568,11 @@ public sealed partial class SaveSystem
         if (mismatches.Count > 0)
             Log.Warn(LogCat.Save, $"Save '{slot}' was written with other plugins or content; loading it anyway: " +
                                   string.Join("; ", mismatches));
+
+        // A world waiting at the title (issue #342) starts first, as a new game would, and the save is laid
+        // over it the way it is over any started world.
+        foreach (var world in _engine.Worlds.ToList())
+            if (Scenes.AtTitle(world)) _engine.BeginGame(world);
 
         int total = 0;
         foreach (var world in prepared)
@@ -1347,6 +1362,7 @@ public sealed partial class SaveSystem
             List<SavedContent>? content = null;
             List<SavedMod>? mods = null;
             string? title = null, thumbnail = null;
+            RecordId scene = default;
             bool compressed = false;
             try
             {
@@ -1369,9 +1385,11 @@ public sealed partial class SaveSystem
                         && picture == Path.GetFileName(picture) && File.Exists(Path.Combine(directory, picture)))
                         thumbnail = Path.GetFullPath(Path.Combine(directory, picture));
                     compressed = header["compression"] is JsonValue c && c.TryGetValue(out string? packing) && packing == "gzip";
+                    if (header["scene"] is JsonValue sv && sv.TryGetValue(out string? sceneText) && sceneText is { Length: > 0 })
+                        scene = RecordId.Parse(sceneText, "sage");   // a malformed one is a FormatException: caught below
                 }
             }
-            catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException)
+            catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException or FormatException)
             {
                 /* a broken header still lists, as one that cannot be loaded */
             }
@@ -1382,6 +1400,7 @@ public sealed partial class SaveSystem
                 Title = string.IsNullOrWhiteSpace(title) ? name : title,
                 ThumbnailPath = thumbnail,
                 Compressed = compressed,
+                Scene = scene,
             });
         }
         slots.Sort((a, b) =>
@@ -1512,6 +1531,11 @@ public sealed class SaveSlot
     // was saved without one (no client hook, a headless game, a save from before).
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public string? ThumbnailPath { get; internal init; }
+
+    // The scene the player was in when it was saved (issue #342), for a load menu's "where"; empty for a
+    // save from before headers said.
+    [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public RecordId Scene { get; internal init; }
 
     // Its world files are gzip-compressed (`save_compress`, issue #285). Either kind loads.
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]

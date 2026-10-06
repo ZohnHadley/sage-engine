@@ -287,6 +287,9 @@ Sage.UI.ControlsView.Row.RebindLabel.get -> string!
 Sage.UI.ControlsView.Row.Row() -> void
 Sage.UI.ControlsView.RowCount.get -> int
 Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!
+Sage.UI.ScreenRecord.Pauses -> bool
+Sage.UI.UiScreenStack.HoldsPause.get -> bool
+Sage.UI.UiScreenStack.PausesWorld.get -> bool
 Sage.UI.UiNode.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.UI.UiScreenActions
 static Sage.UI.UiScreenActions.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen, Sage.Simulation.Entity subject, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> Sage.UI.UiLayer?

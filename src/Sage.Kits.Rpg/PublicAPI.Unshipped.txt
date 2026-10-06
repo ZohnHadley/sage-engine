@@ -29,6 +29,82 @@ virtual Sage.Kits.Rpg.ItemGridView.DragStart(in Sage.UI.UiDrag drag, in Sage.UI.
 virtual Sage.Kits.Rpg.ItemGridView.Drop(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> bool
 virtual Sage.Kits.Rpg.ItemGridView.Focused(Sage.UI.Widget? widget, in Sage.UI.UiBindContext context) -> void
 virtual Sage.Kits.Rpg.ItemGridView.Moved(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, Sage.Kits.Rpg.ItemGrid! from, Sage.Kits.Rpg.ItemGrid! to) -> void
+abstract Sage.Kits.Rpg.SaveSlotsView.Saving.get -> bool
+const Sage.Kits.Rpg.RpgMenus.ContinueButton = "continue" -> string!
+const Sage.Kits.Rpg.RpgMenus.LoadButton = "load" -> string!
+const Sage.Kits.Rpg.RpgMenus.ModsButton = "mods" -> string!
+const Sage.Kits.Rpg.RpgMenus.NewGameButton = "new_game" -> string!
+const Sage.Kits.Rpg.RpgMenus.OptionsButton = "options" -> string!
+const Sage.Kits.Rpg.RpgMenus.QuitButton = "quit" -> string!
+const Sage.Kits.Rpg.RpgMenus.ResumeButton = "resume" -> string!
+const Sage.Kits.Rpg.RpgMenus.SaveButton = "save" -> string!
+const Sage.Kits.Rpg.SaveSlotsView.DeleteButton = "delete" -> string!
+const Sage.Kits.Rpg.SaveSlotsView.NewButton = "new" -> string!
+const Sage.Kits.Rpg.SaveSlotsView.UseButton = "use" -> string!
+override Sage.Kits.Rpg.LoadGameView.Saving.get -> bool
+override Sage.Kits.Rpg.SaveGameView.Saving.get -> bool
+Sage.Kits.Rpg.LoadGameView
+Sage.Kits.Rpg.LoadGameView.LoadGameView() -> void
+Sage.Kits.Rpg.PauseView
+Sage.Kits.Rpg.PauseView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.PauseView.HasMods.get -> bool
+Sage.Kits.Rpg.PauseView.HasOptions.get -> bool
+Sage.Kits.Rpg.PauseView.PauseView() -> void
+Sage.Kits.Rpg.PauseView.QuitQuestion.get -> Sage.UI.UiDialog?
+Sage.Kits.Rpg.PauseView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.RpgMenus
+Sage.Kits.Rpg.SaveGameView
+Sage.Kits.Rpg.SaveGameView.SaveGameView() -> void
+Sage.Kits.Rpg.SaveSlotsView
+Sage.Kits.Rpg.SaveSlotsView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.SaveSlotsView.HasSaves.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Heading.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Loading.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Message.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.MessageSlot.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.NoSaves.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Question.get -> Sage.UI.UiDialog?
+Sage.Kits.Rpg.SaveSlotsView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.SaveSlotsView.SaveSlotsView() -> void
+Sage.Kits.Rpg.SaveSlotsView.Slot
+Sage.Kits.Rpg.SaveSlotsView.Slot.CanLoad.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Slot.CannotLoad.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Slot.CanUse.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Slot.HasMismatch.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Slot.HasMods.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Slot.HasThumbnail.get -> bool
+Sage.Kits.Rpg.SaveSlotsView.Slot.Kind.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.Location.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.Mismatch.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.Mods.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.Name.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.Save.get -> Sage.Simulation.SaveSlot?
+Sage.Kits.Rpg.SaveSlotsView.Slot.Slot() -> void
+Sage.Kits.Rpg.SaveSlotsView.Slot.Thumbnail.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.Title.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.Use.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.Slot.When.get -> string!
+Sage.Kits.Rpg.SaveSlotsView.SlotCount.get -> int
+Sage.Kits.Rpg.SaveSlotsView.Slots.get -> System.Collections.Generic.List<Sage.Kits.Rpg.SaveSlotsView.Slot!>!
+Sage.Kits.Rpg.TitleView
+Sage.Kits.Rpg.TitleView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.TitleView.Back(in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.TitleView.CanContinue.get -> bool
+Sage.Kits.Rpg.TitleView.ContinueSlot.get -> string!
+Sage.Kits.Rpg.TitleView.HasMods.get -> bool
+Sage.Kits.Rpg.TitleView.HasOptions.get -> bool
+Sage.Kits.Rpg.TitleView.Message.get -> string!
+Sage.Kits.Rpg.TitleView.MessageSlot.get -> string!
+Sage.Kits.Rpg.TitleView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.TitleView.TitleView() -> void
+static readonly Sage.Kits.Rpg.RpgKitModule.LoadScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.OptionsScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.PauseScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.SaveScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.TitleScreen -> Sage.Core.RecordId
+static Sage.Kits.Rpg.RpgMenus.CloseMenus(Sage.Simulation.World! world) -> void
+static Sage.Kits.Rpg.RpgMenus.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen) -> bool
+static Sage.Kits.Rpg.RpgMenus.Quit(Sage.Simulation.Engine! engine) -> void
 Sage.Kits.Rpg.RpgConventionsRecord.LootScreen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
 Sage.Kits.Rpg.UseScreen
 Sage.Kits.Rpg.UseScreen.Screen -> Sage.Core.RecordId
