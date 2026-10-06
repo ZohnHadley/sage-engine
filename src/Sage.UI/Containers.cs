@@ -129,6 +129,9 @@ public class Grid : Container
     private Vector2 _spacing;
     private bool _uniform;
     private float[] _widths = Array.Empty<float>(), _heights = Array.Empty<float>();
+    private float[] _xs = Array.Empty<float>(), _ys = Array.Empty<float>();   // each column's left and row's top, as arranged
+    private int[] _placed = Array.Empty<int>();                              // per child: its first cell (row * columns + column), -1 hidden
+    private bool[] _taken = Array.Empty<bool>();
     private int _usedColumns, _usedRows;
 
     public override string TypeName => "grid";
@@ -141,29 +144,64 @@ public class Grid : Container
     public int UsedColumns => _usedColumns;
     public int UsedRows => _usedRows;
 
+    // The cell under a point (virtual units) as of the last layout, or false outside every cell — the
+    // spacing between cells counts as the cell before it, so a drop never falls in a crack (issue #346).
+    public bool CellAt(Vector2 point, out int column, out int row)
+    {
+        column = row = -1;
+        if (_usedColumns == 0 || _usedRows == 0) return false;
+        var content = ContentRect;
+        if (!content.Contains(point)) return false;
+        column = 0;
+        while (column + 1 < _usedColumns && point.X >= _xs[column + 1]) column++;
+        row = 0;
+        while (row + 1 < _usedRows && point.Y >= _ys[row + 1]) row++;
+        return true;
+    }
+
+    // Each visible child goes in the next cell, row by row, that is free for its ColumnSpan × RowSpan —
+    // cells a span covers are skipped — and grows the rows it spans to fit; a span of one sizes its
+    // column and row, a wider one only adds what they lack, shared out.
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
     {
-        int count = 0;
-        for (int i = 0; i < ChildCount; i++) if (Child(i).Visible) count++;
-        _usedColumns = Math.Min(_columns, count);
-        _usedRows = count == 0 ? 0 : (count + _columns - 1) / _columns;
-        // Grown only when the grid grows, never per frame.
-        if (_widths.Length < _usedColumns) Array.Resize(ref _widths, _columns);
-        if (_heights.Length < _usedRows) Array.Resize(ref _heights, _usedRows);
-        Array.Clear(_widths);
-        Array.Clear(_heights);
-
-        int cell = 0;
+        if (_placed.Length < ChildCount) Array.Resize(ref _placed, Math.Max(ChildCount, _placed.Length * 2));
+        Array.Clear(_taken);
+        int cursor = 0, rows = 0, columns = 0;
         for (int i = 0; i < ChildCount; i++)
         {
             var child = Child(i);
-            var size = MeasureChild(child, available, text);
-            if (!child.Visible) continue;
-            int column = cell % _columns, row = cell / _columns;
-            _widths[column] = MathF.Max(_widths[column], size.X);
-            _heights[row] = MathF.Max(_heights[row], size.Y);
-            cell++;
+            MeasureChild(child, available, text);
+            if (!child.Visible) { _placed[i] = -1; continue; }
+            int w = Math.Min(child.ColumnSpan, _columns), h = child.RowSpan;
+            while (!Free(cursor, w, h)) cursor++;
+            _placed[i] = cursor;
+            Take(cursor, w, h);
+            int column = cursor % _columns, row = cursor / _columns;
+            rows = Math.Max(rows, row + h);
+            columns = Math.Max(columns, column + w);
+            cursor++;
         }
+        _usedColumns = columns;
+        _usedRows = rows;
+        // Grown only when the grid grows, never per frame.
+        if (_widths.Length < _columns) { Array.Resize(ref _widths, _columns); Array.Resize(ref _xs, _columns); }
+        if (_heights.Length < _usedRows) { Array.Resize(ref _heights, _usedRows); Array.Resize(ref _ys, _usedRows); }
+        Array.Clear(_widths);
+        Array.Clear(_heights);
+
+        for (int pass = 0; pass < 2; pass++)   // single cells first, then what spans need beyond them
+            for (int i = 0; i < ChildCount; i++)
+            {
+                if (_placed[i] < 0) continue;
+                var child = Child(i);
+                int w = Math.Min(child.ColumnSpan, _columns), h = child.RowSpan;
+                bool single = w == 1 && h == 1;
+                if (single != (pass == 0)) continue;
+                var size = child.DesiredSize + child.Margin.Size;
+                int column = _placed[i] % _columns, row = _placed[i] / _columns;
+                Grow(_widths, column, w, size.X, _spacing.X);
+                Grow(_heights, row, h, size.Y, _spacing.Y);
+            }
         if (_uniform)
         {
             float w = 0f, h = 0f;
@@ -181,24 +219,52 @@ public class Grid : Container
         return new Vector2(width, height);
     }
 
+    // What `sizes[from..from+span]` (with the spacing between) lack of `need`, spread evenly over them.
+    private static void Grow(float[] sizes, int from, int span, float need, float spacing)
+    {
+        float have = spacing * (span - 1);
+        for (int k = 0; k < span; k++) have += sizes[from + k];
+        if (have >= need) return;
+        float each = (need - have) / span;
+        for (int k = 0; k < span; k++) sizes[from + k] += each;
+    }
+
+    private bool Free(int cell, int w, int h)
+    {
+        int column = cell % _columns, row = cell / _columns;
+        if (column + w > _columns) return false;
+        for (int dy = 0; dy < h; dy++)
+            for (int dx = 0; dx < w; dx++)
+            {
+                int at = (row + dy) * _columns + column + dx;
+                if (at < _taken.Length && _taken[at]) return false;
+            }
+        return true;
+    }
+
+    private void Take(int cell, int w, int h)
+    {
+        int column = cell % _columns, row = cell / _columns;
+        int last = (row + h - 1) * _columns + column + w;
+        if (_taken.Length < last) Array.Resize(ref _taken, Math.Max(last, _taken.Length * 2));
+        for (int dy = 0; dy < h; dy++)
+            for (int dx = 0; dx < w; dx++) _taken[(row + dy) * _columns + column + dx] = true;
+    }
+
     protected override void ArrangeContent(Rect content)
     {
-        int cell = 0;
-        float y = content.Y;
-        float x = content.X;
+        float x = content.X, y = content.Y;
+        for (int c = 0; c < _usedColumns; c++) { _xs[c] = x; x += _widths[c] + _spacing.X; }
+        for (int r = 0; r < _usedRows; r++) { _ys[r] = y; y += _heights[r] + _spacing.Y; }
         for (int i = 0; i < ChildCount; i++)
         {
             var child = Child(i);
-            if (!child.Visible) continue;
-            int column = cell % _columns, row = cell / _columns;
-            if (column == 0)
-            {
-                x = content.X;
-                if (row > 0) y += _heights[row - 1] + _spacing.Y;
-            }
-            ArrangeChild(child, new Rect(x, y, _widths[column], _heights[row]));
-            x += _widths[column] + _spacing.X;
-            cell++;
+            if (!child.Visible || i >= _placed.Length || _placed[i] < 0) continue;
+            int column = _placed[i] % _columns, row = _placed[i] / _columns;
+            int w = Math.Min(child.ColumnSpan, _columns), h = child.RowSpan;
+            if (column + w > _usedColumns || row + h > _usedRows) continue;   // laid out before the child changed: next layout
+            int lc = column + w - 1, lr = row + h - 1;
+            ArrangeChild(child, new Rect(_xs[column], _ys[row], _xs[lc] + _widths[lc] - _xs[column], _ys[lr] + _heights[lr] - _ys[row]));
         }
     }
 }

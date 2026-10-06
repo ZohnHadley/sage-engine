@@ -5,7 +5,9 @@
   //   { "type": "ui_layout", "id": "rpg:inventory", "patch": true, "nodes": { "hint": { "visible": false } } }
   //
   // A grid binds its rows to an ItemGrid's `cells` (one square each: `label`, `style`, `tooltip`) and its
-  // width to its `columns`; its row template is the one node inside it.
+  // width to its `columns`; its row template is the one node inside it. A stack's square at its top left
+  // spans its footprint and shows its picture (`columnSpan`, `rowSpan`, `icon`, `iconTurned`), its other
+  // squares hide (`shown`), and a square can be dragged (issue #346).
 
   // ---- inventory: the bag as a grid, with its weight ----------------------------------------------
   { "type": "screen", "id": "inventory", "layout": "inventory", "viewModel": "rpg_inventory" },
@@ -22,7 +24,9 @@
       "cells":      { "widget": "grid", "parent": "window", "bind": "bag.cells", "bindings": { "columns": "bag.columns" },
                       "uniform": true, "spacing": 2 },
       "cell":       { "widget": "button", "parent": "cells", "style": "cell", "bind": "label",
-                      "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [56, 56] },
+                      "draggable": true,
+                      "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [56, 56] },
       "holding":    { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.grid.holding",
                       "args": { "item": "heldLabel" }, "bindings": { "visible": "holding" } },
       "message":    { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
@@ -59,7 +63,9 @@
       "their_cells": { "widget": "grid", "parent": "theirs", "bind": "container.cells",
                        "bindings": { "columns": "container.columns" }, "uniform": true, "spacing": 2 },
       "their_cell":  { "widget": "button", "parent": "their_cells", "style": "cell", "bind": "label",
-                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+                       "draggable": true,
+                      "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
       "empty":       { "widget": "label", "parent": "theirs", "style": "hint", "text": "@rpg.loot.empty",
                        "bindings": { "visible": "isEmpty" } },
 
@@ -72,7 +78,9 @@
       "your_cells":  { "widget": "grid", "parent": "yours", "bind": "bag.cells",
                        "bindings": { "columns": "bag.columns" }, "uniform": true, "spacing": 2 },
       "your_cell":   { "widget": "button", "parent": "your_cells", "style": "cell", "bind": "label",
-                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+                       "draggable": true,
+                      "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
 
       "take_all":    { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.loot.take_all", "hAlign": "center" },
       "holding":     { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.grid.holding",
@@ -114,14 +122,18 @@
       "stock_cells": { "widget": "grid", "parent": "stock", "bind": "stock.cells",
                        "bindings": { "columns": "stock.columns" }, "uniform": true, "spacing": 2 },
       "stock_cell":  { "widget": "button", "parent": "stock_cells", "style": "cell", "bind": "label",
-                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+                       "draggable": true,
+                      "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
 
       "yours":       { "widget": "stack", "parent": "sides", "spacing": 4 },
       "your_title":  { "widget": "label", "parent": "yours", "style": "title", "text": "@rpg.shop.yours" },
       "your_cells":  { "widget": "grid", "parent": "yours", "bind": "bag.cells",
                        "bindings": { "columns": "bag.columns" }, "uniform": true, "spacing": 2 },
       "your_cell":   { "widget": "button", "parent": "your_cells", "style": "cell", "bind": "label",
-                       "bindings": { "style": "style", "tooltip": "tooltip" }, "minSize": [48, 48] },
+                       "draggable": true,
+                      "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
 
       "buying":      { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.buy",
                        "args": { "item": "heldLabel", "price": "heldPrice" }, "bindings": { "visible": "heldIsStock" } },

@@ -18,6 +18,9 @@
     "textScale": 0.75 },
   { "type": "ui_style", "id": "cell_item", "base": "cell", "background": "#3A3020", "textColour": "#F0E8D8" },
   { "type": "ui_style", "id": "cell_held", "base": "cell", "background": "#4A5A30", "border": "#C0F080" },
+  // Where the stack in the hand would go (issue #346): the squares it would take, where it fits and where not.
+  { "type": "ui_style", "id": "cell_target", "base": "cell", "background": "#2E4A2A", "border": "#80E080" },
+  { "type": "ui_style", "id": "cell_blocked", "base": "cell", "background": "#5A2420", "border": "#F07060" },
 
   // A topic, before and after it was asked (Morrowind greys what you have heard).
   { "type": "ui_style", "id": "topic", "base": "button", "background": "#00000000", "borderWidth": 0, "textColour": "#F0D890" },
