@@ -21,6 +21,7 @@ internal sealed class AIThinkSystem : ISystem
     private readonly AITaskRegistry _tasks;
     private readonly IPhysicsWorld _space;
     private readonly ActionId _attack;
+    private readonly ActionId _block;                // held only while a task holds it (issue #359's Block)
     private readonly AIConditions _conditions;   // condition names to bits, and the game's to sense (issue #28)
     private static readonly AIProfileRecord FallbackProfile = new();
 
@@ -35,6 +36,7 @@ internal sealed class AIThinkSystem : ISystem
         _tasks = tasks;
         _space = world.Resources.Get<IPhysicsWorld>();
         _attack = actions.Get(world.Conventions().Actions.Attack);
+        _block = actions.Get(world.Conventions().Actions.Block);
         _conditions = AIConditions.Of(world);
 
         // A creature's path and the place it last saw somebody are positions in origin space, and the
@@ -379,6 +381,9 @@ internal sealed class AIThinkSystem : ISystem
     // or a failed task ends the schedule early, and the next think picks another one.
     private void RunTask(World world, Entity entity, ref Transform transform, ref AIState state, ref PawnIntent intent, AIProfileRecord profile, float dt)
     {
+        // A guard is up only while a task holds it up (the Block task sets it again every tick it runs), so an
+        // interrupted block does not leave a creature guarding for ever.
+        if (intent.Held.Has(_block)) intent.Held = AITasks.Release(intent.Held, _block);
         if (state.Schedule.IsEmpty || !_records.TryGet(state.Schedule, out AIScheduleRecord schedule))
         {
             intent.Move = Vector2.Zero;
@@ -440,6 +445,7 @@ internal sealed class AIThinkSystem : ISystem
             Movement = movement,
             Space = _space,
             Attack = _attack,
+            Block = _block,
             Dt = dt,
             Param = param,
         };

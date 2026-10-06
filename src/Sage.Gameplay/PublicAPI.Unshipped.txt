@@ -1,4 +1,6 @@
 #nullable enable
+Sage.Gameplay.ActionConventions.Block -> string!
+Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
@@ -21,6 +23,7 @@ Sage.Gameplay.HitResult.Surface.get -> Sage.Core.RecordId
 Sage.Gameplay.HitResult.Surface.init -> void
 Sage.Gameplay.LightPart.Baked -> bool
 Sage.Gameplay.LightPart.Shadows -> bool
+Sage.Gameplay.Melee.Direction -> Sage.Simulation.AttackDirection
 Sage.Gameplay.QuestObjective.Target -> string!
 Sage.Gameplay.QuestStage.Target -> string!
 static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId

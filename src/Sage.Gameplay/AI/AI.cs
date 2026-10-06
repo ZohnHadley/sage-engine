@@ -171,6 +171,7 @@ public ref struct AITaskContext
     public MovementProfileRecord Movement;
     public IPhysicsWorld Space;
     public ActionId Attack;     // the Attack action, so a task can swing the way a player does
+    public ActionId Block;      // the Block action, so a task can guard the way a player does (issue #359)
     public float Dt;
     public float Param;
 }
@@ -273,6 +274,7 @@ public sealed class AITaskRegistry
         Register("FaceTarget", new FaceTargetTask());
         Register("MoveToTarget", new MoveToTargetTask());
         Register("MeleeAttack", new MeleeAttackTask());
+        Register("Block", new BlockTask());
         Register("CastSpell", new CastSpellTask());
         // A routine's (issue 4g-4, Routines.cs).
         Register("MoveToAnchor", new MoveToAnchorTask());
@@ -293,6 +295,7 @@ public sealed class AITaskRegistry
         "wait" => WaitTask.ArgumentName,
         "movetotarget" => MoveToTargetTask.ArgumentName,
         "meleeattack" => MeleeAttackTask.ArgumentName,
+        "block" => BlockTask.ArgumentName,
         "castspell" => CastSpellTask.ArgumentName,
         "movetoanchor" => MoveToAnchorTask.ArgumentName,
         "stayat" => StayAtTask.ArgumentName,
@@ -693,6 +696,7 @@ internal sealed class MeleeAttackTask : IAITask
     public AITaskStatus Start(ref AITaskContext c)
     {
         if (c.World.Has<Melee>(c.Entity)) c.World.Get<Melee>(c.Entity).Swung = false;
+        AITasks.ChooseDirection(c.World, c.Entity, c.State.Target);
         return AITaskStatus.Running;
     }
 
@@ -717,6 +721,62 @@ internal sealed class MeleeAttackTask : IAITask
 
         c.Intent.Pressed = c.Intent.Pressed.With(c.Attack);
         return c.State.TaskTime > (c.Param > 0 ? c.Param : 1.5f) ? AITaskStatus.Failed : AITaskStatus.Running;
+    }
+}
+
+// Guard against the target for `seconds` (default 1), as a player holds Block (issue #359): the agent
+// faces it, holds the Block action, and turns its guard to where the target's blow is coming from — the
+// swing under way (Melee.Direction), else the way the target is poised (its AttackStance) — when its
+// own stance is Manual. Whether a guard stops a blow is the combat rules'; this only raises it.
+internal sealed class BlockTask : IAITask
+{
+    public const string ArgumentName = "seconds";
+    public string? Argument => ArgumentName;
+
+    public AITaskStatus Run(ref AITaskContext c)
+    {
+        c.Intent.Move = Vector2.Zero;
+        if (!c.World.IsAlive(c.State.Target)) return AITaskStatus.Failed;
+        if (c.State.TaskTime >= (c.Param > 0 ? c.Param : 1f)) return AITaskStatus.Succeeded;
+
+        float wanted = AIMath.YawTo(c.Transform.LocalPosition, c.World.Get<Transform>(c.State.Target).LocalPosition);
+        c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, wanted, c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
+        c.Intent.Held = c.Intent.Held.With(c.Block);
+        if (c.World.TryGet<AttackStance>(c.Entity, out var mine) && mine.Input == AttackDirectionInput.Manual)
+        {
+            var coming = c.World.TryGet<Melee>(c.State.Target, out var theirs) && theirs.Phase == MeleePhase.Windup && theirs.Direction != AttackDirection.None
+                ? theirs.Direction
+                : AttackStances.Of(c.World, c.State.Target);
+            if (coming != AttackDirection.None) AttackStances.Set(c.World, c.Entity, coming);
+        }
+        return AITaskStatus.Running;
+    }
+}
+
+// What the combat tasks share (issue #359).
+internal static class AITasks
+{
+    // A Manual stance's next swing: not where the target is guarding (when it is), else the next of
+    // overhead, right, thrust, left after the last — so an AI varies its blows, the same way every run.
+    public static void ChooseDirection(World world, Entity self, Entity target)
+    {
+        if (!world.TryGet<AttackStance>(self, out var stance) || stance.Input != AttackDirectionInput.Manual) return;
+        var guarded = AttackStances.IsBlocking(world, target) ? AttackStances.Of(world, target) : AttackDirection.None;
+        var next = stance.Direction;
+        for (int i = 0; i < 4; i++)
+        {
+            next = next is AttackDirection.Left or AttackDirection.None ? AttackDirection.Overhead : next + 1;
+            if (next != guarded) break;
+        }
+        AttackStances.Set(world, self, next);
+    }
+
+    // `held` without `action`.
+    public static ActionMask Release(ActionMask held, ActionId action)
+    {
+        if (action.Bit < 0 || action.Bit >= ActionRegistry.MaxButtons) return held;
+        return action.Bit < 64 ? new ActionMask(held.Bits & ~(1UL << action.Bit), held.High)
+                               : new ActionMask(held.Bits, held.High & ~(1UL << (action.Bit - 64)));
     }
 }
 

@@ -52,36 +52,41 @@ text 536,356.75 114x9 #908878ff scale 1 "R, Pad LeftShoulder" @bindings
 rect 864,353.75 48x15 #2a2620ff @rebind
 border 864,353.75 48x15 #5a4a30ff width 1 @rebind
 text 870,356.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,373.75 18x9 #e0d8c8ff scale 1 "Use" @action
-text 536,373.75 48x9 #908878ff scale 1 "E, Pad X" @bindings
+text 368,373.75 30x9 #e0d8c8ff scale 1 "Block" @action
+text 536,373.75 168x9 #908878ff scale 1 "Mouse Right, Pad LeftTrigger" @bindings
 rect 864,370.75 48x15 #2a2620ff @rebind
 border 864,370.75 48x15 #5a4a30ff width 1 @rebind
 text 870,373.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,390.75 18x9 #e0d8c8ff scale 1 "Run" @action
-text 536,390.75 180x9 #908878ff scale 1 "LeftShift, Pad LeftStickButton" @bindings
+text 368,390.75 18x9 #e0d8c8ff scale 1 "Use" @action
+text 536,390.75 48x9 #908878ff scale 1 "E, Pad X" @bindings
 rect 864,387.75 48x15 #2a2620ff @rebind
 border 864,387.75 48x15 #5a4a30ff width 1 @rebind
 text 870,390.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,407.75 36x9 #e0d8c8ff scale 1 "Crouch" @action
-text 536,407.75 108x9 #908878ff scale 1 "LeftControl, Pad B" @bindings
+text 368,407.75 18x9 #e0d8c8ff scale 1 "Run" @action
+text 536,407.75 180x9 #908878ff scale 1 "LeftShift, Pad LeftStickButton" @bindings
 rect 864,404.75 48x15 #2a2620ff @rebind
 border 864,404.75 48x15 #5a4a30ff width 1 @rebind
 text 870,407.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,424.75 60x9 #e0d8c8ff scale 1 "ToggleView" @action
-text 536,424.75 138x9 #908878ff scale 1 "V, Pad RightStickButton" @bindings
+text 368,424.75 36x9 #e0d8c8ff scale 1 "Crouch" @action
+text 536,424.75 108x9 #908878ff scale 1 "LeftControl, Pad B" @bindings
 rect 864,421.75 48x15 #2a2620ff @rebind
 border 864,421.75 48x15 #5a4a30ff width 1 @rebind
 text 870,424.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,441.75 54x9 #e0d8c8ff scale 1 "QuickSave" @action
-text 536,441.75 12x9 #908878ff scale 1 "F5" @bindings
+text 368,441.75 60x9 #e0d8c8ff scale 1 "ToggleView" @action
+text 536,441.75 138x9 #908878ff scale 1 "V, Pad RightStickButton" @bindings
 rect 864,438.75 48x15 #2a2620ff @rebind
 border 864,438.75 48x15 #5a4a30ff width 1 @rebind
 text 870,441.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,458.75 54x9 #e0d8c8ff scale 1 "QuickLoad" @action
-text 536,458.75 12x9 #908878ff scale 1 "F9" @bindings
+text 368,458.75 54x9 #e0d8c8ff scale 1 "QuickSave" @action
+text 536,458.75 12x9 #908878ff scale 1 "F5" @bindings
 rect 864,455.75 48x15 #2a2620ff @rebind
 border 864,455.75 48x15 #5a4a30ff width 1 @rebind
 text 870,458.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,475.75 54x9 #e0d8c8ff scale 1 "QuickLoad" @action
+text 536,475.75 12x9 #908878ff scale 1 "F9" @bindings
+rect 864,472.75 48x15 #2a2620ff @rebind
+border 864,472.75 48x15 #5a4a30ff width 1 @rebind
+text 870,475.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
 popclip 0,0 0x0 @list
 rect 368,497.75 544x15 #2a2620ff @resetAll
 border 368,497.75 544x15 #5a4a30ff width 1 @resetAll

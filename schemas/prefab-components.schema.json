@@ -44,6 +44,14 @@
         }
       ]
     },
+    "attack_stance": {
+      "description": "The component sage:attack_stance (AttackStance), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:attack_stance"
+        }
+      ]
+    },
     "attributes": {
       "description": "The component sage:attributes (Attributes), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -681,6 +689,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:animator"
+        }
+      ]
+    },
+    "sage:attack_stance": {
+      "description": "Component sage:attack_stance (AttackStance).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:attack_stance"
         }
       ]
     },
@@ -2552,6 +2568,46 @@
       },
       "additionalProperties": false,
       "description": "Component sage:animator (Animator)."
+    },
+    "sage:attack_stance": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "description": "How the direction is chosen: Manual (code and AI), Mouse (the look gesture) or Movement (the movement keys) (AttackDirectionInput, default \"Manual\")",
+          "default": "Manual",
+          "type": "string",
+          "enum": [
+            "Manual",
+            "Mouse",
+            "Movement"
+          ]
+        },
+        "direction": {
+          "description": "Which way its next swing or its guard goes: None, Overhead, Right, Thrust or Left. (AttackDirection, default \"None\")",
+          "default": "None",
+          "type": "string",
+          "enum": [
+            "None",
+            "Overhead",
+            "Right",
+            "Thrust",
+            "Left"
+          ]
+        },
+        "threshold": {
+          "description": "Mouse: how far the look must move (decaying over about a fifth of a second) to choose a direction; 0 = 2°. Unit: °. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "blocking": {
+          "description": "Not saved. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:attack_stance (AttackStance)."
     },
     "sage:attributes": {
       "type": "object",
@@ -4566,6 +4622,18 @@
           "description": "Not saved. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "direction": {
+          "description": "Not saved. (AttackDirection, default \"None\")",
+          "default": "None",
+          "type": "string",
+          "enum": [
+            "None",
+            "Overhead",
+            "Right",
+            "Thrust",
+            "Left"
+          ]
         }
       },
       "additionalProperties": false,

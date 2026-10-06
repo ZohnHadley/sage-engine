@@ -1,7 +1,7 @@
 [
   // Engine input maps (docs/design/08 §3.2–3.3). Actions are registered by modules (ClientModule
   // registers the client's own: Console, editor and UI; GameplayModule registers the simulation's:
-  // Move, Jump, Run, Crouch, ToggleView, Attack, Reload, Use; the engine itself registers QuickSave and
+  // Move, Jump, Run, Crouch, ToggleView, Attack, Reload, Block, Use; the engine itself registers QuickSave and
   // QuickLoad, issue 4i-6); games add maps for their own actions, and player rebinds will be patches. A
   // game moves F5/F9 with a patch of these maps, or binds them in its own map as well.
   {
@@ -62,6 +62,7 @@
       "Jump":          [ { "key": "Space" }, { "gamepad": "A" } ],
       "Attack":        [ { "mouse": "Left" }, { "gamepad": "RightTrigger" } ],
       "Reload":        [ { "key": "R" }, { "gamepad": "LeftShoulder" } ],
+      "Block":         [ { "mouse": "Right" }, { "gamepad": "LeftTrigger" } ],
       "Use":           [ { "key": "E" }, { "gamepad": "X" } ],
       "Run":           [ { "key": "LeftShift" }, { "gamepad": "LeftStickButton" } ],
       "Crouch":        [ { "key": "LeftControl" }, { "gamepad": "B" } ],

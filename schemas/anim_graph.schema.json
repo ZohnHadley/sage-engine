@@ -574,7 +574,7 @@
             "type": "number"
           },
           "from": {
-            "description": "Set every tick from the body: Speed, VerticalSpeed, MoveX, MoveY, AimPitch, Grounded, Crouching. (AnimParamSource)",
+            "description": "Set every tick from the body: Speed, VerticalSpeed, MoveX, MoveY, AimPitch, Grounded, Crouching, AttackDirection, Blocking. (AnimParamSource)",
             "type": "string",
             "enum": [
               "None",
@@ -584,7 +584,9 @@
               "MoveY",
               "AimPitch",
               "Grounded",
-              "Crouching"
+              "Crouching",
+              "AttackDirection",
+              "Blocking"
             ]
           }
         },

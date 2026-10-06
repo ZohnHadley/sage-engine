@@ -1,7 +1,29 @@
 #nullable enable
+const Sage.Simulation.AttackStances.DefaultThreshold = 2 -> float
+const Sage.Simulation.AttackStances.GestureFade = 0.2 -> float
+const Sage.Simulation.AttackStances.MovementDeadZone = 0.5 -> float
 Sage.Simulation.AnimGraphRecord.RootJoint -> string!
+Sage.Simulation.AnimParamSource.AttackDirection = 8 -> Sage.Simulation.AnimParamSource
+Sage.Simulation.AnimParamSource.Blocking = 9 -> Sage.Simulation.AnimParamSource
 Sage.Simulation.AnimState.RootMotion -> Sage.Simulation.RootMotionMode
 Sage.Simulation.AnimState.RootMotionY -> bool
+Sage.Simulation.AttackDirection
+Sage.Simulation.AttackDirection.Left = 4 -> Sage.Simulation.AttackDirection
+Sage.Simulation.AttackDirection.None = 0 -> Sage.Simulation.AttackDirection
+Sage.Simulation.AttackDirection.Overhead = 1 -> Sage.Simulation.AttackDirection
+Sage.Simulation.AttackDirection.Right = 2 -> Sage.Simulation.AttackDirection
+Sage.Simulation.AttackDirection.Thrust = 3 -> Sage.Simulation.AttackDirection
+Sage.Simulation.AttackDirectionInput
+Sage.Simulation.AttackDirectionInput.Manual = 0 -> Sage.Simulation.AttackDirectionInput
+Sage.Simulation.AttackDirectionInput.Mouse = 1 -> Sage.Simulation.AttackDirectionInput
+Sage.Simulation.AttackDirectionInput.Movement = 2 -> Sage.Simulation.AttackDirectionInput
+Sage.Simulation.AttackStance
+Sage.Simulation.AttackStance.AttackStance() -> void
+Sage.Simulation.AttackStance.Blocking -> bool
+Sage.Simulation.AttackStance.Direction -> Sage.Simulation.AttackDirection
+Sage.Simulation.AttackStance.Input -> Sage.Simulation.AttackDirectionInput
+Sage.Simulation.AttackStance.Threshold -> float
+Sage.Simulation.AttackStances
 Sage.Simulation.RootMotionMode
 Sage.Simulation.RootMotionMode.Full = 3 -> Sage.Simulation.RootMotionMode
 Sage.Simulation.RootMotionMode.None = 0 -> Sage.Simulation.RootMotionMode
@@ -189,6 +211,7 @@ Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
 Sage.Simulation.SoundRecord.Caption -> string!
 Sage.Simulation.SoundRecord.Speaker -> string!
+static Sage.Simulation.Animators.InWindow(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! open, string? close = null, string? layer = null) -> bool
 static Sage.Simulation.Animators.TryTakeRootMotion(Sage.Simulation.World! world, Sage.Simulation.Entity entity, out System.Numerics.Vector3 travel, out bool vertical) -> bool
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
@@ -214,6 +237,12 @@ Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Sim
 Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+static Sage.Simulation.AttackStances.FromGesture(System.Numerics.Vector2 look) -> Sage.Simulation.AttackDirection
+static Sage.Simulation.AttackStances.FromMovement(System.Numerics.Vector2 move) -> Sage.Simulation.AttackDirection
+static Sage.Simulation.AttackStances.IsBlocking(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> bool
+static Sage.Simulation.AttackStances.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Simulation.AttackDirection
+static Sage.Simulation.AttackStances.Set(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Simulation.AttackDirection direction) -> bool
+static Sage.Simulation.AttackStances.Step(ref Sage.Simulation.AttackStance stance, in Sage.Simulation.PawnIntent intent, float dt) -> void
 static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
 static Sage.Simulation.InputGlyphs.DefaultName(Sage.Simulation.InputBinding! binding, Sage.Simulation.PadFamily pad) -> string!
 static Sage.Simulation.InputGlyphs.FamilyOf(string? padName) -> Sage.Simulation.PadFamily

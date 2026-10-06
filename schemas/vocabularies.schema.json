@@ -5515,12 +5515,13 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, any, date_between, distance_to, entity_exists, has_item, has_tag, in_scene, is_alive, lacks_tag, moon_phase, not, on_date, quest, random, season, speaker, standing, time_between, var, weekday.",
+      "description": "A condition by id: all, anim_finished, anim_param, anim_window, any, date_between, distance_to, entity_exists, has_item, has_tag, in_scene, is_alive, lacks_tag, moon_phase, not, on_date, quest, random, season, speaker, standing, time_between, var, weekday.",
       "type": "string",
       "enum": [
         "All",
         "AnimFinished",
         "AnimParam",
+        "AnimWindow",
         "Any",
         "DateBetween",
         "DistanceTo",
@@ -5544,6 +5545,7 @@
         "all",
         "anim_finished",
         "anim_param",
+        "anim_window",
         "any",
         "date_between",
         "distance_to",
@@ -5723,6 +5725,50 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'anim_param' (AnimParamCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "anim_window",
+                      "AnimWindow"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "close": {
+                    "description": "The clip event that closes it; empty: open until the state ends. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "condition": {
+                    "description": "The condition: anim_window.",
+                    "enum": [
+                      "anim_window",
+                      "AnimWindow"
+                    ]
+                  },
+                  "layer": {
+                    "description": "The layer whose clip it reads; empty or \"base\": the base layer. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "open": {
+                    "description": "The clip event that opens the window. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'anim_window' (AnimWindowCondition)."
               }
             },
             {
@@ -7030,6 +7076,116 @@
           },
           "required": [
             "AnimParam"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "anim_window": {
+              "anyOf": [
+                {
+                  "description": "The clip event that opens the window. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "open": {
+                      "description": "The clip event that opens the window. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "close": {
+                      "description": "The clip event that closes it; empty: open until the state ends. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "layer": {
+                      "description": "The layer whose clip it reads; empty or \"base\": the base layer. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'anim_window' (AnimWindowCondition), in shorthand."
+            },
+            "close": {
+              "description": "The clip event that closes it; empty: open until the state ends. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "layer": {
+              "description": "The layer whose clip it reads; empty or \"base\": the base layer. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "open": {
+              "description": "The clip event that opens the window. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "anim_window"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "AnimWindow": {
+              "anyOf": [
+                {
+                  "description": "The clip event that opens the window. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "open": {
+                      "description": "The clip event that opens the window. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "close": {
+                      "description": "The clip event that closes it; empty: open until the state ends. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    },
+                    "layer": {
+                      "description": "The layer whose clip it reads; empty or \"base\": the base layer. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'anim_window' (AnimWindowCondition), in shorthand."
+            },
+            "close": {
+              "description": "The clip event that closes it; empty: open until the state ends. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "layer": {
+              "description": "The layer whose clip it reads; empty or \"base\": the base layer. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "open": {
+              "description": "The clip event that opens the window. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "AnimWindow"
           ],
           "additionalProperties": false
         },
