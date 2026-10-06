@@ -1,3 +1,6 @@
 #nullable enable
 Sage.Client.RenderStats.LodCulled -> int
 Sage.Client.RenderStats.LodLowered -> int
+Sage.Client.RenderStats.Instanced -> int
+Sage.Client.RenderStats.InstancedDraws -> int
+Sage.Client.RenderStats.InstancedSprites -> int
