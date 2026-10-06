@@ -51,12 +51,12 @@ Pooled; its arrays grow but are never freed during play, so steady-state frames 
 |---|---|---|---|---|
 | 1 | Opaque | meshes, terrain | by material, then front-to-back | depth write, cull back |
 | 2 | Alpha-tested | sprites, foliage, fences | by material/texture, then front-to-back | depth write, alpha test in the shader (`clip`) |
-| 3 | Sky | clear-colour gradient (v1), skydome later | — | depth test, no write |
+| 3 | Sky | the sky dome (gradient, sun, moon, clouds, stars; 4h-5, #320) | — | depth test, no write |
 | 4 | Transparent | glass, particles, fading sprites | back-to-front | depth test, no write, blend |
 | 5 | Debug | `DebugDraw` primitives | — | optional depth test |
 | 6 | Overlay | ImGui dev UI, console, game UI (13) | — | 2D |
 
-Shadows (later) would be pass 0 into a shadow map. Lightmaps (later, HL1-style interiors) are a material technique (07), not a pass.
+Shadows are the Shadow stage, before the views, into one atlas (4h-4, cascades since #315). Lightmaps (HL1-style interiors, #313) are a material technique (07), not a pass.
 
 Since issue 4h-1 these rows are **stages**, and what draws in them are registered passes (`Shadow`, then per view `Opaque`, `AlphaTested`, `Sky`, `Transparent`, `Debug`, then `PostProcess`, then `Overlay`); see "As built (render passes)" below.
 
@@ -141,12 +141,12 @@ Sorting by material first minimises effect and texture switches; depth last give
 
 ### 3.6 Culling
 - v1: frustum vs bounding sphere per `RenderItem`/`SpriteInstance`, done during extract (culled items never enter the snapshot).
-- Later: coarse culling per streaming cell (14), and distance culling per layer (small props fade out before large ones). Occlusion culling is not planned for SM3-era content.
+- Built in #305: distance culling per layer (`RenderEnvironment.LayerDrawDistance`) and per mesh (a `mesh_lod` record's cull distance or screen size), "As built (mesh LOD and draw distance per layer)". Coarse culling per streaming cell (14) is not built. Occlusion culling is not planned for SM3-era content.
 
 ### 3.7 Batching
 - **Meshes:** consecutive items with the same mesh + material (after sorting) are drawn in a loop with only per-object parameters changing. With `r_instancing 1` and a capable device (OpenGL 3.2+ on DesktopGL, HiDef), runs of ≥ `r_instancing_min` (default 8) identical items become one `DrawInstancedPrimitives` call.
 - **Sprites (v1):** CPU-expanded quads written into a large `DynamicVertexBuffer` (`SetData` with `NoOverwrite`/`Discard`), one draw per material/texture run, like `SpriteBatch` but in 3D. This works on every GL driver and avoids the reported instancing bugs. Sprite sheets are atlases, so hundreds of creatures and trees usually batch into a few draws.
-- **Sprites (later):** instanced quads behind `r_instancing` once tested on target GPUs.
+- **Sprites (#309):** long runs are instanced quads behind `r_instancing`, "As built (instancing)".
 - Graphics profile: set `GraphicsProfile.HiDef` explicitly (32-bit indices, larger textures, required for instancing).
 
 ### 3.8 Billboard sprites and 8 directions
@@ -163,7 +163,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 - **Animation frame** comes from the `SpriteAnimator` component's time and the sheet's animation table (12).
 - **Quad orientation:**
   - v1: in the CPU batcher, from the view's right/up vectors (or world up for cylindrical).
-  - later: in the vertex shader of `sprite.fx`'s `Instanced` technique (07), when instancing is enabled.
+  - with `r_instancing 1`, in the vertex shader of `sprite.fx`'s `Instanced` technique (07, #309).
 
 ### 3.9 Lighting and atmosphere (forward, SM3-friendly)
 - Per frame: one **sun** (direction, colour), **hemispheric ambient** (sky colour, ground colour), **fog** (linear or exp², colour, start/end/density).
@@ -180,7 +180,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 - **Momentary shapes belong to the tick that drew them.** `World.RunFixed` clears them at the start of every tick, so a frame draws the newest state rather than every tick since it last looked — at 60 Hz against 50 fps that difference is a few hundred lines against sixteen thousand. A duration keeps a shape alive across frames, which is how you see something that happened in one tick (a swing that missed).
 - **Depth is a cvar, not a per-shape flag**: `r_debugdraw_xray 1` draws through walls, which is what you want when the thing you are chasing is behind something. Shapes are drawn in pass 5, after the world and under the UI, and near-plane clipped at extract (an unclipped line with an endpoint behind the camera draws as a streak across the whole screen).
 - **Consumers:** `phys_debug` (colliders, character capsules, ground normals, 10 §9), `ai_debug` (sight cones, targets, melee range, 16 §11), `combat_debug` (every swing and what it found, 16 §3.2). Each is off by default and costs one bool test.
-- **Not built:** `Text3D` (there is no runtime text yet, 13), per-shape depth flags, and the visual logger (02 §12).
+- **Not built:** per-shape depth flags and the visual logger (02 §12). `Text3D` is built (#322, "As built (render pass replacement, the snapshot dump and debug labels)").
 
 ### 3.11 As built (migration step 6)
 - **Code:** `src/Sage.Client/Rendering/` (`RenderSnapshot.cs`, `RenderSystems.cs`, `Renderer.cs`, `MaterialCache.cs`, `SpriteBatcher.cs` — expands `SpriteInstance`s into quads in a `DynamicVertexBuffer`, §3.7 — and `TerrainMesh.cs` — `TerrainMeshSystem`, builds a sector's chunk meshes the frame it appears, 14 §3); components and the environment in `src/Sage.Simulation/Rendering/RenderData.cs`.
@@ -190,7 +190,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 - **Deviations and gaps:**
   - **Camera:** cameras are entities since #76 ("As built (camera components)" below), and since #77 `CameraExtract` draws every view the world's `CameraViews` holds (§3.4a); `ActiveCamera` is the `CameraDirector`'s mirror of the screen view, and the fallback for a world without `CameraViews`. `ActiveCamera` holds position, rotation, fov, near 0.1, far 1000. Since #78 the player's view is a camera entity too ("As built (camera rigs)" below): its `FirstPersonRig` puts it in the local pawn's head, and the director mirrors it into `ActiveCamera`. Since #81 so is the editor's free camera: a `DebugCamera` that draws only where no other camera does, and over every camera while `cam_free` is on; the host no longer writes `ActiveCamera`, and `ActiveCamera.RigEnabled`/`DrivenByRig` are inert ("As built (the editor's cameras)" below, 16 §3.2).
   - **Snapshot:** one view (`RenderSnapshot.View`) at first; a list of views since issue #77 (§3.4a).
-  - **Sorting:** `Array.Sort` on the pooled key array, not a radix sort.
+  - **Sorting:** `Array.Sort` on the pooled key array at first; a stable radix sort since #319 ("As built (stable radix sort)").
   - **Tint:** always 1 (no per-entity tint component yet).
   - **Allocations:** steady-state frames allocate nothing in these systems. Measured with `mem_warn_bytes 1`, the host allocates 176 B/frame, the same as before step 6 (TODO #41).
 - **Meshes (as built, R12):** `MeshRenderer.Mesh` is an `AssetPath` to a `.glb`, opened off a VFS mount and read at runtime by `MeshGeometry.ReadGlb` (SharpGLTF, in `Sage.Simulation` since issue #302; the client's `GltfLoader` before), or from the cooked `.sgmesh` beside it (05 §7), into vertex and index buffers the renderer owns and disposes. Each glTF primitive becomes one `MeshPart`; node transforms are **baked into the vertices** on load, so a part needs no bone matrix, and the winding is flipped **once, there** (glTF's front faces are counter-clockwise, this renderer culls the other way) rather than by a render state per draw. The `Scale=0.01` and 180° correction `Content.mgcb` applied to the old FBX went with the FBX: a file made for this engine needs no fixing up at build time.
@@ -203,7 +203,7 @@ Sorting by material first minimises effect and texture switches; depth last give
   - One draw per run of sprites sharing a material **and** a texture, so a sheet's creatures batch together. The sheet's texture overrides the material's `Albedo`, so `sage:sprite_default` serves every sheet. A run is also split where the lamps lighting it change (§"As built (point lights)").
   - Frame UVs are inset by half a texel, or the quad's edge samples the next frame in the atlas.
   - Meshes and sprites are interleaved by pass: each pass draws its meshes, then its sprites. Mixing *transparent* meshes and sprites by depth is not handled yet (nothing is transparent yet).
-- **Not yet (v1 items left):** render scale, `stat render`, `r_snapshot_dump`. (Point lights landed later the same week — see "As built (point lights)".) Instancing stays "later".
+- **Since built:** point lights ("As built (point lights)"), render scale (4h-6), `r_snapshot_dump` (#322) and instancing behind `r_instancing` (#309). A `stat render` command is not built; `r_stats` covers it.
 - `GraphicsProfile.HiDef` is set by the host.
 
 ### 3.12 Particles (F39)
@@ -355,12 +355,11 @@ None; rendering consumes assets (05) and material records (07). The sprite sheet
   - render scale;
   - `DebugDraw`;
   - `r_stats`.
-- **Later:**
-  - instancing (after GPU testing);
-  - shadows;
-  - skydome;
-  - lightmaps (HL1-style interiors);
-  - post-processing;
+- **Since v1 (built):** instancing (#309), sun shadows with cascades (4h-4, #315), the sky dome (4h-5, #320),
+  lightmaps (#313), post-processing with HDR, bloom and anti-aliasing (4h-6, #316), mesh LOD and draw distance
+  per layer (#305), decals (#306), water surfaces (#411).
+- **Left:**
+  - point and spot light shadows (#315), soft particles (#310), puddles and wet surfaces (#311);
   - streaming-cell culling;
   - a move to MonoGame DesktopVK once it's proven, which the snapshot boundary makes a contained change.
 
@@ -403,8 +402,9 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   the sprite batcher had no roll — a knob that costs cycles and does nothing is the "field nobody reads"
   mistake in a new coat. `SpriteInstance.Roll` now turns the quad about the view axis; sprites write zero
   and mean it.
-- **Not yet:** particles that collide, animated sprite sheets over a life, soft particles, decals that
-  stay (blood on the floor), and GPU simulation.
+- **Since built:** particles that collide and sheets over a life (#310), decals that stay (#306); see
+  their "As built" sections below.
+- **Not yet:** soft particles (#310) and GPU simulation.
 
 ### As built (weather, 2026-09-24 — F40)
 - **Code:** `src/Sage.Simulation/Rendering/Weather.cs` (`weather` records, the `Weather` state, `WeatherRules`)
@@ -435,9 +435,10 @@ Sparks, embers, smoke, blood, and the numbers over a fight.
   whenever the weather is clear and settled, so a game that changes its own light (a day/night cycle
   will) is picked up rather than overwritten for ever. And with `snd_enabled 0` the rain loop was being
   made and killed sixty times a second, because the mixer stops everything each frame while muted.
-- **Not yet:** rain that stops under a roof — F16 built the roofs, but the weather still falls in a slab that follows the camera and knows nothing about what is over it — puddles and wet surfaces,
-  lightning, seasons or a clock that picks the weather, and weather that differs by region rather than
-  by world.
+- **Since built (#311):** rain that stops under a roof, lightning and thunder, and a `weather_pattern`
+  that picks the weather by the clock and region ("As built (weather under roofs, lightning and a
+  weather picker)").
+- **Not yet:** puddles and wet surfaces (#311).
 
 ### As built (point lights, 2026-09-24 — F2)
 Interiors that look like interiors: F16 gave the engine rooms with roofs on them, and a roof is what a
@@ -498,16 +499,15 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
   the next list cannot be forgotten. The `light` part also spent an afternoon registered in
   `AnimationModule` (where `sprite` lives); it has its own `LightsModule` now, which is what one module
   per feature means (16 §"As built (F7)").
-- **Sprites lit by the lamps (later):** `sprite.fx`'s `Lit` technique takes the sun (with its shadows),
+- **Sprites lit by the lamps (built later):** `sprite.fx`'s `Lit` technique takes the sun (with its shadows),
   the ambient and the point lights, with wrapped (half-Lambert) shading because a billboard's normal
   only faces the camera. It is `sage:sprite_lit`'s technique, which a sheet opts into; `sage:sprite_default`
   (also named `sage:sprite_unlit`) stays full-bright. A run of sprites is split where its
   four lights change (`LightRules.SameSet`, `Renderer.DrawSprites`), so sprites away from any lamp still
   batch (test: TwoChoicesAreTheSameSetWhateverTheirOrder) (test: SpritesAreUnlitByDefault_AndLitIsOptIn).
-- **Not yet:** lightmaps (the right answer for a large level, HL1's), shadows, light entities that switch or
-  flicker through entity I/O, and any culling of the light list beyond what `LightRules` does per
-  object — a hundred lamps is a hundred structs, and the work that matters is per *draw*. When that
-  stops being true the answer is a grid, not a longer loop.
+- **Since built:** lightmaps (#313), sun shadows (4h-4, #315), lamps that switch and flicker through entity
+  I/O, spot lights and a light grid (#314); see their "As built" sections below.
+- **Not yet:** point and spot light shadows (#315).
 
 ### As built (camera components, 2026-09-29 — #76)
 Phase 4a's first piece (REDESIGN §5): cameras become entities, so rigs, several views, render targets and
@@ -562,9 +562,9 @@ renderer read `ActiveCamera` until #77 made it draw every view in `CameraViews` 
 - **Since #77** every view is drawn, into its target and viewport, with its own projection (an
   orthographic screen camera draws orthographic), §3.4a.
 - **Not yet:** rigs as camera entities, the first-person one moved over (#78), third-person (#79);
-  scripted cuts from entity I/O (#80, done: "As built (scripted cameras from entity I/O)"); the editor camera as an entity (#81, done: "As built (the editor's cameras)"). One view per target means
-  split screen is two targets for now (the renderer itself draws several views into one target; the
-  director resolves one). Pixel-perfect ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work,
+  scripted cuts from entity I/O (#80, done: "As built (scripted cameras from entity I/O)"); the editor camera as an entity (#81, done: "As built (the editor's cameras)"). One view per target meant
+  split screen was two targets at first; since #323 a camera's `Slot` gives several cameras one target
+  ("As built (split screen and secondary views)"). Pixel-perfect ortho (integer scaling, snapping) is REDESIGN §0.5's 2D work,
   not this.
 
 ### As built (camera rigs, 2026-09-29 — #78, #79)
@@ -823,8 +823,8 @@ What 4a deferred to 4b's tweens: a scripted camera eased in rather than cut to.
 - **No structural change mid-frame:** a finished blend stays on the entity, inert, until the next
   `CameraOn` replaces or ends it. Zero allocation per tick and frame while one runs.
   (test: ACameraBlendAllocatesNothingPerTickOrFrame)
-- **Not yet:** blending *out* (`CameraOff` is a cut back to whatever is next), and blends between two rigs
-  of the player's own camera (the V toggle cuts).
+- **Not yet:** blends between two rigs of the player's own camera (the V toggle cuts). Blending *out* is
+  built since #323 (`CameraOff [blend [ease]]`, `ScriptedCamera.BlendOutTime`).
 
 ### As built (the viewmodel pass, 2026-09-30 — #121)
 First-person arms drawn over the world (docs/design/12 "As built (first-person arms)" is what they are
@@ -857,8 +857,8 @@ viewmodel is one more view, and the renderer gained one flag.
   ever sees the extra view: nothing is culled into it, and no debug line or particle is drawn in it.
 - **Allocation:** the pass allocates nothing per frame, nor do the viewmodel's systems per tick
   (test: TheViewmodelAndItsExtractAllocateNothingPerFrame).
-- **Not yet:** shadows (there are none), a viewmodel in a split-screen partner's view (only the screen's
-  main view gets one), and a separate lighting rig for the arms (they are lit by the world's sun and lamps).
+- **Not yet:** the arms casting shadows, and a separate lighting rig for the arms (they are lit by the
+  world's sun and lamps). A split-screen partner's first-person view draws its own viewmodel since #323.
 
 ### As built (render passes, 2026-09-30 — issue 4h-1)
 REDESIGN §4.7's pass registry and public `RenderContext`, the first piece of phase 4h. The renderer's
@@ -910,8 +910,8 @@ passes, ordered headless. All of it is experimental (SAGE0130, MAKING_A_GAME §1
 - **Allocation:** walking the stages allocates nothing (test: WalkingTheStagesAllocatesNothing); the
   renderer's walk is over the registry's arrays with the one context, built once at the seal.
 - **Not yet:** checked by a headless test only up to the order — the drawing is the client's, checked by
-  the smoke run. Replacing or disabling an engine pass (a game swapping `sage:transparent` for an OIT
-  pass) is not built; nor is the Shadow or PostProcess stage used by the engine (4h-4 and 4h-6).
+  the smoke run. Replacing or disabling an engine pass is built since #322
+  (`RenderPasses.Replace`, `Disable`), and the Shadow and PostProcess stages are used since 4h-4 and 4h-6.
 
 ### As built (the world clock, sky records and weather composition, 2026-09-30 — issue 4h-2)
 Time of day, the light over a day, and weather on top of it, all headless: the client draws what
@@ -958,9 +958,9 @@ Time of day, the light over a day, and weather on top of it, all headless: the c
   light scaled) still runs, and the clock touches nothing (test: WithoutASkyTheLookIsUnchanged; the
   WeatherTests are as they were). A record's absolute `fogColor` and `skyColor` are ignored once a sky is
   on, which is the point.
-- **Not yet:** the sky pass, exp² fog and the fog-distance cull (4h-5), sun shadows (4h-4) and the night tint
-  in post (4h-6) read these values; weather's blend is advanced by the client's system, so a headless world
-  with a sky holds its weather where it is unless something calls `Weather.Advance`.
+- **Since built:** the sky pass, exp² fog and the fog-distance cull (4h-5), sun shadows (4h-4) and the night
+  tint in post (4h-6) read these values. Weather's blend was advanced by the client's system; since #311
+  the simulation advances it (`sage.world.weather`), so a headless world's weather moves too.
 
 ### As built (sun shadows, 2026-09-30 — issue 4h-4)
 The first Shadow-stage pass on the registry: one stable shadow map from the sun, fitted to the screen's
@@ -1010,9 +1010,10 @@ headless; the client only draws it. Experimental, SAGE0130 (MAKING_A_GAME §10b)
   position, so the vertex shaders gain no constants: `Skinned` keeps its 64 bones in 192 of vs_3_0's
   256. The sampler is `register(s1)`, so an effect's own sampler keeps s0 and the material's sampler
   state. Off the map, or at strength 0, the sun is unshadowed.
-- **Not yet:** cascades; alpha-tested casters (leaves; no clip in the caster); a custom effect's own
-  vertex deformation in its shadow (casters draw with `lit.fx`); quantising the sun's direction so the
-  grid holds still while the sun moves; shadows in views of worlds that do not draw to the screen.
+- **Since built (#315):** cascades, alpha-tested casters and a quantised sun direction ("As built (cascaded
+  sun shadows, a quantised sun and cut-out casters)").
+- **Not yet:** a custom effect's own vertex deformation in its shadow (casters draw with `lit.fx`); shadows
+  in views of worlds that do not draw to the screen.
   Checked on a GPU only by the Windows shader compile and the smoke run (`+r_shadows 1`).
 
 ### As built (sky and fog, 2026-09-30 — issue 4h-5)
@@ -1059,9 +1060,10 @@ Experimental, SAGE0130 (MAKING_A_GAME §10b).
   a background of the fog's colour: while the sky pass draws, or with no sky when the clear colour is the
   fog colour (the default) — so a game that set them apart does not see its fogged silhouettes vanish.
   `r_stats` shows `fog culled N` (`RenderStats.FogCulled`, counted in `Culled` too) and `skies N`.
-- **Not yet:** a moon, clouds and a star field that turns with the hours (the stars are fixed to the
-  world's axes); fog on the sky above the haze band, so a tall thing culled at the fog's end can pop
-  against the gradient above the horizon; particles are never fog-culled. Checked on a GPU only by the
+- **Since built (#320):** a moon, clouds and a star field that turns with the hours ("As built (sky
+  extras: moon, clouds, turning stars)"); particles are fog-culled since #310.
+- **Not yet:** fog on the sky above the haze band, so a tall thing culled at the fog's end can pop
+  against the gradient above the horizon. Checked on a GPU only by the
   Windows shader compile and the smoke run; the Sandbox has had one since 4h-7 (below).
 
 ### As built (post-processing, 2026-09-30 — issue 4h-6)
@@ -1105,8 +1107,8 @@ Experimental, SAGE0130 (MAKING_A_GAME §10b).
   aren't compiled, so each effect falls back to a plain copy (its material can't be built): the smoke run
   proves the targets, the redirect and the chain's steps, not the picture. `post.fx` is checked by the
   Windows CI's shader compile only.
-- **Not yet:** HDR targets and bloom (decision 6: they wait for GPU testing on both platforms); anti-aliasing;
-  depth-reading effects (the scene target has depth, but no effect is handed it yet).
+- **Since built (#316):** HDR targets, bloom, anti-aliasing (FXAA, MSAA) and depth-reading effects
+  ("As built (HDR, bloom, anti-aliasing and the depth hook)").
 
 ### As built (the 4h exit, 2026-10-01 — issue 4h-7)
 Phase 4h's exit criterion, "a dusk-to-night transition with shadows in a streamed exterior", on the
@@ -1166,8 +1168,8 @@ found. The headless test checks the maths; the CI smoke run checks the client.
   shows the lamps come on (`lights 2` after sunset, 0 before) and `shadow casters` with no `(r_shadows 0)`.
   Without shaders no material builds, so nothing casts and the sky and post steps fall back to clears and
   copies: the run proves the passes, targets, cvars, clock and weather in the real host, not the picture.
-- **Not yet:** the sun's direction is not quantised, so the grid that holds through a rebase still turns
-  as the sun moves (4h-4); a moon, and lamps that fade rather than switch; NPC schedules on the same clock are
+- **Since built:** the sun's direction is quantised (#315) and the sky has a moon (#320).
+- **Not yet:** lamps that fade rather than switch; NPC schedules on the same clock are
   4g's (the calendar and passing time are built: "As built (the calendar and passing time)").
 
 ### As built (the calendar and passing time, 2026-10-01 — issue 4g-2)
@@ -1249,6 +1251,381 @@ Experimental, SAGE0129.
   one; an event is not tied to a calendar record (it is read by whichever calendar the world has); a scene
   still cannot choose a calendar.
 
+### As built (phase 4n, pack 1, 2026-10-06)
+Phase 4n's first pack (epic #304; REDESIGN §5): twenty issues, each its own PR, merged between 2026-10-05 and
+2026-10-06, and noted here in one docs PR. Each section names its code and tests; what is left of #310, #311
+and #315 is in their sections and in sheet [07](../spec/subsystems/07-rendering.md) §10.
+
+### As built (mesh LOD and draw distance per layer, 2026-10-06 — #305, 4n-1)
+- **Code:** `src/Sage.Simulation/Rendering/MeshLod.cs` (the `mesh_lod` record, `LodMetric`, `MeshLod`), the
+  `lod` field of `MeshRenderer`, `RenderEnvironment.LayerDrawDistance`, and the choice in the client's mesh
+  extract. Tests: `tests/Sage.Tests/Presentation/MeshLodTests.cs`.
+- **A LOD group is a record a renderer names** (`"mesh_renderer": { …, "lod": "rock" }`), as its material is:
+  `metric` (`Distance` in metres, or `ScreenSize`, the share of the view's height the mesh covers), `levels`
+  (each a coarser `mesh`, an optional `material`, and its `distance` or `screenSize`), `cullDistance` /
+  `cullScreenSize` (0: always drawn) and `hysteresis` (0.1). Level 0 is the renderer's own mesh
+  (test: TheChosenMeshChangesWithDistance_AndLodCulledDrawsAreCounted); a screen-size group switches with
+  the field of view (test: AScreenSizeGroupSwitchesByTheShareOfTheViewItCovers). Going coarser happens at
+  the switch, coming back finer waits until the camera is `hysteresis` inside it, and the level is
+  remembered per renderer from the screen's view (test: ASwitchBackWaitsForTheHysteresisBand). The sun's
+  caster view reuses the main view's level. Levels out of order, a level with no mesh or a cull point
+  inside a level are load errors (test: ABadLodGroupIsALoadError).
+- **Per-layer draw distance** (§3.6's "later"): `RenderEnvironment.LayerDrawDistance[layer]` (16 floats,
+  0 = no limit) leaves a mesh on that sort layer out past it (test: ALayersDrawDistanceLeavesItsMeshesOutPastIt).
+  Code sets it; no record or cvar does yet.
+- **`r_stats`** adds `lod culled N, lod lowered N` (`RenderStats.LodCulled`, `LodLowered`).
+- **Not yet:** a skinned renderer has only the layer distance and a mesh-handle renderer (a terrain chunk)
+  only the cull; there is no `r_lodscale`; the Sandbox has no LOD content; terrain past the near ring is the
+  far ring of #277, and per-chunk LOD inside the full ring is not built.
+
+### As built (decals that stay, 2026-10-06 — #306, 4n-2)
+- **Code:** `src/Sage.Simulation/Rendering/Decals.cs` (the `decal` record, `Decal`, the `Decals` pool),
+  `src/Sage.Gameplay/Combat/DecalSystem.cs` (`sage.combat.decals`, fixed Late), `Impacts` in `Hits.cs`, and
+  the client's `src/Sage.Client/Rendering/DecalSystems.cs` (`sage.client.extract.decals`). Tests:
+  `tests/Sage.Tests/Gameplay/DecalTests.cs`.
+- **A `decal` record** is `texture`, `material` (empty: `sage:decal`, the sprite effect's `UnlitBlend`
+  with no depth write), `size` (m), `lifetime` (s; 0 = until the pool needs its room), `fade` (s, at the end
+  of the lifetime), `colour` (tint and opacity), `randomRotation` and `reach` (m). A **cue** names one
+  (`decal` beside `particles`) and so does a **damage type**: a cue with a `Normal` lays its mark on the
+  surface it names, a cue with none on what is below it, and a hit lays its damage type's mark on the wall
+  behind what it hurt, along the blow, else the floor (test: AShotIntoAWallLeavesAMarkThatFades). Bad
+  data is a load error (test: BadDecalDataIsALoadError).
+- **The impact cue is raised now.** A weapon's ray, sweep or projectile that meets a surface raises its
+  `physics_material`'s `impact` cue (#270) with the surface's normal (`HitResult.Surface`,
+  `CueTriggered.Normal`), so a bullet hole is the plaster's content, not the pistol's.
+- **One pool a world, a ceiling, oldest first:** `r_decals` (Archive, 0 to 4096, default 256); a full pool
+  drops its oldest mark (test: AFullPoolDropsItsOldestMarkFirst) and a firefight keeps to it
+  (test: TheCeilingHoldsInAFirefight). Marks move with an origin rebase
+  (test: AMarkMovesWithTheWorldWhenTheOriginDoes) and go with the entity they are on. A world without a pool
+  (a headless server) places none.
+- **Drawing:** a flat quad laid on the surface and lifted off it, back faces skipped; `fx_decal <decal>`
+  (a cheat) lays one where you look. The Sandbox's hut and crypt plaster takes `bullet_hole`, and its
+  blood damage type leaves `blood_splat`.
+- **Not yet:** marks are flat quads (they overhang an edge or a slope) and unlit; nothing that moves holds
+  one (a character, a dynamic body, a door); an ability's payload decal lands on the ground below; the
+  Sandbox's terrain has no `physics_material`, so shots into the hills leave nothing; the
+  `physics_material`'s own `decal` hint is still read by nothing.
+
+### As built (mipmaps, TGA and anisotropy, 2026-10-06 — #317, 4n-13)
+- **Code:** `TextureMips` and `CookedTexture` in `src/Sage.Simulation/Content/CookedAssets.cs`,
+  `src/Sage.Client/Rendering/TextureSampling.cs`. Tests: `tests/Sage.Tests/Content/CookedAssetTests.cs`.
+- **Every texture has its mip chain:** made on the CPU when a loose file loads, each level a box filter of
+  the one before on premultiplied pixels, down to 1×1 (test: AMipChainHalvesEachSideDownToOneTexelAndBoxFiltersPremultipliedPixels),
+  and stored whole in the cooked `.sgtex` (version 2), each level uncompressed or as BC1/BC3 blocks
+  (test: ACookedTextureStoresItsMipsUncompressedOrAsBlocksAndReadsThemBack).
+- **Sampling:** a material's `Linear` or `Anisotropic` filter is trilinear, and anisotropic up to
+  `r_anisotropy` taps (Archive, 1 to 16, default 4). `Point` keeps the full-size level only (a level-of-detail
+  bias of -16), so pixel art, `sage:sprite_default` and the UI's sprite batch stay exact at any distance.
+- **Not yet:** mips are averaged in sRGB with a box filter; the chain costs about a third more memory; DDS
+  and KTX are not read; terrain layers sample trilinear but do not read `r_anisotropy`.
+
+### As built (surface materials, 2026-10-06 — #410, 4n-20)
+- **Code:** `src/Sage.Simulation/Rendering/MaterialSurface.cs`, the surface fields of `MaterialRecord`,
+  `MeshGeometry`'s tangents and colours, and `lit.fx`. Tests:
+  `tests/Sage.Tests/Presentation/SurfaceMaterialTests.cs`.
+- **A material names its maps and factors** (07 §3.3): `normalMap`, `specularMap`, `specular`, `gloss`,
+  `emissiveMap`, `emissive`, `vertexColors`, `environmentMap`, `reflectivity`
+  (test: AMaterialRecordNamesEachMap_AndTheEffectGetsThemWithItsFactors). A map it does not name is a 1×1
+  engine texture that changes nothing, so every lit material draws with one technique
+  (test: MissingMapsFallBackToOnePixelTexturesThatChangeNothing); mistakes are load errors
+  (test: SurfaceMistakesAreLoadErrors). A model without tangents has them worked out from its texture
+  coordinates (test: TangentsAreWorkedOutFromTheTextureCoordinatesWhenAModelHasNone).
+- **The lamps add highlights too:** Blinn-Phong from the sun and the four lamps, over the normal map.
+- **The Sandbox** has a normal-mapped brick wall (`tools/make_brick_wall.py`) with a lamp going round in
+  front of it on its `orbit` part (test: TheSandboxHasANormalMappedWallLitByALampGoingRoundInFrontOfIt).
+- **Not yet:** meshes built in code (brush levels, `box_mesh`, terrain chunks, `CreateMesh`) have no
+  tangents or colours, so a normal map does nothing on them and `vertexColors` turns them black.
+
+### As built (particles that collide, sheets over a life, fog culling, 2026-10-06 — #310, 4n-6)
+- **Code:** `src/Sage.Simulation/Rendering/Particles.cs` (`ParticleCollision`, the new `particle` fields,
+  `Particles.CollisionBudget`), `ParticleExtract`. Tests: `tests/Sage.Tests/Gameplay/ParticleCollisionTests.cs`.
+- **Collision:** `collision` is `None` (the default), `Bounce` (keeping `restitution` of the speed into the
+  surface and losing `friction` of the speed along it) or `Die`; one ray a frame per particle through the
+  world's physics, within `Particles.CollisionBudget` (512) rays a frame for everything, the rest counted as
+  skipped. `fx_stats` prints the rays, those over the budget and the hits. The Sandbox's sparks bounce off
+  its floor (test: ASparkBouncesOffTheSandboxFloor).
+- **A sprite sheet over a life:** `sheetColumns` × `sheetRows` frames, `sheetFrames` of them (0: all) run
+  `sheetCycles` times between birth and death, `sheetRandomStart` to start each on a frame of its own
+  (test: ASheetRunsThroughItsFramesOverALife). Bad numbers are load errors
+  (test: ABadParticleRecordIsALoadError).
+- **Fog culling:** a particle wholly past the fog's cull distance is not drawn
+  (test: FogHidesAParticleWhollyPastIt); `r_stats`' `fog culled` counts it.
+- **Not yet:** soft particles (#310); the ray budget is first come, not rotated; a hit leaves no decal.
+
+### As built (flickering lamps, spot lights and a light grid, 2026-10-06 — #314, 4n-10)
+- **Code:** `src/Sage.Simulation/Rendering/Lights.cs` (`PointLight.Pattern`, `PatternRate`, `Cone`,
+  `InnerCone`; `LightStyles`; `LightSample.Spot`; `LightRules.Sample` and `Sum`, the shaders' sum on the
+  CPU), `src/Sage.Simulation/Rendering/LightGrid.cs`, the `light` part and the `SetPattern` input in
+  `Sage.Gameplay`, and `common.fxh`'s `LightSpots[4]`. Tests: `tests/Sage.Tests/Gameplay/LampTests.cs`.
+- **Flicker** is a Quake light style: letters `a` (dark) to `z` (about double), `m` the light as set, read at
+  `patternRate` letters a second (0: Quake's 10), from the world's scaled seconds, so a run and a load
+  flicker the same; or a preset: `steady`, `flicker`, `torch`, `candle`, `candle2`, `candle3`, `pulse`,
+  `gentle_pulse`, `slow_pulse`, `strobe`, `slow_strobe`, `fluorescent`. The `SetPattern` input changes it
+  and an empty one makes it steady (test: SetPatternFlickersALampAndEmptyMakesItSteady); `ent_fire` toggles a
+  lamp and a sprite near it is lit by it (test: EntFireOnALampTogglesIt_AndASpriteNearItIsLitByIt). The
+  Sandbox's hut lamps flicker as torches when lit, and the crypt's torch flickers.
+- **Spot lights:** `cone` (the half-angle around the entity's forward; 0 lights all round) and `innerCone`
+  (full strength inside it; 0 is three quarters of the cone) (test: ASpotLightLightsOnlyItsCone). A lit
+  sprite is lit from the lamp's side, cones included (test: ASpriteIsLitFromTheSideWhereAWallWouldNotBe).
+- **The grid** (§"As built (point lights)"'s "the answer is a grid"): past 16 lights a frame, the lights are
+  listed in the 8 m cells their ranges touch and a draw reads its cell's list, which chooses what the full
+  list chooses (test: TheGridChoosesWhatTheFullListChooses) and allocates nothing once warm
+  (test: RebuildingAndAskingTheGridAllocatesNothingOnceWarm).
+- **Not yet:** no per-lamp phase offset; lamps cast no shadows (#315); the `.map` `style` key is not mapped;
+  a bad pattern is caught when the lamp is placed, not when the record loads.
+
+### As built (weather under roofs, lightning and a weather picker, 2026-10-06 — #311, 4n-7)
+- **Code:** `src/Sage.Simulation/Rendering/WeatherCover.cs` (`WeatherCover`, `WeatherSky`, `LightningRules`,
+  the `weather_pattern` record, `WeatherPicker`, and `sage.world.weather`, fixed Late before the sky), the
+  new `weather` fields, `SceneEnvironment.WeatherPattern`/`WeatherRegion`, and the client's
+  `WeatherSystem`. Tests: `tests/Sage.Tests/Gameplay/WeatherCoverTests.cs`.
+- **Roofs:** a ray up from the camera to the first static collider says whether it is covered (an interior
+  scene always is), and the exposure eases over a third of a second, so the drops stop and the sound falls
+  to the weather's `shelteredVolume` (test: ARoofOverTheCameraStopsTheDropsAndAnOpenSkyBringsThemBack).
+  A character or a dynamic body is no roof (test: WhatMovesIsNoRoof). Walking into the Sandbox's hut stops
+  the rain (test: WalkingIntoTheSandboxHutStopsTheRain).
+- **Lightning:** `lightningRate` (strikes a minute), `lightningFlash`, `thunder` (a sound) and
+  `thunderVolume`: a seeded strike flashes the sky, fog and ambient outdoors only, and its thunder comes some
+  seconds later by how far off it struck (test: LightningFlashesTheSkyAndThunderFollowsLater)
+  (test: TheFlashLightsTheEnvironmentOutdoorsAndNotUnderARoof). The Sandbox's `storm` has it.
+- **The picker:** a `weather_pattern` (`slotHours`, `transition`, `seed`, `picks` of `weather`, `from`,
+  `to`, `region`, `weight`) draws the weather every few game hours, deterministically, by the hour and the
+  world's region (test: TheClockAndTheRegionPickTheWeather), and keeps it when nothing applies
+  (test: TheWorldChangesItsWeatherAsTheClockTurnsAndKeepsItWhenNothingApplies). A scene's environment names
+  it with `weatherPattern` and `weatherRegion`; the saved `weather` resource keeps `Pattern`, `Region` and
+  `PickedSlot`, and an older save has none (test: AnOldWeatherHasNoPatternAndNoRegion).
+- **The weather's blend is advanced by the simulation now** (`sage.world.weather`), so a headless world's
+  weather moves too; the client only throws the drops and plays the sounds.
+- **Not yet:** puddles and wet surfaces (#311); the cover is asked for the camera, not per drop; a pattern
+  overrides a scene's own `weather` on its next draw; no console command sets the pattern or region.
+
+### As built (instancing, 2026-10-06 — #309, 4n-5)
+- **Code:** `src/Sage.Simulation/Rendering/Instancing.cs` (headless: `Plan`, `TechniqueFor`),
+  `src/Sage.Client/Rendering/InstanceStream.cs`, `SpriteBatcher.DrawInstanced`, the `…Instanced`
+  techniques of `lit.fx` and `sprite.fx`. Tests: `tests/Sage.Tests/Presentation/InstancingTests.cs`.
+- **Behind `r_instancing`** (Archive, default 0) and `r_instancing_min` (8): a run of at least that many
+  neighbours with one mesh part, material, tint and lamps is one `DrawInstancedPrimitives` call
+  (test: RunsOfAtLeastMinCollapseToOneDraw) (test: RunsShorterThanTheMinimumAreDrawnOneByOne)
+  (test: ARunBreaksWhereMeshPartMaterialOrStateChange), at most 1024 a draw
+  (test: LongRunsAreSplitAtTheInstanceBuffer), every item in exactly one run in order
+  (test: EveryItemIsInExactlyOneRunInOrder). Skinned items, lightmapped parts and effects without the twin
+  technique are drawn one by one (test: WhatCannotBeInstancedIsDrawnOneByOne). The sun's casters are
+  instanced too, and long sprite runs are instanced quads (§3.7's "later").
+- **`r_stats`** adds `instanced N in M draw(s) (saved K), instanced sprites S`.
+- **Not yet:** a tint must match across a run; a multi-part mesh interleaves its parts, which breaks runs;
+  off by default until it is checked on more GPUs.
+
+### As built (lightmaps for brush levels, 2026-10-06 — #313, 4n-9)
+- **Code:** `src/Sage.Simulation/Levels/Lightmap.cs` (the atlas, the bake, the cache), `MapRecord.Lightmap`,
+  `PointLight.Baked` and the `light` part's `baked`, `MapMesh`'s lightmapped meshes, and `lit.fx`'s
+  `Lightmapped` technique. Tests: `tests/Sage.Tests/Maps/LightmapTests.cs`.
+- **A `map` record's `lightmap`** (texels a metre, 0 to 32; 0 = none) bakes the level's worldspawn faces at
+  load, each into its own chart of one atlas (test: EveryFaceHasItsOwnChartInTheAtlas), lit by its
+  `baked` lamps with shadow rays against the brushes (test: ALampLightsWhatItCanSee_AndThePartitionShadowsTheRest)
+  and holding, in alpha, how much sky each texel sees (test: TheSkyTermIsWhatATexelCanSeeOfTheSky). A
+  level too big for the atlas bakes coarser (test: ALevelTooBigForTheAtlasBakesCoarser). The bake is
+  deterministic and cached under `user://cache/lightmaps/`, named by a hash of its inputs
+  (test: ABakeIsDeterministic_HashedByItsInputs_AndReadsBackFromItsFile), so the next load reads it back
+  (test: ALevelThatAsksForALightmapBakesItsBakedLampsAtLoad_AndReadsItBackNextTime). The Sandbox's hut
+  level asks for 4.
+- **Drawing:** a face with a lightmap draws with `Lightmapped` (only for a material whose technique is
+  `Default`): the sun, still shadowed by the shadow map, the ambient times the sky term, the baked light (at
+  sampler s6, scaled by `LIGHTMAP_SCALE`, 4), and the unbaked lamps from a second light grid. Spot cones,
+  highlights, emissive, the environment reflection and vertex colours apply; a normal map does not (brush
+  vertices have no tangents). Lightmapped parts are never instanced. `r_stats` adds `lightmapped N`.
+- **A baked lamp** still lights everything that is not lightmapped (props, creatures, doors), but on the
+  lightmapped faces it is in the texture: it cannot switch or flicker there, and it bakes as a point light.
+  One with a `pattern` or a `cone` is warned about (test: ABakedLampWithAFlickerOrAConeIsWarnedAbout).
+- **Not yet:** bounce light (the sky term's floor stands in), light styles on baked lamps, brush entities in
+  the bake, terrain as an occluder, an `AlphaTest` variant, and a cvar or command to rebake.
+
+### As built (cascaded sun shadows, a quantised sun and cut-out casters, 2026-10-06 — #315, 4n-11)
+- **Code:** `ShadowMath` (`FitCascades`, `CascadeSplits`, `CascadeOf`, `Atlas`/`ShadowAtlas`, `QuantiseSun`,
+  `BillboardAxes`, `CasterTechnique`, `CutOutKeeps`), `ShadowPass.cs`, `common.fxh` (`ShadowViewProj` is an
+  array, with `ShadowCascadeRects` and `ShadowCascadeBias`), and the caster techniques of `lit.fx` and
+  `sprite.fx`. Tests: `tests/Sage.Tests/Presentation/ShadowTests.cs`.
+- **Cascades:** the view's slice up to `r_shadow_distance` (now 150 m by default) is cut into
+  `r_shadow_cascades` (1 to 3, default 3) slices that lean toward the camera
+  (test: CascadeSplitsLeanTowardTheCamera), each fitted and snapped on its own
+  (test: EveryCascadeKeepsItsTexelGrid), the nearer ones finer
+  (test: EachCascadeHoldsItsSliceAndTheNearerOnesAreFiner), in one atlas of `r_shadow_size` texels a
+  cascade (at most 4096 a side). The fit keeps three texels spare. At the defaults the main view's atlas and
+  its depth buffer take about 128 MB of GPU memory.
+- **The sun is quantised:** its elevation and azimuth snap to `r_shadow_sun_step` degrees (0 to 5, default
+  0.25), so the grid holds still while the sun moves and jumps once a step
+  (test: AQuantisedSunHoldsTheGridStill). Lighting uses the true sun.
+- **Cut-out casters:** an alpha-tested material with `castShadows` casts with its texture's alpha clipped at
+  its `AlphaCutoff` (`ShadowCasterAlphaTest`, `ShadowCasterAlphaTestSkinned`)
+  (test: AlphaTestedMaterialsCastCutOutShadows) (test: OnlyOpaqueMaterialsThatSaySoCastShadows), and sprites
+  cast now, turned to face the sun (test: ALeafBillboardCastsACutOutShadow). Particles, decals, lights and
+  debug lines do not. A custom effect that is alpha-tested needs its own `ShadowCasterAlphaTest` (and
+  `…Skinned`) technique, or it casts nothing (said once).
+- **Not yet:** point and spot light shadows (#315); a custom effect's own vertex deformation in its shadow
+  (opaque casters draw with `lit.fx`).
+
+### As built (HDR, bloom, anti-aliasing and the depth hook, 2026-10-06 — #316, 4n-12)
+- **Code:** `src/Sage.Simulation/Rendering/PostProcess.cs` (`PostChainPlan`, `PostOptions`, `AntiAliasing`,
+  the curves), `src/Sage.Client/Rendering/Renderer.Post.cs`, `post.fx`'s new techniques,
+  `engine_content/shaders/depth_haze.fx` and `engine_content/data/post.json`. Tests:
+  `tests/Sage.Tests/Presentation/PostHdrTests.cs`.
+- **Cvars, all off by default (decision 6):** `r_hdr` (a half-float `sage:scene`, tonemapped with ACES),
+  `r_bloom` (the bright parts down a chain `sage:bloom0`…`sage:bloom7` from half the scene's size and back
+  up) and `r_aa` (`off`, `fxaa`, or `msaa2`/`msaa4`/`msaa8`; the numbers alone work too)
+  (test: TheAntiAliasingCvar_TakesItsNamesAndSampleCounts_AndRefusesTheRest). Each turns the chain on by
+  itself (test: HdrBloomAndAntiAliasing_EachTurnTheChainOnAlone).
+- **The order is fixed:** bloom, then the tonemap, then the `post_effect`s, then FXAA
+  (test: BloomThenTonemapThenTheEffectsThenFxaa_InThatOrder). The bloom chain halves until a side would be
+  under 4 pixels (test: TheBloomChainHalvesFromHalfTheScene_UntilASideIsTooSmall); the threshold is soft
+  around its knee (test: TheBloomThreshold_IsSoftAroundItsKnee); the tonemap is monotonic
+  (test: TheTonemapCurve_IsMonotonic_AndMapsBlackGreyAndWhite). The engine's steps are materials
+  (`sage:post_bloom_prefilter`, `sage:post_bloom_down`, `sage:post_bloom_up`, `sage:post_tonemap`,
+  `sage:post_fxaa`) that inherit `sage:post_copy`'s `BloomThreshold`, `BloomKnee`, `BloomIntensity`,
+  `HdrExposure` and `FxaaSpan` (test: TheEnginesStepMaterialsLoad).
+- **The depth hook:** a `post_effect` with `"depth": true` makes the frame draw the screen's opaque and
+  alpha-tested items into `sage:depth` and hands it over as `SceneDepth` with `DepthParams`
+  (test: AnEffectThatReadsDepth_MakesTheFrameDrawIt) (test: TheDepthHookUnprojectsToMetres).
+  `sage:post_depth_haze` (`depth_haze.fx`) is the sample, and the Sandbox's `haze` effect uses it, switched
+  by its `r_post_haze` (test: TheSandboxsHaze_ReadsTheScenesDepth).
+- **What the device lacks** (half-float targets, MSAA samples) falls back with a warning
+  (test: WhatTheDeviceLacks_FallsBackWithAWarning). `r_stats`' post tail adds `hdr`, `bloom N`, `fxaa`,
+  `msaa Nx`, `water` and `depth`. CI's Linux smoke run turns them all on in the Sandbox.
+- **Not yet:** soft particles (they need the depth, #310); alpha-tested holes are solid in `sage:depth`; the
+  viewmodel's depth uses its own near and far.
+
+### As built (water surfaces, 2026-10-06 — #411, 4n-21)
+- **Code:** `src/Sage.Simulation/Rendering/WaterSurfaces.cs` (the `water_surface` record, component and part,
+  `WaterViews`, `WaterShading`), `src/Sage.Client/Rendering/Renderer.Water.cs`, `engine_content/shaders/water.fx`
+  and `engine_content/data/water.json`. Tests: `tests/Sage.Tests/Presentation/WaterSurfaceTests.cs`.
+- **The top face of a `water` volume** (#262) with a `water_surface` part beside it (`"water_surface": "lake"`)
+  is drawn rippling, reflecting the sky and the shore, showing the bottom through itself, thickening with
+  depth and fading at the shore. A `water_surface` record is `colour`, `fogDensity`, `shoreFade`,
+  `reflectivity`, `refraction`, `specular`, `waveLength`, `waveStrength`, `waveSpeed`, `waveDirection`,
+  `underwaterColour`, `underwaterDensity` and `underwaterTint`; `sage:water` is the default look
+  (test: TheEnginesWaterLoads). Bad values and a surface without a volume are load errors
+  (test: ABadLook_IsALoadError) (test: ASurfaceWithoutAVolume_OrALookThatIsNot_IsAnError).
+- **Headless curves:** the nearest surfaces in reach (at most 4) are drawn nearest first
+  (test: TheNearestSurfacesInReach_AreDrawn_NearestFirst); ripples tilt and move
+  (test: TheRipplesTiltTheSurfaceAndMoveWithTime) (test: TheDirectionTurnsTheRipples); reflection grows
+  toward a grazing angle (test: TheReflectionGrowsTowardAGrazingAngle); depth fogs the bottom and the
+  shore fades (test: DepthFogsTheBottomAndTheShoreFadesTheEdge).
+- **Under water** is inside the box below its surface, the same box the swimmer is in
+  (test: TheViewGoesUnderWhereTheSwimmerDoes), and the view is tinted and fogged
+  (test: UnderWater_TheViewIsTintedAndFogged).
+- **A post step**, `sage:water`, after the tonemap and before the `post_effect`s, reading the scene's depth
+  (test: TheWaterStep_ComesBeforeTheEffects_AndReadsDepth); it turns the chain on by itself. `r_water`
+  (Archive, on) switches it; `sage:post_water`'s `ReflectionDistance`, `ReflectionThickness` and
+  `ScreenReflections` tune the screen-space reflection. The Sandbox has a lake in the basin about 85 m east of
+  the clearing (test: TheSandboxHasALake).
+- **Not yet:** the main view only; sprites in front of the water are drawn over by it; reflections are
+  on-screen only; it shades the LDR picture after the tonemap.
+
+### As built (sky extras: moon, clouds, turning stars, 2026-10-06 — #320, 4n-16)
+- **Code:** the new `sky` fields and `SkyRules`' moon, cloud and star maths in
+  `src/Sage.Simulation/Rendering/Sky.cs`, `weather.cloudCover`, `SkyPass.cs` and `sky.fx`. Tests:
+  `tests/Sage.Tests/Presentation/SkyExtrasTests.cs`.
+- **A moon** (`moon`, a picture; `moonSize`, degrees) whose phase follows the world's calendar
+  (`moonCycle`, `moonStart`) (test: TheMoonFollowsTheCalendarThroughItsPhases): a new moon rides with the sun
+  and a full one opposes it (test: ANewMoonRidesWithTheSunAndAFullOneOpposesIt), lit from the right as it
+  grows (test: ThePhaseLightsTheDiscFromTheRightGrowingToFull), covering only its own angle
+  (test: TheMoonDiscCoversOnlyItsOwnAngle); the sky system writes it from the clock and calendar
+  (test: TheSkySystemWritesTheMoonFromTheClockAndCalendar).
+- **Clouds** (`clouds`, a tiling grey picture; `cloudScale`, `cloudSpeed` in repeats an hour,
+  `cloudDirection`): the weather's `cloudCover` (0.3 by default) thresholds them, blended as the weather is
+  (test: CloudCoverFollowsTheWeatherAndItsBlend); they drift with the game hours and wrap
+  (test: CloudsDriftWithTheHourAndWrap), bright by day, dark at night, and hide the sun
+  (test: CloudsAreBrightByDayAndDarkAtNightAndHideTheSun).
+- **Stars turn** once a day about an axis `starTilt` degrees above the northern horizon
+  (test: TheStarsTurnOnceADayAboutTheAxis) (test: TheSkySystemTurnsTheStarsWithTheClock), and **fog stays
+  over the sky above the haze band** by `hazeAbove`, with `hazeBand` its height
+  (test: FogStaysOverTheSkyAboveTheHazeBand). A sky that names none of it looks as it did
+  (test: ASkyThatNamesNoMoonOrCloudsLooksAsItDid).
+- **The Sandbox** has a `moon` calendar (eleven days into the cycle at day 0), a moon and cloud pictures from
+  `tools/make_sky_art.py`.
+- **Not yet:** clouds drift by game-clock hours, so they stop with `time_scale 0`; the moon's lit side
+  assumes a northern view; lamps still switch rather than fade.
+
+### As built (render pass replacement, the snapshot dump and debug labels, 2026-10-06 — #322, 4n-18)
+- **Code:** `RenderPassRegistry.Replace`/`Disable` in `src/Sage.Simulation/Rendering/RenderPasses.cs`,
+  `RenderFrameDump.cs`, `DebugFont.cs` and `DebugDraw.Text3D`. Tests:
+  `tests/Sage.Tests/Presentation/RenderPassOverrideTests.cs`.
+- **Replace or disable by id**, in `Init`, on `ctx.Get<RenderPasses>()`: `Replace(id, pass, by)` swaps the
+  pass under an id for another in the same stage, which keeps the id and the old pass's ordering
+  (test: ReplacingTheSkyPass_KeepsItsIdAndSlot_AndSaysWhoDidIt); it may be asked for before the engine adds
+  the pass (test: AReplacementMayBeAskedForBeforeTheEnginePassIsAdded_AndInheritsItsOrdering).
+  `Disable(id, by)` leaves it out, and a constraint naming it is dropped
+  (test: DisablingAPass_LeavesItOut_AndConstraintsNamingItAreDropped). One change per id
+  (test: TwoModulesChangingOnePass_IsALoadError_NamingBoth); an unknown id or another stage is a load error
+  at the seal (test: ReplacingAnUnknownPass_OrInAnotherStage_IsALoadErrorAtTheSeal), and either after the
+  seal throws (test: ReplaceAndDisableAfterTheSeal_Throw). `r_passes` says what replaced what and who
+  switched a pass off.
+- **`r_snapshot_dump [file]`** writes the next frame's passes, views and items as text (default
+  `logs/snapshot.txt` in the user folder) (test: SnapshotDump_WritesThePasses_TheViewsAndTheFramesItems).
+  `stat render` is the editor overlay's (#300).
+- **`DebugDraw.Text3D(at, text, colour, height, seconds)`**: a label in a stroke font (capitals, digits and
+  some punctuation), turned to face each camera, at most 256 labels of 64 characters
+  (test: Text3D_BecomesStrokesFacingTheCamera_AndExpires).
+- **Not yet:** per-shape depth flags; the visual logger does not record labels; no cvar disables a pass at
+  run time.
+
+### As built (split screen and secondary views, 2026-10-06 — #323, 4n-19)
+- **Code:** `Camera.Slot` and the pass flags in `src/Sage.Simulation/Camera/Camera.cs`, `CameraViews`
+  (one view per target and slot, `IndexOf(target, slot)`), `CameraBlends.BeginOut`, `CameraOff`'s
+  parameter in `CameraIO.cs`, `src/Sage.Simulation/Rendering/ShadowViews.cs`, and the client's shadow pass,
+  view source and viewmodel extract. Tests: `tests/Sage.Tests/Presentation/SecondaryViewTests.cs`,
+  `CameraBlendTests.cs`.
+- **Split screen is slots:** cameras on one target compete per `slot`, so two players' cameras with their
+  own viewports both draw; the screen's lowest slot is the main view
+  (test: EachSplitScreenSlotResolvesItsOwnCamera_AndTheLowestIsTheMainView).
+- **Every view has the whole pass set:** a view that receives shadows gets its own cascades fitted to its
+  own camera, into its own target (`sage:shadow`, `sage:shadow:1`, …), the main view first, up to
+  `r_shadow_views` (4, at most 8), at `r_shadow_view_size` (1024) texels a cascade
+  (test: ARenderTargetCameraViewGetsShadowCasterViewsOfItsOwn); `r_stats` says `in N map(s)`
+  (`RenderStats.ShadowMaps`). A split-screen partner's first-person view draws its own viewmodel
+  (test: ASplitScreenPartnerDrawsItsOwnViewmodel). A camera's `noShadows`, `noViewmodel`, `noSky` and
+  `noDebugLines` turn a pass off for its view (test: PerViewFlagsAreTheCamerasData_AndTurnItsPassesOff).
+- **Blending out:** `CameraOff [blend [ease]]`, or the scripted camera's `blendOutTime` (also when its hold
+  runs out), eases from the camera's view to whatever has its target and slot next
+  (test: CameraOffWithABlendTime_EasesOutToWhatHasTheScreenNext) (test: AHoldRunningOut_BlendsOutOverTheCamerasBlendOutTime).
+- **A behaviour change:** a view a game's pass adds with `AddView` reads no shadow map (it used to read the
+  main view's).
+- **Not yet:** first-person arms cast no shadow; `Viewmodels.IsDrawn` and `MainViewRig` answer for the main
+  view only; no local multiplayer input or pawn spawning; a blend into a render-target camera is a cut; two
+  rigs of the player's camera still cut.
+
+### As built (stable radix sort, 2026-10-06 — #319, 4n-15)
+- **Code:** `src/Sage.Simulation/Rendering/RadixSort.cs`, used by `RenderViewPlan.Bucket`. Tests:
+  `tests/Sage.Tests/Presentation/RadixSortTests.cs`.
+- An LSD radix sort of the 64-bit keys with their payload, a byte a pass, skipping passes whose digit is the
+  same for every key, with an insertion sort for short runs. It is **stable**, so ties keep the order extract
+  wrote them in and the draw order is deterministic (the comparison sort it replaces was not)
+  (test: MatchesAStableComparisonSort_IncludingTies); allocation-free once warm
+  (test: SortingIsAllocationFreeOnceWarm) and no slower than the comparison sort at 20,000 items
+  (test: At20kItems_RadixIsNoSlowerThanTheComparisonSort).
+
+### As built (pixel checks of the drawn frame, 2026-10-06 — #318, 4n-14)
+- **Code:** `src/Sage.Simulation/Rendering/PixelCheck.cs` (headless: the spec, regions and checks),
+  `src/Sage.Host/PixelCheckCapture.cs` (`r_pixelcheck`, the readback), `tests/games/render-check` (a `.map`
+  yard, a sky and a placed camera, no C#), `tools/check_glsl_constants.py`, and the `drawing` job in
+  `.github/workflows/ci.yml`. Tests: `tests/Sage.Tests/Presentation/PixelCheckTests.cs`,
+  `RenderCheckSceneTests.cs`.
+- **`r_pixelcheck <spec.json> [shaders]`** (dev builds) reads the frame back at its end and checks a spec's
+  named `regions` (`name`, `rect` in fractions from the top left, `sees`) with `checks` (`name`, `region`,
+  an optional `than` region, `measure` — `luma`, `r`, `g`, `b`, `chroma`, `b-r`, `r-b` — with `min`/`max`, or
+  a `color` within `tolerance`; `when`: `always`, `shaders` or `noShaders`). A failed check is an error, so
+  the smoke run fails (test: ARegionComparedWithAnotherPassesOrFails)
+  (test: ChecksRunOnlyOnTheFramesTheyAreFor). The headless scene test casts rays to prove each region sees
+  what its spec says (test: EachRegionSeesWhatItsSpecSays), and that the checks expect what the sky, fog
+  and light give (test: TheChecksExpectWhatTheSkyFogAndLightGive) (test: ThePostCheckGradesEverythingGrey).
+- **The drawing job:** the Linux host, given the shaders the Windows job compiled, draws the scene under
+  Xvfb on llvmpipe and checks the sky pass's colour, the sun's shadow against the sunlit ground, the fog in
+  the distance and, with `r_post 1`, the scene's grey grade. So since #318 the render passes, sun shadows,
+  sky, fog and `post.fx` are checked on a GPU path in CI, not only compiled on Windows and smoke-run.
+- **Two OpenGL bugs it found**, both fixed in the shaders: MojoShader packs only the constants a shader
+  uses, while MonoGame fills them by register, so a matrix of which only some columns were read shifted
+  every constant after it (`common.fxh`'s cascade lookup now divides by `clip.w`, reading the whole matrix;
+  `tools/check_glsl_constants.py` guards it); and GLSL prints constants to six decimals, so `1e-8` became 0
+  (`lit.fx`'s tangent epsilon is `1e-4`). Design 07 §3.8 has the rules.
+
 ## 12. Multiplayer-later notes
 Nothing changes: a client renders its own world's snapshot. A dedicated server doesn't load `Sage.Client` at all.
 
@@ -1258,8 +1635,8 @@ Nothing changes: a client renders its own world's snapshot. A dedicated server d
 
 ## 14. Build steps
 1. ~~`RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO R9, #25).
-2. ~~Sort keys + material-based drawing (with 07)~~ **Done 2026-09-22** (radix sort later).
+2. ~~Sort keys + material-based drawing (with 07)~~ **Done 2026-09-22** (radix sort since #319, 2026-10-06).
 3. ~~Sprite batcher + `SpriteRenderer` + 8-direction selection~~ **Done 2026-09-22** (TODO F1; with 12).
 4. ~~Lighting/fog/ambient~~ **Done 2026-09-22** (sun, hemispheric ambient, fog) and ~~point lights~~ **Done 2026-09-24** ("As built (point lights)"). Render scale done in issue 4h-6 ("As built (post-processing)").
 5. `DebugDraw` + `r_stats` + the overlay (TODO F5). *`r_stats` done in step 6.*
-6. Instancing experiment behind `r_instancing` (later).
+6. ~~Instancing experiment behind `r_instancing`~~ **Done 2026-10-06** (#309, "As built (instancing)").

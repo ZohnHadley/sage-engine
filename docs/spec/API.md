@@ -67,8 +67,8 @@ experimental by deleting the attribute, which is not an API change. The full mem
 | SAGE0126 | Skeletal animation: skeletons, clips, skinning, sockets and IK, animation graphs, viewmodels, clip events |
 | SAGE0127 | Weapons and combat: the hit pipeline, `hit_delivery`, hit locations, ammunition, spread and recoil |
 | SAGE0128 | Reserved for phase 4f |
-| SAGE0129 | The open world: calendar, dormant cells, streamed scenes, routines, travel, off-screen simulation |
-| SAGE0130 | World clock and sky, the render pass registry, shadows, fog, post effects |
+| SAGE0129 | The open world: calendar, dormant cells, streamed scenes, routines, travel, off-screen simulation, terrain materials (#307) |
+| SAGE0130 | World clock and sky, the render pass registry, shadows (cascades, `ShadowAtlas`), fog, post effects, a material's surface fields (#410) |
 | SAGE0131 | Saves you can trust: placeholders, prefab overrides, reconciling loads, quick-save and autosave |
 | SAGE0132 | Data mods: manifests, load order, content report, `ModManager` |
 | SAGE0133 | The editor's model, all of `Sage.Editing` |
@@ -406,7 +406,10 @@ A pass implements `IRenderPass` (`Extract(RenderContext)`, `Draw(RenderContext)`
 `ctx.Get<RenderPasses>().Add(new MyPass())` (the module lists `ClientModule` in `Dependencies`). Stages run Shadow, then per view Opaque, AlphaTested, Sky,
 Transparent, Debug, then PostProcess and Overlay. `RenderContext` gives the device, the world, views
 (`AddView`, `ViewInfo`), items (`AddItem`), render targets (`Target`, `SetTarget`) and `DrawFullScreen`.
-`r_passes` lists the order. Replacing or disabling an engine pass by id is planned (#322 4n-18).
+`r_passes` lists the order. An engine pass is replaced (`ctx.Get<RenderPasses>().Replace("sage:sky", new MySky())`,
+same stage; it keeps the id and its ordering) or left out (`Disable("sage:debug", by)`) in `Init`; both are applied
+at the seal, one change per id (two modules changing one pass is a load error naming both), and a constraint naming
+a disabled pass is dropped (#322). `r_snapshot_dump [file]` writes the next frame's passes, views and items.
 
 ### 8.2 UI (SAGE0125)
 
@@ -547,7 +550,6 @@ can. Neither should surface as a crash in play.
 | Packed `.sagemod` mods and namespaced mod assets (#397 9-2, #398 9-3) | Asset paths gain a mod namespace | Phase 9 |
 | Keyed list merge, `"$remove"` and `"replace": true` in patches (#399 9-4) | Lists of objects with a key merge by key; per-key conflicts | Phase 9 |
 | UI actions from data: a button names a UI action or console command (#347 4q-10) | Screens work without C# `Activated` handlers | 4q |
-| Render pass replacement and disabling by id (#322 4n-18) | `sage:` passes become replaceable | 4n |
 | First tagged release (#295 R1-3; the Shipped freeze is done, the tag is the owner's push) | Version numbers stop being pre-releases | R1 |
 
 Each experimental area in §1.4 is expected to leave experimental once its first outside consumer has

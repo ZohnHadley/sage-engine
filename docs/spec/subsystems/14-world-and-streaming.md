@@ -41,8 +41,9 @@ Plugins: `sage.streaming` (`StreamingModule`) installs the `Terrain` resource an
 | `Scenes.LiveBeside`, `SpaceGravity`, `GravityRegion` | `World/Spaces.cs` | The scenes held live beside the player's, and each space's gravity scale by where a body is, read by physics and the character controller (#291). |
 | `StreamingSystem`, `SectorRing`, `SectorOwnersSystem` | `World/Streaming.cs` | The ring, and crossing-an-edge ownership (both Phase.Late). |
 | `SectorLod`, `FarSector`, `FarLook` | `World/SectorLod.cs` | The far ring: coarse ground and far looks past the full ring, drawn by the client's `FarLodSystem` (#277). |
-| `SectorAssets` | `World/SectorAssets.cs` | Per-sector asset scopes: mesh paths ref-counted by live users, released when a leaving sector let go of the last one (#277). |
+| `SectorAssets` | `World/SectorAssets.cs` | Per-sector asset scopes: mesh and texture paths ref-counted by live users, released when a leaving sector let go of the last one (#277, textures since #308); the client frees them at the frame's safe point (sheet [06](06-assets-and-content.md)). |
 | `ITerrainSampler` | `World/Terrain.cs` | A generator's height at any point, for seam-free edge normals (#277). |
+| `TerrainMaterialRecord`, `TerrainLayer`, `TerrainSplat` | `World/TerrainSplat.cs` | Splat terrain (#307): the `terrain_material` record, its load checks and the weight map; the client's `terrain.fx` blends the layers. |
 | `Scenes`, `StreamedScene` | `Content/Scenes.cs`, `StreamedScene.cs` | Place and clear scenes; `Current(world)`; the tick-boundary placement. |
 | `Cells`, `InCell`, `ICellHandoff` | `Content/Cells.cs`, `CellHandoff.cs` | Dormant store, cell ownership, the hand-off seam. |
 | `Travel`, `TravelLog` | `World/Travel.cs` | `To`, `ToPoint`, `Use`, `HoursTo`; the saved list of discovered points. |
@@ -59,7 +60,8 @@ Console and cvars: `warp <x> <z>`, `stream_status`, `stream_radius`, `stream_ena
 | `scene` | record | `streamed`, `space` (`Exterior` or `Interior`), `live` (held and simulated when the player leaves, #291), `terrain` reference, `environment` (with `gravityScale`, default 1, #291), placements, levels. |
 | `sage:streaming_ring` | component and part `streaming_ring` | `radius`, `farRadius` (#290). |
 | `sage:follower` | component and part `follower` | `distance` (#290). |
-| `terrain` | record | `Flat` or `Hills`, with `seed`, `height`, `amplitude`, `wavelength`. |
+| `terrain` | record | `Flat` or `Hills`, with `seed`, `height`, `amplitude`, `wavelength`, and `material` (a `terrain_material`, #307; `Terrain.Material` from code). |
+| `terrain_material` | record | `layers` (one to four: `texture`, `tile`, `minHeight`/`maxHeight`, `heightBlend`, `minSlope`/`maxSlope`, `slopeBlend`; the first is the ground everywhere), `detail`, `detailTile`, `detailStrength`, `fallback` (the material without the splat shader). Weights per vertex from height and slope, the same either side of a sector edge (#307). |
 | `calendar` | record | `Months` (name, days), `Weekdays`, `StartYear`, `StartWeekday`; `LeapEvery`, `LeapSkipEvery`, `LeapRestoreEvery`, `LeapMonth` (no leap years by default); `Seasons` (name, month, day; each runs to the next start; the default calendar has four from 1 March); `MoonCycle` (days, default 29.53), `MoonStart` (#289). |
 | `calendar_event` | record | `Name`, `Month` (0: any month, with a moon phase), `Day`, `Year` (0: every year), `Moon` (a phase name) (#289). |
 | `sage:calendar_event` | component and part `calendar_event` | `Event` (a `calendar_event` record); saved with `LastDay`, so a day fires once and a skipped day fires once on waking. |
@@ -121,7 +123,7 @@ A door to a missing scene or entry, with the nearest name, and a placed door wit
 
 Milestone 2 (epic #274): none left on this sheet.
 
-Related: #308 4n-4 AssetServer scopes and memory budget (P1), #307 4n-3 terrain splat materials (P1).
+Related, done in 4n (2026-10-06): #308 asset scopes and the upload budget (sheet [06](06-assets-and-content.md)), #307 terrain splat materials (sheet [07](07-rendering.md) REQ-REND-18; a generator without `ITerrainSampler` still seams at sector edges, weights are not painted by a generator, and a `Terrain.Material` changed at run time is not applied to sectors already built), #311 weather picked by the clock and region (`weather_pattern`, sheet [07](07-rendering.md) REQ-REND-14).
 
 ## 11. References
 

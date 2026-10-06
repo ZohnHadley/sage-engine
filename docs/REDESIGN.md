@@ -1136,7 +1136,7 @@ what the base therefore needs first:
 | Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary, nested state machines and the rest of HL1's and Source's logic set: multisource, logic_case, logic_auto, filtered triggers, spawners (4m) |
 | AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g) that paths round walls, covers sectors never visited and takes NPCs through doors (4m); hearing, behaviour trees and squads in 4r |
 | Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); the far ring, several streaming sources, followers, and interiors that stay live beside their exterior (4m); more LOD in 4n |
-| Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m) |
+| Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m); cascaded shadows, lightmaps, a moon and clouds, flickering and spot lamps, lightning and weather under roofs (4n) |
 | Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i); thumbnails, compression, a background write that costs the tick about 3 ms at 10k entities, and a version report (4m) |
 | Mod culture (data mods first) | ○ | ● | ●● | ●● | ◐ data mods (4j); packed and code mods in 9 |
 
@@ -1244,6 +1244,13 @@ CI's package-and-run step since #293).
 public API frozen in `PublicAPI.Shipped.txt` and a release workflow (`.github/workflows/release.yml`, run by a
 `v*.*.*` tag), and the tag itself is the owner's push (RELEASING §4). #296, a package feed and `sage` as a
 dotnet tool, is open.
+
+**4n (#304) as of 2026-10-06, pack 1:** #305–#309, #313, #314, #316–#323, #410 and #411 are built (spec
+sheets [06](spec/subsystems/06-assets-and-content.md) and [07](spec/subsystems/07-rendering.md), design 06 and
+07 "As built", [`history/handoff-2026-10-06.md`](history/handoff-2026-10-06.md)). Three are part built: #310
+(collision, sheets and fog culling; soft particles left), #311 (roofs, lightning and the weather picker; puddles
+and wet surfaces left) and #315 (cascades, a quantised sun and cut-out casters; point and spot light shadows
+left). #312 was already built. Then 4o (#324) and 4q (#337).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,
