@@ -98,7 +98,7 @@
       "type": "boolean"
     },
     "castShadows": {
-      "description": "Meshes drawn with it cast sun shadows (opaque materials only) (bool, default true)",
+      "description": "Meshes drawn with it cast shadows (opaque and alpha-tested materials; alpha-tested ones cut out; sprites cast too) (bool, default true)",
       "default": true,
       "type": "boolean"
     },

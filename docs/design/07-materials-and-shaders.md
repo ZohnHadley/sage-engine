@@ -146,6 +146,17 @@ built" sections of the same date.
   `LightColors`: a spot light's direction and cone, 0 for a lamp that shines all round.
 - **Cascades (#315):** `ShadowViewProj` is an array of three, with `ShadowCascadeRects` (where each sits in
   the atlas) and `ShadowCascadeBias`; `ShadowParams.y` is how many are in use.
+- **Soft particles (#310):** `sprite.fx`'s `UnlitBlendSoft` and `UnlitBlendSoftInstanced` read `SceneDepth`
+  (`register(s2)`, `sage:depth`) with `SoftParams` (1 / the soft distance, near, far, orthographic) and `SoftRect`
+  (the view's rectangle in the depth), and scale the colour by `SoftParticles.Fade`.
+- **Wet surfaces (#311, 3.4 and 3.5):** `common.fxh` gains `WetParams` (wetness, puddle level, the mask's
+  offset) and `PuddleMask` (`register(s7)`, linear, wrapping) with a `Wetting` function that `lit.fx` and
+  `terrain.fx` call; `lit.fx` has a `Weathering` parameter (0 to 1, from the material's `weathering`, and 0
+  unless it is opaque). Skinned draws use `PSSkinned`, which is `Default` without the rain.
+- **Lamp shadows (#315):** the object tier has `LampShadowForward`, `LampShadowRight`, `LampShadowUp`,
+  `LampShadowCorner` (two each, for the two lamps a draw looks up), `LampShadowAtlas` and the `LampShadowMap`
+  atlas at `register(s8)` (s7 is the puddle mask); the casters write z/w per pixel, so `sage:depth` is exact
+  (06 "As built (lamp shadows)").
 - **The terrain splat (#307, 14, `terrain_material`):** `terrain.fx`'s `Splat` blends up to four `Layer0`–`Layer3`
   textures (s0, s2, s3, s4) by height and slope weights in the vertex colour, tiles each by `LayerTiling`,
   and multiplies a greyscale `Detail` (s5) by `DetailParams` (repeats, strength).

@@ -735,7 +735,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `footsteps` | a step every `stride` metres it walks on the ground (0: only on its animation's `footstep` events), each raising the `footstep` cue of the `physics_material` underfoot (a ray `reach` metres below the feet) and sending `Footstep` (issue #270) |
 | `ragdoll` | falls as a ragdoll — on death, a hit, the `Ragdoll` input (an impulse "x y z" as its parameter) or from code — with the bodies and joints of its model's `ragdoll` records, settles (the `OnSettled` output) and gets back up (the `GetUp` input) — `record` (one `ragdoll` record; empty: every one for the model), `onDeath` (true), `hitImpulse` (N·s), `getUpAfter` (seconds after it has come to rest; 0 = only when told; never once it has died), `getUpBack`/`getUpFront` (the animator states it gets up with, `getup_back`/`getup_front`), `getUpFade` (issues #246–#249, SAGE0134; design/12) |
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
-| `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7); `pattern` (a flicker: Quake letters `a`–`z`, or a preset such as `torch`, `candle`, `pulse`, `strobe`, `fluorescent`) at `patternRate` letters a second, changed by `SetPattern`; `cone` and `innerCone` (degrees) make it a spot light along the entity's forward (issue #314); `baked` bakes it into a level's lightmap (issue #313) |
+| `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7); `pattern` (a flicker: Quake letters `a`–`z`, or a preset such as `torch`, `candle`, `pulse`, `strobe`, `fluorescent`) at `patternRate` letters a second, changed by `SetPattern`; `cone` and `innerCone` (degrees) make it a spot light along the entity's forward (issue #314); `shadows` makes it cast shadows (issue #315); `baked` bakes it into a level's lightmap (issue #313) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260); `angle`, `axis` (default up) and `pivot` swing it on a hinge, in its own frame (`"angle": 90, "pivot": [-0.5, 0, 0]` is a door hinged on its west edge); `path`, stops after the shut one (a lift's floors, the last is open), `speed` instead of `seconds` (m/s, or deg/s for a door), `locked` (#266) |
 | `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
 | `nav_door` | beside a `mover`: `locked` — creatures do not open it, and while it is not fully open it is a wall to the planner (without it a creature opens a door in its way and waits, #265) |
@@ -1041,7 +1041,7 @@ They are cascaded (issue #315): the view's first `r_shadow_distance` metres (150
 meshes cast, and so do alpha-tested materials and sprites, cut out by their texture's alpha (a leaf's
 shadow has holes); particles and decals do not. A material that should let the light through says
 `"castShadows": false`. A custom alpha-tested effect needs a `ShadowCasterAlphaTest` technique of its own
-to cast. Lamps cast no shadows yet. How dark they are is the sky's `shadow` key (none once the sun
+to cast. Lamps cast shadows too, when they ask (below). How dark they are is the sky's `shadow` key (none once the sun
 is down); a world with no sky gets full shadows under the default sun.
 
 **The sky and fog** (issue 4h-5, SAGE0130) come from the world's `sky` record. While it has one, the
@@ -1107,6 +1107,15 @@ are flat and unlit, and nothing that moves holds one.
 `cone` (a half-angle in degrees) makes it a spot light along the entity's forward, with full strength inside
 `innerCone`. Past 16 lamps a frame the engine looks them up in an 8 m grid.
 
+**Lamp shadows** (issue #315). Give a `light` part `"shadows": true` (the `sage:point_light` component's
+`Shadows`) and, with `r_shadows 1`, the lamp casts shadows from the same casters as the sun's. Maps cost, so
+only the `r_shadow_lamps` (default 2, at most 4; 0 turns them off) nearest lamps that ask get one each frame;
+the rest light without shadows. A spot of 60 degrees or less (a half-angle) draws one view down its cone; a
+point light or a wider spot draws a cube of six faces, in 3 x 2 tiles of `r_shadow_lamp_size` texels (512)
+in one atlas. A surface looks up at most two of the four lamps that light it, the ones with maps first, and
+every lit pixel pays the two lookups, so give shadows to the few lamps that show them. The maps are fitted
+from the main view; `r_stats` counts them in `ShadowMaps`. The Sandbox's crypt torches and the hut's lamp cast.
+
 **Lightmaps** (issue #313). A brush level can bake its lamps: give its `map` record a `lightmap` (texels a
 metre, up to 32) and mark the lamps that never switch `"baked": true`. The worldspawn faces are baked at load,
 with shadows, and cached under `user://cache/lightmaps/`, so the next load reads the file back. A baked lamp
@@ -1128,13 +1137,28 @@ first static collider; an interior scene always is covered) and its sound drops 
 `shelteredVolume`. A weather can have lightning (`lightningRate` a minute, `lightningFlash`, a `thunder`
 sound and `thunderVolume`). A `weather_pattern` picks the weather every `slotHours` game hours from its `picks`
 (each a `weather` with optional `from`/`to` hours, a `region` and a `weight`), deterministically from its
-`seed`; a scene's environment names it with `weatherPattern` and the region with `weatherRegion`. Puddles and
-wet surfaces are not built.
+`seed`; a scene's environment names it with `weatherPattern` and the region with `weatherRegion`.
+
+**Wet ground and puddles** (issue #311). The world has one `Weather.Wetness` (0 dry, 1 soaked), saved with the
+weather. A `weather` record's `wetting` and `drying` (each per second, 0 to 1) move it by their difference,
+blended as the weather changes: `wetting` 0.03 soaks the ground in about half a minute, and the default
+`drying` of 0.004 dries it in about four minutes. Open ground that faces the sky then darkens and glosses, and
+past 0.4 wet gathers puddles on the flat where a fixed noise mask is high, mirroring the sky. Walls stay dry, so
+do floors a brush level's lightmap says are roofed (the Sandbox hut's), and an interior scene shows none. A
+`material`'s `weathering` (0 to 1, default 1) scales it, 0 opts out; only opaque materials wet, and skinned
+meshes and the viewmodel never do. The Sandbox's rain and storm set `wetting`. Limits: a surface without a
+lightmap (terrain, a model) counts as open sky, so an overhang's ground gets wet, a doorway's floor may wet a
+little, terrain cannot opt out, and the puddle numbers are fixed.
 
 **Particles** (issue #310). A `particle` record's `collision` (`None`, `Bounce` with `restitution` and
 `friction`, or `Die`) sends one ray a frame per particle, at most 512 a frame for the world (`fx_stats` counts
 them); `sheetColumns` × `sheetRows` frames (`sheetFrames` of them, 0 = all) run `sheetCycles` times over a
-particle's life, `sheetRandomStart` to start each on its own frame. Soft particles are not built.
+particle's life, `sheetRandomStart` to start each on its own frame. `soft` (metres, 0 = hard) fades a particle
+over that distance in front of the opaque geometry behind it, so smoke on the floor shows no hard line (the
+Sandbox's `fire_burst` has `soft` 0.3). It reads the scene's depth, which the frame draws for it even with
+`r_post` off, and only a Transparent material is soft; anywhere there is no depth (no shaders, a
+render-target view, an effect without the soft technique) the particle is drawn hard. `r_stats` ends with
+`, soft particles N (M drawn hard)`. A negative `soft` is a load error.
 
 **Drawing many and drawing sharp.** `r_instancing 1` (off by default) draws runs of at least `r_instancing_min`
 (8) copies of one mesh with one material as one instanced draw, and long sprite runs as instanced quads (issue
@@ -2304,10 +2328,10 @@ Worth knowing before you plan around it:
   record an attack names, drawn over the world in first person only (issue #121). Clip events
   (`anim_events`, issue #119) land blows and drive transitions, for skinned clips and sprite sheets alike
   (docs/design/12 "As built (animation events)").
-- **Lamps cast no shadows.** A `light` entity lights a room, and four of them light any one surface (the
+- **Lamp shadows are few.** A `light` entity lights a room, and four of them light any one surface (the
   strongest four, chosen per draw). A brush level can bake its unswitched lamps into a lightmap, with
-  shadows (issue #313, no bounce light), and the sun casts cascaded shadows (issue #315), but point and spot
-  lights cast none at run time yet. Soft particles and puddles are not built either (#310, #311).
+  shadows (issue #313, no bounce light), the sun casts cascaded shadows and lamps that say `shadows` cast
+  too (issue #315, the nearest two by default).
 - **No multiplayer.** The engine follows rules that keep it possible (fixed tick, data-only components,
   no gameplay in rendering), but there is no networking. That is Phase 7.
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`

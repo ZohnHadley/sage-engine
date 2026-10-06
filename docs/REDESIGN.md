@@ -1136,7 +1136,7 @@ what the base therefore needs first:
 | Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary, nested state machines and the rest of HL1's and Source's logic set: multisource, logic_case, logic_auto, filtered triggers, spawners (4m) |
 | AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g) that paths round walls, covers sectors never visited and takes NPCs through doors (4m); hearing, behaviour trees and squads in 4r |
 | Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); the far ring, several streaming sources, followers, and interiors that stay live beside their exterior (4m); more LOD in 4n |
-| Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m); cascaded shadows, lightmaps, a moon and clouds, flickering and spot lamps, lightning and weather under roofs (4n) |
+| Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m); cascaded shadows, lamp shadows, lightmaps, a moon and clouds, flickering and spot lamps, lightning, weather under roofs, wet ground and puddles, soft particles (4n) |
 | Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i); thumbnails, compression, a background write that costs the tick about 3 ms at 10k entities, and a version report (4m) |
 | Mod culture (data mods first) | ○ | ● | ●● | ●● | ◐ data mods (4j); packed and code mods in 9 |
 
@@ -1215,7 +1215,7 @@ order, so `4l-1` is the first thing to build in 4l.
 | 1 | **4l** Physics, movement and navigation | #258 | #259–#273 | Depenetration and doors that push (the two P0s), riders on lifts, water, ladders, a navmesh, doors as path links, surface types | a door closing on the player pushes them clear; an NPC opens a door on its path, climbs a ladder and swims a river |
 | 2 | **4m** World, logic and saves | #274 | #275–#291, #402 | A wider condition/action vocabulary, I/O groups, logic entities, prefab overrides across sectors, structural events, time scale, save limits and async saves, streaming LOD | an HL-style puzzle chain and a nested-state NPC in data, saved mid-sequence with nothing lost |
 | 3 | **R1** Tooling and the first release | #292 | #293–#303, #6 | `sage package`, the Release config fix, the v0.1.0 tag and a feed, the full CLI, console basics | a clean machine installs the templates from a feed, creates, runs and packages a game |
-| 4 | **4n** Rendering and assets | #304 | #305–#323 (less #312, already built), #410, #411 | Mesh LOD, decals, splat terrain, asset memory scopes, normal and specular maps, water, instancing, cascades, HDR and bloom, lightmaps, drawing tests | 50 streamed sectors with LOD, splatted terrain, decals and cascaded shadows; memory back to baseline after unloading |
+| 4 | **4n** Rendering and assets | #304 | #305–#323 (less #312, already built), #410, #411 | Mesh LOD, decals, splat terrain, asset memory scopes, normal and specular maps, water, instancing, cascades, lamp shadows, HDR and bloom, lightmaps, soft particles, puddles, drawing tests | 50 streamed sectors with LOD, splatted terrain, decals and cascaded shadows; memory back to baseline after unloading |
 | 5 | **4o** Audio and input | #324 | #325–#336 | Music, OGG streaming, surface footsteps, occlusion and reverb, rebinding, rumble and pads, replay | music crossfades, footsteps follow the surface, a rebind survives a restart |
 | 6 | **4q** Game UI and menus | #337 | #338–#355 | TTF text, form widgets, options and controls screens, title, pause and slot screens, reachable kit screens, accessibility | boot to a title, change options and controls, load a slot, loot a corpse and trade, all from records |
 | 7 | **4p** Animation | #356 | #357–#364 | Root motion, additive layers and sync markers, directional attacks, retargeting, IK extras, morph targets | an NPC walks with root motion and no foot sliding; a clip plays on a second rig |
@@ -1245,12 +1245,11 @@ public API frozen in `PublicAPI.Shipped.txt` and a release workflow (`.github/wo
 `v*.*.*` tag), and the tag itself is the owner's push (RELEASING §4). #296, a package feed and `sage` as a
 dotnet tool, is open.
 
-**4n (#304) as of 2026-10-06, pack 1:** #305–#309, #313, #314, #316–#323, #410 and #411 are built (spec
+**4n (#304) as of 2026-10-06, packs 1 and 2:** #305–#311, #313–#323, #410 and #411 are built (spec
 sheets [06](spec/subsystems/06-assets-and-content.md) and [07](spec/subsystems/07-rendering.md), design 06 and
-07 "As built", [`history/handoff-2026-10-06.md`](history/handoff-2026-10-06.md)). Three are part built: #310
-(collision, sheets and fog culling; soft particles left), #311 (roofs, lightning and the weather picker; puddles
-and wet surfaces left) and #315 (cascades, a quantised sun and cut-out casters; point and spot light shadows
-left). #312 was already built. Then 4o (#324) and 4q (#337).
+07 "As built", [`history/handoff-2026-10-06.md`](history/handoff-2026-10-06.md)); the second pack finished
+#310 (soft particles), #311 (wet ground and puddles) and #315 (point and spot light shadows), so 4n is
+complete. #312 was already built. Then 4o (#324) and 4q (#337).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,
