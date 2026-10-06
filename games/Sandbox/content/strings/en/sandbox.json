@@ -8,11 +8,12 @@
     "hint": "Arrows or D-pad move, Enter picks, Esc or C closes"
   },
   // The HUD (issue #99): what Use would do under the crosshair, what V does, and your empty hands.
+  // {action:Use} is the key or pad button the player presses for it now (issue #352).
   "hud": {
-    "use": "E   Use",
-    "pick_up": "E   Pick up {item}",
-    "third_person": "V   third person",
-    "first_person": "V   first person",
+    "use": "{action:Use}   Use",
+    "pick_up": "{action:Use}   Pick up {item}",
+    "third_person": "{action:ToggleView}   third person",
+    "first_person": "{action:ToggleView}   first person",
     "bare_hands": "bare hands"
   },
   "journal": {

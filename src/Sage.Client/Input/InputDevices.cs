@@ -97,11 +97,17 @@ public sealed class InputDevices
         // the axes are measured.
         float stick = 0f;
         bool padButton = false;
+        GamepadListener? used = null;
         foreach (var pad in AllPads)
         {
-            padButton |= pad.AnyButtonPressed;
-            stick = MathF.Max(stick, pad.MaxAxis);
+            bool pressed = pad.AnyButtonPressed;
+            float axis = pad.MaxAxis;
+            if (used == null && (pressed || axis >= LastUsedDevice.StickThreshold)) used = pad;
+            padButton |= pressed;
+            stick = MathF.Max(stick, axis);
         }
+        // Whose button names the prompts show: the family of the pad just used, by its name (#352).
+        if (used != null) LastDevice.SetPad(InputGlyphs.FamilyOf(used.Name));
         var delta = Mouse.PositionDelta;
         LastDevice.Observe(new DeviceActivity
         {
@@ -150,6 +156,9 @@ public sealed class GamepadListener
 
     public bool IsConnected => _connected;
 
+    // What the pad's driver calls it ("Xbox 360 Controller", "PS4 Controller"); empty while unplugged.
+    public string Name { get; private set; } = "";
+
     public event Action<bool>? ConnectionChanged;   // true = connected
 
     public void Update(bool focused)
@@ -165,7 +174,8 @@ public sealed class GamepadListener
         if (real.IsConnected != _connected)
         {
             _connected = real.IsConnected;
-            Log.Info(LogCat.Input, _connected ? $"Gamepad {_index + 1} connected" : $"Gamepad {_index + 1} disconnected");
+            Name = _connected ? GamePad.GetCapabilities((PlayerIndex)_index).DisplayName ?? "" : "";
+            Log.Info(LogCat.Input, _connected ? $"Gamepad {_index + 1} connected ({Name})" : $"Gamepad {_index + 1} disconnected");
             ConnectionChanged?.Invoke(_connected);
         }
 
