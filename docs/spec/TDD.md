@@ -481,7 +481,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Entity input or output | `EntityInputs.Register` / `Register<T>`, `EntityOutputs.Declare` (in `Init`) |
 | Vocabulary word | `[Condition("id")]`, `[Action("id")]`, or a new `[Vocabulary]` with its entry attribute |
 | Render pass | `[RenderPass("ns:id", RenderStage.X)]` on an `IRenderPass`, added to `RenderPasses` in `Init`; an engine pass is replaced or switched off by id with `RenderPasses.Replace` / `Disable` (#322) |
-| UI | a `Widget` subclass in code; screens by id in the client's `ScreenRegistry`; `ui_layout`, `ui_style`, `screen` records; since 4q a screen's buttons run actions from content and a layout includes another (#347), so a mod's screen needs no C#; a new widget type is still C# |
+| UI | a `Widget` subclass in code; `ui_layout`, `ui_style`, `screen` records; since 4q a screen's buttons run actions from content and a layout includes another (#347), so a mod's screen needs no C#; a new widget type is still C# |
 | Console command, cvar | `CVarRegistry.RegisterCommand` / `Register` in `Init` |
 | Input action | `Engine.Actions.Register` in `Init`; bindings in `input_map` records |
 | Content | mounts in game.json; data mods with `mod.json` |
@@ -496,7 +496,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | D4 | Friflo.Engine.ECS behind Sage's own types | Built (#25, SAGE0050) |
 | D5 | BepuPhysics v2 plus own kinematic character controller | Built |
 | D6, D7 | In-engine editor as a separate host mode around a document model; `.map` import until editor brushes | 10a built; brushes #61 |
-| D8 | Own game UI on `Sage.UI`; ImGui for dev tools only | Built; legacy stack retires in #350 |
+| D8 | Own game UI on `Sage.UI`; ImGui for dev tools only | Built; the legacy stack retired with #350 |
 | D9 | MIT licence | Decided (ARCHITECTURE §8; REDESIGN §6 item 5 predates it) |
 | D10, D11 | Runtime PNG/glTF/WAV loaders, no MGCB; glTF over FBX | Built |
 | D13 | MonoGame 3.8.5.1 DesktopGL; revisit DesktopVK later | Built |
@@ -516,7 +516,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | ~~Single-threaded scheduler~~ | Systems that declare their access run in parallel stages since #288; no engine system declares its access yet, so the engine's phases still run one system at a time. | Done (4m, #288); declaring the engine's systems has no issue yet. |
 | ~~Save snapshots on the tick~~ | Retired by #285: the tick copies component columns (about 3 ms at 10k entities, Debug) and the writer builds the JSON. | Done (4m, #285). |
 | ~~Bepu allocates about 40 B a tick~~ | Retired by #273: it was our Stopwatch, and the step allocates nothing. | Done (4l, #273). |
-| Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets) | Two ways to build a screen; features land in one or the other. | 4q, #350. |
+| ~~Two UI stacks (legacy `Panel`/`Screen` plus immediate HUD, and `Sage.UI` widgets)~~ | Retired by #350: every screen and the crosshair are widget screens; `Panel` rows remain for the console and the kit's lists. | Done (4q, #350). |
 | Records and saves use reflection, not generated readers | Slower loads; not trim or AOT safe. | Generator follow-up; AOT out of scope (SRS §9). |
 | Determinism is by construction only | No cross-run check in general; a recorded `.sagedemo` replays to the same world hash where the save holds everything the simulation reads (#333), but not in the real Sandbox client (camera rig, `FaceCameraSystem`, `HopSystem`). | 4l (#273). |
 | Default `AssemblyLoadContext` for game and kit assemblies | Code mods cannot be unloaded or isolated. | 9, #396. |

@@ -292,7 +292,8 @@ and the cast system cannot tell a composed spell from one in a content file.
   attribute's name (#27).
 - **Console:** `spell_effects` (what can be built with, and what each costs), `spell_make <name>
   <effect|key=value>...`, `spell_list`, `spell_forget <name>`.
-- **And a screen** (`SpellmakerScreen`, 2026-09-23 with F38): name it, cycle its delivery and power,
+- **And a screen** (`SpellmakerScreen`, 2026-09-23 with F38; since #350 the kit's widget screen `rpg:spellmaker`,
+  `SpellmakerView` in `src/Sage.Kits.Rpg/ListViews.cs`, with the name in a `text_field`): name it, cycle its delivery and power,
   choose effects, and press Enter on a **"make it" row** that is greyed with the reason when the draft
   is not yet a spell — the reason coming from `Spellmaker.CanCompose`, which `Compose` itself applies
   (R17), so the button and the attempt cannot disagree. It lives in the RPG kit rather than in a game,
@@ -312,7 +313,7 @@ and the cast system cannot tell a composed spell from one in a content file.
 Something to do, and something that notices you did it.
 
 - **Code:** `src/Sage.Gameplay/Narrative/Quests.cs` (`quest` records, the saved `Journal`, the `Quests`
-  rules and `QuestChanged`) and the RPG kit's `src/Sage.Kits.Rpg/JournalScreen.cs` (#27). Tests:
+  rules and `QuestChanged`) and the RPG kit's journal (`JournalScreen.cs` from #27 until #350; `rpg:journal`, `JournalView`, since #349). Tests:
   `tests/Sage.Tests/Gameplay/QuestTests.cs`.
 - **A quest watches; it never moves anybody.** A stage is a line of text and a list of things that must
   be true. The things it watches for are things the game already does — somebody died, something is in
@@ -342,9 +343,10 @@ Something to do, and something that notices you did it.
 Talking to somebody, as data.
 
 - **Code:** `src/Sage.Gameplay/Narrative/Dialogue.cs` (`dialogue` records, the `Dialogue` component, the
-  `Conversation` resource, `DialogueRules`) and the RPG kit's `src/Sage.Kits.Rpg/DialogueScreen.cs`;
-  the client half is one system, `src/Sage.Client/UI/DialogueSystem.cs`, which asks the client's
-  `ScreenRegistry` for `"dialogue"` (13 "As built (screens by id)", #27). Tests: `tests/Sage.Tests/Gameplay/DialogueTests.cs`.
+  `Conversation` resource, `DialogueRules`) and the RPG kit's `rpg:dialogue` screen (`DialogueView` in
+  `src/Sage.Kits.Rpg/ListViews.cs`, opened by the kit's `UseScreenSystem`; until #350 the kit's `DialogueScreen` and
+  the client's `DialogueSystem`, 13 "As built (one screen system)"). Tests: `tests/Sage.Tests/Gameplay/DialogueTests.cs`
+  and `tests/Sage.Tests/Kits/PanelScreenTests.cs`.
 - **A conversation is a record, not a script.** Nodes hold a line and the things you may say back; an
   option leads to another node and may *do* something on the way. Everything it can do — give an item,
   take one, apply an effect, move a reputation — is machinery that already existed, which is the whole
@@ -359,8 +361,9 @@ Talking to somebody, as data.
   a namespace it does not have (R11's sharp edge, avoided rather than repeated).
 - **The screen is the engine's, the window is the client's**, like the spellmaker: the node's line is the
   panel's title and the things you may say are its rows, so the client learnt nothing new to show a
-  conversation. The simulation still opens nothing — `DialogueSystem` reads `Used` and decides that a
-  thing with something to say means a window.
+  conversation. The simulation still opens nothing — `DialogueSystem` read `Used` and decided that a
+  thing with something to say means a window. (Since #350 the kit's `UseScreenSystem` does, on the widget stack, and
+  the conversation and its screen end together.) (test: UsingSomebodyOpensTheConversationAndItsEndClosesIt)
 - **Two layout bugs the first conversation found** (13 §3): a row's name ran straight through the detail
   column, because until now every row was a short noun and a line of dialogue is a sentence — names are
   clipped with an ellipsis now; and the title itself ran off the panel, so a title wraps and the panel

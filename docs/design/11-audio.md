@@ -61,7 +61,7 @@ was the claim this doc made a day earlier: the events were already there.
 - **Every decision is in the engine, none of the noise is.** `AudioMixer` owns attenuation, panning,
   bus volumes, per-sound limits, cooldowns and voice stealing, and has no MonoGame in it — so 16
   headless tests cover them. The client owns `SoundEffectInstance`, which decides nothing. Same split
-  as `Panel`/`PanelView` and `RenderSnapshot`/`Renderer`.
+  as `RenderSnapshot`/`Renderer` (and the panel screens' `Panel`/`PanelView` until #350).
 - **The simulation still does not play sounds.** `AudioSystem` reads `CueTriggered`, `Damaged` and
   `Used` with its own cursors and looks up what they sound like: a **cue record** names a sound, a
   **damage type** names a sound, an **item** names a sound. A mod can give a spell a new noise without

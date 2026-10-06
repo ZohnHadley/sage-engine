@@ -39,7 +39,7 @@ Not responsible for: the ability, item, quest and dialogue models, effects, comb
 | Item | Value |
 |---|---|
 | Simulation half | `src/Sage.Kits.Rpg`, namespace `Sage.Kits.Rpg`, plugin id `sage.kits.rpg` (`RpgKitModule`). |
-| Client half | `src/Sage.Kits.Rpg.Client`, plugin id `sage.kits.rpg.client` (`RpgKitClientModule`). The only half that may use MonoGame types. |
+| Client half | `src/Sage.Kits.Rpg.Client`, plugin id `sage.kits.rpg.client` (`RpgKitClientModule`). The only half that may use MonoGame types; empty since #350, which moved its screens to the simulation half. |
 | References | The simulation half depends on `AbilitiesModule`, `ItemsModule` and `UiModule`; the client half on `ClientModule` and the simulation half. |
 | Referenced by | Games only, through `<SageKit Include="sage.kits.rpg" />` and `"kits"` in `game.json` (SAGE0114 if they disagree). Never by the base: SAGE0025 forbids it. |
 | Loaded | Only when a game names it; it is not in `BasePlugins.All()`. The client half loads with it in a host that has a window. |
@@ -53,27 +53,27 @@ are SAGE0129 (MAKING_A_GAME §10b).
 
 | Type | Role | File |
 |---|---|---|
-| `RpgKitModule` | The plugin; constants for the screen ids (`InventoryScreen`, `EquipmentScreen`, `LootScreen`, `TopicsScreen`, `ShopScreen`, `JournalScreen`, `MapScreen`, `RestScreen`, `ModsScreen`, `ControlsScreen`, `TitleScreen`, `PauseScreen`, `SaveScreen`, `LoadScreen`, `OptionsScreen`) and the slots | `src/Sage.Kits.Rpg/RpgKitModule.cs` |
+| `RpgKitModule` | The plugin; constants for the screen ids (`InventoryScreen`, `EquipmentScreen`, `LootScreen`, `TopicsScreen`, `ShopScreen`, `JournalScreen`, `MapScreen`, `RestScreen`, `SpellbookScreen`, `BagScreen`, `DialogueScreen`, `SpellmakerScreen`, `ModsScreen`, `ControlsScreen`, `TitleScreen`, `PauseScreen`, `SaveScreen`, `LoadScreen`, `OptionsScreen`) and the slots | `src/Sage.Kits.Rpg/RpgKitModule.cs` |
 | `ReadiedSpell`, `ReadiedSpellSystem` | `Readied`, `Ready`; the system turns a `Cast` press into the queued ability | `src/Sage.Kits.Rpg/ReadiedSpell.cs` |
 | `Spellmaker`, `SpellDraft`, `Spellbook`, `SpellResult` | Price, check, compose and restore spells | `src/Sage.Kits.Rpg/Spellmaker.cs` |
 | `GameplayPanels` | The row builders behind `inv` and `spells`: what a row says and why it is greyed | `src/Sage.Kits.Rpg/GameplayPanels.cs` |
 | `ItemGrid`, `ItemGridView`, `InventoryView`, `LootView`, `ShopView` | Grid model and the bag, loot and shop view-models | `ItemGrid.cs`, `InventoryView.cs`, `LootView.cs`, `ShopView.cs` |
 | `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `RestView` | The remaining screens' view-models (`ModsView` is the base's, in `Sage.UI`) | `src/Sage.Kits.Rpg/*View.cs` |
 | `TitleView`, `PauseView`, `SaveGameView`, `LoadGameView`, `RpgMenus` | The menus round a playthrough (`rpg_title`, `rpg_pause`, `rpg_save`, `rpg_load`), asking with `UiScreenStack.Confirm` | `src/Sage.Kits.Rpg/MenuViews.cs` |
-| `UseScreen`, `UseScreenPart`, `UseScreenSystem` | Using a container or a body opens its screen about it | `src/Sage.Kits.Rpg/UseScreens.cs` |
+| `UseScreen`, `UseScreenPart`, `UseScreenSystem` | Using a container or a body opens its screen about it, and somebody with a `dialogue` the conversation (#350) | `src/Sage.Kits.Rpg/UseScreens.cs` |
 | `AreaMapRecord`, `MapDiscovery`, `MapDiscoverySystem` | A scene's map picture and fog, and where the player has been | `src/Sage.Kits.Rpg/AreaMap.cs` |
 | `IPriceRule`, `StubPriceRule` | What a trade costs; the stub is the placeholder until 4f | `src/Sage.Kits.Rpg/ShopView.cs` |
 | `Rest`, `RestKind` | `Can`, `EnemyNear`, `Begin`; the screen and the console share it | `src/Sage.Kits.Rpg/Rest.cs` |
 | `RpgConventions` | `Of(RecordStore)` and `Of(World)`: the game's conventions or the defaults, cached per content load | `src/Sage.Kits.Rpg/RpgConventions.cs` |
-| `DialogueScreen`, `JournalScreen`, `SpellmakerScreen` | Client screens registered by id (`dialogue`, `journal`, `spellmaker`) | `src/Sage.Kits.Rpg/*Screen.cs` |
+| `PanelListView`, `ListRow`, `SpellbookView`, `BagView`, `DialogueView`, `SpellmakerView` | The list screens that were panels until #350 (`rpg:spellbook`, `rpg:bag`, `rpg:dialogue`, `rpg:spellmaker`), their rows built by `GameplayPanels` and the rules | `src/Sage.Kits.Rpg/ListViews.cs` |
 
 **Console.** `spells`, `ready <ability>`, `inv`, `rest <hours> [wait]`, plus the spellmaker's composing
 commands registered by `Spellmaker.RegisterCommands`. The registry dump lists them.
 
 **Input actions.** The simulation half registers `Cast`, `Spellbook`, `Spellmaker`, `Journal` and `Rest`
 (since #354; the client half registered the last four before). The kit's content binds them by default in
-`rpg:ui` and `rpg:gameplay` (B, M, J, T); the simulation half binds `Rest` to `rpg:rest` and the client half
-`Spellmaker` and `Journal` to its panel screens. A game patches the maps for other keys.
+`rpg:ui` and `rpg:gameplay` (B, M, J, T); the simulation half binds them to `rpg:spellbook`, `rpg:spellmaker`,
+`rpg:journal` and `rpg:rest` (#350). A game patches the maps for other keys, and binds its own key to `rpg:bag`.
 
 **Events and I/O.** The kit raises none of its own. It uses the base's `TimePassed`, `Travel` and ability
 queue, and `StubPriceRule` reads `ItemRecord.Value`.
@@ -114,7 +114,8 @@ through the base's rules (`ItemGrid.Transfer`, the equip rules, `Time.Pass`, `Tr
 
 Everything runs on the simulation thread. Rows are rebuilt only when the set of things shown changes;
 per-frame work moves numbers, not objects. Rest scans for enemies without allocating once the world's
-scan exists. The test `RefreshingTheRpgScreensAllocatesNothing` holds the screens to this.
+scan exists. The tests `RefreshingTheRpgScreensAllocatesNothing` and `AnOpenListAllocatesNothingWhileNothingChanges`
+hold the screens to this.
 
 ## 8. Errors and diagnostics
 
@@ -161,8 +162,8 @@ attempt agree. Log category `Console` carries the panels printed by `spells` and
 
 **Milestone 6, game UI** — #342, #344, #346, #349 and #354 are built (2026-10-06). Left in the kit from them:
 the Sandbox has no chest; the shop's prices are the stub until 4f; the HUD's Use prompt does not say "Loot" or
-"Trade"; a conversation on Use is still the old panel screen (#350); the kit has no spellbook screen and no
-pause key of its own; a split halves a stack; the map has no wheel zoom, drag pan or pad shortcuts, its fog is
+"Trade"; the kit has no pause key of its own (#350 made the conversation on Use and the spellbook widget
+screens); a split halves a stack; the map has no wheel zoom, drag pan or pad shortcuts, its fog is
 drawn as squares, and quest targets are found by the first entity of a name.
 
 **Milestone 10, AI, combat and narrative**

@@ -415,8 +415,8 @@ a disabled pass is dropped (#322). `r_snapshot_dump [file]` writes the next fram
 
 Screens are `screen` and `ui_layout` records over a view-model. A view-model implements `IViewModel`
 (`Refresh`, `Activate`, `Back`) and is declared `[ViewModel("id")]`; `UiScreenStack` opens screens and
-binds them to input actions (`Bind`, `OpenHud`, `Close`). Code-built client screens register by id with
-`ScreenRegistry.Register(id, factory)` in `Init`.
+binds them to input actions (`Bind`, `OpenHud`, `Close`); `Typing` says a text field has the keyboard. There is no
+registry of code-built screens since #350: a screen is a record, and a tree built in C# is pushed with `Push`.
 
 ### 8.3 Vocabulary words
 
