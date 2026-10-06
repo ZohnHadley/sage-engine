@@ -2288,6 +2288,13 @@
       "description": "The joint whose motion a state's rootMotion takes out of the pose and gives the body; empty: the skeleton's first joint. (string, default \"\")",
       "default": "",
       "type": "string"
+    },
+    "morphs": {
+      "description": "Morph targets set from a Float or Bool param every tick, over what the clips give: { \"jaw_open\": \"mouth\" } (lip-sync) (Dictionary<string, string>)",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false
