@@ -76,3 +76,12 @@ static readonly Sage.Kits.Rpg.RpgKitModule.TitleScreen -> Sage.Core.RecordId
 static Sage.Kits.Rpg.RpgMenus.CloseMenus(Sage.Simulation.World! world) -> void
 static Sage.Kits.Rpg.RpgMenus.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen) -> bool
 static Sage.Kits.Rpg.RpgMenus.Quit(Sage.Simulation.Engine! engine) -> void
+Sage.Kits.Rpg.RpgConventionsRecord.LootScreen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
+Sage.Kits.Rpg.UseScreen
+Sage.Kits.Rpg.UseScreen.Screen -> Sage.Core.RecordId
+Sage.Kits.Rpg.UseScreen.UseScreen() -> void
+Sage.Kits.Rpg.UseScreenPart
+Sage.Kits.Rpg.UseScreenPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Kits.Rpg.UseScreenPart.Screen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
+Sage.Kits.Rpg.UseScreenPart.UseScreenPart() -> void
+static readonly Sage.Kits.Rpg.RpgKitModule.ShopScreen -> Sage.Core.RecordId

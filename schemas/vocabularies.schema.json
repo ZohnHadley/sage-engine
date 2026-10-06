@@ -186,13 +186,14 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, music_intensity, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
         "AddVar",
         "ApplyEffect",
         "ChangeStanding",
+        "CloseScreen",
         "Cue",
         "Destroy",
         "FinishQuest",
@@ -203,6 +204,7 @@
         "Log",
         "Message",
         "MusicIntensity",
+        "OpenScreen",
         "PassTime",
         "PlayMusic",
         "PlaySound",
@@ -221,6 +223,7 @@
         "add_var",
         "apply_effect",
         "change_standing",
+        "close_screen",
         "cue",
         "destroy",
         "finish_quest",
@@ -231,6 +234,7 @@
         "log",
         "message",
         "music_intensity",
+        "open_screen",
         "pass_time",
         "play_music",
         "play_sound",
@@ -422,6 +426,40 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'change_standing' (ChangeStandingAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "close_screen",
+                      "CloseScreen"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: close_screen.",
+                    "enum": [
+                      "close_screen",
+                      "CloseScreen"
+                    ]
+                  },
+                  "all": {
+                    "description": "Every window at once, not only the top one. (bool, default false)",
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'close_screen' (CloseScreenAction)."
               }
             },
             {
@@ -845,6 +883,43 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'music_intensity' (MusicIntensityAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "open_screen",
+                      "OpenScreen"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: open_screen.",
+                    "enum": [
+                      "open_screen",
+                      "OpenScreen"
+                    ]
+                  },
+                  "screen": {
+                    "description": "The screen record to open, about the subject (the player) and the other (the speaker, the corpse) Names a screen record. (RecordRef<ScreenRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:screen"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'open_screen' (OpenScreenAction)."
               }
             },
             {
@@ -1890,6 +1965,72 @@
           },
           "required": [
             "ChangeStanding"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "description": "Every window at once, not only the top one. (bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
+            "close_screen": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "all": {
+                      "description": "Every window at once, not only the top one. (bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "action 'close_screen' (CloseScreenAction), in shorthand."
+            }
+          },
+          "required": [
+            "close_screen"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "CloseScreen": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "all": {
+                      "description": "Every window at once, not only the top one. (bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "const": true
+                }
+              ],
+              "description": "action 'close_screen' (CloseScreenAction), in shorthand."
+            },
+            "all": {
+              "description": "Every window at once, not only the top one. (bool, default false)",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "CloseScreen"
           ],
           "additionalProperties": false
         },
@@ -2946,6 +3087,94 @@
           },
           "required": [
             "MusicIntensity"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "open_screen": {
+              "anyOf": [
+                {
+                  "description": "The screen record to open, about the subject (the player) and the other (the speaker, the corpse) Names a screen record. (RecordRef<ScreenRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:screen"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "screen": {
+                      "description": "The screen record to open, about the subject (the player) and the other (the speaker, the corpse) Names a screen record. (RecordRef<ScreenRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:screen"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'open_screen' (OpenScreenAction), in shorthand."
+            },
+            "screen": {
+              "description": "The screen record to open, about the subject (the player) and the other (the speaker, the corpse) Names a screen record. (RecordRef<ScreenRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:screen"
+                }
+              ]
+            }
+          },
+          "required": [
+            "open_screen"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "OpenScreen": {
+              "anyOf": [
+                {
+                  "description": "The screen record to open, about the subject (the player) and the other (the speaker, the corpse) Names a screen record. (RecordRef<ScreenRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:screen"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "screen": {
+                      "description": "The screen record to open, about the subject (the player) and the other (the speaker, the corpse) Names a screen record. (RecordRef<ScreenRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:screen"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'open_screen' (OpenScreenAction), in shorthand."
+            },
+            "screen": {
+              "description": "The screen record to open, about the subject (the player) and the other (the speaker, the corpse) Names a screen record. (RecordRef<ScreenRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:screen"
+                }
+              ]
+            }
+          },
+          "required": [
+            "OpenScreen"
           ],
           "additionalProperties": false
         },
