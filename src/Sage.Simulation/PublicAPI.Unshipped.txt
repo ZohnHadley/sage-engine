@@ -7,6 +7,19 @@ const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
 const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
 const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
 const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
+Sage.Simulation.BusLevel
+Sage.Simulation.BusLevel.Bus.get -> Sage.Simulation.AudioBus
+Sage.Simulation.BusLevel.Bus.init -> void
+Sage.Simulation.BusLevel.BusLevel() -> void
+Sage.Simulation.BusLevel.BusLevel(Sage.Simulation.AudioBus Bus, int Voices, float Peak, float Level, float Setting) -> void
+Sage.Simulation.BusLevel.Level.get -> float
+Sage.Simulation.BusLevel.Level.init -> void
+Sage.Simulation.BusLevel.Peak.get -> float
+Sage.Simulation.BusLevel.Peak.init -> void
+Sage.Simulation.BusLevel.Setting.get -> float
+Sage.Simulation.BusLevel.Setting.init -> void
+Sage.Simulation.BusLevel.Voices.get -> int
+Sage.Simulation.BusLevel.Voices.init -> void
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
 Sage.Simulation.Decal.Alpha.get -> float
@@ -145,6 +158,27 @@ Sage.Simulation.ShadowAtlas.Height.get -> int
 Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
+Sage.Simulation.VoiceRow
+Sage.Simulation.VoiceRow.Asset.get -> Sage.Core.AssetPath
+Sage.Simulation.VoiceRow.Asset.init -> void
+Sage.Simulation.VoiceRow.Bus.get -> Sage.Simulation.AudioBus
+Sage.Simulation.VoiceRow.Bus.init -> void
+Sage.Simulation.VoiceRow.Distance.get -> float
+Sage.Simulation.VoiceRow.Distance.init -> void
+Sage.Simulation.VoiceRow.Gain.get -> float
+Sage.Simulation.VoiceRow.Gain.init -> void
+Sage.Simulation.VoiceRow.Loop.get -> bool
+Sage.Simulation.VoiceRow.Loop.init -> void
+Sage.Simulation.VoiceRow.Pan.get -> float
+Sage.Simulation.VoiceRow.Pan.init -> void
+Sage.Simulation.VoiceRow.Positional.get -> bool
+Sage.Simulation.VoiceRow.Positional.init -> void
+Sage.Simulation.VoiceRow.Sound.get -> Sage.Core.RecordId
+Sage.Simulation.VoiceRow.Sound.init -> void
+Sage.Simulation.VoiceRow.Stopping.get -> bool
+Sage.Simulation.VoiceRow.Stopping.init -> void
+Sage.Simulation.VoiceRow.VoiceRow() -> void
+Sage.Simulation.VoiceRow.VoiceRow(Sage.Core.RecordId Sound, Sage.Core.AssetPath Asset, Sage.Simulation.AudioBus Bus, float Distance, float Gain, float Pan, bool Positional, bool Loop, bool Stopping) -> void
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
@@ -416,3 +450,11 @@ static Sage.Simulation.MusicRules.Of(Sage.Simulation.World! world) -> Sage.Simul
 static Sage.Simulation.MusicRules.Play(Sage.Simulation.World! world, Sage.Core.RecordId track, float? seconds = null) -> void
 static Sage.Simulation.MusicRules.SetIntensity(Sage.Simulation.World! world, float intensity) -> void
 static Sage.Simulation.MusicRules.Stop(Sage.Simulation.World! world, float? seconds = null) -> void
+Sage.Simulation.AudioMonitor
+Sage.Simulation.AudioMonitor.AudioMonitor() -> void
+Sage.Simulation.AudioMonitor.Bus(Sage.Simulation.AudioBus bus) -> Sage.Simulation.BusLevel
+Sage.Simulation.AudioMonitor.Buses.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.BusLevel>!
+Sage.Simulation.AudioMonitor.Refresh(Sage.Simulation.AudioMixer! mixer) -> void
+Sage.Simulation.AudioMonitor.Voices.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.VoiceRow>!
+Sage.Simulation.AudioMixer.BusVolume(Sage.Simulation.AudioBus bus) -> float
+Sage.Simulation.AudioMixer.Preview(Sage.Core.RecordId sound, Sage.Simulation.SoundRecord? record) -> Sage.Simulation.VoiceHandle
