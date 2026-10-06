@@ -45,6 +45,14 @@ public sealed class Voice
     public bool Started;                 // the backend has begun it
     public bool Stopping;                // the backend should stop it and drop it
 
+    // What the room does to it (issue #329, AudioEnvironment): 0 clear .. 1 behind something, smoothed,
+    // and what that makes of its volume and of its high frequencies (the backend's low-pass filter).
+    internal float Occlusion;
+    internal float OcclusionTarget;
+    internal float OcclusionGain = 1f;
+    internal float LowPass = 1f;
+    internal bool OcclusionProbed;
+    internal int OcclusionUpdate;
     // Music's (issue #325, MusicPlayer): never stolen and not counted against the voice cap, because the
     // score dropping out for a footstep is the one thing worse than no score. Streamed, from LoopStart to
     // LoopEnd (frames; 0 is the end of the file) once it loops.
@@ -77,6 +85,8 @@ public sealed class AudioSettings
     public float DopplerScale { get; set; } = 1f;
 
     public float SpeedOfSound { get; set; } = 343f;
+    // Occlusion rays per mixer update (issue #329, `snd_occlusion_rays`); 0 turns occlusion off.
+    internal int OcclusionRays { get; set; } = 8;
 
     public float Volume(AudioBus bus) => _busVolume[(int)bus];
 
@@ -126,6 +136,10 @@ public sealed class AudioMixer
     public Vector3 ListenerRight { get; private set; } = Vector3.UnitX;
 
     public void SetBusVolume(AudioBus bus, float volume) => _settings.SetVolume(bus, volume);
+
+    // Occlusion and reverb (issue #329): set where the mixer is made for a world; without one every voice
+    // is clear and dry.
+    internal AudioEnvironment? Environment { get; set; }
 
     public void SetListener(Vector3 position, Quaternion rotation)
     {
@@ -192,6 +206,7 @@ public sealed class AudioMixer
             StartedAt = _now,
         };
         voice.Pitch = voice.BasePitch;
+        Environment?.Started(this, voice);
         Compute(voice);
         _voices.Add(voice);
         _lastPlayed[sound] = _now;
@@ -199,6 +214,7 @@ public sealed class AudioMixer
         // "Why can I not hear it" is the whole of audio debugging, and the answer is either a line here
         // or a line in `Refuse`. Trace is compiled out of Shipping builds entirely (02 §3.2).
         Log.Trace(LogCat.Audio, $"play {sound} gain {voice.Gain:F2} pan {voice.Pan:F2}" +
+                                $"{(voice.Positional && Environment != null ? $" occl {voice.Occlusion:F2}" : "")}" +
                                 $"{(voice.Loop ? " loop" : "")} ({_voices.Count}/{MaxVoices} voices)");
         return voice.Handle;
     }
@@ -322,6 +338,7 @@ public sealed class AudioMixer
             _prevListener = ListenerPosition;
             foreach (var voice in _voices) voice.PrevPosition = voice.Position;
         }
+        Environment?.Update(this, now);
         foreach (var voice in _voices) Compute(voice);
     }
 
@@ -363,7 +380,7 @@ public sealed class AudioMixer
 
         float attenuation = Attenuation(record, distance) * Cone(record, voice, to, distance);
 
-        voice.Gain = Math.Clamp(voice.Volume * bus * attenuation, 0f, 1f);
+        voice.Gain = Math.Clamp(voice.Volume * bus * attenuation * voice.OcclusionGain, 0f, 1f);
         voice.Pan = distance < 0.001f ? 0f : Math.Clamp(Vector3.Dot(to / distance, ListenerRight), -1f, 1f);
         voice.Pitch = Math.Clamp(voice.BasePitch + Doppler(record, voice, to, distance), -1f, 1f);
     }

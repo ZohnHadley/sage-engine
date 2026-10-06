@@ -61,6 +61,7 @@
             "quest",
             "ragdoll",
             "recoil",
+            "reverb",
             "routine",
             "rpg_conventions",
             "rpg_item",
@@ -639,6 +640,21 @@
           },
           "then": {
             "$ref": "recoil.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "reverb"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "reverb.schema.json"
           }
         },
         {

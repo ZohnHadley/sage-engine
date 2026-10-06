@@ -54,8 +54,9 @@ internal sealed class NullAudioBackend : IAudioBackend
 //
 // Pan and volume are applied directly rather than through `Apply3D`: the mixer has already done the
 // distance and direction sums in origin space (R6), and handing MonoGame a second listener would mean
-// two sets of numbers that can disagree. `Apply3D` becomes worth it with doppler and reverb, which is
-// the same day the backend is swapped.
+// two sets of numbers that can disagree. Occlusion's low-pass and the zones' reverb (issue #329) go
+// straight to OpenAL's EFX under MonoGame (`OpenAlEffects`), so they did not need `Apply3D` or a new
+// backend either.
 internal sealed class MonoGameAudioBackend : IAudioBackend
 {
     private readonly ContentService _content;
@@ -77,6 +78,11 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
     // instead of dying on its first sound, which is what it did until 2026-09-27.
     private bool _noDevice;
 
+    // The low-pass and the reverb (issue #329), made once the device has played something; null where
+    // OpenAL has no EFX, which leaves occlusion as volume only and no reverb.
+    private OpenAlEffects? _effects;
+    private bool _effectsTried;
+
     public MonoGameAudioBackend(ContentService content) => _content = content;
 
     public int Playing => _instances.Count;
@@ -96,6 +102,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
         if (_instances.Remove(id, out var instance)) { instance.Stop(immediate: true); instance.Dispose(); }
         if (_streams.Remove(id, out var stream)) stream.Streamer.Dispose();
         _assets.Remove(id);
+        _effects?.Forget(id);
     }
 
     public void Apply(AudioMixer mixer)
@@ -115,6 +122,8 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
             _instances.Clear();
             _streams.Clear();
             _assets.Clear();
+            _effects?.Dispose();
+            _effects = null;
             NullAudioBackend.Drain(mixer);
         }
     }
@@ -122,6 +131,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
     private void ApplyToDevice(AudioMixer mixer)
     {
         _finished.Clear();
+        if (_effects != null && mixer.Environment != null) _effects.SetReverb(mixer.Environment.Reverb);
 
         foreach (var voice in mixer.Voices)
         {
@@ -143,6 +153,8 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
                 _assets[id] = voice.Asset;
                 Push(instance, voice);
                 instance.Play();
+                if (!_effectsTried) { _effectsTried = true; _effects = OpenAlEffects.TryCreate(); }
+                _effects?.Apply(instance, voice);
                 continue;
             }
 
@@ -160,6 +172,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
                 }
                 if (!_instances.ContainsKey(id)) { _finished.Add(id); continue; }
                 Push(live, voice);
+                _effects?.Apply(live, voice);
                 continue;
             }
 
@@ -173,6 +186,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
             }
 
             Push(live, voice);
+            _effects?.Apply(live, voice);
         }
 
         foreach (int id in _finished) mixer.Remove(new VoiceHandle(id));
@@ -235,5 +249,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
         _instances.Clear();
         _streams.Clear();
         _assets.Clear();
+        _effects?.Dispose();
+        _effects = null;
     }
 }

@@ -417,6 +417,14 @@
         }
       ]
     },
+    "reverb_zone": {
+      "description": "Prefab part 'reverb_zone' (ReverbZonePart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/reverb_zone"
+        }
+      ]
+    },
     "routine": {
       "description": "Prefab part 'routine' (RoutinePart). A bare value is its \"id\".",
       "anyOf": [
@@ -2242,6 +2250,62 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'ragdoll' (RagdollPart)."
+    },
+    "reverb_zone": {
+      "type": "object",
+      "properties": {
+        "reverb": {
+          "description": "The reverb preset heard inside. Names a reverb record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:reverb"
+            }
+          ]
+        },
+        "size": {
+          "description": "Full extents of the box, centred on the entity; leave out on a map brush entity to use its brushes. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "offset": {
+          "description": "Where the box's centre is, relative to the entity. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "priority": {
+          "description": "Higher wins where zones overlap. (int, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "fade": {
+          "description": "Seconds to blend into this zone's reverb; 0 = the default, 1 s. Unit: s. Range: 0 to 30. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 30
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'reverb_zone' (ReverbZonePart)."
     },
     "routine": {
       "type": "object",

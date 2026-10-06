@@ -436,3 +436,31 @@ static Sage.Simulation.MusicRules.Of(Sage.Simulation.World! world) -> Sage.Simul
 static Sage.Simulation.MusicRules.Play(Sage.Simulation.World! world, Sage.Core.RecordId track, float? seconds = null) -> void
 static Sage.Simulation.MusicRules.SetIntensity(Sage.Simulation.World! world, float intensity) -> void
 static Sage.Simulation.MusicRules.Stop(Sage.Simulation.World! world, float? seconds = null) -> void
+Sage.Simulation.ReverbRecord
+Sage.Simulation.ReverbRecord.DecayHFRatio -> float
+Sage.Simulation.ReverbRecord.DecayTime -> float
+Sage.Simulation.ReverbRecord.Density -> float
+Sage.Simulation.ReverbRecord.Diffusion -> float
+Sage.Simulation.ReverbRecord.Gain -> float
+Sage.Simulation.ReverbRecord.GainHF -> float
+Sage.Simulation.ReverbRecord.LateDelay -> float
+Sage.Simulation.ReverbRecord.LateGain -> float
+Sage.Simulation.ReverbRecord.Mix -> float
+Sage.Simulation.ReverbRecord.ReflectionsDelay -> float
+Sage.Simulation.ReverbRecord.ReflectionsGain -> float
+Sage.Simulation.ReverbRecord.ReverbRecord() -> void
+Sage.Simulation.ReverbZone
+Sage.Simulation.ReverbZone.Fade -> float
+Sage.Simulation.ReverbZone.Offset -> System.Numerics.Vector3
+Sage.Simulation.ReverbZone.Priority -> int
+Sage.Simulation.ReverbZone.Reverb -> Sage.Core.RecordId
+Sage.Simulation.ReverbZone.ReverbZone() -> void
+Sage.Simulation.ReverbZone.Size -> System.Numerics.Vector3
+Sage.Simulation.ReverbZonePart
+Sage.Simulation.ReverbZonePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.ReverbZonePart.Fade -> float
+Sage.Simulation.ReverbZonePart.Offset -> System.Numerics.Vector3
+Sage.Simulation.ReverbZonePart.Priority -> int
+Sage.Simulation.ReverbZonePart.Reverb -> Sage.Core.RecordId
+Sage.Simulation.ReverbZonePart.ReverbZonePart() -> void
+Sage.Simulation.ReverbZonePart.Size -> System.Numerics.Vector3
