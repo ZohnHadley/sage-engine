@@ -78,6 +78,14 @@ public sealed class WeatherRecord
     [Property(Min = 0, Max = 1, Tooltip = "The thunder's volume (a strike heard from under a roof is muffled by ShelteredVolume too)", Category = "Lightning")]
     public float ThunderVolume = 1f;
 
+    // **Wet ground** (issue #311): the world's `Weather.Wetness` (0 dry, 1 soaked) moves by `Wetting - Drying`
+    // a second while this weather holds, blended as the weather changes; open ground facing the sky darkens,
+    // shines and, past half wet, puddles (`WetnessRules`). Clear weather wets nothing and dries by the default.
+    [Property(Min = 0, Max = 1, Unit = "/s", Tooltip = "Wetness (0 dry, 1 soaked) open ground gains a second while this falls: 0.03 soaks it in about half a minute", Category = "Wet")]
+    public float Wetting;
+    [Property(Min = 0, Max = 1, Unit = "/s", Tooltip = "Wetness the ground loses a second in this weather: the default dries soaked ground in about four minutes", Category = "Wet")]
+    public float Drying = 0.004f;
+
     public static readonly RecordId Clear = new("sage", "clear");
 }
 
@@ -103,6 +111,11 @@ public sealed class Weather
     public RecordId Pattern { get; set; }
     public string Region { get; set; } = "";
     public long PickedSlot { get; set; } = -1;
+
+    // **How wet the world is** (issue #311): 0 dry to 1 soaked, moved by the weather's `Wetting` and `Drying`
+    // (`WetnessRules.Step`); open ground shows it. Saved, so a load does not dry the world; a save from before
+    // has none, and is dry.
+    public float Wetness { get; set; }
 
     public bool Settled => Blend >= 1f;
 

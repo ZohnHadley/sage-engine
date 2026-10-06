@@ -237,6 +237,20 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1
+    },
+    "wetting": {
+      "description": "Wetness (0 dry, 1 soaked) open ground gains a second while this falls: 0.03 soaks it in about half a minute. Unit: /s. Range: 0 to 1. Category: Wet. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "drying": {
+      "description": "Wetness the ground loses a second in this weather: the default dries soaked ground in about four minutes. Unit: /s. Range: 0 to 1. Category: Wet. (float, default 0.004)",
+      "default": 0.004,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     }
   },
   "additionalProperties": false

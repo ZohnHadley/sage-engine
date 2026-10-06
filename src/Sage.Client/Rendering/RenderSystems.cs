@@ -24,10 +24,12 @@ internal sealed class CameraExtract : ISystem
     private readonly RenderSnapshot _snapshot;
     private readonly RenderEnvironment _environment;
     private readonly ViewSource _source;
+    private readonly World _world;
     private readonly PooledList<ViewRequest> _requests = new(4);
 
     public CameraExtract(World world, Renderer renderer, ViewSource source)
     {
+        _world = world;
         _renderer = renderer;
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _environment = world.Resources.Get<RenderEnvironment>();
@@ -76,6 +78,8 @@ internal sealed class CameraExtract : ISystem
         env.AmbientGround = e.AmbientGround;
         env.Time = (float)ctx.Frame.RealTime;
         env.ShadowStrength = ShadowMath.Strength(e.ShadowStrength, e.SunDirection);
+        env.Wetness = WetnessRules.Shown(_world);
+        env.PuddleLevel = WetnessRules.PuddleLevel(env.Wetness);
     }
 
     // One view into the snapshot, with its culling frustum (kept while r_freezecull holds it); its index.

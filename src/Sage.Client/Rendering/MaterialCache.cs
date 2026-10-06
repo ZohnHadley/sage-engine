@@ -20,6 +20,7 @@ internal sealed class EffectBinding
         "ShadowViewProj", "ShadowParams", "ShadowMap",   // the sun's shadow map (issue 4h-4), frame tier
         "ShadowCascadeRects", "ShadowCascadeBias",       // its cascades (issue 4n-11), frame tier
         "Lightmap",   // a lightmapped draw's baked light (issue #313), set per draw
+        "WetParams", "PuddleMask",   // rain on the world (issue #311), frame tier
         "SceneDepth", "SoftParams", "SoftRect",   // a soft particle run's depth and fade (issue 4n-6), set per run
     };
 
@@ -36,6 +37,7 @@ internal sealed class EffectBinding
         Bones = P("Bones");
         ShadowViewProj = P("ShadowViewProj"); ShadowParams = P("ShadowParams"); ShadowMap = P("ShadowMap");
         Lightmap = P("Lightmap");
+        WetParams = P("WetParams"); PuddleMask = P("PuddleMask");
         ShadowCaster = effect.Techniques["ShadowCaster"];
         ShadowCasterSkinned = effect.Techniques["ShadowCasterSkinned"];
         ShadowCascadeRects = P("ShadowCascadeRects"); ShadowCascadeBias = P("ShadowCascadeBias");
@@ -52,6 +54,7 @@ internal sealed class EffectBinding
     public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
     public readonly EffectParameter? ShadowViewProj, ShadowParams, ShadowMap;   // issue 4h-4
     public readonly EffectParameter? Lightmap;   // texture: object tier, lightmapped draws only (issue #313)
+    public readonly EffectParameter? WetParams, PuddleMask;   // frame tier (issue #311)
     public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
     public readonly EffectParameter? ShadowCascadeRects, ShadowCascadeBias;      // issue 4n-11
     public readonly EffectTechnique? ShadowCasterAlphaTest, ShadowCasterAlphaTestSkinned;   // a cut-out caster (4n-11)
@@ -87,7 +90,8 @@ internal sealed class EffectBinding
         LightSpots?.SetValue(_spots);
     }
 
-    public void SetFrame(in RenderView view, in EnvironmentParams env, in ShadowFrame shadow, Texture2D? shadowMap, Texture2D none)
+    public void SetFrame(in RenderView view, in EnvironmentParams env, in ShadowFrame shadow, Texture2D? shadowMap, Texture2D none,
+                         Texture2D puddleMask)
     {
         ViewProj?.SetValue(view.ViewProj);
         SunDir?.SetValue(env.SunDirection);
@@ -97,6 +101,17 @@ internal sealed class EffectBinding
         FogColor?.SetValue(env.FogColor);
         FogParams?.SetValue(env.FogParams);
         Time?.SetValue(env.Time);
+        if (WetParams != null)
+        {
+            // Rain on the world (issue #311): x = wetness, y = the puddles' level, zw = the camera's xz wrapped to
+            // the mask's tile, so camera-relative xz plus it is where on the tiling mask a pixel is. The viewmodel
+            // (a depth-only view over the main one) is never wet.
+            bool wet = !view.DepthOnly;
+            float tile = WetnessRules.MaskTile;
+            WetParams.SetValue(new Vector4(wet ? env.Wetness : 0f, wet ? env.PuddleLevel : 0f,
+                                           Wrap(view.CameraPosition.X, tile), Wrap(view.CameraPosition.Z, tile)));
+            PuddleMask?.SetValue(puddleMask);
+        }
         if (ShadowParams == null) return;   // an effect that reads no shadow
 
         // The sun's shadow map (issue 4h-4). It was drawn relative to the main view's camera; this view's
@@ -122,6 +137,8 @@ internal sealed class EffectBinding
         ShadowParams.SetValue(on ? new Vector4(env.ShadowStrength, shadow.Count, shadow.Size, 1f / shadow.Size) : new Vector4(0f, 1f, 1f, 1f));
         ShadowMap?.SetValue(on ? shadowMap : none);
     }
+
+    private static float Wrap(float value, float tile) => value - MathF.Floor(value / tile) * tile;
 }
 
 // A material record resolved against its loaded effect (07 §3.4): technique, material parameters and

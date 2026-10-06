@@ -32,6 +32,7 @@ float4 AlbedoColor;     // multiplies the texture (premultiplied)
 float AlphaCutoff;
 float4 SurfaceParams;   // x = highlight strength, y = gloss (0..1), z = reflectivity, w = 1 to use vertex colours
 float3 EmissiveColor;   // linear rgb, times the emissive map
+float Weathering;       // how much rain shows on it, 0..1 (issue #311; WetnessRules.Weathering: 0 unless opaque)
 
 struct VSInput
 {
@@ -147,20 +148,26 @@ float3 Environment(float3 r)
 }
 
 // `baked` and `sky` are a lightmap's (issue #313): baked lamps' light, and how much of the ambient reaches the
-// pixel. Default passes 0 and 1, which the compiler folds away.
-float4 ShadeBaked(VSOutput input, float lit, float3 baked, float sky)
+// pixel. Default passes 0 and 1, which the compiler folds away. `weather` is 1 where rain may show (issue #311:
+// WetnessRules, common.fxh `Wetting`) and 0 where it may not (a skinned character); the sky term gates it too,
+// so a lightmapped floor under a roof stays dry.
+float4 ShadeBaked(VSOutput input, float lit, float3 baked, float sky, float weather)
 {
     float4 albedo = tex2D(AlbedoSampler, input.UV) * AlbedoColor * Tint;
     albedo *= lerp(float4(1, 1, 1, 1), input.Color, SurfaceParams.w);
-    float3 n = SurfaceNormal(input);
     float3 v = -normalize(input.Relative);   // towards the camera, which is at the origin
 
-    // Highlights: strength times the map's red, tightness from gloss times its green (2 to 2048).
+    // Rain (issue #311): darker where wet, and a puddle's surface is flat water whatever the normal map says.
+    float2 wet = Wetting(input.Relative, normalize(input.Normal).y, sky, Weathering * weather * lit);
+    albedo.rgb *= WetDarken(wet);
+    float3 n = normalize(lerp(SurfaceNormal(input), float3(0, 1, 0), wet.y));
+
+    // Highlights: strength times the map's red, tightness from gloss times its green (2 to 2048); wet adds both.
     float4 spec = tex2D(SpecularSampler, input.UV);
-    float strength = SurfaceParams.x * spec.r;
-    float power = exp2(1 + 10 * saturate(SurfaceParams.y * spec.g));
+    float strength = SurfaceParams.x * spec.r + WetShine(wet);
+    float power = exp2(1 + 10 * max(saturate(SurfaceParams.y * spec.g), WetGloss(wet)));
     float3 emissive = tex2D(EmissiveSampler, input.UV).rgb * EmissiveColor;
-    float3 reflection = Environment(reflect(-v, n)) * (SurfaceParams.z * spec.r);   // the samples before the lamps' loop
+    float3 reflection = Environment(reflect(-v, n)) * (SurfaceParams.z * spec.r) + PuddleReflection(n, v, wet.y);   // the samples before the lamps' loop
 
     float shadow = ShadowLit(input.Relative, n);
     float3 sun = SunLight(n) * shadow;
@@ -175,12 +182,18 @@ float4 ShadeBaked(VSOutput input, float lit, float3 baked, float sky)
 
 float4 Shade(VSOutput input, float lit)
 {
-    return ShadeBaked(input, lit, float3(0, 0, 0), 1);
+    return ShadeBaked(input, lit, float3(0, 0, 0), 1, 1);
 }
 
 float4 PSDefault(VSOutput input) : COLOR0
 {
     return Shade(input, 1);
+}
+
+// A skinned mesh (a character) is Default without the rain: puddles on shoulders are not wet clothes.
+float4 PSSkinned(VSOutput input) : COLOR0
+{
+    return ShadeBaked(input, 1, float3(0, 0, 0), 1, 0);
 }
 
 float4 PSAlphaTest(VSOutput input) : COLOR0
@@ -262,7 +275,7 @@ float4 PSLightmapped(VSLightmappedOutput input) : COLOR0
     surface.Tangent = input.Tangent;
     surface.Color = input.Color;
     float4 baked = tex2D(LightmapSampler, input.LightmapUV);
-    return ShadeBaked(surface, 1, baked.rgb * LIGHTMAP_SCALE, baked.a);
+    return ShadeBaked(surface, 1, baked.rgb * LIGHTMAP_SCALE, baked.a, 1);
 }
 
 // ---- Shadow casters (issue 4h-4): depth into the sun's map ----
@@ -352,7 +365,7 @@ technique Unlit
 
 technique Skinned
 {
-    pass P0 { VertexShader = compile vs_3_0 VSSkinned(); PixelShader = compile ps_3_0 PSDefault(); }
+    pass P0 { VertexShader = compile vs_3_0 VSSkinned(); PixelShader = compile ps_3_0 PSSkinned(); }
 }
 
 technique Lightmapped
