@@ -1,4 +1,5 @@
 #nullable enable
+const Sage.Simulation.ClipRetargeter.DefaultSampleRate = 30 -> float
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
 const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
 const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
@@ -7,6 +8,7 @@ const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
 const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
 const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
 const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
+Sage.Simulation.ClipRetargeter
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
 Sage.Simulation.Decal.Alpha.get -> float
@@ -224,6 +226,13 @@ Sage.Simulation.ShadowAtlas.Height.get -> int
 Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
+Sage.Simulation.SkeletonMapRecord
+Sage.Simulation.SkeletonMapRecord.Bones -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.Simulation.SkeletonMapRecord.SampleRate -> float
+Sage.Simulation.SkeletonMapRecord.Scale -> float
+Sage.Simulation.SkeletonMapRecord.SkeletonMapRecord() -> void
+Sage.Simulation.SkeletonMapRecord.Source -> Sage.Core.AssetPath
+Sage.Simulation.SkeletonMapRecord.Target -> Sage.Core.AssetPath
 Sage.Simulation.SoundRecord.Caption -> string!
 Sage.Simulation.SoundRecord.Speaker -> string!
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
@@ -250,6 +259,7 @@ Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Sim
 Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+static Sage.Simulation.ClipRetargeter.Retarget(Sage.Simulation.AnimationClip! clip, Sage.Simulation.Skeleton! source, Sage.Simulation.Skeleton! target, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! bones, float scale = 0, float sampleRate = 30) -> Sage.Simulation.AnimationClip!
 static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
 static Sage.Simulation.InputGlyphs.DefaultName(Sage.Simulation.InputBinding! binding, Sage.Simulation.PadFamily pad) -> string!
 static Sage.Simulation.InputGlyphs.FamilyOf(string? padName) -> Sage.Simulation.PadFamily

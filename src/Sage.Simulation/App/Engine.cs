@@ -56,6 +56,8 @@ public sealed class Engine : IDisposable
         Records.AddCheck<RagdollRecord>(Ragdolls.Check);
         // Clip events name a model, and each a time and a name (issue #119).
         Records.AddCheck<AnimEventsRecord>(AnimEvents.Check);
+        // A skeleton map names two models and the joints of one that follow the other's (issue #360).
+        Records.AddCheck<SkeletonMapRecord>(SkeletonMaps.Check);
         // First-person arms name a model, and a weapon a socket (issue #121).
         Records.AddCheck<ViewmodelRecord>(ViewmodelRecord.Check);
         // A decal names a texture and a size, lifetime and fade that make sense (issue #306).
