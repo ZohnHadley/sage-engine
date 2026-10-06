@@ -76,15 +76,18 @@ public sealed class UiModule : IModule
         // screen record, in every world — the subject its bindings and conditions ask about is the
         // local player, when there is one.
         ctx.Engine.CVars.RegisterCommand("ui_open", CVarFlags.None,
-            "ui_open <screen>: open a screen record (a ui_layout over its view-model) on top of the world's widget screens.", a =>
+            "ui_open <screen> [other]: open a screen record (a ui_layout over its view-model) on top of the world's widget screens; " +
+            "other names the entity it is about besides the player (the corpse to loot, the merchant).", a =>
         {
-            if (a.Count == 0) { Log.Warn(LogCat.Console, "ui_open <screen>"); return; }
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "ui_open <screen> [other]"); return; }
             var id = ctx.Engine.Records.Resolve("screen", a[0]);
             if (id.IsEmpty) return;
             foreach (var world in ctx.Engine.Worlds)
                 if (world.Resources.TryGet<UiScreenStack>(out var stack) && stack != null)
                 {
-                    stack.Open(id, new UiBindContext(world, LocalPlayer(world)));
+                    var other = a.Count > 1 ? world.FindByName(a[1]) : default;
+                    if (a.Count > 1 && other.IsNull) { Log.Warn(LogCat.Console, $"'{world.Name}': nothing is called '{a[1]}'"); continue; }
+                    stack.Open(id, new UiBindContext(world, LocalPlayer(world), other));
                     Log.Info(LogCat.Console, $"'{world.Name}': {id} open ({stack.Layers.Count} layer(s))");
                 }
         });

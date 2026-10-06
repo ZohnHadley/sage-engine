@@ -1,2 +1,11 @@
 #nullable enable
+Sage.Kits.Rpg.RpgConventionsRecord.LootScreen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
+Sage.Kits.Rpg.UseScreen
+Sage.Kits.Rpg.UseScreen.Screen -> Sage.Core.RecordId
+Sage.Kits.Rpg.UseScreen.UseScreen() -> void
+Sage.Kits.Rpg.UseScreenPart
+Sage.Kits.Rpg.UseScreenPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Kits.Rpg.UseScreenPart.Screen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
+Sage.Kits.Rpg.UseScreenPart.UseScreenPart() -> void
 static readonly Sage.Kits.Rpg.RpgKitModule.ControlsScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.ShopScreen -> Sage.Core.RecordId
