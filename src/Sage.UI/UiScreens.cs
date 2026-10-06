@@ -95,20 +95,40 @@ public sealed class UiScreen
     // view-model's Changed (#340), an activated one to its Activate, Back to its Back; then the screen is
     // read again. Returns whether the
     // view-model used it — Back that it did not use is the owner's cue to close the screen.
+    //
+    // A pressed widget's layout node may name actions from content (`actions`, issue #344): they run first,
+    // with the screen's Subject and Other, so a button opens the shop or closes the window without C#.
     public bool Handle(in UiResult result)
     {
-        if (!IsOpen || ViewModel == null) return false;
+        if (!IsOpen) return false;
         var context = Context;
         bool used = false, changed = false;
-        if (result.Changed is { } edited && Root.Contains(edited))
+        if (result.Changed is { } edited && Root.Contains(edited) && ViewModel != null)
         {
             ViewModel.Changed(edited, in context);
             changed = true;
         }
-        if (result.Activated is { } widget && Root.Contains(widget)) used = ViewModel.Activate(widget, in context);
-        if (result.Back) used |= ViewModel.Back(in context);
-        if (used || changed) Refresh();
+        if (result.Activated is { } widget && Root.Contains(widget))
+        {
+            used = RunActions(widget, in context);
+            if (ViewModel != null) used |= ViewModel.Activate(widget, in context);
+        }
+        if (result.Back && ViewModel != null) used |= ViewModel.Back(in context);
+        if ((used || changed) && IsOpen) Refresh();
         return used;
+    }
+
+    // The actions of the nearest node, from the widget up to the screen's root, that names any.
+    private bool RunActions(Widget widget, in UiBindContext context)
+    {
+        if (context.World is not { } world || !_owner.Records.TryGet(Record.Layout.Id, out UiLayoutRecord layout)) return false;
+        for (var w = widget; w != null && w != Root; w = w.Parent)
+        {
+            if (string.IsNullOrEmpty(w.Name) || !layout.Nodes.TryGetValue(w.Name, out var node) || node.Actions.Count == 0) continue;
+            Conditions.Run(node.Actions, new ActionContext(world, context.Subject, context.Other));
+            return true;
+        }
+        return false;
     }
 
     // The row a widget of a bound list stands for: its Data, or its nearest ancestor's inside the screen.
