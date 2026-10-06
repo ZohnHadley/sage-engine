@@ -124,6 +124,14 @@
         }
       ]
     },
+    "surface": {
+      "description": "What ground with no surface, or a surface with no footstep cue, sounds like underfoot (issue #327) Names a physics_material record. Category: Surfaces. (RecordRef<PhysicsMaterialRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:physics_material"
+        }
+      ]
+    },
     "schedules": {
       "description": "(AIScheduleConventions)",
       "type": "object",

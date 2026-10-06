@@ -66,6 +66,22 @@
         }
       ]
     },
+    "land": {
+      "description": "The cue landing on it from a fall or a jump raises; empty = its footstep. Names a cue record. Category: Effects. (RecordId)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:cue"
+        }
+      ]
+    },
+    "jump": {
+      "description": "The cue jumping off it raises; empty = its footstep. Names a cue record. Category: Effects. (RecordId)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:cue"
+        }
+      ]
+    },
     "impact": {
       "description": "The cue a blow or a shot that lands on it raises. Names a cue record. Category: Effects. (RecordId)",
       "allOf": [

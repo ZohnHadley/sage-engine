@@ -52,6 +52,9 @@ public sealed class GameplayConventionsRecord
     [Property(Category = "Abilities", Tooltip = "The attribute a spell made in the spellmaker costs (mana)")]
     public RecordRef<AttributeRecord> CostAttribute;
 
+    [Property(Category = "Surfaces", Tooltip = "What ground with no surface, or a surface with no footstep cue, sounds like underfoot (issue #327)")]
+    public RecordRef<PhysicsMaterialRecord> Surface;
+
     // The schedules the AI's built-in choice picks between (16 §3.4).
     public AIScheduleConventions Schedules = new();
 

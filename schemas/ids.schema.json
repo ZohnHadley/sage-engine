@@ -54,6 +54,7 @@
         "arms",
         "mannequin",
         "sandbox:arms",
+        "sandbox:mannequin",
         "skeletal:mannequin"
       ]
     },
@@ -67,7 +68,9 @@
         "npc",
         "sandbox:arms",
         "sandbox:creature",
+        "sandbox:walker",
         "skeletal:npc",
+        "walker",
         "weapons:dummy"
       ]
     },
@@ -134,10 +137,20 @@
         "bullet_impact",
         "fireball_boom",
         "fireball_cast",
+        "jump",
+        "land_grass",
+        "land_wood",
         "sandbox:bullet_impact",
         "sandbox:fireball_boom",
         "sandbox:fireball_cast",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:weapon_swing",
+        "step_grass",
+        "step_wood",
         "weapon_swing"
       ]
     },
@@ -435,6 +448,7 @@
         "sandbox:floor",
         "sandbox:gunmetal",
         "sandbox:lamp_glow",
+        "sandbox:mannequin",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:stone",
@@ -470,18 +484,6 @@
       "enum": [
         "default_movement",
         "sage:default_movement"
-      ]
-    },
-    "record:music": {
-      "description": "The id of a music record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
-      "type": "string",
-      "enum": [
-        "crypt",
-        "hearth",
-        "sandbox:crypt",
-        "sandbox:hearth",
-        "sandbox:wander",
-        "wander"
       ]
     },
     "record:nav_area": {
@@ -525,6 +527,7 @@
         "glass",
         "grass",
         "metal",
+        "planks",
         "plaster",
         "sage:default",
         "sage:dirt",
@@ -534,6 +537,7 @@
         "sage:metal",
         "sage:stone",
         "sage:wood",
+        "sandbox:planks",
         "sandbox:plaster",
         "stone",
         "wood"
@@ -618,7 +622,7 @@
         "hermit",
         "hopper",
         "hut_path",
-        "hut_yard",
+        "hut_walker",
         "jogger",
         "keeper",
         "lake",
@@ -697,7 +701,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
-        "sandbox:hut_yard",
+        "sandbox:hut_walker",
         "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
@@ -929,16 +933,26 @@
         "cast_fire",
         "fire_loop",
         "hit_flesh",
+        "jump",
+        "land_grass",
+        "land_wood",
         "pickup",
         "rain_loop",
         "sandbox:boom_fire",
         "sandbox:cast_fire",
         "sandbox:fire_loop",
         "sandbox:hit_flesh",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
         "sandbox:pickup",
         "sandbox:rain_loop",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:swing",
         "sandbox:thunder",
+        "step_grass",
+        "step_wood",
         "swing",
         "thunder"
       ]
@@ -975,9 +989,11 @@
       "type": "string",
       "enum": [
         "doomed",
+        "hut_walker",
         "lamp",
         "patrol",
         "patrol_armed",
+        "sandbox:hut_walker",
         "sandbox:lamp",
         "sentry",
         "skeletal:doomed",
@@ -1236,6 +1252,7 @@
         "arms",
         "mannequin",
         "sandbox:arms",
+        "sandbox:mannequin",
         "skeletal:mannequin"
       ]
     },
@@ -1249,7 +1266,9 @@
         "npc",
         "sandbox:arms",
         "sandbox:creature",
+        "sandbox:walker",
         "skeletal:npc",
+        "walker",
         "weapons:dummy"
       ]
     },
@@ -1316,10 +1335,20 @@
         "bullet_impact",
         "fireball_boom",
         "fireball_cast",
+        "jump",
+        "land_grass",
+        "land_wood",
         "sandbox:bullet_impact",
         "sandbox:fireball_boom",
         "sandbox:fireball_cast",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:weapon_swing",
+        "step_grass",
+        "step_wood",
         "weapon_swing"
       ]
     },
@@ -1617,6 +1646,7 @@
         "sandbox:floor",
         "sandbox:gunmetal",
         "sandbox:lamp_glow",
+        "sandbox:mannequin",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:stone",
@@ -1652,18 +1682,6 @@
       "enum": [
         "default_movement",
         "sage:default_movement"
-      ]
-    },
-    "base:music": {
-      "description": "Another music record to inherit every field from, abstract or not.",
-      "type": "string",
-      "enum": [
-        "crypt",
-        "hearth",
-        "sandbox:crypt",
-        "sandbox:hearth",
-        "sandbox:wander",
-        "wander"
       ]
     },
     "base:nav_area": {
@@ -1707,6 +1725,7 @@
         "glass",
         "grass",
         "metal",
+        "planks",
         "plaster",
         "sage:default",
         "sage:dirt",
@@ -1716,6 +1735,7 @@
         "sage:metal",
         "sage:stone",
         "sage:wood",
+        "sandbox:planks",
         "sandbox:plaster",
         "stone",
         "wood"
@@ -1801,7 +1821,7 @@
         "hermit",
         "hopper",
         "hut_path",
-        "hut_yard",
+        "hut_walker",
         "jogger",
         "keeper",
         "lake",
@@ -1881,7 +1901,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
-        "sandbox:hut_yard",
+        "sandbox:hut_walker",
         "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
@@ -2113,16 +2133,26 @@
         "cast_fire",
         "fire_loop",
         "hit_flesh",
+        "jump",
+        "land_grass",
+        "land_wood",
         "pickup",
         "rain_loop",
         "sandbox:boom_fire",
         "sandbox:cast_fire",
         "sandbox:fire_loop",
         "sandbox:hit_flesh",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
         "sandbox:pickup",
         "sandbox:rain_loop",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:swing",
         "sandbox:thunder",
+        "step_grass",
+        "step_wood",
         "swing",
         "thunder"
       ]
@@ -2159,9 +2189,11 @@
       "type": "string",
       "enum": [
         "doomed",
+        "hut_walker",
         "lamp",
         "patrol",
         "patrol_armed",
+        "sandbox:hut_walker",
         "sandbox:lamp",
         "sentry",
         "skeletal:doomed",
