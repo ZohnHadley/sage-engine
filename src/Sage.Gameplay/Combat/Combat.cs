@@ -20,6 +20,10 @@ namespace Sage.Gameplay;
 public readonly record struct DamageInfo(
     Entity Attacker, Entity Target, RecordId Type, float Amount, Vector3 Point, Vector3 Direction)
 {
+    // The sound the weapon asked for in place of its damage type's (issue #330, AttackRecord.Sound); empty =
+    // the damage type's. Carried on the hit because the audio system hears a `Damaged`, not an attack.
+    public RecordId Sound { get; init; }
+
     public float Applied { get; init; }   // after resistance and tag gating: what health actually lost
 
     // Where on the body it landed: the `hit_location` of the hitbox a strike met (issue #137); empty = the body.
@@ -73,6 +77,8 @@ public sealed class AttackRecord
     // trailing without combat knowing what either looks like. The *hit* is the damage type's business:
     // one entry for fire covers a fireball and a torch, and a blade's own noise is this.
     public RecordRef<CueRecord> SwingCue;
+    [Property(Tooltip = "What landing this attack sounds like, in place of its damage type's sound (a war hammer and a dagger both do physical damage); empty = the damage type's")]
+    public RecordRef<SoundRecord> Sound;
     public RecordRef<SpriteSheetRecord> Viewmodel; // the sprite sheet a first-person wielder sees (13 §3):
                                             // rest, wind-up and strike, in that order
     // The 3D first-person arms and what they hold (issue #121): a `viewmodel` record (a skinned model,
@@ -178,7 +184,7 @@ public static class Combat
         var landed = Hitboxes.Resolve(in result);   // a hitbox is its owner's (issue #137)
         if (landed.Target.IsNull) return 0f;
         if (!Factions.MayHurt(world, request.Attacker, landed.Target)) return 0f;
-        var damage = new DamageInfo(request.Attacker, landed.Target, attack.DamageType, attack.Damage, landed.Point, request.Aim);
+        var damage = new DamageInfo(request.Attacker, landed.Target, attack.DamageType, attack.Damage, landed.Point, request.Aim) { Sound = attack.Sound.Id };
         return ApplyHit(world, in damage, in landed, attack.Effects);
     }
 
@@ -236,6 +242,16 @@ public static class Combat
 
         world.Events.Send(new Damaged(hit, applied));
         return applied;
+    }
+
+    // The sound a landed hit makes (issue #330): the attack's own when it names one, else its damage
+    // type's (the game's default type when it names none); empty = silence. What the client's audio system plays for a `Damaged`, here so a headless
+    // test can ask the same question.
+    public static RecordId HitSound(RecordStore records, in DamageInfo hit)
+    {
+        if (!hit.Sound.IsEmpty) return hit.Sound;
+        var typeId = hit.Type.IsEmpty ? GameplayConventions.Of(records).DamageType.Id : hit.Type;   // as the hit itself resolved it
+        return !typeId.IsEmpty && records.TryGet(typeId, out DamageTypeRecord type) ? type.Sound.Id : default;
     }
 
     // Resistance is a percentage attribute (armour, fire_resist, armor_head…), clamped so nothing is

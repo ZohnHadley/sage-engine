@@ -52,6 +52,7 @@ public class DeclarationTests
             ["skeleton_sockets"] = RegistrationOwners.Core,   // sockets on a model's skeleton (#120)
             ["ragdoll"] = RegistrationOwners.Core,            // the bodies a model falls apart into (issue #243)
             ["rumble"] = RegistrationOwners.Core,             // a shape of pad vibration (issue #331)
+            ["reverb"] = RegistrationOwners.Core,             // reverb zones' presets (issue #329)
             ["sky"] = RegistrationOwners.Core,                // the sky over a day (issue 4h-2)
             ["calendar"] = RegistrationOwners.Core,           // what the day count means as a date (issue 4g-2)
             ["calendar_event"] = RegistrationOwners.Core,     // a festival or a moon phase a wire can fire on (issue 4m-15)
@@ -63,6 +64,7 @@ public class DeclarationTests
             ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
             ["rpg_item"] = "sage.kits.rpg",          // an item's footprint on the inventory grid (#98)
             ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
+            ["ui_sounds"] = "sage.ui",   // what screens sound like (#330)
         };
         Assert.Equal(expected.Keys.OrderBy(k => k, StringComparer.Ordinal), app.Records.TypeNames);
         foreach (var (type, owner) in expected)
@@ -74,7 +76,7 @@ public class DeclarationTests
     public void APluginThatIsNotLoadedRegistersNothing()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "calendar_event", "mesh_lod", "placements", "prefab", "ragdoll", "rumble", "scene", "skeleton_sockets", "sky", "state_machine", "terrain", "terrain_material", "viewmodel", "water_surface" }, app.Records.TypeNames);
+        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "calendar_event", "mesh_lod", "placements", "prefab", "ragdoll", "reverb", "rumble", "scene", "skeleton_sockets", "sky", "state_machine", "terrain", "terrain_material", "viewmodel", "water_surface" }, app.Records.TypeNames);
     }
 
     // Plugin ids on declarations are strings, and one naming a plugin in another assembly (the client)

@@ -61,6 +61,7 @@
             "quest",
             "ragdoll",
             "recoil",
+            "reverb",
             "routine",
             "rpg_conventions",
             "rpg_item",
@@ -77,6 +78,7 @@
             "terrain",
             "terrain_material",
             "ui_layout",
+            "ui_sounds",
             "ui_style",
             "viewmodel",
             "water_surface",
@@ -645,6 +647,21 @@
           "if": {
             "properties": {
               "type": {
+                "const": "reverb"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "reverb.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "routine"
               }
             },
@@ -879,6 +896,21 @@
           },
           "then": {
             "$ref": "ui_layout.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "ui_sounds"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "ui_sounds.schema.json"
           }
         },
         {

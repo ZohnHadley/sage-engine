@@ -185,8 +185,7 @@ def main():
     # Thunder: a long low rumble (the weather's lightning cue, issue #311).
     write('thunder', tone(48, 2.6, release=1.9, harmonics=(1.0, 0.6, 0.3), noise=0.85, sweep=-0.35))
 
-    # Items. Nothing for screens yet: a menu sound needs a game to say which sound a screen uses
-    # (13 §3), and a WAV nothing plays is dead weight, not a head start.
+    # Items.
     write('pickup', tone(660, 0.18, release=0.09, harmonics=(1.0, 0.5, 0.25)))
 
     # Rain: filtered noise with a little variation, so a loop does not sound like a fan. Cross-faded at
@@ -221,6 +220,11 @@ def main():
         fire[i] = fire[i] * a + fire[n - fade + i] * (1 - a)
     write('fire_loop', fire[:n - fade])
 
+    # Screens (issue #330; `ui_sounds` in content/data/ui.json): a short dry tick as focus moves and a
+    # higher two-partial click when a choice is made. No noise term, so adding them cannot shift the
+    # random sequence the sounds above were generated from.
+    write('ui_move', tone(520, 0.05, release=0.02, harmonics=(1.0, 0.3)))
+    write('ui_select', tone(880, 0.1, release=0.04, harmonics=(1.0, 0.5, 0.2)))
     # Music (issue #325). `wander` is the clearing's: a one-second intro played once, then a four-second body
     # that loops from sample 22050 (its `loopStart`), with a drum layer heard at intensity 0.5 and above.
     # `hearth` is the hut yard's, switched to by a trigger's output; `crypt` is the crypt scene's.

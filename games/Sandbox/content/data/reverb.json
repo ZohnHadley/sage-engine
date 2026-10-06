@@ -1,0 +1,18 @@
+[
+  // How the Sandbox's interiors sound (engine issue #329). Each is a prefab with nothing but a
+  // `reverb_zone`, placed by a map as a trigger brush entity of that classname: the zone is the box around
+  // the brushes, so the map says *where* and this says *what it sounds like*. Step inside and the engine's
+  // reverb blends in over the fade; step out and it blends away. `snd_stats` names the zone you are in, and
+  // `log_level audio trace` logs each change, and each sound a wall muffles.
+  {
+    // The hut (maps/hut.map): a small plastered room.
+    "type": "prefab", "id": "hut_room", "name": "hut room",
+    "parts": { "reverb_zone": { "reverb": "sage:room", "fade": 0.5 } }
+  },
+  {
+    // The crypt (maps/crypt.map): stone, long and hard, so a cave. Slower to come in, as your ears adjust
+    // to the dark.
+    "type": "prefab", "id": "crypt_echo", "name": "crypt echo",
+    "parts": { "reverb_zone": { "reverb": "sage:cave", "fade": 1.5 } }
+  }
+]

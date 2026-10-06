@@ -660,6 +660,14 @@ internal static class MapLoader
         if (!solid.IsTrigger && entity.HasComponent<Ladder>())
             Log.Warn(LogCat.Level, $"{where}: '{className}' is a ladder but not a trigger; add \"trigger\" \"1\" to climb it");
 
+        // A reverb zone drawn as brushes is the box around them (issue #329), walked into rather than against.
+        if (entity.HasComponent<ReverbZone>())
+        {
+            ReverbZones.FitToBrushes(entity, solid.Hull);
+            if (!solid.IsTrigger)
+                Log.Warn(LogCat.Level, $"{where}: '{className}' is a reverb zone but not a trigger; add \"trigger\" \"1\" so it is not a wall");
+        }
+
         solid.Spawned = entity;
         spawned++;
     }

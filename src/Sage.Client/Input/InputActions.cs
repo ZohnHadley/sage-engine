@@ -20,39 +20,7 @@ namespace Sage.Client;
 // CommandLatch for the fixed ticks.
 public sealed class InputActions
 {
-    private enum Source { Key, MouseButton, MouseDelta, MouseWheel, PadButton, PadTrigger, PadStick, Composite }
-
-    private sealed class Binding
-    {
-        public required ActionInfo Action;
-        public required InputBinding Desc;
-        public required string Where;       // "sage:gameplay Jump[0]"
-        public Source Source;
-        public Keys Key;
-        public MouseButton MouseButton;
-        public Buttons PadButton;
-        public bool RightSide;             // right stick / right trigger
-        public Keys[] Composite = Array.Empty<Keys>();   // up, down, left, right
-        public int[] Slots = Array.Empty<int>();         // consumption slots this binding reads
-
-        // Whether this binding's analogue trigger counted as down last frame, for the hysteresis in
-        // `InputEdges.TriggerDown` (#60). Per binding, because two actions may read the same trigger.
-        public bool TriggerWasDown;
-        public readonly bool[] TriggerWasDownOthers = new bool[PadAssignment.MaxPads];   // the same, for each other player's pad
-
-        // What the device said this frame, read once in the raw pass and used again when the contexts
-        // decide who hears it. Reading it twice would tick the trigger hysteresis twice.
-        public bool RawDown;
-
-        public bool IsTrigger => Source == Source.PadButton &&
-                                 PadButton is Buttons.LeftTrigger or Buttons.RightTrigger;
-    }
-
-    // Consumption slots: keys 0..255, mouse buttons 256.., delta 270, wheel 271, pad buttons 300..331, sticks 340/341.
-    private const int SlotCount = 512;
-    private const int MouseButtonSlot = 256, MouseDeltaSlot = 270, MouseWheelSlot = 271, PadButtonSlot = 300, PadStickSlot = 340;
-
-    private static readonly InputContext[] ContextOrder = { InputContext.Editor, InputContext.Console, InputContext.UI, InputContext.Gameplay };
+    private static readonly InputContext[] ContextOrder = ActionMapper.ContextOrder;
 
     private readonly ActionRegistry _registry;
     private readonly RecordStore _records;
@@ -61,37 +29,21 @@ public sealed class InputActions
     private readonly CVar<float> _sensitivity;
     private readonly CVar<bool> _invertY;
 
-    private readonly List<Binding>[] _bindings = Enumerable.Range(0, 4).Select(_ => new List<Binding>()).ToArray();
-    private readonly bool[] _active = new bool[4];
-    private readonly bool[] _consumed = new bool[SlotCount];
-
-    // What the devices say, before anything swallows it. **Edges come from this**, not from the
-    // filtered `_held`: an action consumed for one frame used to look un-held, so the frame the screen
-    // closed it looked newly *pressed* and the character swung at nothing (#60, `InputEdges`).
-    private bool[] _rawHeld = Array.Empty<bool>();
-    private bool[] _wasRawHeld = Array.Empty<bool>();
-    private bool[] _held = Array.Empty<bool>();
-    private Vector2[] _axis = Array.Empty<Vector2>();
-    private ActionMask _heldBits, _pressedBits, _releasedBits;
+    // The binding compile, context masking, composites, dead zones and edges live in Sage.Simulation's
+    // ActionMapper so they are tested headlessly (4o-8); this class reads the devices for it.
+    private readonly ActionMapper _mapper;
+    private readonly DeviceState _state;
+    private bool _showActions;
+    private string _lastShown = "";
     // Scripted input (08 §9): actions driven from the console instead of a device, for automated
     // checks and for repeating a bug without a person at the keyboard. Injected *after* the bindings
     // are evaluated, so a script goes through the same PlayerCommand path a keyboard does — what it
     // exercises is the real chain, not a shortcut into the simulation.
     private readonly ScriptedInput _script = new();
-
-    // The other local players (issue #331): player 1.. read their own pad, and only the gameplay context's
-    // pad bindings (a keyboard has one owner). Player 0 is the state above, unchanged.
-    private sealed class PlayerFrame
-    {
-        public bool[] RawHeld = Array.Empty<bool>(), WasRawHeld = Array.Empty<bool>(), Held = Array.Empty<bool>();
-        public Vector2[] Axis = Array.Empty<Vector2>();
-        public ActionMask HeldBits, PressedBits, ReleasedBits;
-    }
-    private readonly PlayerFrame[] _frames = Enumerable.Range(0, PadAssignment.MaxPads).Select(_ => new PlayerFrame()).ToArray();
     private readonly CVar<float> _joyDeadzone, _joyRumble;
     private readonly CVar<string> _joyCurve;
     private readonly CVar<int> _joyPlayers;
-    private float _curve = 1f;
+    private readonly PadState[] _others = new PadState[PadAssignment.MaxPads];
 
     public InputActions(ActionRegistry registry, RecordStore records, InputDevices devices, CVarRegistry cvars)
         : this(registry, records, devices, cvars, null) { }
@@ -100,9 +52,11 @@ public sealed class InputActions
     {
         _registry = registry;
         _rebinds = rebinds;
+        _state = new DeviceState(devices);
+        _mapper = new ActionMapper(registry, Vocabulary.Instance);
         // The names of keys and buttons are MonoGame's, so the one place that can check a rebind is here:
         // the same compile the bindings from records go through.
-        if (rebinds != null) rebinds.Validator = (action, desc) => Compile(action, desc, "", out string? error) == null ? error : null;
+        if (rebinds != null) rebinds.Validator = (action, desc) => ActionMapper.Validate(Vocabulary.Instance, action, desc);
         _records = records;
         _devices = devices;
         _sensitivity = cvars.Register("m_sensitivity", 1f, CVarFlags.Archive, "Mouse look speed multiplier (Look action and the editor camera).", 0.01f, 20f);
@@ -115,6 +69,7 @@ public sealed class InputActions
             "Stick response: linear, quadratic, cubic, or an exponent 0.1..8 (higher is finer near the centre).");
         _joyCurve.Changed += _ => ParseCurve();
         ParseCurve();
+        for (int p = 0; p < _others.Length; p++) _others[p] = new PadState(devices, p);
         _joyRumble = cvars.Register("joy_rumble", 1f, CVarFlags.Archive, "Strength of controller rumble, 0 (off) to 1.", 0f, 1f);
         _joyPlayers = cvars.Register("joy_players", 1, CVarFlags.None, "How many local players have a pad (1-4): the pads are handed out in order, and a pad that is unplugged and replugged returns to its player.", 1, 4);
         _joyPlayers.Changed += _ => _devices.Pads.Players = _joyPlayers.Value;
@@ -134,7 +89,7 @@ public sealed class InputActions
             if (a.Count < 2 || !int.TryParse(a[0], out int player) || !int.TryParse(a[1], out int pad) || !_devices.Pads.Assign(player - 1, pad - 1))
                 Log.Warn(LogCat.Console, "pad_assign <player> <pad>: both from 1, the pad must be connected and the player within joy_players");
         });
-        cvars.RegisterCommand("bindlist", CVarFlags.None, "List input bindings per context.", _ => ListBindings());
+        cvars.RegisterCommand("bindlist", CVarFlags.None, "List input bindings per context.", _ => _mapper.ListBindings());
         cvars.RegisterCommand("in_contexts", CVarFlags.None, "Show which input contexts are active.", _ =>
             Log.Info(LogCat.Console, $"  {string.Join(", ", ContextOrder.Select(c => $"{c}={(IsActive(c) ? "on" : "off")}"))}; " +
                                      $"UI captures keyboard={UiWantsKeyboard} mouse={UiWantsMouse}; " +
@@ -241,32 +196,36 @@ public sealed class InputActions
             if (_script.Count == 0) { Log.Info(LogCat.Console, "  nothing scripted"); return; }
             foreach (string line in _script.Describe(_registry)) Log.Info(LogCat.Console, "  " + line);
         });
+        cvars.RegisterCommand("in_showactions", CVarFlags.None,
+            "in_showactions [on|off]: no argument prints the live action state now; on logs it whenever it changes.", a =>
+        {
+            if (a.Count > 0 && a[0] is "on" or "1") { _showActions = true; _lastShown = ""; Log.Info(LogCat.Console, "in_showactions on (logs each change)"); }
+            else if (a.Count > 0 && a[0] is "off" or "0") { _showActions = false; Log.Info(LogCat.Console, "in_showactions off"); }
+            else
+            {
+                string now = _mapper.DescribeState();
+                Log.Info(LogCat.Console, now.Length == 0 ? "  all actions idle" : "  " + now);
+            }
+        });
         _records.Reloaded += Rebuild;   // the first record load builds the bindings
-        _active[(int)InputContext.Gameplay] = true;
     }
 
     public float MouseSensitivity => _sensitivity.Value;
     public bool InvertMouseY => _invertY.Value;
 
     // Set by the host each frame from ImGui's capture flags (the UI context).
-    public bool UiWantsKeyboard { get; set; }
-    public bool UiWantsMouse { get; set; }
+    public bool UiWantsKeyboard { get => _mapper.UiWantsKeyboard; set => _mapper.UiWantsKeyboard = value; }
+    public bool UiWantsMouse { get => _mapper.UiWantsMouse; set => _mapper.UiWantsMouse = value; }
 
-    public void SetActive(InputContext context, bool active) => _active[(int)context] = active;
-    // The UI context is active when ImGui wants input *or* when a game screen is open (13 §3, F38):
-    // both need the gameplay bindings out of the way, and they arrive by different routes.
-    public bool IsActive(InputContext context) =>
-        context == InputContext.UI ? _active[(int)context] || UiWantsKeyboard || UiWantsMouse : _active[(int)context];
+    public void SetActive(InputContext context, bool active) => _mapper.SetActive(context, active);
+    public bool IsActive(InputContext context) => _mapper.IsActive(context);
 
     // ---- Queries (this frame) ----
-    public bool Held(ActionId a) => a.IsValid && a.Index < _held.Length && _held[a.Index];
-    public bool Pressed(ActionId a) =>
-        a.IsValid && a.Index < _held.Length &&
-        InputEdges.Pressed(_rawHeld[a.Index], _wasRawHeld[a.Index], _rawHeld[a.Index] && !_held[a.Index]);
-    public bool Released(ActionId a) =>
-        a.IsValid && a.Index < _held.Length && InputEdges.Released(_rawHeld[a.Index], _wasRawHeld[a.Index]);
-    public float Axis(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index].X : 0f;
-    public Vector2 Axis2(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index] : Vector2.Zero;
+    public bool Held(ActionId a) => _mapper.Held(a);
+    public bool Pressed(ActionId a) => _mapper.Pressed(a);
+    public bool Released(ActionId a) => _mapper.Released(a);
+    public float Axis(ActionId a) => _mapper.Axis(a);
+    public Vector2 Axis2(ActionId a) => _mapper.Axis2(a);
 
     // ---- Scripted input ----------------------------------------------------------------------------
 
@@ -274,70 +233,45 @@ public sealed class InputActions
         float.TryParse(text, System.Globalization.NumberStyles.Float,
                        System.Globalization.CultureInfo.InvariantCulture, out float value) ? value : 0f;
 
-    public ActionMask HeldMask => _heldBits;
-    public ActionMask PressedMask => _pressedBits;
-    public ActionMask ReleasedMask => _releasedBits;
+    public int LocalPlayers => _devices.Pads.Players;
+    public ActionMask HeldMaskOf(int player) => _mapper.HeldMaskOf(player);
+    public ActionMask PressedMaskOf(int player) => _mapper.PressedMaskOf(player);
+    public ActionMask ReleasedMaskOf(int player) => _mapper.ReleasedMaskOf(player);
+    public Vector2 Axis2Of(int player, ActionId a) => _mapper.Axis2Of(player, a);
+
+    // The mixer's motors go to the pads (`joy_rumble` is its gain). The host calls this once a frame.
+    public void ApplyRumble(RumbleMixer? mixer)
+    {
+        if (mixer != null) mixer.Gain = _joyRumble.Value;
+        _devices.ApplyRumble(mixer, _devices.Focused);
+    }
+
+    private void ParseCurve()
+    {
+        if (StickResponse.TryParseCurve(_joyCurve.Value, out float exponent)) _mapper.JoyCurve = exponent;
+        else Log.Warn(LogCat.Input, $"joy_curve '{_joyCurve.Value}': use linear, quadratic, cubic or a number from 0.1 to 8");
+    }
+
+    public ActionMask HeldMask => _mapper.HeldMask;
+    public ActionMask PressedMask => _mapper.PressedMask;
+    public ActionMask ReleasedMask => _mapper.ReleasedMask;
 
     // ---- Per frame ----
     public void Update(float dt)
     {
-        EnsureCapacity();
         CaptureNextInput();
-        Array.Copy(_rawHeld, _wasRawHeld, _rawHeld.Length);
-        Array.Clear(_held);
-        Array.Clear(_rawHeld);
-        Array.Clear(_axis);
-        Array.Clear(_consumed);
-
-        // **First, what the devices say** — every binding in every context, active or not. Edges are
-        // computed from this, so a context switching back on (a console closing, a screen closing) does
-        // not look like a finger arriving on a button that never moved (#60).
-        foreach (var list in _bindings)
-            foreach (var b in list)
-                if (b.Action.Kind == ActionKind.Button)
-                    _rawHeld[b.Action.Id.Index] |= ReadRaw(b);
-
-        foreach (var context in ContextOrder)
+        _mapper.JoyDeadzone = _joyDeadzone.Value;
+        _mapper.Update(dt, _state, _sensitivity.Value, _invertY.Value);
+        _mapper.ApplyScripts(_script, dt);
+        _mapper.Finish();
+        // The other local players: their pad, and held back while the console, a screen or the dev UI has the input.
+        bool open = !IsActive(InputContext.Console) && !IsActive(InputContext.UI) && !IsActive(InputContext.Editor);
+        for (int p = 1; p < _devices.Pads.Players; p++) _mapper.UpdateOther(p, dt, _others[p], open, _script);
+        if (_showActions)
         {
-            if (!IsActive(context)) continue;
-            if (context == InputContext.UI)
-            {
-                if (UiWantsKeyboard) ConsumeRange(0, 256);
-                if (UiWantsMouse) { ConsumeRange(MouseButtonSlot, 8); _consumed[MouseDeltaSlot] = _consumed[MouseWheelSlot] = true; }
-            }
-            var list = _bindings[(int)context];
-            foreach (var b in list)
-                Evaluate(b, dt, IsConsumed(b));
-            foreach (var b in list)
-                foreach (int slot in b.Slots) _consumed[slot] = true;
-            if (context == InputContext.Console) ConsumeRange(0, 256);
-            // A game screen is modal: it reads its own actions first (above) and then swallows the
-            // rest, so nobody walks about or swings behind an open inventory.
-            if (context == InputContext.UI && _active[(int)InputContext.UI])
-            {
-                ConsumeRange(0, 256);
-                ConsumeRange(MouseButtonSlot, 8);
-                _consumed[MouseDeltaSlot] = true;
-            }
+            string now = _mapper.DescribeState();
+            if (now != _lastShown) { _lastShown = now; Log.Info(LogCat.Console, "actions: " + (now.Length == 0 ? "(idle)" : now)); }
         }
-        _script.Apply(0, dt, _registry, _held, _rawHeld, _axis);
-
-        _heldBits = _pressedBits = _releasedBits = default;
-        var all = _registry.All;
-        for (int a = 0; a < all.Count; a++)   // for, not foreach: no enumerator allocation per frame
-        {
-            var info = all[a];
-            if (info.Kind != ActionKind.Button) continue;
-            int i = info.Id.Index;
-            // Swallowed: the devices say it is down but something above this took it, so it is not
-            // held *and* the press it began must not surface later (`InputEdges`).
-            bool swallowed = _rawHeld[i] && !_held[i];
-            if (InputEdges.Held(_rawHeld[i], swallowed)) _heldBits = _heldBits.With(info.Id);
-            if (InputEdges.Pressed(_rawHeld[i], _wasRawHeld[i], swallowed)) _pressedBits = _pressedBits.With(info.Id);
-            if (InputEdges.Released(_rawHeld[i], _wasRawHeld[i])) _releasedBits = _releasedBits.With(info.Id);
-        }
-
-        for (int p = 1; p < _devices.Pads.Players; p++) UpdateSecondary(p, dt);
     }
 
     // Capture-next-input (the controls screen, #328): while the rebinds are waiting for a press, the first
@@ -377,304 +311,54 @@ public sealed class InputActions
             }
     }
 
-    // What one button binding's device says, regardless of who is listening. Called once per binding
-    // per frame, which matters: the trigger hysteresis has state, and reading it twice would step it
-    // twice (`InputEdges.TriggerDown`).
-    private bool ReadRaw(Binding b)
-    {
-        var pad = _devices.Gamepad;
-        bool down = b.Source switch
-        {
-            Source.Key => _devices.Keyboard.IsKeyDown(b.Key),
-            Source.MouseButton => _devices.Mouse.IsButtonDown(b.MouseButton),
-            // A trigger is analogue, so "down" needs two thresholds or it chatters where it rests
-            // (#60). `IsButtonDown(LeftTrigger)` is one fixed threshold, which is the chatter.
-            Source.PadButton when b.IsTrigger =>
-                InputEdges.TriggerDown(b.RightSide ? pad.RightTrigger : pad.LeftTrigger, b.TriggerWasDown),
-            Source.PadButton => pad.IsDown(b.PadButton),
-            _ => false,
-        };
-        if (b.IsTrigger) b.TriggerWasDown = down;
-        b.RawDown = down;
-        return down;
-    }
-
-    private void ConsumeRange(int start, int count) => Array.Fill(_consumed, true, start, count);
-
-    private bool IsConsumed(Binding b)
-    {
-        foreach (int slot in b.Slots)
-            if (_consumed[slot]) return true;
-        return false;
-    }
-
-    private void Evaluate(Binding b, float dt, bool consumed)
-    {
-        int i = b.Action.Id.Index;
-        var kb = _devices.Keyboard;
-        var mouse = _devices.Mouse;
-        var pad = _devices.Gamepad;
-        var d = b.Desc;
-
-        if (b.Action.Kind == ActionKind.Button)
-        {
-            // Already read in the raw pass; this only decides whether the action *hears* it.
-            if (!consumed) _held[i] |= b.RawDown;
-            return;
-        }
-
-        if (consumed) return;
-
-        Vector2 v = b.Source switch
-        {
-            Source.Key => new Vector2(kb.IsKeyDown(b.Key) ? 1 : 0, 0),
-            Source.MouseButton => new Vector2(mouse.IsButtonDown(b.MouseButton) ? 1 : 0, 0),
-            Source.PadButton or Source.PadTrigger or Source.PadStick => ReadPadAxis(b, pad),
-            Source.MouseWheel => new Vector2(mouse.ScrollWheelDelta / 120f, 0),
-            Source.MouseDelta => new Vector2(mouse.PositionDelta.X, -mouse.PositionDelta.Y * (_invertY.Value ? -1 : 1)) * _sensitivity.Value,
-            Source.Composite => new Vector2(
-                (kb.IsKeyDown(b.Composite[3]) ? 1 : 0) - (kb.IsKeyDown(b.Composite[2]) ? 1 : 0),
-                (kb.IsKeyDown(b.Composite[0]) ? 1 : 0) - (kb.IsKeyDown(b.Composite[1]) ? 1 : 0)),
-            _ => Vector2.Zero,
-        };
-        _axis[i] += Shape(b, v, dt);
-    }
-
-    private static Vector2 Shape(Binding b, Vector2 v, float dt)
-    {
-        var d = b.Desc;
-        v *= d.Scale;
-        if (d.Invert) v = b.Action.Kind == ActionKind.Axis1D ? -v : new Vector2(v.X, -v.Y);
-        if (d.Rate) v *= dt;
-        return v;
-    }
-
-    // A pad binding's value as an axis, from whichever pad is asked. `joy_deadzone` is a floor under the binding's
-    // own dead zone; the curve shapes sticks (a trigger's travel stays linear). Radial, in `StickResponse`.
-    private Vector2 ReadPadAxis(Binding b, GamepadListener pad)
-    {
-        float deadzone = MathF.Max(b.Desc.Deadzone, _joyDeadzone.Value);
-        return b.Source switch
-        {
-            Source.PadButton => new Vector2(pad.IsDown(b.PadButton) ? 1 : 0, 0),
-            Source.PadTrigger => new Vector2(StickResponse.Apply(b.RightSide ? pad.RightTrigger : pad.LeftTrigger, deadzone), 0),
-            Source.PadStick => StickResponse.Apply(b.RightSide ? pad.RightStick.ToNumerics() : pad.LeftStick.ToNumerics(), deadzone, _curve),
-            _ => Vector2.Zero,
-        };
-    }
-
-    private void ParseCurve()
-    {
-        if (StickResponse.TryParseCurve(_joyCurve.Value, out float exponent)) _curve = exponent;
-        else Log.Warn(LogCat.Input, $"joy_curve '{_joyCurve.Value}': use linear, quadratic, cubic or a number from 0.1 to 8");
-    }
-
-    // ---- The other local players (issue #331) ----------------------------------------------------------
-
-    public int LocalPlayers => _devices.Pads.Players;
-    public ActionMask HeldMaskOf(int player) => player == 0 ? _heldBits : _frames[player].HeldBits;
-    public ActionMask PressedMaskOf(int player) => player == 0 ? _pressedBits : _frames[player].PressedBits;
-    public ActionMask ReleasedMaskOf(int player) => player == 0 ? _releasedBits : _frames[player].ReleasedBits;
-    public Vector2 Axis2Of(int player, ActionId a)
-    {
-        if (player == 0) return Axis2(a);
-        var axis = _frames[player].Axis;
-        return a.IsValid && a.Index < axis.Length ? axis[a.Index] : Vector2.Zero;
-    }
-
-    // Player `p`'s frame: their pad against the gameplay context's pad bindings, then their scripts. Held back
-    // while a console, a screen or the dev UI has the input (the first player's keyboard is theirs; a second
-    // person's pad must not walk their pawn behind an open inventory). Scripts are not held back, as for the first.
-    private void UpdateSecondary(int p, float dt)
-    {
-        var f = _frames[p];
-        int n = _registry.All.Count;
-        if (f.Held.Length != n)
-        {
-            Array.Resize(ref f.Held, n); Array.Resize(ref f.RawHeld, n); Array.Resize(ref f.WasRawHeld, n); Array.Resize(ref f.Axis, n);
-        }
-        Array.Copy(f.RawHeld, f.WasRawHeld, n);
-        Array.Clear(f.Held); Array.Clear(f.RawHeld); Array.Clear(f.Axis);
-
-        if (!IsActive(InputContext.Console) && !IsActive(InputContext.UI) && !IsActive(InputContext.Editor))
-        {
-            var pad = _devices.PadFor(p);
-            foreach (var b in _bindings[(int)InputContext.Gameplay])
-            {
-                if (b.Source is not (Source.PadButton or Source.PadTrigger or Source.PadStick)) continue;
-                int i = b.Action.Id.Index;
-                if (b.Action.Kind == ActionKind.Button)
-                {
-                    bool down = b.IsTrigger
-                        ? InputEdges.TriggerDown(b.RightSide ? pad.RightTrigger : pad.LeftTrigger, b.TriggerWasDownOthers[p])
-                        : pad.IsDown(b.PadButton);
-                    if (b.IsTrigger) b.TriggerWasDownOthers[p] = down;
-                    f.Held[i] |= down;
-                    f.RawHeld[i] |= down;
-                }
-                else f.Axis[i] += Shape(b, ReadPadAxis(b, pad), dt);
-            }
-        }
-        _script.Apply(p, dt, _registry, f.Held, f.RawHeld, f.Axis);
-
-        f.HeldBits = f.PressedBits = f.ReleasedBits = default;
-        var all = _registry.All;
-        for (int a = 0; a < all.Count; a++)
-        {
-            var info = all[a];
-            if (info.Kind != ActionKind.Button) continue;
-            int i = info.Id.Index;
-            bool swallowed = f.RawHeld[i] && !f.Held[i];
-            if (InputEdges.Held(f.RawHeld[i], swallowed)) f.HeldBits = f.HeldBits.With(info.Id);
-            if (InputEdges.Pressed(f.RawHeld[i], f.WasRawHeld[i], swallowed)) f.PressedBits = f.PressedBits.With(info.Id);
-            if (InputEdges.Released(f.RawHeld[i], f.WasRawHeld[i])) f.ReleasedBits = f.ReleasedBits.With(info.Id);
-        }
-    }
-
-    // The mixer's motors go to the pads (`joy_rumble` is its gain). The host calls this once a frame.
-    public void ApplyRumble(RumbleMixer? mixer)
-    {
-        if (mixer != null) mixer.Gain = _joyRumble.Value;
-        _devices.ApplyRumble(mixer, _devices.Focused);
-    }
-
-    private void EnsureCapacity()
-    {
-        int n = _registry.All.Count;
-        if (_held.Length == n) return;
-        Array.Resize(ref _held, n);
-        Array.Resize(ref _rawHeld, n);
-        Array.Resize(ref _wasRawHeld, n);
-        Array.Resize(ref _axis, n);
-    }
-
-    // ---- Bindings from records ----
-
     // Rebuilds every context's bindings from the merged input_map records (boot and hot reload).
-    public void Rebuild()
+    public void Rebuild() => _mapper.Rebuild(_records);
+
+    // MonoGame's names for the mapper (`Keys`, `Buttons`): the one thing the pure logic cannot know.
+    private sealed class Vocabulary : IInputVocabulary
     {
-        foreach (var list in _bindings) list.Clear();
-        int count = 0, errors = 0;
-        foreach (var id in _records.Ids("input_map"))
-        {
-            if (!_records.TryGet(id, out InputMapRecord map)) continue;
-            foreach (var (actionName, bindings) in map.Actions)
-            {
-                if (!_registry.TryGet(actionName, out var action))
-                {
-                    Log.Warn(LogCat.Input, $"{id}: action '{actionName}' isn't registered by any module; its bindings are ignored");
-                    continue;
-                }
-                for (int n = 0; n < bindings.Count; n++)
-                {
-                    string where = $"{id} {actionName}[{n}]";
-                    var compiled = Compile(action, bindings[n], where, out string? error);
-                    if (compiled == null) { Log.Error(LogCat.Input, $"{where}: {error}"); errors++; continue; }
-                    _bindings[(int)map.Context].Add(compiled);
-                    count++;
-                }
-            }
-        }
-        WarnConflicts();
-        Log.Info(LogCat.Input, $"Input: {count} bindings in {_bindings.Count(l => l.Count > 0)} contexts" + (errors > 0 ? $" ({errors} invalid, see above)" : ""));
-    }
+        public static readonly Vocabulary Instance = new();
 
-    private static Binding? Compile(ActionInfo action, InputBinding desc, string where, out string? error)
-    {
-        error = null;
-        var b = new Binding { Action = action, Desc = desc, Where = where };
-        int set = (desc.Key != null ? 1 : 0) + (desc.Mouse != null ? 1 : 0) + (desc.Gamepad != null ? 1 : 0) + (desc.Composite != null ? 1 : 0);
-        if (set != 1) { error = "a binding needs exactly one of key, mouse, gamepad, composite"; return null; }
-
-        if (desc.Key != null)
+        public bool TryKey(string name, out int code)
         {
-            if (!Enum.TryParse(desc.Key, true, out Keys key) || !Enum.IsDefined(key)) { error = $"unknown key '{desc.Key}'"; return null; }
-            b.Source = Source.Key; b.Key = key; b.Slots = new[] { (int)key };
-        }
-        else if (desc.Mouse != null)
-        {
-            switch (desc.Mouse.ToLowerInvariant())
-            {
-                case "left": b.Source = Source.MouseButton; b.MouseButton = MouseButton.LEFT; break;
-                case "right": b.Source = Source.MouseButton; b.MouseButton = MouseButton.RIGHT; break;
-                case "middle": b.Source = Source.MouseButton; b.MouseButton = MouseButton.MIDDLE; break;
-                case "delta": b.Source = Source.MouseDelta; break;
-                case "wheel": b.Source = Source.MouseWheel; break;
-                default: error = $"unknown mouse input '{desc.Mouse}' (Left, Right, Middle, Delta, Wheel)"; return null;
-            }
-            b.Slots = new[] { b.Source switch
-            {
-                Source.MouseDelta => MouseDeltaSlot,
-                Source.MouseWheel => MouseWheelSlot,
-                _ => MouseButtonSlot + System.Numerics.BitOperations.Log2((uint)b.MouseButton),
-            } };
-        }
-        else if (desc.Gamepad != null)
-        {
-            string name = desc.Gamepad.ToLowerInvariant();
-            if (name is "leftstick" or "rightstick")
-            {
-                b.Source = Source.PadStick; b.RightSide = name == "rightstick"; b.Slots = new[] { PadStickSlot + (b.RightSide ? 1 : 0) };
-            }
-            else
-            {
-                string buttonName = name switch { "leftstickbutton" => "LeftStick", "rightstickbutton" => "RightStick", _ => desc.Gamepad };
-                if (!Enum.TryParse(buttonName, true, out Buttons button) || !Enum.IsDefined(button)) { error = $"unknown gamepad input '{desc.Gamepad}'"; return null; }
-                bool trigger = button is Buttons.LeftTrigger or Buttons.RightTrigger;
-                b.Source = trigger && action.Kind == ActionKind.Axis1D ? Source.PadTrigger : Source.PadButton;
-                b.PadButton = button;
-                b.RightSide = button == Buttons.RightTrigger;
-                b.Slots = new[] { PadButtonSlot + System.Numerics.BitOperations.Log2((uint)button) };
-            }
-        }
-        else
-        {
-            b.Source = Source.Composite;
-            b.Composite = desc.Composite!.ToUpperInvariant() switch
-            {
-                "WASD" => new[] { Keys.W, Keys.S, Keys.A, Keys.D },
-                "ARROWS" => new[] { Keys.Up, Keys.Down, Keys.Left, Keys.Right },
-                _ => Array.Empty<Keys>(),
-            };
-            if (b.Composite.Length == 0) { error = $"unknown composite '{desc.Composite}' (WASD, Arrows)"; return null; }
-            b.Slots = b.Composite.Select(k => (int)k).ToArray();
+            code = 0;
+            if (!Enum.TryParse(name, true, out Keys key) || !Enum.IsDefined(key)) return false;
+            code = (int)key;
+            return true;
         }
 
-        bool fits = action.Kind switch
+        public bool TryPadButton(string name, out int bit, out int trigger)
         {
-            ActionKind.Button => b.Source is Source.Key or Source.MouseButton or Source.PadButton,
-            ActionKind.Axis1D => b.Source is not (Source.MouseDelta or Source.PadStick or Source.Composite),
-            _ => b.Source is Source.MouseDelta or Source.PadStick or Source.Composite,
-        };
-        if (!fits) { error = $"{desc} can't drive the {action.Kind} action {action.Name}"; return null; }
-        return b;
-    }
-
-    // Two actions bound to the same input in one context: both fire. Warn, since it's usually a mistake.
-    private void WarnConflicts()
-    {
-        for (int c = 0; c < _bindings.Length; c++)
-        {
-            var seen = new Dictionary<int, Binding>();
-            foreach (var b in _bindings[c])
-                foreach (int slot in b.Slots)
-                {
-                    if (seen.TryGetValue(slot, out var other) && other.Action != b.Action)
-                        Log.Warn(LogCat.Input, $"{(InputContext)c}: {b.Where} and {other.Where} use the same input ({b.Desc})");
-                    else seen[slot] = b;
-                }
+            bit = 0; trigger = 0;
+            if (!Enum.TryParse(name, true, out Buttons button) || !Enum.IsDefined(button)) return false;
+            bit = System.Numerics.BitOperations.Log2((uint)button);
+            trigger = button == Buttons.LeftTrigger ? 1 : button == Buttons.RightTrigger ? 2 : 0;
+            return true;
         }
     }
 
-    private void ListBindings()
+    // Another local player's pad as the mapper reads it (issue #331).
+    private sealed class PadState : IPadInput
     {
-        foreach (var context in ContextOrder)
-        {
-            var list = _bindings[(int)context];
-            if (list.Count == 0) continue;
-            Log.Info(LogCat.Console, $"{context}:");
-            foreach (var group in list.GroupBy(b => b.Action.Name))
-                Log.Info(LogCat.Console, $"  {group.Key,-14} {string.Join(", ", group.Select(b => b.Desc.ToString()))}");
-        }
+        private readonly InputDevices _devices;
+        private readonly int _player;
+        public PadState(InputDevices devices, int player) { _devices = devices; _player = player; }
+        public bool PadDown(int bit) => _devices.PadFor(_player).IsDown((Buttons)(1 << bit));
+        public float Trigger(bool right) { var pad = _devices.PadFor(_player); return right ? pad.RightTrigger : pad.LeftTrigger; }
+        public System.Numerics.Vector2 Stick(bool right) { var pad = _devices.PadFor(_player); return (right ? pad.RightStick : pad.LeftStick).ToNumerics(); }
+    }
+
+    // The devices as the mapper reads them.
+    private sealed class DeviceState : IInputState
+    {
+        private readonly InputDevices _devices;
+        public DeviceState(InputDevices devices) => _devices = devices;
+        public bool KeyDown(int key) => _devices.Keyboard.IsKeyDown((Keys)key);
+        public bool MouseDown(MouseInput button) => _devices.Mouse.IsButtonDown((MouseButton)(1 << (int)button));
+        public bool PadDown(int bit) => _devices.Gamepad.IsDown((Buttons)(1 << bit));
+        public float Trigger(bool right) => right ? _devices.Gamepad.RightTrigger : _devices.Gamepad.LeftTrigger;
+        public System.Numerics.Vector2 Stick(bool right) => (right ? _devices.Gamepad.RightStick : _devices.Gamepad.LeftStick).ToNumerics();
+        public float WheelDelta => _devices.Mouse.ScrollWheelDelta;
+        public System.Numerics.Vector2 MouseDelta { get { var d = _devices.Mouse.PositionDelta; return new System.Numerics.Vector2(d.X, d.Y); } }
     }
 }

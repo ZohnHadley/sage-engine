@@ -105,6 +105,14 @@
         }
       ]
     },
+    "sound": {
+      "description": "What landing this attack sounds like, in place of its damage type's sound (a war hammer and a dagger both do physical damage); empty = the damage type's. Names a sound record. (RecordRef<SoundRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:sound"
+        }
+      ]
+    },
     "viewmodel": {
       "description": "Names a sprite_sheet record. (RecordRef<SpriteSheetRecord>)",
       "allOf": [
