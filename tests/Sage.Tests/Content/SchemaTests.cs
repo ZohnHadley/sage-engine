@@ -40,7 +40,8 @@ public class SchemaTests
                                                                       ("tests/games/open-world", null),
                                                                       ("tests/games/mods", null),
                                                                       ("tests/games/editor", null),
-                                                                      ("tests/games/render-check", null) })
+                                                                      ("tests/games/render-check", null),
+                                                                      ("tests/games/kit-screens", null) })
         {
             var report = ContentValidation.Run(new ValidateOptions
             {

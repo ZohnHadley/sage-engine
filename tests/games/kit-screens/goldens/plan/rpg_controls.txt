@@ -1,0 +1,89 @@
+# rpg:controls: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on tabGameplay
+rect 360,184.25 560x351.5 #141414e0 @window
+border 360,184.25 560x351.5 #5a4a30ff width 1 @window
+text 368,194.25 72x13.5 #f0e0b0ff scale 1.5 "Controls" @title
+rect 368,215.75 60x15 #2a2620ff>#5a4a30ff @tabGameplay
+border 368,215.75 60x15 #5a4a30ff>#f0e0b0ff width 1 @tabGameplay
+text 374,218.75 48x9 #e0d8c8ff scale 1 "Gameplay" @tabGameplay
+rect 436,215.75 42x15 #2a2620ff @tabUI
+border 436,215.75 42x15 #5a4a30ff width 1 @tabUI
+text 442,218.75 30x9 #e0d8c8ff scale 1 "Menus" @tabUI
+rect 486,215.75 48x15 #2a2620ff @tabEditor
+border 486,215.75 48x15 #5a4a30ff width 1 @tabEditor
+text 492,218.75 36x9 #e0d8c8ff scale 1 "Editor" @tabEditor
+rect 542,215.75 54x15 #2a2620ff @tabConsole
+border 542,215.75 54x15 #5a4a30ff width 1 @tabConsole
+text 548,218.75 42x9 #e0d8c8ff scale 1 "Console" @tabConsole
+text 368,236.75 48x9 #908878ff scale 1 "Gameplay" @context
+pushclip 368,251.75 544x240 @list
+text 368,254.75 54x9 #e0d8c8ff scale 1 "Spellbook" @action
+text 536,254.75 6x9 #908878ff scale 1 "B" @bindings
+rect 864,251.75 48x15 #2a2620ff @rebind
+border 864,251.75 48x15 #5a4a30ff width 1 @rebind
+text 870,254.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,271.75 60x9 #e0d8c8ff scale 1 "Spellmaker" @action
+text 536,271.75 6x9 #908878ff scale 1 "M" @bindings
+rect 864,268.75 48x15 #2a2620ff @rebind
+border 864,268.75 48x15 #5a4a30ff width 1 @rebind
+text 870,271.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,288.75 42x9 #e0d8c8ff scale 1 "Journal" @action
+text 536,288.75 6x9 #908878ff scale 1 "J" @bindings
+rect 864,285.75 48x15 #2a2620ff @rebind
+border 864,285.75 48x15 #5a4a30ff width 1 @rebind
+text 870,288.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,305.75 24x9 #e0d8c8ff scale 1 "Rest" @action
+text 536,305.75 6x9 #908878ff scale 1 "T" @bindings
+rect 864,302.75 48x15 #2a2620ff @rebind
+border 864,302.75 48x15 #5a4a30ff width 1 @rebind
+text 870,305.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,322.75 24x9 #e0d8c8ff scale 1 "Jump" @action
+text 536,322.75 72x9 #908878ff scale 1 "Space, Pad A" @bindings
+rect 864,319.75 48x15 #2a2620ff @rebind
+border 864,319.75 48x15 #5a4a30ff width 1 @rebind
+text 870,322.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,339.75 36x9 #e0d8c8ff scale 1 "Attack" @action
+text 536,339.75 168x9 #908878ff scale 1 "Mouse Left, Pad RightTrigger" @bindings
+rect 864,336.75 48x15 #2a2620ff @rebind
+border 864,336.75 48x15 #5a4a30ff width 1 @rebind
+text 870,339.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,356.75 36x9 #e0d8c8ff scale 1 "Reload" @action
+text 536,356.75 114x9 #908878ff scale 1 "R, Pad LeftShoulder" @bindings
+rect 864,353.75 48x15 #2a2620ff @rebind
+border 864,353.75 48x15 #5a4a30ff width 1 @rebind
+text 870,356.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,373.75 18x9 #e0d8c8ff scale 1 "Use" @action
+text 536,373.75 48x9 #908878ff scale 1 "E, Pad X" @bindings
+rect 864,370.75 48x15 #2a2620ff @rebind
+border 864,370.75 48x15 #5a4a30ff width 1 @rebind
+text 870,373.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,390.75 18x9 #e0d8c8ff scale 1 "Run" @action
+text 536,390.75 180x9 #908878ff scale 1 "LeftShift, Pad LeftStickButton" @bindings
+rect 864,387.75 48x15 #2a2620ff @rebind
+border 864,387.75 48x15 #5a4a30ff width 1 @rebind
+text 870,390.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,407.75 36x9 #e0d8c8ff scale 1 "Crouch" @action
+text 536,407.75 108x9 #908878ff scale 1 "LeftControl, Pad B" @bindings
+rect 864,404.75 48x15 #2a2620ff @rebind
+border 864,404.75 48x15 #5a4a30ff width 1 @rebind
+text 870,407.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,424.75 60x9 #e0d8c8ff scale 1 "ToggleView" @action
+text 536,424.75 138x9 #908878ff scale 1 "V, Pad RightStickButton" @bindings
+rect 864,421.75 48x15 #2a2620ff @rebind
+border 864,421.75 48x15 #5a4a30ff width 1 @rebind
+text 870,424.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,441.75 54x9 #e0d8c8ff scale 1 "QuickSave" @action
+text 536,441.75 12x9 #908878ff scale 1 "F5" @bindings
+rect 864,438.75 48x15 #2a2620ff @rebind
+border 864,438.75 48x15 #5a4a30ff width 1 @rebind
+text 870,441.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+text 368,458.75 54x9 #e0d8c8ff scale 1 "QuickLoad" @action
+text 536,458.75 12x9 #908878ff scale 1 "F9" @bindings
+rect 864,455.75 48x15 #2a2620ff @rebind
+border 864,455.75 48x15 #5a4a30ff width 1 @rebind
+text 870,458.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+popclip 0,0 0x0 @list
+rect 368,497.75 544x15 #2a2620ff @resetAll
+border 368,497.75 544x15 #5a4a30ff width 1 @resetAll
+text 613,500.75 54x9 #e0d8c8ff scale 1 "Reset all" @resetAll
+text 368,518.75 204x9 #908878ff scale 1 "Changes apply at once.    B: close" @hint

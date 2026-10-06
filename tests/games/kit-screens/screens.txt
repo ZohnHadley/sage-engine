@@ -1,0 +1,30 @@
+# The kit screens checked (issue #355), one line each. Read by tools/kit_screens_check.sh, which opens each in
+# the real client and compares the drawn frame with goldens/frame/<name>.json (r_framecheck), and by
+# tests/Sage.Tests/Kits/KitScreenGoldenTests.cs, which opens each `ui` screen headlessly and compares its render
+# plan with goldens/plan/<name>.txt (a panel screen has no plan). <name> is the screen with ':' as '_'.
+#
+#   <screen> ui [other]     a screen record, opened with `ui_open <screen> [other]` (other: an entity, by name)
+#   <name> tap <action>     a panel screen a button opens (the kit's keys), closed with MenuBack
+#   <name> use              what the Use button opens on the ferryman, a step in front of the player
+#
+# A new kit screen is one line here, then its goldens: `tools/kit_screens_check.sh <host> --update` and
+# `SAGE_UPDATE_GOLDENS=1 dotnet test tests/Sage.Tests --filter KitScreenGoldenTests`; look at the frames
+# (user/kitscreens/screenshots/framecheck-*.png) and the plans before committing them.
+#
+# screen          how   argument
+rpg:title         ui
+rpg:pause         ui
+rpg:save          ui
+rpg:load          ui
+rpg:options       ui
+rpg:controls      ui
+rpg:mods          ui
+rpg:inventory     ui
+rpg:equipment     ui
+rpg:loot          ui    chest
+rpg:shop          ui    trader
+rpg:topics        ui    ferryman
+rpg:rest          ui
+dialogue          use
+journal           tap   Journal
+spellmaker        tap   Spellmaker
