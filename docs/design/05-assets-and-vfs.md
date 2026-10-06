@@ -14,7 +14,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 - Additive mods instead of whole-module replacement: Warband (survey §1.6).
 - Authoring vs runtime formats; stable identity (Unity GUIDs, Godot paths + `.uid`); handles for hot reload: survey §2.3, §2.4, §3.4.
 - Data-driven templates: Dungeon Siege (survey §3.2).
-- MonoGame specifics (verified 2026-09): `Texture2D.FromStream` uses StbImageSharp (png/jpg/bmp/gif; **not tga**) with an optional premultiply processor. 3.8.5 adds a code-centric C# content builder (survey §3.7).
+- MonoGame specifics (verified 2026-09): `Texture2D.FromStream` uses StbImageSharp (png/jpg/bmp/gif, and tga too, despite its documentation: "What can be hot reloaded" below) with an optional premultiply processor. 3.8.5 adds a code-centric C# content builder (survey §3.7).
 
 ## 3. Concepts
 
@@ -48,6 +48,30 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
   4. A handle to an evicted asset reports `Unloaded`, and `Get` returns the placeholder with a dev warning.
 - **States:** `Loading → Loaded | Failed`, then later `Unloaded`. Consumers either check `IsReady` or just draw. Loading and failed assets render as placeholders, so nothing ever has to null-check.
 
+**As built (asset scopes, 2026-10-06, issue #308).** Not the `AssetServer` and `AssetRef<T>` sketched above,
+but the part of it that frees memory. The bookkeeping is headless in `Sage.Simulation`
+(`Content/AssetScopes.cs`: `AssetTable`, `AssetReleases`, `UploadBudget`, `SectorAssets`); the client's
+`ContentService` loads meshes and textures by id into it, and `AssetScopeSystem` (`sage.client.asset_scopes`,
+first in FrameUpdate) is the frame's safe point where things are freed. Tests:
+`tests/Sage.Tests/Streaming/AssetScopeTests.cs`.
+- **Four scopes:** `Engine` (placeholders, engine shaders: never released), `Game` (kept for the process:
+  the viewmodel, a world that does not stream, the post chain; `ContentService.LoadTexture` loads here),
+  `Sector` (a streaming world's content) and `Ui` (a screen's pictures). Asked for at two, the stronger
+  wins, and ids stay stable (test: TheTableKeepsIdsStableAndEvictsByScope).
+- **Release.** `SectorAssets` counts how many live entities hold each mesh and texture; when a sector
+  unloads, what it let go of is freed at the next safe point unless a live entity in any world still holds
+  it (test: ASectorsAssetsAreReleasedWhenItUnloadsAndSharedOnesAreKept), or something takes it up again
+  first (test: AnAssetTakenUpAgainBeforeTheSafePointIsKept). A `Ui` texture no screen drew for 300 frames
+  (`AssetScopes.UiKeepFrames`) is evicted. Loading and unloading fifty sectors returns the texture and mesh
+  counts to their baseline (test: LoadingAndUnloadingFiftySectorsReturnsTextureAndMeshCountsToBaseline).
+- **Upload budget.** `Sector` loads keep to `asset_upload_ms` a frame (Archive, default 2, 0 to 100; 0 is
+  no budget); the first load of a frame always starts, and what does not fit waits for the next frame
+  (test: TheUploadBudgetSpreadsStreamedLoadsOverFrames). `asset_list [filter]` lists every mesh and texture
+  with its scope, holders and size, then what was evicted and what the budget deferred.
+- **Not yet:** sounds and effects are never evicted; material texture loads are not budgeted; decoding runs
+  on the main thread; there is no `AssetRef` handle, and a `MeshHandle` used after `DestroyMesh` may draw
+  whatever reused its slot; no LRU cache keeps a released asset warm (`asset_cache_mb` is not a cvar).
+
 ### 3.4 Loaders and the sim/client split
 - An `IAssetLoader<T>` is registered by a module for one or more extensions. It has two stages:
   1. **Decode:** worker thread, pure CPU (parse glTF, decode PNG, read WAV), producing a CPU-side payload.
@@ -61,7 +85,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 
 | Type | Source format | Loader | Notes |
 |---|---|---|---|
-| `Texture` (MonoGame `Texture2D`) | `.png`, `.jpg` | `Texture2D.FromStream` + `PremultiplyAlpha` processor, or the cooked `.sgtex` beside it (§7) | tga isn't supported by `FromStream`; convert to png |
+| `Texture` (MonoGame `Texture2D`) | `.png`, `.jpg` | `Texture2D.FromStream` + `PremultiplyAlpha` processor, or the cooked `.sgtex` beside it (§7) | `.tga` loads too (StbImageSharp) and cooks since #317 |
 | `SpriteSheetData` | **built as the `sprite_sheet` record** (§3.5), not a `.sheet.json` asset (12 "As built") | **sim** | Timings and events are needed by the simulation (melee "hit" frames, 12). The texture is loaded separately |
 | `SpriteSheet` | `.png` + its `SpriteSheetData` | client | the Daggerfall-style creature/NPC sprites (06, 12) |
 | `Mesh` | `.glb` | SharpGLTF → our vertex/index buffers, one part per primitive | **built (R12)**: `MeshGeometry.ReadGlb` (`Sage.Simulation`, headless; the client's `GltfLoader` until issue #302 moved it, §10), or the cooked `.sgmesh` beside the file (§7); node transforms baked in, winding flipped once on load. **Binary only** — a text `.gltf` keeps its buffers in files beside it, which a mount cannot always hand over, so it is refused rather than half-loaded (§8). Material slots still to come |
@@ -423,7 +447,7 @@ it is MAKING_A_GAME §3, "Editing records in VS Code".
   one. Both halves are needed, and the bug that taught us so is worth keeping: a holder that keeps the
   old wrapper draws from a **disposed** texture, which GL renders as black boxes where the text was,
   with nothing logged anywhere.
-- **Not done here:** the asset *server* with scopes, async loading and ref-counting (§3.3).
+- **Not done here:** the asset *server* with scopes, async loading and ref-counting (§3.3); scopes and release came with #308 ("As built (asset scopes)" in §3.3), async loading has not.
 
 ### As built (hot reload of meshes, sounds and shaders, issue 4h-3)
 
@@ -691,7 +715,20 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 - **When one is used.** A cooked file stands in for its loose file only when its mount is at least as high as the loose file's, so a mod's loose `wall.png` (a later mount) beats the game's cooked `wall.png.sgtex`, which was made from the file the mod replaced (§3.2: the last mount wins, cooked or not) (test: TheCookedFileStandsInForTheLooseOneInItsMountAndALaterMountsLooseFileWins). A cooked file that cannot be read, or that was cooked from a file of another length (checked only where the mount is a folder that can say so), is a warning once and the loose file is read (test: AnUnreadableOrOutOfDateCookedFileFallsBackToTheLooseOneWithAWarning). Staleness is by length, not by hash, on a folder mount; `sage cook` itself skips a file only when length and hash both match.
 - **Round trips.** A cooked mesh reads back as exactly the geometry of its `.glb` (test: ACookedMeshReadsBackAsTheGeometryOfItsGlb); a texture cooks to blocks when it can and to exact premultiplied pixels when it cannot, or when game.json's `"cook": { "compress": false }` or an `"uncompressed"` glob says so (tests: ATextureCooksToBlocksWhenItCanAndToExactPremultipliedPixelsWhenItCannot, GameJsonCookSettingsAreReadAndAMisspeltKeyIsRefused, UncompressedPatternsAreGlobsInsideAMount); block compression is exact on flat blocks and close on gradients (test: BlockCompressionIsExactOnFlatBlocksAndCloseOnGradients). A graphics device that does not sample DXT1/DXT5 gets the blocks decoded to RGBA as they load (a warning once). `sage cook` skips what is up to date (test: CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate), and `sage package` cooks (test: APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff).
 - **What it buys, measured** on the Sandbox's own models and textures: loading cooked takes about 0.05 ms against about 10 ms loose (no glTF parse, no PNG inflate, no premultiply), allocates about 322 KB against 2143 KB, and the textures take about 217 KB of GPU memory against 902 KB as RGBA; the test asserts at least twice as fast, at most half the allocation and at most a third of the memory (test: CookedAssetsLoadFasterWithLessAllocationAndTexturesTakeLessMemory). The numbers are from one machine; the test is what holds.
-- **Not built:** mipmaps; cooking the engine's `Content/` or a game's `mods/` (a package's mods stay loose); formats other than `.glb` and `.png`/`.jpg`/`.jpeg`; dropping the loose files from a package; a hash check at load (a folder mount is checked by length); `.pak` mounts (#397). Block-compressed `SetData` on a Direct3D device is untested (CI's client run is on Linux).
+- **Not built:** cooking the engine's `Content/` or a game's `mods/` (a package's mods stay loose); formats other than `.glb` and `.png`/`.jpg`/`.jpeg` (and `.tga` since #317); dropping the loose files from a package; a hash check at load (a folder mount is checked by length); `.pak` mounts (#397). Block-compressed `SetData` on a Direct3D device is untested (CI's client run is on Linux).
+
+
+**As built (mipmaps and TGA, 2026-10-06, issue #317).** Every texture gets its mip chain: loose files when
+they load (`TextureMips`, box-filtered premultiplied pixels, each side halving down to one texel), cooked
+ones from the `.sgtex`, which is version 2 and stores the chain per level, uncompressed or as BC1/BC3
+blocks; a `.sgtex` from before mips is stale and the loose file loads instead, so cook again. `.tga` loads
+and cooks like `.png` (test: AMipChainHalvesEachSideDownToOneTexelAndBoxFiltersPremultipliedPixels) (test: ATgaFromAModFolderLoadsPremultipliedWithItsMipsAndIsCooked). How the mips are sampled
+(`r_anisotropy`) is 07 §3.8.
+
+**As built (meshes, 2026-10-06, issues #410 and #321).** A mesh vertex carries a tangent and a colour
+(`MeshVertex`, 52 bytes; `SkinnedMeshVertex`, 72), and a part may keep a second UV set (`Uv1`, for
+lightmaps). The `.sgmesh` is version 3 (version 2 added the tangent and colour, version 3 the second UV
+set); an older one is refused with a warning and the `.glb` is read.
 
 ## 8. Errors and fallbacks
 | Failure | Behaviour |
@@ -703,11 +740,50 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 | Non-patch redefinition | `Error` naming both files; the later one is treated as a patch |
 | Corrupt `.pak` | Mount skipped, `Error`; boot continues |
 
+### The glTF subset (as built, 2026-10-06, issue #321)
+A model is held to one table, `GltfSubset.Features` in `src/Sage.Simulation/Content/GltfSubset.cs`, which
+the check reads before SharpGLTF decodes anything. A file with a rejected feature does not load: one error
+per feature, naming the file and the feature, such as `Model 'x': glTF feature 'morph-targets' is not
+supported: the file has morph targets ...` (test: AFileWithAnUnsupportedFeatureFailsWithOneErrorNamingTheFileAndTheFeature),
+and every rejected row has a test (test: EachRejectedFeatureOfTheTableHasATestOrIsTheNoGeometryCase). What
+is read past is a warning. The second UV set and the colours are read
+(test: TheSecondUvSetAndTheColoursAreRead) and survive the cook (test: TheSecondUvSetSurvivesTheCook).
+The guides copy this table (`GltfSubset.Table()`); MAKING_A_GAME "Model formats" has it too.
+
+| Feature | Support | What it covers |
+|---|---|---|
+| `glb` | Supported | Binary glTF 2.0 (.glb), buffers embedded |
+| `scene-graph` | Supported | Default scene (or every root node), node hierarchy and transforms (baked into the vertices of a rigid mesh) |
+| `positions-normals-uv0` | Supported | POSITION, NORMAL, TEXCOORD_0, TANGENT (worked out from TEXCOORD_0 when absent), triangle indices (any index width) |
+| `color-0` | Supported | COLOR_0 (vec3 or vec4, float or normalised integer), white without one |
+| `texcoord-1` | Supported | TEXCOORD_1: a second UV set (lightmaps), kept beside the vertices as `Uv1` |
+| `skinning` | Supported | One skin of up to 64 joints, JOINTS_0 and WEIGHTS_0 (four influences per vertex) |
+| `primitive-triangles` | Supported | Primitive modes TRIANGLES, TRIANGLE_STRIP and TRIANGLE_FAN |
+| `materials` | Ignored | The file's materials and textures: the material record named by whatever draws the mesh decides |
+| `animations` | Ignored | Animation clips are read by the animation reader, not the mesh reader; cameras and lights are not read |
+| `extra-attribute-sets` | Ignored | TEXCOORD_2 and up, COLOR_1 and up: dropped, with a warning |
+| `not-gltf` | Rejected | A file that is not glTF 2.0 (bad header, broken JSON chunk) |
+| `text-gltf` | Rejected | Text .gltf with its buffers in separate files |
+| `external-buffers` | Rejected | A buffer stored in a separate file (a `uri` that is not a data: URI) |
+| `morph-targets` | Rejected | Morph targets (blend shapes) |
+| `sparse-accessors` | Rejected | Sparse accessors |
+| `draco` | Rejected | KHR_draco_mesh_compression |
+| `meshopt` | Rejected | EXT_meshopt_compression / KHR_meshopt_compression |
+| `required-extension` | Rejected | Any other extension the file lists in extensionsRequired |
+| `primitive-mode` | Rejected | Primitive modes POINTS, LINES, LINE_LOOP and LINE_STRIP |
+| `more-influences` | Rejected | More than four joint influences per vertex (JOINTS_1 / WEIGHTS_1) |
+| `too-many-joints` | Rejected | A skin of more than 64 joints |
+| `multiple-skins` | Rejected | More than one skin |
+| `no-geometry` | Rejected | A file with no drawable triangle primitive |
+
+Extensions a file may mark required and still load: `KHR_materials_unlit`, `KHR_materials_emissive_strength`,
+`KHR_texture_transform`, `KHR_mesh_quantization`, `KHR_lights_punctual`.
+
 ## 9. Debug and tooling hooks
-- **Cvars:** `asset_upload_ms`, `asset_cache_mb`, `asset_hotreload`, `rec_hotreload` (both `DevOnly`; default = `developer` ≥ 1), `vfs_log_overrides`.
+- **Cvars:** `asset_upload_ms` (built, #308), `asset_cache_mb` (not built), `asset_hotreload`, `rec_hotreload` (both `DevOnly`; default = `developer` ≥ 1), `vfs_log_overrides`.
 - **Commands** (built in step 5: `vfs_which`, `vfs_ls`, `vfs_mounts`, `rec_get`, `rec_list`, `rec_reload`, and the `rec_hotreload` cvar):
   - `vfs_which <path>`, `vfs_ls <dir>`, `vfs_mounts`;
-  - `asset_list [filter]` (state, scope refs, size);
+  - `asset_list [filter]` (scope, holders, size; built in #308);
   - `asset_reload <path|*>`;
   - `rec_get <type> <id>` (dumps the merged record *with the file each field came from*);
   - `rec_list <type>`, `rec_reload`.
@@ -720,7 +796,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 ## 10. Mapping from today's code
 | Today | Becomes |
 |---|---|
-| `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | **Removed (step 5):** the Sandbox loads models through `ContentService` (VFS-backed, §3.6). Later: `AssetRef`s loaded into scopes |
+| `src/Sage.Client/Assets/UtilAssets.cs` (static `stanfordBunny`) | **Removed (step 5):** the Sandbox loads models through `ContentService` (VFS-backed, §3.6). Since #308 meshes and textures are loaded by id at a scope (§3.3); `AssetRef` is not built |
 | `src/Sage.Host/Content/Content.mgcb` + `stanford_bunny.fbx` | **Both deleted (R12, done).** Models load at runtime from `.glb` via SharpGLTF (`MeshGeometry.ReadGlb`, once the client's `GltfLoader`; issue #302 moved it into `Sage.Simulation`, leaving `VertexSkinned` and `VertexLayouts` in the client). The Sandbox's placeholder is `games/Sandbox/content/models/bunny.glb`, generated by `games/Sandbox/tools/make_placeholder_model.py` — like the sprites and the sounds, the repository ships no art it did not make. Shaders compile with `dotnet-mgfxc` (07) |
 | The FreeImage failure that removed `light.png` (review #9, 2026-09-22) | Textures load with `Texture2D.FromStream` (StbImageSharp, no FreeImage) |
 | `Content.RootDirectory = "Content"` in `Game1` | VFS mounts from `game.json`. **Done (step 5)** for game content; **the line itself is gone (R12)** — nothing uses MonoGame's `ContentManager` any more, not the host, the client, or the vendored ImGui renderer |
@@ -737,7 +813,8 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
   - `RecordStore` with namespaces, `base`, patch merge, generated validation, hot reload;
   - localization keys (English table only) — **built** (§3.7, issue #96).
 - **Done since:** cooked formats, a cook tool (`sage cook`, not MonoGame's builder) and texture compression (BC1/BC3), and `.ogg` sounds decoded whole (issue #302, §7, 11 §3).
-- **Later:** `.pak` mounts (zip mounts, #397), `.uid` sidecars (if needed), OGG music streaming (#326), mipmaps (#317).
+- **Done in 4n (2026-10-06):** asset scopes, release and an upload budget (#308), mipmaps and `.tga` (#317), the glTF subset (#321).
+- **Later:** `.pak` mounts (zip mounts, #397), `.uid` sidecars (if needed), OGG music streaming (#326).
 
 ## 12. Multiplayer-later notes
 A server needs the same records and simulation assets. The mod list plus record hashes will be compared on connect (as Quake 3's `sv_pure` checks paks). Only data and asset mods may be auto-downloaded; code mods never are (17).
@@ -755,7 +832,7 @@ labels and clip names are left exactly as the base wrote them (review #56).
 
 ## 14. Build steps
 1. ~~VFS (folder mounts) + `game.json` mounts (with 01)~~ **Done 2026-09-22** (ARCHITECTURE §7 step 5). `user://` as a VFS root is still to do.
-2. `AssetPath`, `AssetServer`, scopes, placeholders, texture + glTF + effect loaders; convert the bunny to `.glb`; fix TODO #9. **Half done:** `AssetPath` (step 6), the texture, effect, sound, font and glTF loaders, the bunny and #9 all came with **R12 (2026-09-24)**. What is left is the `AssetServer` proper — scopes, ref-counting, placeholders and eviction — which is why `ContentService` still caches everything for the life of the process.
+2. `AssetPath`, `AssetServer`, scopes, placeholders, texture + glTF + effect loaders; convert the bunny to `.glb`; fix TODO #9. **Half done:** `AssetPath` (step 6), the texture, effect, sound, font and glTF loaders, the bunny and #9 all came with **R12 (2026-09-24)**. Scopes, counting and eviction for meshes and textures came with #308 (§3.3); what is left of the `AssetServer` is async decoding, `AssetRef` handles and the release of sounds and effects.
 3. Async decode + budgeted upload queue (with the 02 job system).
 4. `RecordStore`: parsing, namespaces, `base`, patch merge, validation (TODO R11). **v1 done in step 5** with `System.Text.Json` reflection (§3.6); 09's generator replaces it later.
 5. Hot reload for assets and records. **Records done in step 5**; assets come with the `AssetServer`.

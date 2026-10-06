@@ -3,7 +3,7 @@
 A C#/MonoGame game engine, being redesigned into a base engine for game designers, developers and
 modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3D and 2D.
 
-**Start here:** [`docs/history/handoff-2026-09-30.md`](docs/history/handoff-2026-09-30.md) (where things
+**Start here:** [`docs/history/handoff-2026-10-06.md`](docs/history/handoff-2026-10-06.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
 tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h, done), #153 (4i, done), #182 (4g, done), #200 (4j, done), #215 (10a, the editor, done; guide docs/EDITOR.md), each with sub-issues.
 Since the 2026-10-02 replan (REDESIGN §5 "Stage B, part 2") every phase is a GitHub milestone with a parent issue,

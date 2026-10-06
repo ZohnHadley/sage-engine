@@ -310,3 +310,62 @@ float ShadowLit(float3 relative, float3 n)
     // Off every cascade (sideways, or past either end of its depth) is lit: the maps cover the near slice of the view only.
     return lerp(1, lerp(1, lit, found), ShadowParams.x);
 }
+
+// ---- Frame: rain on the world (issue #311; WetnessRules in Sage.Simulation, whose tests are this maths) ----
+//
+// x = the world's wetness (0 dry, 1 soaked; 0 in an interior scene and on the viewmodel), y = how far up the
+// puddle mask the water has risen (WetnessRules.PuddleLevel), zw = the camera's x and z wrapped to the mask's
+// tile, so `relative.xz + WetParams.zw` is a pixel's place on the tiling mask. The mask is PuddleMask's tiling
+// noise (s7), sampled linearly and wrapping; PUDDLE_TILE is WetnessRules.MaskTile.
+#define PUDDLE_TILE 16.0
+float4 WetParams;
+texture PuddleMask;
+sampler PuddleSampler : register(s7) = sampler_state
+{
+    Texture = <PuddleMask>;
+    MinFilter = Linear;
+    MagFilter = Linear;
+    MipFilter = None;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+
+// WetnessRules.Surface: how wet a surface is (x) and how much of it is standing water (y), from its geometric
+// normal's y, its sky term (a lightmap's alpha; 1 without one) and the material's weathering. Walls stay dry,
+// slopes less wet than flat ground; a face under a roof sees little sky and stays dry; puddles only on the flat.
+float2 Wetting(float3 relative, float normalY, float sky, float weathering)
+{
+    float open = saturate((sky - 0.55) / 0.3) * saturate(weathering);
+    float facing = saturate((normalY - 0.3) / 0.6);
+    float wet = WetParams.x * facing * open;
+    float flat = saturate((normalY - 0.9) / 0.08);
+    float mask = tex2D(PuddleSampler, (relative.xz + WetParams.zw) / PUDDLE_TILE).r;
+    float puddle = saturate((mask - (1 - WetParams.y)) * 8) * flat * open;
+    return float2(wet, puddle);
+}
+
+// What wet does to a colour: soaked ground is darker, standing water a little more so.
+float WetDarken(float2 wet)
+{
+    return 1 - 0.45 * wet.x - 0.15 * wet.y;
+}
+
+// The highlights' strength and gloss (0..1) a wet surface adds: a sheen when wet, a mirror in a puddle.
+float WetShine(float2 wet)
+{
+    return 0.6 * wet.x + 1.4 * wet.y;
+}
+
+float WetGloss(float2 wet)
+{
+    return saturate(0.55 * wet.x + 0.9 * wet.y);
+}
+
+// A puddle reflects the sky: the horizon's fog colour looking out, the sky's ambient looking up, by Fresnel
+// (little straight down, most at a grazing angle).
+float3 PuddleReflection(float3 n, float3 v, float puddle)
+{
+    float3 r = reflect(-v, n);
+    float fresnel = 0.04 + 0.96 * pow(1 - saturate(dot(n, v)), 5);
+    return lerp(FogColor, AmbientSky, saturate(r.y)) * (fresnel * puddle);
+}

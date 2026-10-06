@@ -156,6 +156,12 @@ cooked files too (`sage package` writes a `.sgtex` beside each texture and a `.s
 loose file overrides a game's cooked one below it** (test:
 TheCookedFileStandsInForTheLooseOneInItsMountAndALaterMountsLooseFileWins). A mod may ship `.sgtex` and `.sgmesh` files of its own, under the same rules, but usually leaves its assets
 loose, as a game's `mods/` folder does when it is packaged (the cook does not touch it); sounds may be `.wav` or `.ogg`.
+Textures may be `.png`, `.jpg` or `.tga`, each getting its mipmaps as it loads (issue #317) (test:
+ATgaFromAModFolderLoadsPremultipliedWithItsMipsAndIsCooked), and models `.glb` within the engine's glTF subset
+(MAKING_A_GAME "Model formats", issue #321): a model the engine cannot read fails with an error naming the file
+and the feature. Since phase 4n a mod can patch a game's look the same way as anything else: a `material` patch
+can add a `normalMap` or an `emissive` glow, a `light` part patch can make a lamp flicker (`pattern`), and new
+`decal`, `mesh_lod`, `water_surface`, `terrain_material` and `weather_pattern` records are records like any other.
 
 ## 6. Conflicts and the report
 

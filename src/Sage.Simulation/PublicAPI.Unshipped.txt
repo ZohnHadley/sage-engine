@@ -265,5 +265,10 @@ Sage.Simulation.RenderPassInfo.Replaces.get -> System.Type?
 Sage.Simulation.RenderPassRegistry<TPass>.Disable(string! id, string! by) -> void
 Sage.Simulation.RenderPassRegistry<TPass>.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.RenderPassInfo!>!
 Sage.Simulation.RenderPassRegistry<TPass>.Replace(string! id, TPass! pass, string? by = null) -> void
+Sage.Simulation.MaterialRecord.Weathering -> float
+Sage.Simulation.Weather.Wetness.get -> float
+Sage.Simulation.Weather.Wetness.set -> void
+Sage.Simulation.WeatherRecord.Drying -> float
+Sage.Simulation.WeatherRecord.Wetting -> float
 Sage.Simulation.ParticleRecord.Soft -> float
 Sage.Simulation.PointLight.Shadows -> bool

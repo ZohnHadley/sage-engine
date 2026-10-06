@@ -47,14 +47,14 @@ In `Sage.Simulation` (data, terrain generation), with client parts for terrain m
   4. instantiate map/procedural entities (baseline), then apply save data (09);
   5. create the sector's `AssetScope`.
 - **Unloading** serializes the sector's persistent entities into the in-memory save cache (**dormancy**), destroys them, and disposes the sector scope. Dormant entities don't simulate, except NPCs that opt in to the coarse off-screen simulation (issue 4g-6: design 16 "As built (off-screen simulation)"); economy and travel hooks come later (F25/F26).
-- **Terrain:** per sector a 129×129 height grid (8 m spacing) plus LOD meshes; vertex-coloured / single-texture v1; splat materials later (07).
+- **Terrain:** per sector a 129×129 height grid (8 m spacing) plus LOD meshes; one tiling texture in v1, splat materials since #307 ("As built (splat terrain)").
 - **Fast travel / teleport:** load the target sectors behind a loading screen, rebase the origin, place the player.
 
 ### As built (F13, 2026-09-22): one sector, no streaming
 - **Code:** `src/Sage.Simulation/World/Terrain.cs` (`SectorCoord`, `Heightfield`, `ITerrainGenerator`, `TerrainSector`, the `Terrain` world resource) and `src/Sage.Client/Rendering/TerrainMesh.cs` (`TerrainMeshSystem`).
 - **`sage.streaming` installs a `Terrain` resource in every world** (it used to come with every world; issue #13 moved it to its plugin, test: TheStreamingPluginInstallsTheTerrain_AndLoadWithoutAGeneratorIsRefused). Collision, navigation, levels and the renderer look it up and do nothing without it. A game sets `Generator` and `Seed` and calls `Load(sector)`; the sector's 129×129 heightfield (8 m spacing over 1024 m) is generated on the main thread, once per sector.
 - **Meshes:** `TerrainMeshSystem` (FrameUpdate) builds the chunk meshes of any sector it hasn't drawn yet: 4×4 chunks of 32×32 cells, each its own `Renderer.CreateMesh` and its own entity with a `MeshRenderer` holding the **`MeshHandle`** (R9: subsystems own the data, components hold handles). Chunks are ordinary mesh items, so they cull, sort and draw with everything else — there is no separate `TerrainExtract`.
-- **Material:** `sage:terrain_default` (one tiling ground texture over `lit.fx`). Splat materials come with LOD.
+- **Material:** `sage:terrain_default` (one tiling ground texture over `lit.fx`). Splat materials came with #307 ("As built (splat terrain)"), not with LOD.
 - **Ground height:** `Terrain.HeightAt/NormalAt/OnGround` sample the heightfield bilinearly. The Sandbox places its scene with them.
 - **Collision (F6, done):** `TerrainCollisionSystem` gives every loaded sector one static Bepu mesh (10 "As built"; sixteen chunk meshes since #277, see "As built (the far ring, asset scopes and jobs)"), so things actually rest on the ground. `HeightAt` stays as the cheap query for placement and AI.
 - **`SectorCoord` exists but nothing rebases yet:** everything lives in sector (0, 0) and chunk vertices are absolute world positions. Sector-local transforms, `Origin` and rebasing are R6; until then the terrain must stay near the origin for float precision.
@@ -165,8 +165,32 @@ crossed with no spike (test: AFarRingFourSectorsOutCostsABoundedTickAndCrossingE
   `stream_far_radius`, `stream_load_budget`, `stream_jobs`.
 - **Limits.** Far looks are read when a sector enters the far ring: one that walked away or died since is
   still drawn there until the sector comes back. A mesh path changed in place on a live component is not
-  re-counted. Textures and sounds have no scopes yet (#308). ~~One ring per source with no priorities (#290)~~:
+  re-counted. Textures have scopes since #308 (design 05 "As built (asset scopes)"); sounds still have none. ~~One ring per source with no priorities (#290)~~:
   each source has rings of its own since #290; sources still have no priorities. A scene change (not a sector leaving) does not release its meshes.
+
+### As built (splat terrain, issue #307, 2026-10-06)
+Terrain was one tiling texture (`sage:terrain_default`). A `terrain_material` record names up to four
+layers and where each lies; `Terrain.Material` (or a `terrain` record's `material`) chooses it for a world.
+Experimental, SAGE0129. Code: `src/Sage.Simulation/World/TerrainSplat.cs` (`TerrainMaterialRecord`,
+`TerrainLayer`, `TerrainSplat`) and the client's `shaders/terrain.fx` (07 §3.8). Tests:
+`tests/Sage.Tests/Streaming/TerrainSplatTests.cs`.
+
+- **The record:** `layers` (one to four: `texture`, `tile` in metres, default 8; `minHeight`/`maxHeight` and
+  `heightBlend` (4); `minSlope`/`maxSlope` in degrees and `slopeBlend` (4)), a greyscale `detail` texture
+  with `detailTile` (2 m) and `detailStrength` (0.5), and `fallback` (default `sage:terrain_default`), the
+  material drawn where the splat effect is missing (a build without shaders)
+  (test: ATerrainMaterialLoadsItsLayersRulesAndDetail). Mistakes are load errors (test: TerrainMaterialMistakesAreLoadErrors).
+- **Weights per vertex.** The first layer is the ground everywhere; each later one is painted over those
+  before it where its height and slope rules say (test: LayersArePaintedOverTheGroundByTheirHeightAndSlopeRules).
+  The four weights ride in the chunk mesh's vertex colour, and the effect's params come from the record
+  (test: TheSplatEffectsParamsComeFromTheRecord). A scene's `terrain` record sets the material
+  (test: ASceneTerrainRecordSetsTheTerrainMaterial).
+- **No seam.** The weights are functions of a vertex's height and normal, and both agree either side of a
+  sector edge (#277's normals), so the blend has no seam: the Sandbox's `sandbox:hills` lays rock over grass
+  on slopes past 12 degrees (test: TheSandboxBlendsTwoLayersWithNoSeamAtTheSectorEdge).
+- **Not yet:** a generator that is not an `ITerrainSampler` still seams at sector edges; a generator cannot
+  paint weights of its own; a `Terrain.Material` changed at run time is not applied to sectors already
+  built. The far ring's coarse ground draws with the same splat, its weights from the coarse heights.
 
 ### As built (the 4g exit game, issue 4g-8, 2026-10-01)
 Phase 4g's exit (REDESIGN §5, issue #190): walk from an exterior into a dungeon and back; an NPC keeps its
@@ -458,7 +482,7 @@ public interface ITerrainGenerator { void Generate(SectorCoord s, Span<float> he
   - one interior space type;
   - `stream_debug` overlay (sector grid, loaded/loading, origin);
   - log category `Streaming`.
-- **Later:** ~~LOD rings, HLOD for distant objects~~ (the far ring, #277), splat texturing, ~~several streaming sources~~ (#290), offline simulation, one-file-per-entity maps (09 §3.4).
+- **Later:** ~~LOD rings, HLOD for distant objects~~ (the far ring, #277), ~~splat texturing~~ (#307), ~~several streaming sources~~ (#290), offline simulation, one-file-per-entity maps (09 §3.4).
 
 ## 12. Multiplayer-later notes
 The server tracks one streaming source per player. Origin space becomes per client (camera-relative only), and physics would need per-region simulations for players far apart (10 Later). That's why simulation positions are sector + local rather than a single floating origin.

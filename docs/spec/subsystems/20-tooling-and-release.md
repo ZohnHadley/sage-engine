@@ -37,8 +37,8 @@ Not responsible for: game design, the engine's runtime behaviour, or hosting a f
 | Player | `sdk/Sage.Player` | Host and CLI per configuration, plus engine assemblies a game compiles against |
 | Templates | `sdk/Sage.Templates/content/` | `sage-game` (simulation and client halves), `sage-game-data` (no C#), `sage-game-client` (a client half in a game's `Client/` folder, #297), `sage-mod-data` (`mod.json`, records, `.vscode/` mapping the game's schemas, #297); `sage-mod-code` is #396 |
 | Build props | `build/` | `Sage.Version.props` (MinVer), `Sage.Configurations.props`, `Sage.EngineContent.targets`, `Sage.Kits.targets` |
-| Scripts | `tools/` | `smoke_run.sh`, `check_docs.py` and its tests `test_check_docs.py`, `pack_sdk.sh`, `migrate_ecs_api.py`, `DaggerfallImport` |
-| CI | `.github/workflows/ci.yml`, `release.yml` | Linux and Windows jobs; the release workflow runs on a `v*.*.*` tag |
+| Scripts | `tools/` | `smoke_run.sh`, `check_docs.py` and its tests `test_check_docs.py`, `check_glsl_constants.py` (#318), `pack_sdk.sh`, `migrate_ecs_api.py`, `DaggerfallImport` |
+| CI | `.github/workflows/ci.yml`, `release.yml` | Linux, Windows and drawing jobs (#318); the release workflow runs on a `v*.*.*` tag |
 
 The configurations are Debug, Development and Shipping. Tests run in Debug and Development, not Shipping.
 Projects target `net8.0` and build with the .NET 10 SDK pinned in `global.json`.
@@ -106,7 +106,12 @@ public type fails with RS0016, dump the registry under Xvfb, run `check_docs.py`
 local feed, run a template game outside the repository, then build it in Shipping, package it with
 `SagePackage`, check the folder has no developer files and run it from there under Xvfb (#293). Windows builds
 all three configurations, tests Debug, packs, builds a template game with a shader and packages it, without
-running it.
+running it, and hands the engine's compiled shaders (`engine-shaders`) to the drawing job. The drawing job (#318)
+builds the Linux host without shaders, takes the Windows job's `.mgfxo` files, checks their OpenGL constants
+(`tools/check_glsl_constants.py`), and draws `tests/games/render-check` under Xvfb on Mesa's llvmpipe:
+`r_pixelcheck <spec> shaders` reads the frame back and checks the sky, the sun's shadow, the fog and the post
+grade, and the frames and log are uploaded. Linux cannot compile the shaders itself: `mgfxc`'s OpenGL profile
+needs Direct3D's compiler under Wine, and DXC serves only shader model 6.
 
 Release (RELEASING §4): move Unshipped API to Shipped on a branch (done for 0.1.0, #295), merge, tag `v0.1.0` (the owner's push); the tag runs `release.yml`, which builds all three configurations on Windows, runs the tests, packs the SDK, Player and templates, checks their version and creates the GitHub release with the packages attached. Nothing goes to a feed (#296).
 

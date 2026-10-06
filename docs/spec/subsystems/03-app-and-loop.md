@@ -128,7 +128,7 @@ Debug: `plugins` (each plugin, version, what it registered), `modules`, `sys_lis
 | REQ-LOOP-11 | Run non-conflicting systems of a phase in parallel from declared access, with identical results. | Could | Done (#288): `IDeclaresAccess`, stages, per-system command logs; checked in dev builds (`sys_access_check`) | test: DeclaredSystemsRunInParallelWithResultsIdenticalToSequential, ConflictingSystemsKeepTheirOrderAndAnUndeclaredOneRunsAlone, TwoSystemsThatDoNotConflictRunAtTheSameTime, ParallelStagesAllocateNothingInSteadyState |
 | REQ-LOOP-12 | Run a time scale, pause and hit-stop per world. | Should | Done | `WorldTime`: constant-length steps, more or fewer per real tick; `host_timescale` goes through it; test: AScaledWorldIsDeterministic, TheHostLoopsTimeScaleRoutesThroughWorldTime |
 | REQ-LOOP-13 | Offer queued `Added<T>`/`Removed<T>` events and engine signals (scene loaded, world created, paused). | Should | Done: `Added<T>`/`Removed<T>` and `engine.Signals` (world created, scene loaded, world destroying, paused and resumed, raised on the first tick that sees the change) | test: AReactiveSystemSeesOneAddAndOneRemovePerEntity, EngineSignalsSayAWorldWasCreatedAndASceneLoaded |
-| REQ-LOOP-14 | Put several worlds on screen at once (split-screen, secondary views). | Could | Not started | #323 |
+| REQ-LOOP-14 | Put several worlds on screen at once (split-screen, secondary views). | Could | Partial (#323): split screen is camera slots on one target, each with its own view, shadows and viewmodel; another world reaches the screen only through a render target its views draw into | test: EachSplitScreenSlotResolvesItsOwnCamera_AndTheLowestIsTheMainView, ARenderTargetCameraViewGetsShadowCasterViewsOfItsOwn |
 | REQ-LOOP-15 | Run two interior spaces or worlds live at once. | Could | Done (#291): spaces in one world; a `live` scene the player leaves is held and simulated beside the next | test: TwoInteriorsAreLiveAtOnceBesideTheirExterior, EachSpaceFallsAtItsOwnGravity |
 | REQ-LOOP-16 | Load a code mod assembly into a collectible load context, ordered against the game's plugins. | Should | Not started | #396 |
 | REQ-LOOP-17 | Package a game that boots from its folder with Release treated as Shipping. | Must | Done (#293, #294): the host finds `game/` beside it with no `-game` | test: APackageIsTheShippingHostWithTheGameBesideItAndNothingElse, ThePackagedHelloAndSceneOnlyGamesLoadAndValidateFromTheOutputFolder, AReleaseBuildIsShippingAndWritesTheShippingFolder |
@@ -136,8 +136,7 @@ Debug: `plugins` (each plugin, version, what it registered), `modules`, `sys_lis
 
 ## 10. Open work
 
-Milestone 4, 4n (Rendering and assets):
-- #323 4n-19 Split-screen and secondary views (P3)
+Milestone 4, 4n (Rendering and assets): #323 is done (2026-10-06); several worlds straight onto the screen at once has no issue yet.
 
 Milestone 11, 9 (Code mods and packaging):
 - #396 9-1 Code mods: trusted assemblies in a collectible load context (P1)

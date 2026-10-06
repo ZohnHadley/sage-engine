@@ -1233,7 +1233,7 @@ public sealed partial class Renderer : IDisposable
             ref readonly var shadow = ref shadowed ? ref shadows!.Shadows[view.Shadow] : ref NoShadow;
             var lamps = shadows?.LampMaps;
             bool lampsDrawn = lamps is { Drawn: true, Count: > 0 };
-            m.Effect.SetFrame(view, env, shadow, shadowed ? _targets.Texture(shadow.Target) : null, Materials.MissingTexture,
+            m.Effect.SetFrame(view, env, shadow, shadowed ? _targets.Texture(shadow.Target) : null, Materials.MissingTexture, PuddleMaskTexture(),
                               lampsDrawn ? lamps : null, lampsDrawn ? _targets.Texture(lamps!.Target) : null);
             m.Effect.FrameStamp = _viewStamp;
         }
@@ -1245,6 +1245,20 @@ public sealed partial class Renderer : IDisposable
         }
         if (m.DrawnFrame != _frame) { m.DrawnFrame = _frame; m.Drawn = 0; }
         return m;
+    }
+
+    // The rain's puddle mask (issue #311): PuddleMask's pixels, made once on first use.
+    private Texture2D? _puddleMask;
+
+    private Texture2D PuddleMaskTexture()
+    {
+        if (_puddleMask != null) return _puddleMask;
+        var values = PuddleMask.Pixels;
+        var colours = new Color[values.Length];
+        for (int i = 0; i < values.Length; i++) colours[i] = new Color(values[i], values[i], values[i], (byte)255);
+        _puddleMask = new Texture2D(_device, WetnessRules.MaskSize, WetnessRules.MaskSize, false, SurfaceFormat.Color) { Name = "(puddle mask)" };
+        _puddleMask.SetData(colours);
+        return _puddleMask;
     }
 
     private readonly LightGrid _lightGrid = new();
@@ -1593,6 +1607,7 @@ public sealed partial class Renderer : IDisposable
         _debugLines.Dispose();
         _sky.Dispose();
         _fullScreen?.Dispose();
+        _puddleMask?.Dispose();
         Materials.Dispose();
         _targets.Dispose();
     }

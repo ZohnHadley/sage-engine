@@ -327,8 +327,9 @@ sage package <game folder> --out <dir> [--host <dir>] [--config Shipping] [--no-
 ```
 
 **Cooking** (issue #302). `sage package` also cooks the package's models and textures: each `.glb` gets a
-`.sgmesh` beside it (vertex and index arrays as the GPU takes them) and each `.png`, `.jpg` and `.jpeg` a
-`.sgtex` (premultiplied RGBA, or BC1 or BC3 blocks, an eighth or a quarter of the memory), and the client reads
+`.sgmesh` beside it (vertex and index arrays as the GPU takes them) and each `.png`, `.jpg`, `.jpeg` and
+(since issue #317) `.tga` a `.sgtex` (premultiplied RGBA, or BC1 or BC3 blocks, an eighth or a quarter of the
+memory, with the whole mip chain), and the client reads
 those in place of the loose files, so a load skips the glTF parse and the image inflate. Nothing names a cooked
 file: records and maps keep naming the `.glb` and the `.png`, and the loose files stay in the package. Your own
 game folder is never written to by `package`. `sage package --no-cook` (the SDK's `SageCook=false`) leaves them
@@ -337,7 +338,9 @@ loose, and `sage cook <game> [--force] [--clean]` cooks a folder in place (what 
 cooked again, so an edit to the loose file is not seen until you cook again or `--clean`. A cooked file is read
 only when its mount is at least as high as the loose file's, so **a mod's loose file still overrides your cooked
 one**, and one that cannot be read, or was cooked from a file of another length (folder mounts only), is a warning
-once and the loose file is read. The cook reports what it bought: on the Sandbox's content the test measures
+once and the loose file is read. Files cooked before phase 4n are of an older version (a `.sgtex` without
+mips, a `.sgmesh` without tangents and colours or a second UV set): they are passed over with a warning and
+the loose file is read until you cook again. The cook reports what it bought: on the Sandbox's content the test measures
 loading at least twice as fast (about 0.05 ms against 10 ms), allocating under half (about 322 KB against 2143 KB)
 and textures at a third of the memory or less (about 902 KB down to 217 KB) (tests:
 CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate,
@@ -369,6 +372,42 @@ runs it on Linux. A Shipping host reads the same `config.cfg` a dev build archiv
 a dev build has (an editor cvar) is a note in the log, not a warning. Mounts are not zipped yet (#397).
 
 ---
+
+### Model formats
+
+Models are binary glTF 2.0 (`.glb`), read at run time; a text `.gltf` is refused. What the engine reads is
+one table (issue #321; design/05 "The glTF subset"): a file with a **Rejected** feature does not load, with one
+error per feature naming the file and the feature, and what is **Ignored** is read past (a warning where it
+matters). Export from Blender as "glTF Binary (.glb)", without compression, with at most four weights a vertex.
+
+| Feature | Support | What it covers |
+|---|---|---|
+| `glb` | Supported | Binary glTF 2.0 (.glb), buffers embedded |
+| `scene-graph` | Supported | Default scene (or every root node), node hierarchy and transforms (baked into the vertices of a rigid mesh) |
+| `positions-normals-uv0` | Supported | POSITION, NORMAL, TEXCOORD_0, TANGENT (worked out from TEXCOORD_0 when absent), triangle indices (any index width) |
+| `color-0` | Supported | COLOR_0 (vec3 or vec4, float or normalised integer), white without one |
+| `texcoord-1` | Supported | TEXCOORD_1: a second UV set (lightmaps), kept beside the vertices as `Uv1` |
+| `skinning` | Supported | One skin of up to 64 joints, JOINTS_0 and WEIGHTS_0 (four influences per vertex) |
+| `primitive-triangles` | Supported | Primitive modes TRIANGLES, TRIANGLE_STRIP and TRIANGLE_FAN |
+| `materials` | Ignored | The file's materials and textures: the material record named by whatever draws the mesh decides |
+| `animations` | Ignored | Animation clips are read by the animation reader, not the mesh reader; cameras and lights are not read |
+| `extra-attribute-sets` | Ignored | TEXCOORD_2 and up, COLOR_1 and up: dropped, with a warning |
+| `not-gltf` | Rejected | A file that is not glTF 2.0 (bad header, broken JSON chunk) |
+| `text-gltf` | Rejected | Text .gltf with its buffers in separate files |
+| `external-buffers` | Rejected | A buffer stored in a separate file (a `uri` that is not a data: URI) |
+| `morph-targets` | Rejected | Morph targets (blend shapes) |
+| `sparse-accessors` | Rejected | Sparse accessors |
+| `draco` | Rejected | KHR_draco_mesh_compression |
+| `meshopt` | Rejected | EXT_meshopt_compression / KHR_meshopt_compression |
+| `required-extension` | Rejected | Any other extension the file lists in extensionsRequired |
+| `primitive-mode` | Rejected | Primitive modes POINTS, LINES, LINE_LOOP and LINE_STRIP |
+| `more-influences` | Rejected | More than four joint influences per vertex (JOINTS_1 / WEIGHTS_1) |
+| `too-many-joints` | Rejected | A skin of more than 64 joints |
+| `multiple-skins` | Rejected | More than one skin |
+| `no-geometry` | Rejected | A file with no drawable triangle primitive |
+
+The engine names the material a mesh draws with (a renderer's `material`), not the file. A second UV set
+(`TEXCOORD_1`) is kept for lightmaps and the colours for a material's `vertexColors`.
 
 ## 3. Records: everything your game *is*
 
@@ -495,22 +534,22 @@ result with the file each field came from.
 
 ### Every record type there is
 
-Thirty-two, and a game may use as few as it likes. Their fields are documented in the design doc named
+The ones a game writes, by what they are for; a game may use as few as it likes. Their fields are documented in the design doc named
 beside each group; `rec_get <type> sage:<id>` on one of the engine's own is usually quicker.
 
 | For | Types |
 |---|---|
 | **Things that exist** (05) | `prefab` — components and parts; `scene` — where things start; `tag` |
-| **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows |
+| **Look** (06, 07, 12) | `material` — shader, technique, params; `sprite_sheet` — frames, direction groups, animation events; `skeleton_sockets` — named places on a model's skeleton (a joint and an offset) that `bone_attachment` follows; `mesh_lod` — coarser meshes by distance or screen size, and where a mesh stops drawing, named by a mesh renderer's `lod` (issue #305); `decal` — a mark a cue or a damage type leaves on a surface (issue #306); `terrain_material` — up to four ground textures laid by height and slope (issue #307); `water_surface` — how the top of a water volume looks (issue #411). A `material` can name surface maps too: `normalMap`, `specularMap`, `specular`, `gloss`, `emissiveMap`, `emissive`, `vertexColors`, `environmentMap`, `reflectivity` (issue #410) |
 | **Sound** (11) | `sound` — the file, gain, limits; `cue` — the moment a sound is asked for |
 | **Levels** (15) | `map` — a `.map` file, its scale and where it stands; `placements` — prefabs at positions, what the editor writes (§8a) |
-| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming, crouch (`crouchTime`, seconds to go down; the character's collider shrinks with it) and its `mode`: `Walk`, `AirStrafe` (GoldSrc bunny-hopping, tuned by `airStrafeSpeed` and `airStrafeAccelerate`), `Fly` or `Noclip` (`flySpeed`; a character's own `mode` overrides its profile's, and the `noclip` and `fly` cheats toggle the player's, issue #267); `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues, a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
+| **Movement and bodies** (10, 16) | `movement_profile` — speed, jump, eye height, step, swimming, crouch (`crouchTime`, seconds to go down; the character's collider shrinks with it) and its `mode`: `Walk`, `AirStrafe` (GoldSrc bunny-hopping, tuned by `airStrafeSpeed` and `airStrafeAccelerate`), `Fly` or `Noclip` (`flySpeed`; a character's own `mode` overrides its profile's, and the `noclip` and `fly` cheats toggle the player's, issue #267); `physics_layers` — what collides with what; `physics_material` — what a surface is made of: friction, restitution, the `footstep` and `impact` cues (the impact cue is raised where a shot or a swing meets the surface, issue #306), a bullet `decal` and a `penetration` hint, and the brush `textures` it covers (issue #270) |
 | **Fighting** (16) | `attack` — reach, damage, timing, viewmodel, and its `delivery`: a swing, a ray or a projectile; `damage_type`; `effect` — what a hit leaves behind; `attribute` — health and the rest; `hit_location` and `hitboxes` — where a strike lands on a body; `hitbox_budget` — which creatures' hitboxes are on: those within its `distance` (m, 50) of a player and among the nearest `maxCreatures` (32); the others' are off and a strike there lands on the body; the conventions' `hitboxBudget` names it (`sage:default_hitbox_budget`; patch it, 0 turns a limit off, and naming none keeps every creature's on; issue #273) |
 | **Magic** (16) | `ability` — cost, cast time, payload, cues |
 | **Carrying** (16) | `item` — what it is, what it weighs, what equipping it does |
 | **Minds** (16) | `ai_profile` — sight, memory, speeds; `ai_schedule` — the tasks a creature runs, as `[{ "task": "MoveToTarget", "distance": 1.6 }, "FaceTarget", { "task": "Wait", "seconds": 0.5 }]`; `routine` — what it does when and where, `{ "from": 8, "to": 20, "schedule": "work", "at": "forge" }`, named by the profile's `routine` or a `routine` part, walked with `MoveToAnchor`, `FaceAnchor` and `StayAt` (issue 4g-4); `at` is a placement's `name` or a `.map`'s `targetname`, and an anchor not in the world (a far sector, a map target with no prefab) is walked to where the content has it, one in another scene to the door there; a creature with the `offscreen` part keeps its routine while it is unloaded, round the content's walls (static solid boxes taller than a step; a `mover` is a door unless its `nav_door` is `locked`; a `nav_link` is a way across), from the start in sectors nobody has visited, and through a door (a `load_door`, or a map entity with `load_door.scene` and `load_door.entry` keys) when its anchor is in another scene (issue #284); `nav_area` — ground that costs more or less to cross (`cost` per metre, 1 is ordinary ground), the `forbidden` factions that never path through it, and what makes ground this area: its `surfaces` (physics_materials: a road's gravel, a bog's mud) and `water` (every water volume), or a `nav_area` part's box (issue #271) |
 | **People** (16) | `faction` — who hates whom; `dialogue` — lines and choices; `dialogue_topic` — a keyword and its answers; `quest` — stages and objectives |
-| **Weather and effects** (06) | `weather` — what falls, wind, fog, light; `particle` — emitters, with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
+| **Weather and effects** (06) | `weather` — what falls, wind, fog, light, lightning (issue #311); `weather_pattern` — which weather when, by the clock and the region (issue #311); `particle` — emitters (colliding and running a sprite sheet over a life since issue #310), with colours as `"#RRGGBB"`/`"#RRGGBBAA"` or `[r, g, b, a]` 0-255 |
 | **Controls** (08) | `input_map` — actions bound to keys and buttons |
 | **Screens** (13, §7) | `ui_style` — colours, padding, a font, colours per state, a nine-sliced `image`; `ui_layout` — widgets by name, each naming its parent, with bindings; `screen` — a layout and its view-model |
 | **Your game's words** (§3, below) | `gameplay_conventions` — which attribute is life, which tag is death, the default attack, damage type, profiles and AI schedules, the player's faction, what spells cost, the action names |
@@ -686,6 +725,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `joint` | a joint from this (dynamic) body to another entity's, its parent's or the world's, in data (issue #245) — `kind` (Ball/Hinge/Fixed/Distance), `target` (an entity name; empty = the parent if it has a body, else the world), `anchor` (in this entity's space), `targetAnchor` (optional; default: the same point, where they stand), `axis`, `swing`, `twistMin`/`twistMax`, `min`/`max` (a hinge's range), `minDistance`/`maxDistance` (degrees and metres), `breakForce`, `drag`; the `Break` input and the `OnBreak` output (SAGE0134) |
 | `character` | the kinematic character controller, and with it the ability to walk (and to swim, in water) |
 | `water` | a box of water things float and characters swim in — `size` (full extents, centred on the entity; the top face is the surface), `drag` (2, per second), `buoyancy` (2: lift on a submerged body as a multiple of its weight, so a crate floats half under), `current` (m/s); the `OnEnterWater` / `OnExitWater` outputs (issue #262; design/10 "As built (water and swimming)") |
+| `water_surface` | beside `water`: its top face drawn rippling, reflecting and seen through, and the view tinted under it — `look`, a `water_surface` record (a bare value: `"water_surface": "lake"`; empty: `sage:water`) (issue #411) |
 | `sprite` | a billboard sprite from a `sprite_sheet` — `sheet`, `material`, `size`, `animation` (a clip to loop), or `graph` (an `anim_graph` whose clips are the sheet's: combat's trigger and `hit` event work through it, issue #119) |
 | `skinned_mesh` | a skinned model, bent by its joints on the GPU — `mesh` (a `.glb` with a skin), `material` (empty: `sage:lit_default`; its effect needs a `Skinned` technique), `layer` (issue #117) |
 | `animator` | plays an `anim_graph` on a skinned model's skeleton — `graph`, `model` (a skinned `.glb`; left out, the `skinned_mesh` part's `mesh`) (issue #118; §5 "Animation graphs") |
@@ -695,7 +735,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `footsteps` | a step every `stride` metres it walks on the ground (0: only on its animation's `footstep` events), each raising the `footstep` cue of the `physics_material` underfoot (a ray `reach` metres below the feet) and sending `Footstep` (issue #270) |
 | `ragdoll` | falls as a ragdoll — on death, a hit, the `Ragdoll` input (an impulse "x y z" as its parameter) or from code — with the bodies and joints of its model's `ragdoll` records, settles (the `OnSettled` output) and gets back up (the `GetUp` input) — `record` (one `ragdoll` record; empty: every one for the model), `onDeath` (true), `hitImpulse` (N·s), `getUpAfter` (seconds after it has come to rest; 0 = only when told; never once it has died), `getUpBack`/`getUpFront` (the animator states it gets up with, `getup_back`/`getup_front`), `getUpFade` (issues #246–#249, SAGE0134; design/12) |
 | `viewmodel` | first-person arms on a camera, drawn only from its first-person rig — `record` (a `viewmodel` record; empty: gameplay's attack in hand chooses), `enabled`, `fovY`, `near`, `far` (issue #121) |
-| `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7) |
+| `light` | a lamp — `colour`, `range` in metres, `intensity`, `off` to start it dark (06 §3.9; `TurnOn`/`TurnOff`/`Toggle` switch it, issue 4h-7); `pattern` (a flicker: Quake letters `a`–`z`, or a preset such as `torch`, `candle`, `pulse`, `strobe`, `fluorescent`) at `patternRate` letters a second, changed by `SetPattern`; `cone` and `innerCone` (degrees) make it a spot light along the entity's forward (issue #314); `baked` bakes it into a level's lightmap (issue #313) |
 | `mover` | geometry that slides — `open`, `seconds`, `closeAfter` (F17), `onBlocked`: `Reverse` (default), `Stop` or `Crush` when something it can't push is in the way (#260); `angle`, `axis` (default up) and `pivot` swing it on a hinge, in its own frame (`"angle": 90, "pivot": [-0.5, 0, 0]` is a door hinged on its west edge); `path`, stops after the shut one (a lift's floors, the last is open), `speed` instead of `seconds` (m/s, or deg/s for a door), `locked` (#266) |
 | `ladder` | makes its trigger volume a ladder the character controller climbs — `facing` (yaw in degrees of the side a climber stands on, on top of the entity's own: 0 faces -Z, 180 faces +Z), `speed` (m/s; 2.5). Pushing toward the rungs climbs, pulling away climbs down, Jump lets go, and a ledge within step height of the top is stepped onto. The volume is a `body` with `"trigger": true`, or a `"trigger" "1"` brush entity (issue #263) |
 | `nav_door` | beside a `mover`: `locked` — creatures do not open it, and while it is not fully open it is a wall to the planner (without it a creature opens a door in its way and waits, #265) |
@@ -727,7 +767,7 @@ block calls these, which is the usual way, because a part does the assembling fo
 | `quest_watch` | fires `OnStageChanged` / `OnQuestFinished` when its quest moves — `quest` (issue #91) |
 | `state_machine` | runs a `state_machine` record — `machine` (issue #92; §5 "State machines"); the engine's `sage:logic_state_machine` prefab is this part with no machine, for a placement to name one (issue #280) |
 
-Forty-four here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
+Forty-five here (the camera parts are in §4). `ent_types` in the console lists each with its options, the plugin
 that declares it and what it runs after — the options *are* the part's public fields.
 
 **A part is a declared class**, like a record type (issue #17): its public fields are its options, and
@@ -964,6 +1004,8 @@ player's camera until you disable it (`"enabled": false`, or `Camera.Enabled` fr
 names a render target instead of the screen, `viewport` a part of it (0..1 from the top-left), and
 `fovY` is in degrees. Games that name these types in C# opt in to SAGE0123 (§10b).
 
+**Split screen** (issue #323): cameras on one target compete per `slot` (0 to 15), so two players' cameras, each with its own `viewport`, both draw; the screen's lowest slot is the main view. Every view gets the whole pass set, its own sun shadows included (up to `r_shadow_views`, 4, at `r_shadow_view_size` texels a cascade for views other than the main one), and a partner's first-person camera draws its own viewmodel. A camera's `noShadows`, `noViewmodel`, `noSky` and `noDebugLines` turn those passes off for its view — a cheap security monitor, a minimap.
+
 Every view is drawn (issue #77): a camera whose `target` is `"minimap"` draws into a render target of that
 name, 512×512 unless code declares another size (`Renderer.DeclareTarget("minimap", 256, 256)`), and a
 material shows it with `"params": { "Albedo": "rt:minimap" }` — a mirror, a security monitor, a map on a
@@ -991,10 +1033,15 @@ decide, and passes nothing orders keep the order they were added in. A cycle, an
 A pass's `Extract(RenderContext)` runs after the cameras each frame and can add views (`AddView`, which
 the world's meshes and sprites are then drawn into) and items (`AddItem`). `r_passes` lists them all.
 
-**Sun shadows** (issue 4h-4, SAGE0130) are the engine's `sage:shadow` pass: `r_shadows 1` turns them on,
-`r_shadow_size` and `r_shadow_distance` (default 2048 texels and 60 m) trade sharpness for reach. Opaque
-meshes, terrain and skinned meshes cast; sprites and particles do not. A material that should let the
-light through says `"castShadows": false`. How dark they are is the sky's `shadow` key (none once the sun
+**Sun shadows** (issue 4h-4, SAGE0130) are the engine's `sage:shadow` pass: `r_shadows 1` turns them on.
+They are cascaded (issue #315): the view's first `r_shadow_distance` metres (150) are cut into
+`r_shadow_cascades` maps (1 to 3, default 3), finer near the camera, each `r_shadow_size` texels a side
+(2048; less if together they would pass 4096). The sun's direction snaps to `r_shadow_sun_step` degrees
+(0.25) for its shadows, so their edges hold still as the sun moves. Opaque meshes, terrain and skinned
+meshes cast, and so do alpha-tested materials and sprites, cut out by their texture's alpha (a leaf's
+shadow has holes); particles and decals do not. A material that should let the light through says
+`"castShadows": false`. A custom alpha-tested effect needs a `ShadowCasterAlphaTest` technique of its own
+to cast. Lamps cast no shadows yet. How dark they are is the sky's `shadow` key (none once the sun
 is down); a world with no sky gets full shadows under the default sun.
 
 **The sky and fog** (issue 4h-5, SAGE0130) come from the world's `sky` record. While it has one, the
@@ -1002,18 +1049,104 @@ engine's `sage:sky` pass draws a gradient from each key's `horizon` to its `zeni
 hazed to the `fog` colour along the horizon, with the sun's disc and, once the sun is down, stars.
 `"fogMode": "Exp2"` on the record gives exp² fog instead of linear (a soft onset, then closing in fast);
 it is complete at `fogEnd` like linear fog unless a key sets `fogDensity` (per metre). Opaque and
-alpha-tested things wholly past where fog is complete are not drawn. A world with no sky keeps its clear
-colour and linear fog, as before.
+alpha-tested things wholly past where fog is complete are not drawn, nor are particles (issue #310). A world
+with no sky keeps its clear colour and linear fog, as before.
+
+The sky can have more (issue #320): a `moon` picture (`moonSize` in degrees) whose phase follows the calendar's
+`moonCycle`, `clouds` (a tiling grey picture; `cloudScale`, `cloudSpeed` in repeats an hour, `cloudDirection`)
+shown as far as the weather's `cloudCover` says (0.3 unless a weather sets it), stars that turn once a day about
+an axis `starTilt` degrees up, and `hazeAbove`, the fog colour left over the sky above the haze band
+(`hazeBand`). A sky that names none of them looks as before.
 
 **Post-processing** (issue 4h-6, SAGE0130) needs no C#: a `post_effect` record names a material whose
 effect reads the picture as `Source`, runs by `order` and is switched by a cvar. The engine's are
 `sage:grade` (colour grade and exposure, with a night tint from the sky) and `sage:vignette`, drawn by
 the `sage:post` pass (PostProcess) when `r_post` is 1; `r_scale 0.5` draws the world at half size with
 big pixels, and the UI stays sharp. A game's own PostProcess pass draws after the chain, on the screen.
+`r_hdr` (a half-float scene, tonemapped), `r_bloom` and `r_aa` (`off`, `fxaa`, `msaa2`, `msaa4`, `msaa8`) are
+off by default and each turns the chain on by itself (issue #316); bloom and the tonemap run before your
+effects and FXAA after them. A `post_effect` with `"depth": true` is handed the scene's depth as `SceneDepth`
+(with `DepthParams` to turn it into metres): the Sandbox's `haze` effect, switched by its own `r_post_haze`, is
+the example.
 
 ```json
 { "type": "post_effect", "id": "sepia", "material": "mygame:post_sepia", "order": 150, "cvar": "mygame_sepia" }
 ```
+
+**Surfaces** (issue #410, SAGE0130). A `lit.fx` material can name a `normalMap` (tangent space, green up),
+a `specularMap` with `specular` (0 to 4, 0 = matt) and `gloss` (0 to 1), an `emissiveMap` times `emissive` (a
+colour that glows unlit), `vertexColors` (multiply by the model's `COLOR_0`) and an `environmentMap` (a
+panorama) with `reflectivity`. A map left out changes nothing, so older materials draw as before. An
+`emissiveMap` without an `emissive` colour, a `reflectivity` without an `environmentMap`, or `params` that set
+one of these names are load errors. Meshes built in code (brush levels, terrain) have no tangents, so a normal
+map does nothing on them.
+
+**Level of detail** (issue #305). A `mesh_lod` record lists coarser meshes and when they take over, by
+`distance` (metres) or `screenSize` (the share of the view's height), plus `cullDistance` or `cullScreenSize`
+where the mesh stops drawing and a `hysteresis` band (0.1) so it does not flicker at the switch; a mesh
+renderer names it with `"lod"`. `r_stats` counts `lod culled` and `lod lowered`. Code can also give each sort
+layer a draw distance (`RenderEnvironment.LayerDrawDistance`).
+
+**Decals** (issue #306). A `decal` record (`texture`, `size`, `lifetime`, `fade`, `colour`, `randomRotation`,
+`reach`) is laid by a cue that names it, or by a damage type's `decal` on the wall behind what a hit hurt. A
+weapon's shot that meets a surface raises its `physics_material`'s `impact` cue, so a bullet hole belongs to the
+plaster, not the gun:
+
+```json
+{ "type": "decal", "id": "bullet_hole", "texture": "textures/bullet_hole.png", "size": 0.12, "lifetime": 60 },
+{ "type": "cue", "id": "bullet_impact", "decal": "bullet_hole", "particles": "dust_puff" },
+{ "type": "physics_material", "id": "plaster", "impact": "bullet_impact", "textures": ["plaster*"] }
+```
+
+A world keeps `r_decals` of them (256), dropping the oldest; `fx_decal <decal>` lays one where you look. Marks
+are flat and unlit, and nothing that moves holds one.
+
+**Lamps** (issue #314). A `light` part's `pattern` flickers it — a preset (`torch`, `candle`, `flicker`,
+`pulse`, `strobe`, `fluorescent` and a few more) or Quake's letters (`"mmamammmmammamamaaamammma"`, `a` dark,
+`m` as set, `z` double) at `patternRate` letters a second — and the `SetPattern` input changes it (empty: steady).
+`cone` (a half-angle in degrees) makes it a spot light along the entity's forward, with full strength inside
+`innerCone`. Past 16 lamps a frame the engine looks them up in an 8 m grid.
+
+**Lightmaps** (issue #313). A brush level can bake its lamps: give its `map` record a `lightmap` (texels a
+metre, up to 32) and mark the lamps that never switch `"baked": true`. The worldspawn faces are baked at load,
+with shadows, and cached under `user://cache/lightmaps/`, so the next load reads the file back. A baked lamp
+still lights everything else (props, creatures, doors) as an ordinary lamp. Only materials drawn with the
+`Default` technique use a lightmap; there is no bounce light yet, and a baked lamp cannot flicker on the baked faces.
+
+```json
+{ "type": "map", "id": "hut", "file": "maps/hut.map", "lightmap": 4 }
+```
+
+**Water you can see** (issue #411). Put a `water_surface` part beside a `water` volume and its top face is
+drawn rippling, reflecting the sky and the shore, showing the bottom, thickening with depth and fading at the
+shore; under it the view is tinted and fogged. A `water_surface` record sets the look (`colour`, `fogDensity`,
+`reflectivity`, `refraction`, the waves, and `underwaterColour`, `underwaterDensity`, `underwaterTint`);
+`sage:water` is the default. `r_water` switches it. It draws in the main view only.
+
+**Weather that knows where you are** (issue #311). The rain stops under a roof (a ray up from the camera to the
+first static collider; an interior scene always is covered) and its sound drops to the weather's
+`shelteredVolume`. A weather can have lightning (`lightningRate` a minute, `lightningFlash`, a `thunder`
+sound and `thunderVolume`). A `weather_pattern` picks the weather every `slotHours` game hours from its `picks`
+(each a `weather` with optional `from`/`to` hours, a `region` and a `weight`), deterministically from its
+`seed`; a scene's environment names it with `weatherPattern` and the region with `weatherRegion`. Puddles and
+wet surfaces are not built.
+
+**Particles** (issue #310). A `particle` record's `collision` (`None`, `Bounce` with `restitution` and
+`friction`, or `Die`) sends one ray a frame per particle, at most 512 a frame for the world (`fx_stats` counts
+them); `sheetColumns` × `sheetRows` frames (`sheetFrames` of them, 0 = all) run `sheetCycles` times over a
+particle's life, `sheetRandomStart` to start each on its own frame. Soft particles are not built.
+
+**Drawing many and drawing sharp.** `r_instancing 1` (off by default) draws runs of at least `r_instancing_min`
+(8) copies of one mesh with one material as one instanced draw, and long sprite runs as instanced quads (issue
+#309); `r_stats` says how many draws it saved. Every texture has its mipmaps (issue #317), and a material's
+`Linear` sampler is trilinear and anisotropic up to `r_anisotropy` (4); `Point` keeps the full-size picture, so
+pixel art and sprites stay sharp.
+
+**Replacing an engine pass** (issue #322, SAGE0130). In `Init`, `ctx.Get<RenderPasses>().Replace("sage:sky",
+new MySky(), "mygame")` swaps the engine's sky for yours, in its slot and under its id, and `Disable(id, by)`
+leaves a pass out. Two modules changing one pass, an id nobody added or another stage is a load error naming
+them; `r_passes` says who replaced what. `r_snapshot_dump [file]` writes the next frame's passes, views and items
+as text, and `DebugDraw.Text3D(at, text, colour)` puts a label in the world for debugging.
 
 **A scripted cut** (issue #80) is the engine's `sage:scripted_camera` prefab — a camera that starts off,
 with priority 100, which holds the player still while it is on — placed and named, and wired from
@@ -1030,7 +1163,8 @@ something that happens (§5, "Wiring"):
 SineInOut"` holds for three seconds and eases in from the view the screen had over the first one and a
 half (issue #90). Your own kind is a prefab with the two parts, `camera` (`"enabled": false` and a
 priority above your rig's) and `scripted_camera` (`holdTime`, the default hold; `lockInput`; `blendTime`
-and `blendEase`, the default blend, which is none). `tests/games/camera-cut` is a game with
+and `blendEase`, the default blend, which is none; `blendOutTime`, a blend back out when it is turned off or
+its hold runs out, issue #323). `CameraOff` takes a blend too: `"parameter": "1.5 SineInOut"`. `tests/games/camera-cut` is a game with
 no C# that does both kinds of cut.
 
 Two more games with no C# show phase 4b's logic. `tests/games/scripted-sequence` is a Half-Life-style
@@ -1156,7 +1290,7 @@ Outputs the engine fires: `OnUse`, `OnStartTouch` / `OnEndTouch`, `OnFullyOpen` 
 `OnCameraOn` / `OnCameraOff`, `OnEnterWater` / `OnExitWater` (a character and the water it went into), `OnTimer`, `OnTweenDone`, `OnTweenLoop`, `OnTweenStep`, `OnCalendarEvent` (a `calendar_event` part on its day), `OnStateChanged`, a state machine's `OnEnter<state>` / `OnExit<state>` (`OnEnterAlert`; issue #280), an animator's `OnAnimEvent` (the clip event's name as its value), the logic entities' (below) and
 gameplay's `OnDeath`, `OnDamaged`, `OnPickedUp`, `OnStageChanged` / `OnQuestFinished`.
 Inputs it offers: `Open`, `Close`, `Toggle`, a mover's `Next` / `Previous` / `GoTo` (a stop by number, 0 = shut), `Lock` / `Unlock` and `SetSpeed`, `Kill`, `Say`, `Fire`, `CameraOn` / `CameraOff`, `TimerStart` /
-`TimerStop` / `TimerReset` / `TimerFire` / `TimerAdd`, `TweenTo` / `TweenPlay` / `TweenStop`, `SetState`, a light's `TurnOn` / `TurnOff` / `Toggle`, the logic entities' and gameplay's
+`TimerStop` / `TimerReset` / `TimerFire` / `TimerAdd`, `TweenTo` / `TweenPlay` / `TweenStop`, `SetState`, a light's `TurnOn` / `TurnOff` / `Toggle` / `SetPattern`, the logic entities' and gameplay's
 `SetStage`, `StartDialogue`, `GiveItem`, `ApplyEffect`, `SetFaction` — `io_list` prints the live lists
 (with the components each short name belongs to), and
 your own modules can register more inputs (`engine.Inputs.Register`) and declare the outputs they fire
@@ -1201,8 +1335,9 @@ prefab by its full id, `"classname" "sage:scripted_camera"`.
 | `Fire` | an output's name | Fires one of the entity's own outputs (a relay) |
 | `Open` / `Close` / `Toggle` | | Moves a `mover` (a door, a lift) |
 | `TurnOn` / `TurnOff` / `Toggle` | | Switches a `light` (a lamp) on or off (issue 4h-7); off, it gives no light. The Sandbox's lamps are a `state_machine` whose `time_between` transitions fire these at sunset and sunrise |
+| `SetPattern` | a pattern: a preset name or Quake letters; empty for steady | Changes a lamp's flicker (issue #314) |
 | `CameraOn` | `hold [blend [ease]]`, all optional | Turns a camera on, so it wins the screen at its priority; with a hold, off again after it (none: the entity's `scripted_camera.holdTime`, 0 = until `CameraOff`). With a blend time the screen eases into it from the view it had, along the named curve (none: the entity's `blendTime`, 0 = a cut). Fires `OnCameraOn` if it was off |
-| `CameraOff` | | Turns a camera off; the screen goes back to the next camera, or the player's view. Fires `OnCameraOff` if it was on |
+| `CameraOff` | `blend [ease]`, optional | Turns a camera off; the screen goes back to the next camera, or the player's view, cutting or, with a blend time (or the entity's `scripted_camera.blendOutTime`), easing there along the named curve (issue #323). Fires `OnCameraOff` if it was on |
 | `TimerStart` | an interval, in seconds (optional) | Starts a `timer` counting from a full wait; it fires `OnTimer` when the wait runs out, every interval if it repeats |
 | `TimerStop` / `TimerReset` | | Stops it; or starts its wait again from full, running or not |
 | `TimerFire` | | Fires `OnTimer` now; a running timer then waits again from full (issue #281) |
@@ -2136,8 +2271,8 @@ names their types needs the opt-in.
 | SAGE0125 | The retained game UI (issue #95), all of `Sage.UI`: `UiRoot`, `Widget`, `Container`, `Box`, `Stack`, `Grid`, `Label`, `Button`, `Image`, `Bar`, `ItemList`, `Scroll`, `Tooltip`, `UiInput`, `UiResult`, `UiNavigation`, `ITextMeasure`, `MonospaceTextMeasure`, `IWidgetVisitor`, `WidgetTypes`, `Thickness`, `Anchors`, `Align`, `Orientation`; its records and text (issue #96): `UiModule`, `UiStyleRecord`, `UiStyleStates`, `UiStyleState`, `UiLayoutRecord`, `UiNode`, `ScreenRecord`, `UiStyles`, `UiStyle`, `UiStyleColours`, `UiState`, `UiScreens`, `UiScreen`, `UiView`, `UiBindContext`, `IViewModel` (with `Activate`/`Back`, issue #98), `ViewModelAttribute`, `Localisation`, `PluralCategory`; showing screens (issue #97): `UiScreenStack` (with `OpenHud`, issue #99), `UiLayer`, `UiTween`; and the RPG kit's view-models (issues #98, #99): `ItemGrid`, `GridItem`, `GridCell`, `ItemGridView`, `InventoryView`, `LootView`, `EquipmentView`, `TopicsView`, `JournalView`, `MapView`, `ShopView`, `IPriceRule`, `StubPriceRule` | Phase 4c builds on it: records and localisation (#96), drawing, input and transitions (#97), the RPG screens (#98), the HUD, journal, map, menu and shop (#99) |
 | SAGE0126 | Skeletal animation (issue #116, phase 4d): `Skeleton`, `AnimationClip`, `AnimationInterpolation`, `ClipEvent`, `SkeletonPose`, `JointMask`, `PoseSampler` (`Sample`, `Blend`, `ToModelSpace`, `ClipTime`), `AnimationSet`, `GltfAnimationReader`; GPU skinning (issue #117): `SkinMath` (`Palette`, `Blend`, `SkinPosition`, `SkinNormal`, `MaxBones`, `Influences`), `SkinnedMeshRenderer`, `SkinnedMeshPart`, `RenderStats.Skinned`/`Bones`; sockets and IK (issue #120): `SkeletonPoses`, `TwoBoneIk`, `AimChainIk`, `AimJoint`, `PoseSampler.ToModelSpace(…, firstJoint)`, `SkeletonSocketsRecord`, `SkeletonSocket`, `BoneAttachment`, `BoneAttachmentPart`, `BoneAttachments`, `AimIk`, `AimIkJoint`, `AimIkPart`, and in Gameplay `FootIk`, `FootIkLeg`, `FootIkPart`; animation graphs (issue #118): `AnimGraphRecord`, `AnimState`, `AnimBlendSpace`, `AnimBlendPoint`, `AnimLayer`, `AnimParam`, `AnimParamKind`, `AnimParamSource`, `Animator`, `AnimatorLayer`, `AnimatorParam`, `AnimatorPart`, `Animators` (`SetParam`, `SetTrigger`, `GetParam`, `StateOf`, `HasTag`, `ClipWeight`, `Play`, `TryGetPose`, `Describe`), `Engine.Animations`; first-person arms (issue #121): `ViewmodelRecord`, `Viewmodel`, `ViewmodelPart`, `ViewmodelLayer`, `Viewmodels` (`Show`, `ArmsOf`, `WeaponOf`, `CameraOf`, `IsDrawn`), and in Gameplay `AttackRecord.Arms`; clip events (issue #119): `AnimEventsRecord`, `AnimEventEntry`, `IAnimationEventSink`, `Animators.TryGetClip`, `Animators.SpriteSwingGraph`, `Animators.AnimEventOutput`. Complete for phase 4d: its exit (issue #122) added no API — an NPC walking, running, aiming and attacking, and first-person arms reloading, are content over these (`tests/games/skeletal`) | Stable after the Sandbox's creatures move to skeletons and 4e's weapons build on it; until then it may change |
 | SAGE0127 | Weapons and combat generalised (issue #133, phase 4e): the hit pipeline — `HitRequest`, `HitResult`, `Combat.ApplyHit`, the `hit_delivery` vocabulary (`IHitDelivery`, `HitDeliveryAttribute`, `HitContext`, `HitDeliveries`), the shared queries `Hits` (`Sweep`, `Ray`, `CanBeHurt`, `Launch`), `DamageInfo.Location`/`Damaged.Location`, `AttackRecord.Delivery`/`Range`/`Pellets`/`ProjectileSpeed` and `Projectile.Attack`; since #134 `AttackRecord.Projectile`/`ProjectileGravity`/`ProjectilePierce`, `Projectile.Gravity`/`Pierce`/`Passed` and the attack overload of `ProjectileExtensions.Launch`; hit locations (issue #137): the `hit_location` and `hitboxes` records (`HitLocationRecord`, `HitboxesRecord`, `HitboxShape`), the `hitboxes` part, `Hitbox`, `Hitboxes`, `HitLocations`, and the query-only physics layers (`LayerMatrix.QueryOnly`, `Sees`); ammunition (issue #135): `AttackRecord.Ammo`/`Magazine`/`AmmoPerShot`/`ReloadTime`/`Automatic`/`RateOfFire`, `Magazine`, `MagazineSlot`, `Ammunition`, `WeaponFired`, `DryFire`; spread and recoil (issue #136): the `spread` and `recoil` records (`SpreadRecord`, `RecoilRecord`), `AttackRecord.Spread`/`Recoil`, `WeaponState`, `ShotRandom`, `Spread`, `HitContext.Cone`/`Shot`/`PelletAim`; and in the RPG kit (issue #138) `AmmoReadout` and `EquipmentView.Ammo`. Since #138 a projectile lands on hitboxes like a sweep or a ray, with no API change | Phase 4e's exit (#139) is a data-only weapons game over it; stable once that and a game with real weapons have used it |
-| SAGE0129 | The open world (phase 4g). The calendar and passing time (issue 4g-2): `CalendarRecord` (the `calendar` record: `Months`, `Weekdays`, `StartYear`, `StartWeekday`, `Default`, `DateOf`, `DaysIn`, `DaysInYear`, `WeekdayOf`, `WeekdayIndex`, `InWindow`), `CalendarMonth`, `GameDate`, `Calendars` (`Of`, `Today`), `WorldClock.Calendar`/`Date`, the `weekday` and `date_between` conditions, `Time.Pass` and the `TimePassed` event; cells that go dormant with their state (4g-1): `InCell` (the `sage:cell` component: the scene, or the streamed sector, a runtime spawn belongs to and goes to sleep with) and save format 4 (`SaveSystem.FormatVersion`: `dormant` cells by source, each with the sector its positions are relative to); entities that stream by sector (4g-3): `SceneRecord.Streamed` (a scene placed sector by sector, each sector a cell `sector:<scene>:<x>,<z>`), `SceneRecord.Terrain` and the `terrain` record (`TerrainRecord`, `TerrainGeneratorKind`: the built-in `Flat` and `Hills` ground); NPC routines (issue 4g-4): `RoutineRecord` (the `routine` record), `RoutineEntry`, the `Routine` component (`sage:routine`) and `RoutinePart`, `Routines` (`Of`, `EntryAt`, `StartOf`, `Target`), `RoutineTarget`, `AIProfileRecord.Routine` and `AIScheduleChoice.Routine` (the `in_routine` condition, `AICondition.InRoutine`, and the `MoveToAnchor`, `FaceAnchor` and `StayAt` tasks are content and not marked); load doors, interiors and fast travel (4g-5): `Travel` (`To`, `ToPoint`, `HoursTo`, `Use`, the `Travel` input), `SceneRecord.Space` and `SceneSpace` (`Interior`: no rings, no terrain, lit by its lights and `SceneEnvironment.Ambient`), `LoadDoor` (`sage:load_door`) and `LoadDoorPart`, `TravelPoint` (`sage:travel_point`) and `TravelPointPart`, `TravelLog` (the saved `travel` resource) and `TravelDestination`; off-screen simulation (issue 4g-6): the cell handoff in Simulation (`ICellHandoff`, `CellContent`: `AddHandoff`, `RemoveHandoff`, `Release`, `Restore`, `SceneOf`, `IsLive`, `CellAt`, `Generation`), and in Gameplay the `Offscreen` component (`sage:offscreen`) and `OffscreenPart` (the `offscreen` part), `OffscreenAgent`, `OffscreenAgents` (the saved `offscreen` resource), `OffscreenDied`, the `offscreen_fight` vocabulary (`IOffscreenFight`, `OffscreenFightAttribute`, the built-in `strength`), `OffscreenFights`, `OffscreenMap` and `Factions.AreHostile`; the RPG kit's rest and fast travel (4g-7): `Scenes.Current`, `Rest` (`Can`, `EnemyNear`, `Begin`, the `rest` command), `RestKind`, `RestView` (the `rpg_rest` view-model of the `rpg:rest` screen), `RpgConventionsRecord.RestEnemyRange`/`RestMaxHours`/`RestEffect`, and `MapView`'s travel (`Destinations`, `HasDestinations`, `TravelStyle`, `Activate`, `Marker.Point`/`CanTravel`/`TravelHours`); the far ring (#277): `PrefabRecord.Far` and `FarLook` (a prefab's `"far"`: `mesh`, `size`, `material`); seasons, moons, leap years and calendar events (#289): `CalendarRecord`'s `LeapEvery`, `LeapSkipEvery`, `LeapRestoreEvery`, `LeapMonth`, `Seasons`, `MoonCycle`, `MoonStart`, `IsLeapYear`, `SeasonOf`, `MoonAge`, `MoonPhaseOf`, `MoonLight`, `MoonPhaseNames`, `CalendarSeason`, `CalendarEventRecord` (the `calendar_event` record), `CalendarEventListener` (`sage:calendar_event`) and `CalendarEventPart`, `CalendarEvents.OnCalendarEvent`; off-screen pathing and seeding (#284): `CellContent.SeedUnplaced`, `OffscreenMap.Blocked`, `OffscreenAgent.Route`/`RouteGoal`; several streaming sources and followers (#290): `StreamingRing` (`sage:streaming_ring`) and `StreamingRingPart`, `Follower` (`sage:follower`) and `FollowerPart`; live spaces (#291): `SceneRecord.Live`, `SceneEnvironment.GravityScale`, `Scenes.LiveBeside`, `SpaceGravity`, `GravityRegion` and the saved `spaces` resource | Phase 4g's last pieces are built on it; its exit (4g-8) may reshape it. Stable once routines and the off-screen simulation have read `TimePassed`; a calendar per scene may still reshape the calendar |
-| SAGE0130 | The world clock, sky records and weather composition (issue 4h-2, phase 4h): `WorldClock`, `WorldClock.Between`/`Format`/`TryParseHour`/`Of`, the `time_between` condition, `SkyRecord`, `SkyKey`, `SkyState`, `SkyRules` (`Evaluate`, `SunAt`, `Current`, `Apply`), `RenderEnvironment.Zenith`/`ShadowStrength`, `SceneEnvironment.Sky`/`Hour` and the weather record's `fogTint`, `skyTint`, `fogStartScale`, `fogEndScale`. The render pass registry (issue 4h-1): `RenderStage`, `RenderStages`, `RenderPassAttribute`, `RenderPassInfo`, `RenderPassRegistry<TPass>`, and in the client `IRenderPass`, `RenderPasses`, `ClientModule.Passes`, `RenderContext`, `RenderViewInfo`, and `Renderer.DeclareTarget` with a format and a depth buffer. Sun shadows (issue 4h-4): `ShadowMath` (`Fit`, `PerspectiveSlice`, `OrthographicSlice`, `ToClip`, `Contains`, `TexelOf`, `Strength`, `Casts`), `ShadowFit`, `MaterialRecord.CastShadows`, and in the client `RenderStats.ShadowCasters`. The sky and fog (issue 4h-5): `FogMode`, `FogMath` (`Factor`, `Density`, `CullDistance`, `Hides`, `ShaderParam`, `Invisible`), `SkyRules` (`StarsAt`, `Gradient`, `Haze`, `SunDisc`, `ColorAt` and their constants), `SkyRecord.FogMode`, `SkyKey.FogDensity`, `SkyState.FogDensity`/`Stars`, `RenderEnvironment.DrawSky`/`Stars`/`FogMode`/`FogDensity`, and in the client `RenderStats.FogCulled`/`Skies`. Post-processing (issue 4h-6): `PostEffectRecord` (the `post_effect` record) and `RenderStats.PostSteps`. Complete for phase 4h: its exit (issue 4h-7) added no experimental API — the Sandbox's dusk, night and lamps are content over these, and the light switch it needed (`PointLight.Off`/`Lit`, `LightPart.Off`, the `TurnOn`/`TurnOff`/`Toggle` inputs) is ordinary API | Phase 4h is done; 4g adds the calendar and schedules on the clock. Stable once 4g and a game with its own sky, shadows and post chain have used it; cascades, HDR and bloom may still reshape the shadow and post halves |
+| SAGE0129 | The open world (phase 4g). The calendar and passing time (issue 4g-2): `CalendarRecord` (the `calendar` record: `Months`, `Weekdays`, `StartYear`, `StartWeekday`, `Default`, `DateOf`, `DaysIn`, `DaysInYear`, `WeekdayOf`, `WeekdayIndex`, `InWindow`), `CalendarMonth`, `GameDate`, `Calendars` (`Of`, `Today`), `WorldClock.Calendar`/`Date`, the `weekday` and `date_between` conditions, `Time.Pass` and the `TimePassed` event; cells that go dormant with their state (4g-1): `InCell` (the `sage:cell` component: the scene, or the streamed sector, a runtime spawn belongs to and goes to sleep with) and save format 4 (`SaveSystem.FormatVersion`: `dormant` cells by source, each with the sector its positions are relative to); entities that stream by sector (4g-3): `SceneRecord.Streamed` (a scene placed sector by sector, each sector a cell `sector:<scene>:<x>,<z>`), `SceneRecord.Terrain` and the `terrain` record (`TerrainRecord`, `TerrainGeneratorKind`: the built-in `Flat` and `Hills` ground); NPC routines (issue 4g-4): `RoutineRecord` (the `routine` record), `RoutineEntry`, the `Routine` component (`sage:routine`) and `RoutinePart`, `Routines` (`Of`, `EntryAt`, `StartOf`, `Target`), `RoutineTarget`, `AIProfileRecord.Routine` and `AIScheduleChoice.Routine` (the `in_routine` condition, `AICondition.InRoutine`, and the `MoveToAnchor`, `FaceAnchor` and `StayAt` tasks are content and not marked); load doors, interiors and fast travel (4g-5): `Travel` (`To`, `ToPoint`, `HoursTo`, `Use`, the `Travel` input), `SceneRecord.Space` and `SceneSpace` (`Interior`: no rings, no terrain, lit by its lights and `SceneEnvironment.Ambient`), `LoadDoor` (`sage:load_door`) and `LoadDoorPart`, `TravelPoint` (`sage:travel_point`) and `TravelPointPart`, `TravelLog` (the saved `travel` resource) and `TravelDestination`; off-screen simulation (issue 4g-6): the cell handoff in Simulation (`ICellHandoff`, `CellContent`: `AddHandoff`, `RemoveHandoff`, `Release`, `Restore`, `SceneOf`, `IsLive`, `CellAt`, `Generation`), and in Gameplay the `Offscreen` component (`sage:offscreen`) and `OffscreenPart` (the `offscreen` part), `OffscreenAgent`, `OffscreenAgents` (the saved `offscreen` resource), `OffscreenDied`, the `offscreen_fight` vocabulary (`IOffscreenFight`, `OffscreenFightAttribute`, the built-in `strength`), `OffscreenFights`, `OffscreenMap` and `Factions.AreHostile`; the RPG kit's rest and fast travel (4g-7): `Scenes.Current`, `Rest` (`Can`, `EnemyNear`, `Begin`, the `rest` command), `RestKind`, `RestView` (the `rpg_rest` view-model of the `rpg:rest` screen), `RpgConventionsRecord.RestEnemyRange`/`RestMaxHours`/`RestEffect`, and `MapView`'s travel (`Destinations`, `HasDestinations`, `TravelStyle`, `Activate`, `Marker.Point`/`CanTravel`/`TravelHours`); the far ring (#277): `PrefabRecord.Far` and `FarLook` (a prefab's `"far"`: `mesh`, `size`, `material`); seasons, moons, leap years and calendar events (#289): `CalendarRecord`'s `LeapEvery`, `LeapSkipEvery`, `LeapRestoreEvery`, `LeapMonth`, `Seasons`, `MoonCycle`, `MoonStart`, `IsLeapYear`, `SeasonOf`, `MoonAge`, `MoonPhaseOf`, `MoonLight`, `MoonPhaseNames`, `CalendarSeason`, `CalendarEventRecord` (the `calendar_event` record), `CalendarEventListener` (`sage:calendar_event`) and `CalendarEventPart`, `CalendarEvents.OnCalendarEvent`; off-screen pathing and seeding (#284): `CellContent.SeedUnplaced`, `OffscreenMap.Blocked`, `OffscreenAgent.Route`/`RouteGoal`; several streaming sources and followers (#290): `StreamingRing` (`sage:streaming_ring`) and `StreamingRingPart`, `Follower` (`sage:follower`) and `FollowerPart`; live spaces (#291): `SceneRecord.Live`, `SceneEnvironment.GravityScale`, `Scenes.LiveBeside`, `SpaceGravity`, `GravityRegion` and the saved `spaces` resource; splat terrain (#307): `TerrainMaterialRecord` (the `terrain_material` record), `TerrainLayer`, `Terrain.Material`, the `terrain` record's `material` | Phase 4g's last pieces are built on it; its exit (4g-8) may reshape it. Stable once routines and the off-screen simulation have read `TimePassed`; a calendar per scene may still reshape the calendar |
+| SAGE0130 | The world clock, sky records and weather composition (issue 4h-2, phase 4h): `WorldClock`, `WorldClock.Between`/`Format`/`TryParseHour`/`Of`, the `time_between` condition, `SkyRecord`, `SkyKey`, `SkyState`, `SkyRules` (`Evaluate`, `SunAt`, `Current`, `Apply`), `RenderEnvironment.Zenith`/`ShadowStrength`, `SceneEnvironment.Sky`/`Hour` and the weather record's `fogTint`, `skyTint`, `fogStartScale`, `fogEndScale`. The render pass registry (issue 4h-1): `RenderStage`, `RenderStages`, `RenderPassAttribute`, `RenderPassInfo`, `RenderPassRegistry<TPass>`, and in the client `IRenderPass`, `RenderPasses`, `ClientModule.Passes`, `RenderContext`, `RenderViewInfo`, and `Renderer.DeclareTarget` with a format and a depth buffer. Sun shadows (issue 4h-4): `ShadowMath` (`Fit`, `PerspectiveSlice`, `OrthographicSlice`, `ToClip`, `Contains`, `TexelOf`, `Strength`, `Casts`), `ShadowFit`, `MaterialRecord.CastShadows`, and in the client `RenderStats.ShadowCasters`. The sky and fog (issue 4h-5): `FogMode`, `FogMath` (`Factor`, `Density`, `CullDistance`, `Hides`, `ShaderParam`, `Invisible`), `SkyRules` (`StarsAt`, `Gradient`, `Haze`, `SunDisc`, `ColorAt` and their constants), `SkyRecord.FogMode`, `SkyKey.FogDensity`, `SkyState.FogDensity`/`Stars`, `RenderEnvironment.DrawSky`/`Stars`/`FogMode`/`FogDensity`, and in the client `RenderStats.FogCulled`/`Skies`. Post-processing (issue 4h-6): `PostEffectRecord` (the `post_effect` record) and `RenderStats.PostSteps`. Complete for phase 4h: its exit (issue 4h-7) added no experimental API — the Sandbox's dusk, night and lamps are content over these, and the light switch it needed (`PointLight.Off`/`Lit`, `LightPart.Off`, the `TurnOn`/`TurnOff`/`Toggle` inputs) is ordinary API. Phase 4n's first pack: the material record's surface fields (#410: `NormalMap`, `SpecularMap`, `Specular`, `Gloss`, `EmissiveMap`, `Emissive`, `VertexColors`, `EnvironmentMap`, `Reflectivity`), the sky extras on `RenderEnvironment` (#320: `HazeBand`, `HazeAbove`, `StarAxis`, `StarTurn`, `MoonTexture`, `MoonDirection`, `MoonAge`, `MoonSize`, `MoonLevel`, `CloudTexture`, `CloudCover`, `CloudScale`, `CloudScroll`), `ShadowAtlas` (#315), `RenderStats.ShadowMaps` (#323), and `RenderPasses.Replace`/`Disable` (#322) on the render pass API | Phase 4h is done; 4g adds the calendar and schedules on the clock. Stable once 4g and a game with its own sky, shadows and post chain have used it; cascades, HDR and bloom may still reshape the shadow and post halves |
 | SAGE0131 | Saves you can trust (phase 4i). The save placeholder and header API, a load that cannot half-happen (4i-2): `SavePlaceholder` (an entity whose prefab is gone, kept inert and written back unchanged), `UnknownSavedData` (components and tags this game has no type for, written back unchanged), the header's plugins and content (`SaveSlot.Plugins`, `SaveSlot.Content`, `SaveSlot.Mismatches`, `SavedPlugin`, `SavedContent`). The prefab override API (4i-1): `PrefabOverrides` (`Placement.Overrides`, `PrefabChild.Overrides`), `PrefabChild`, `PrefabRecord.Children`, `PrefabRecord.Persist` (runtime spawns persist unless a prefab says `"persist": false`, 4i-4; such a spawn is `Unsaved` and a load removes it, 4m-4), `PrefabOverridden`, `FromParentPrefab`, the overrides overload of `PrefabExtensions.Spawn`, and `RecordCheck.TryGet`. Reconciling loads (4i-3): `Placement.Id` (a placement's authored id in saves) and save format 3 (`SaveSystem.FormatVersion`: sources, tombstones and the world's scene). Saving what changed (4i-5): an entity spawned from a prefab is saved as a diff against its prefab as spawned (`"diff"`, `"removed"` in format 3), and a load lays it over the current prefab. Quick-save and autosave (4i-6): `SaveKind` and `SaveSlot.Kind`, `SaveSystem.Save(slot, kind)`, `RequestSave`, `RequestLoad`, `QuickSave`, `QuickLoad`, `Autosave`, `NextAutosaveSlot`, `Delete`, `HasPendingRequests`, and the `QuickSlot`, `AutosavePrefix`, `QuickSaveAction` and `QuickLoadAction` names. Thumbnails, compression, the background write and the version report (#285): `SaveSystem.Thumbnail`, `SaveThumbnail`, `IsWriting`, `WaitForWrites`, `Report`, `QuickSlotName`, `AutosavePrefixName`, the title overloads of `Save` and `RequestSave`, `SaveSlot.Title`/`ThumbnailPath`/`Compressed`, `SaveVersionReport`, `SaveVersionEntry`, `SaveVersionStatus` | Phase 4i is building on both: the exit game (4i-7) may reshape them |
 | SAGE0132 | Data mods (phase 4j). Mod manifests and the load order (4j-1): `ModManifest` (`mod.json`), `ModLoadOrder.Resolve`, `ModLoadResult`, `RefusedMod`, `ModList` (`user://mods.json`) and `Engine.Mods`. Merge provenance and the content report (4j-2): `RecordStore.Writes`, `RecordWrite`, `RecordWriteOp`, `ContentReport` (`Build`, `Lines`, `IsModMount`, `NameOf`, `ModMountPrefix`), `ContentMountReport`, `PatchedRecord`, `ContentConflict`, `ContentConflictKind`, `ShadowedAsset` and `VirtualFileSystem.Shadows`. Saves name their mods (4j-4): `SaveSlot.Mods` and `SavedMod`. Mods at boot (4j-3): `ModManager` (`Engine.ModManager`: what was found, `Enable`/`Disable`/`Move` for the next start, `Next`, `WatchManifests`) and `SageAppOptions.Mods`, `UserModsDirectory`, `ModListFile` and `ModReportFile`. `sage` with mods (4j-5): `ValidateOptions.Mods` and `GameMods`, `ValidationReport.Mods`, `ModLines`, `ReportLines` and `Conflicts`, and `RecordSchemas.Mod` and `Game`. The mods screen (4j-6): `Sage.UI.ModsView` (`ui_mods`) and the kit's `RpgKitModule.ModsScreen` | Phase 4j is done: its exit game (`tests/games/mods`, 4j-7) used it unchanged, data only. Stable once a game with players' mods has used it; code mods, `.sagemod` zips and namespaced assets (phase 9) may still reshape the manifest and the report |
 | SAGE0133 | The editor's model (phase 10a, #215), all of `Sage.Editing`: since #216 `IEditorCommand`; since #217 `CommandLog`, `EditDocument`, its commands (`AddPlacement`, `RemovePlacement`, `SetPlacement`, `SetOverride`, `ClearOverride`, `SetOutputs`) and `EditorCommands`; picking and gizmo maths (#220): `EditorRay`, `EditorPicking` (`RayFrom`, `RayFromOrthographic`, `Pick`, `FallbackRadius`), `PickResult`, `TranslateGizmo` (`HitTest`, `Drag`, `AxisOf`), `GizmoHandle`, `RotateGizmo` (`HitTest`, `Drag`), `GizmoMath.ScreenConstantSize`, `Snap` (`ToGrid`, `Angle`); the palette (#222): `PrefabPalette`, `PrefabGroup`, `Placing` (`Surface`, `Place`, `PlaceAt`, `UniqueName`), `PaletteCommands`; in `Sage.Core`, `JsonFileEdit` (#218: a record file edited in place, comments and formatting kept — `Open`, `SetRecord`, `PatchRecord`, `AddRecord`, `RemoveRecord`, `Set`, `Remove`, `Read`, `ReadRecord`, `ToNode`, `Save`); the inspector on the document (#223): `InspectorModel` (`Of`, `Find`, `Set`, `Revert`, `TrySet`, `TryRevert`, `ToNode`), `InspectorGroup`, `InspectorRow`, `InspectorValue` (`TryParse`, `Format`) and `InspectorCommands`; the record browser (#224): `RecordDocument`, `SetRecordValue`, `RecordEditor`, and in `Sage.Core` `RecordStore.RawJson` / `MountOf`; the editor mode (#219): `EditTarget`, `LogView`, `World.Editing`, `RunCondition.EvenWhenEditing` and `Engine.CreateEditWorld` / `SageApp.CreateEditWorld`; selecting and moving (#221): `EditorSelection`, `ViewportTools` (`ed_select`, `ed_move`, `ed_rotate`, `ed_delete`, `ed_duplicate`, `ed_snap`, `ed_grid`, `ed_angle`, `ed_gizmo`), `GizmoDrag`, `GizmoMode`, `ViewportCamera`, `EditorPicking.PickWhere`; wiring (#225): `Wiring` (`Add`, `Update`, `Remove`, `Check`, `InputsOf`, `TargetEntity`, `NameOf`, `NameIt`, `Describe`; `ed_wire`, `ed_unwire`, `ed_wires`), `WiringModel`, `WireInput`, `WireOutput`, `WireLine`; play-in-editor (#226): `PlaySession`, `PlayStart`, `PlayCommands` (`ed_play`, `ed_stop`) and `Engine.CreatePlayWorld`; the problems panel (#227): `ProblemList`, `Problem`, `ProblemGroup`, `ProblemSeverity`, `ProblemCommands` (`ed_problems`), and in `Sage.Core` `RecordStore.LoadErrors` / `LoadWarnings`; the command log, documents, forms, wiring and play sessions as 10a builds them; the exit (#228) added no API (`InspectorModel.Find` now prefers a row that can be edited, so `mover.seconds` is the part's) | Phase 10a is done: its exit game (`tests/games/editor`) was built through these commands alone and loads in a plain boot. Stable once a game's own levels have been built with it; phase 10b (brushes, the asset browser, the behaviour-tree view, the conditions editor) and a separate editor executable may still reshape it |
@@ -2169,9 +2304,10 @@ Worth knowing before you plan around it:
   record an attack names, drawn over the world in first person only (issue #121). Clip events
   (`anim_events`, issue #119) land blows and drive transitions, for skinned clips and sprite sheets alike
   (docs/design/12 "As built (animation events)").
-- **Lighting indoors is lamps, not lightmaps.** A `light` entity lights a room, and four of them light
-  any one surface (the strongest four, chosen per draw). That is enough for a hut; a level the size of a
-  town wants light baked into the geometry, and lightmaps are still to come. Nothing casts a shadow.
+- **Lamps cast no shadows.** A `light` entity lights a room, and four of them light any one surface (the
+  strongest four, chosen per draw). A brush level can bake its unswitched lamps into a lightmap, with
+  shadows (issue #313, no bounce light), and the sun casts cascaded shadows (issue #315), but point and spot
+  lights cast none at run time yet. Soft particles and puddles are not built either (#310, #311).
 - **No multiplayer.** The engine follows rules that keep it possible (fixed tick, data-only components,
   no gameplay in rendering), but there is no networking. That is Phase 7.
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`

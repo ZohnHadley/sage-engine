@@ -117,6 +117,8 @@ internal struct EnvironmentParams
     public float CloudCover, CloudScale;
     public Vector2 CloudScroll;
     public Vector3 CloudColor;
+    // Rain on the world (issue #311): WetnessRules.Shown (0 inside) and the puddles' level (WetnessRules.PuddleLevel).
+    public float Wetness, PuddleLevel;
 }
 
 // One of the frame's shadow maps (issue 4h-4), written by `sage:shadow`: which views hold the casters, and

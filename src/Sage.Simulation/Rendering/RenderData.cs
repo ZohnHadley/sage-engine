@@ -288,6 +288,13 @@ public sealed class MaterialRecord
     [Property(Min = 0, Max = 1, Category = "Surface", Tooltip = "How much of environmentMap the surface reflects (times the specular map's red); 0 is none")]
     public float Reflectivity;
 
+    // Rain (issue #311): how much the world's wetness (`Weather.Wetness`) shows on it — darker and glossier
+    // where it faces the sky, puddles where it is flat (`WetnessRules`). Only an opaque material wets; 0 keeps
+    // one dry whatever the weather (a viewmodel's, a prop that is always under cover).
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Max = 1, Category = "Surface", Tooltip = "How much rain wets it: darker and glossier facing the sky, puddles where flat; 0 stays dry (opaque materials only)")]
+    public float Weathering = 1f;
+
     public static readonly RecordId Default = new("sage", "lit_default");
     public static readonly RecordId Error = new("sage", "error");
 }

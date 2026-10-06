@@ -3,7 +3,8 @@
 // at its own size, with a fine grey detail texture over the top; then lit as lit.fx's Default is (sun with
 // its shadows, hemispheric ambient, up to four point lights, fog). ShadowCaster draws the ground into the
 // sun's shadow map. A `terrain_material` record is drawn with it (`TerrainSplat.Params` sets the params);
-// the weights are `TerrainSplat.Weights`, worked out on the CPU from each vertex's height and slope.
+// the weights are `TerrainSplat.Weights`, worked out on the CPU from each vertex's height and slope. Rain wets it
+// and puddles it as lit.fx's surfaces (issue #311).
 #include "common.fxh"
 
 // Explicit registers: s1 is the shadow map's (common.fxh). Each layer wraps and filters on its own.
@@ -81,10 +82,21 @@ float4 PSSplat(VSOutput input) : COLOR0
 {
     float3 albedo = Splat(input.UV, input.Weights) * Tint.rgb;
     float3 n = normalize(input.Normal);
-    float3 sun = SunLight(n) * ShadowLit(input.Relative, n);
+    float3 v = -normalize(input.Relative);   // towards the camera, at the origin
+
+    // Rain (issue #311; WetnessRules, common.fxh `Wetting`): the ground is under the open sky, so it is as wet as
+    // the world where it faces up, darker and with a sheen, and puddled where it is flat; a puddle is flat water.
+    float2 wet = Wetting(input.Relative, n.y, 1, 1);
+    albedo *= WetDarken(wet);
+    float shadow = ShadowLit(input.Relative, n);
+    n = normalize(lerp(n, float3(0, 1, 0), wet.y));
+
+    float3 sun = SunLight(n) * shadow;
     float3 light = HemiAmbient(n) + sun + PointLights(n, input.Relative);
-    float3 color = ApplyFog(albedo * light, length(input.Relative));
-    return float4(color, Tint.a);
+    float3 h = normalize(v - SunDir);
+    float sheen = pow(saturate(dot(n, h)), exp2(1 + 10 * WetGloss(wet))) * saturate(dot(n, -SunDir)) * WetShine(wet);
+    float3 color = albedo * light + SunColor * (shadow * sheen) + PuddleReflection(n, v, wet.y);
+    return float4(ApplyFog(color, length(input.Relative)), Tint.a);
 }
 
 // ---- Shadow caster (issue 4h-4): depth into the sun's map, as lit.fx's ----

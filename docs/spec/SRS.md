@@ -131,7 +131,7 @@ developer's machine, and the zero-allocation rules are the hard requirements.
 | REQ-PERF-03 | A frame shall allocate nothing in steady state with the developer overlay closed. | Must | Partial (dev tools allocate; 10b) |
 | REQ-PERF-04 | The Sandbox shall hold 60 frames per second with 2,000 entities, and a tick shall use under a quarter of its budget at that size. | Must | Done for the tick (scale review 2026-09-24: 0.76 ms of 16.67 ms) |
 | REQ-PERF-05 | Crossing a streaming sector edge shall not stall a frame beyond the frame budget. | Must | Done (generation on jobs, one sector a tick, collision four chunks a tick; #277; test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`) |
-| REQ-PERF-06 | GPU texture and mesh memory shall return to baseline after the content that used them unloads. | Must | Partial (meshes released with their sector, #277; textures and sounds #308) |
+| REQ-PERF-06 | GPU texture and mesh memory shall return to baseline after the content that used them unloads. | Must | Done for meshes and textures (#277, #308; test: `LoadingAndUnloadingFiftySectorsReturnsTextureAndMeshCountsToBaseline`); sounds and effects are the game's and stay for the process |
 | REQ-PERF-07 | Saving a large world shall not stall the tick that requested it. | Should | Done (#285: the tick copies component columns, about 3 ms for 10k entities in a Debug build, and the writer builds and writes the JSON; test: `ATenThousandEntitySaveDoesNotStallAFrame`, `ABackgroundSaveIsTheTickItWasTakenOn`) |
 | REQ-PERF-08 | Distant animators and AI shall update less often (LOD) without changing results near the player. | Should | Done for animators (`anim_lod_distance`) |
 
