@@ -26,7 +26,7 @@ internal struct UiDrawCommand
     public uint Colour, From;
     public bool Blend;
 
-    // Border: its width in pixels. Text: pixels per font pixel (TextScale × UiRoot.Scale). Image:
+    // Border: its width in pixels. Text: pixels per font pixel (EffectiveTextScale × UiRoot.Scale). Image:
     // pixels per texture pixel, for the corners of a nine-slice.
     public float Size;
 
@@ -135,12 +135,12 @@ internal sealed class UiRenderPlan
                 bar.Colour = bar.From = highlight;
             }
             if (options[i].Length == 0) continue;
-            var size = root.Text.Measure(options[i], dropdown.TextScale);
+            var size = root.Text.Measure(options[i], dropdown.EffectiveTextScale);
             var at = new Rect(row.X + padding.Left, row.Y + (row.Height - size.Y) * 0.5f, size.X, size.Y);
             ref var text = ref Add(UiDrawKind.Text, dropdown, root.ToPixels(at));
             text.Colour = text.From = lit ? focused.Text : normal.Text;
             text.Text = options[i];
-            text.Size = dropdown.TextScale * scale;
+            text.Size = dropdown.EffectiveTextScale * scale;
         }
     }
 
@@ -333,9 +333,9 @@ internal sealed class UiRenderPlan
                 // The caret: a sliver a line high after the character before it (on the text actually
                 // typed, not the placeholder, which it sits in front of).
                 var at = field.Text.Length == 0 ? Vector2.Zero : field.CaretOffset(_root.Text);
-                float line = _root.Text.LineHeight * field.TextScale;
+                float line = _root.Text.LineHeight * field.EffectiveTextScale;
                 if (field.Text.Length == 0) origin = Placed(label, label.TextArea, new Vector2(0f, line), Align.Start);
-                var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.TextScale, 1f), line);
+                var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.EffectiveTextScale, 1f), line);
                 Colour(ref _plan.Add(UiDrawKind.Rect, label, _root.ToPixels(caret)), to.Text, from.Text, blend);
             }
         }
@@ -343,12 +343,12 @@ internal sealed class UiRenderPlan
         // Draws `text` in `area` (aligned across, centred down) and returns its top-left, virtual units.
         private Vector2 Text(Label label, string text, Rect area, Align align, uint colour, uint was, bool blend, float scale)
         {
-            var size = _root.Text.Measure(text, label.TextScale);
+            var size = _root.Text.Measure(text, label.EffectiveTextScale);
             var at = Placed(label, area, size, align);
             ref var command = ref _plan.Add(UiDrawKind.Text, label, _root.ToPixels(new Rect(at.X, at.Y, size.X, size.Y)));
             Colour(ref command, colour, was, blend);
             command.Text = text;
-            command.Size = label.TextScale * scale;
+            command.Size = label.EffectiveTextScale * scale;
             return at;
         }
 

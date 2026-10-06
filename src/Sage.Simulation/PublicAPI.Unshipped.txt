@@ -173,6 +173,8 @@ Sage.Simulation.ShadowAtlas.Height.get -> int
 Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
+Sage.Simulation.SoundRecord.Caption -> string!
+Sage.Simulation.SoundRecord.Speaker -> string!
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
