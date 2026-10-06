@@ -73,6 +73,12 @@ internal sealed class ReachObjective : QuestObjective
     }
 
     public override string Describe(World world, int count) => Place.Length > 0 ? $"reach {Place}" : "reach the place";
+
+    public override bool TryGetPlace(out Vector3 at)
+    {
+        at = At;
+        return true;
+    }
 }
 
 // Somebody to speak to: a conversation with a speaker of this dialogue (or from this prefab) that

@@ -93,6 +93,10 @@
             "description": "(string)",
             "type": "string"
           },
+          "target": {
+            "description": "(string)",
+            "type": "string"
+          },
           "done": {
             "description": "(bool)",
             "type": "boolean"
@@ -140,6 +144,10 @@
             "description": "(string)",
             "type": "string"
           },
+          "target": {
+            "description": "(string)",
+            "type": "string"
+          },
           "done": {
             "description": "(bool)",
             "type": "boolean"
@@ -184,6 +192,10 @@
             }
           },
           "next": {
+            "description": "(string)",
+            "type": "string"
+          },
+          "target": {
             "description": "(string)",
             "type": "string"
           },

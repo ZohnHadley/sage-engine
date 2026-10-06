@@ -16,18 +16,8 @@
     "first_person": "{action:ToggleView}   first person",
     "bare_hands": "bare hands"
   },
-  "journal": {
-    "title": "Journal",
-    "summary": { "zero": "Nothing on the go, {finished} done", "one": "{count} quest on the go, {finished} done", "other": "{count} quests on the go, {finished} done" },
-    "empty": "(nothing yet)",
-    "done": "done",
-    "hint": "Arrows scroll, Esc or J closes"
-  },
+  // The map's markers (the map itself is the RPG kit's, `rpg:map`, with its own words: issue #349).
   "map": {
-    "title": "Map",
-    "you": "you",
-    "range": { "zero": "Nothing marked within {range} m", "one": "{count} place within {range} m", "other": "{count} places within {range} m" },
-    "hint": "North is up. Choose a waystone to travel. Esc or N closes",
     "hut": "the hut",
     "campfire": "campfire",
     "stranger": "the stranger",
@@ -35,10 +25,7 @@
     // The open world (4g-7): the crypt, the smith, the road, and travelling from the map.
     "crypt": "the crypt",
     "smith": "the smith",
-    "road": "the road east",
-    "travel": "go ({hours} h)",
-    "destinations": "Travel to",
-    "destination": "{label}   {hours} h"
+    "road": "the road east"
   },
   "menu": {
     "title": "Sandbox",

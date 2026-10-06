@@ -38,6 +38,9 @@
       "window":     { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10, "minSize": [440, 0] },
       "title":      { "widget": "label", "parent": "window", "text": "@sandbox.status.title", "style": "ui_title" },
       "name":       { "widget": "label", "parent": "window", "bind": "name", "style": "ui_dim" },
+      // You, live, from in front (issue #348): drag across it, or Left and Right, to turn round.
+      "doll":       { "widget": "view", "parent": "window", "target": "paper_doll", "style": "ui_inset", "minSize": [0, 220],
+                      "camera": { "mode": "Orbit", "distance": 3.2, "height": 0.9, "pitch": 8, "rotatable": true } },
 
       "healthRow":  { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
       "healthName": { "widget": "label", "parent": "healthRow", "text": "@sandbox.status.health", "minSize": [80, 0] },
@@ -97,80 +100,13 @@
     } },
   { "type": "screen", "id": "hud", "layout": "hud", "viewModel": "sandbox_hud" },
 
-  // ---- the journal (issue #99) ---------------------------------------------------------------------
-  // The RPG kit's journal view-model (`rpg_journal`, Sage.Kits.Rpg/JournalView.cs) in this game's look:
-  // one line per quest, its stage's text and its objectives under it. J opens and closes it.
-  { "type": "ui_style", "id": "journal_quest", "base": "ui_text", "textColour": "#F0D890" },
-
-  { "type": "ui_layout", "id": "journal", "style": "ui_text",
-    "nodes": {
-      "window":    { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10, "minSize": [640, 0] },
-      "title":     { "widget": "label", "parent": "window", "text": "@sandbox.journal.title", "style": "ui_title" },
-      "summary":   { "widget": "label", "parent": "window", "text": "@sandbox.journal.summary",
-                     "args": { "count": "active", "finished": "finished" }, "style": "ui_dim" },
-      "empty":     { "widget": "label", "parent": "window", "text": "@sandbox.journal.empty", "style": "ui_dim",
-                     "bindings": { "visible": "empty" } },
-      "page":      { "widget": "scroll", "parent": "window", "style": "ui_inset", "minSize": [0, 320] },
-      "lines":     { "widget": "item_list", "parent": "page", "bind": "lines" },
-      "line":      { "widget": "stack", "parent": "lines", "direction": "Row", "spacing": 10, "style": "ui_row" },
-      "quest":     { "widget": "label", "parent": "line", "bind": "text", "style": "journal_quest", "bindings": { "visible": "quest" } },
-      "done":      { "widget": "label", "parent": "line", "text": "@sandbox.journal.done", "style": "ui_dim", "bindings": { "visible": "done" } },
-      "stage":     { "widget": "label", "parent": "line", "bind": "text", "margin": [16, 0, 0, 0], "bindings": { "visible": "stage" } },
-      "objective": { "widget": "label", "parent": "line", "bind": "text", "margin": [32, 0, 0, 0], "expand": 1,
-                     "bindings": { "visible": "objective" } },
-      "progress":  { "widget": "label", "parent": "line", "bind": "progress", "style": "ui_dim", "textAlign": "End",
-                     "bindings": { "visible": "objective" } },
-
-      "buttons":   { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10, "hAlign": "End" },
-      "hint":      { "widget": "label", "parent": "buttons", "text": "@sandbox.journal.hint", "style": "ui_dim", "textScale": 1, "vAlign": "Center" },
-      "close":     { "widget": "button", "parent": "buttons", "text": "@sandbox.status.close", "style": "ui_button" }
-    } },
-  { "type": "screen", "id": "journal", "layout": "journal", "viewModel": "rpg_journal" },
-
-  // ---- the map (issue #99) -------------------------------------------------------------------------
-  // Markers only (the kit's `rpg_map`, Sage.Kits.Rpg/MapView.cs): whatever content gave an
-  // `map_marker`, placed round you — in the middle, north up — by the `x` and `y` bindings, in a
-  // square so a metre is as long across as down. N opens and closes it. A discovered waystone is a
-  // marker with a button, and a row under the map: choosing either fast travels (4g-7).
-  { "type": "ui_style", "id": "map_area", "background": "#0A0C14E6", "border": "#3A3E52", "borderWidth": 1 },
-  { "type": "ui_style", "id": "map_label", "base": "ui_text", "textColour": "#D8D8E0" },
-  { "type": "ui_style", "id": "map_dot", "background": "#F0D890" },
-  { "type": "ui_style", "id": "map_you", "background": "#60C0FF" },
+  // ---- the journal and the map (issues #99, #349) -------------------------------------------------
+  // The RPG kit's own screens, `rpg:journal` and `rpg:map` (J and N, Sandbox.Client): every game with the
+  // kit has them. The Sandbox only gives its markers their colours (each `map_marker` names its style) and
+  // its scene a picture and fog (`area_map` sandbox:main, content/data/scene.json).
   { "type": "ui_style", "id": "map_place", "background": "#C8A060" },
   { "type": "ui_style", "id": "map_person", "background": "#80E080" },
   { "type": "ui_style", "id": "map_danger", "background": "#E06060" },
-
-  { "type": "ui_layout", "id": "map", "style": "ui_text",
-    "nodes": {
-      "window":   { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10 },
-      "title":    { "widget": "label", "parent": "window", "text": "@sandbox.map.title", "style": "ui_title" },
-      "area":     { "widget": "box", "parent": "window", "style": "map_area", "minSize": [440, 440], "hAlign": "Center" },
-      "you":      { "widget": "stack", "parent": "area", "direction": "Row", "spacing": 4, "anchors": "center" },
-      "youDot":   { "widget": "label", "parent": "you", "text": "", "style": "map_you", "minSize": [10, 10], "vAlign": "Center" },
-      "youName":  { "widget": "label", "parent": "you", "text": "@sandbox.map.you", "style": "map_label" },
-      "markers":  { "widget": "box", "parent": "area", "anchors": "fill", "bindings": { "rows": "markers" } },
-      "marker":   { "widget": "stack", "parent": "markers", "direction": "Row", "spacing": 4, "bindings": { "x": "x", "y": "y" } },
-      "dot":      { "widget": "label", "parent": "marker", "text": "", "style": "map_dot", "minSize": [8, 8], "vAlign": "Center",
-                    "bindings": { "style": "style" } },
-      "name":     { "widget": "label", "parent": "marker", "bind": "label", "style": "map_label" },
-      // A discovered waystone is a marker you can choose (the kit's fast travel, 4g-7).
-      "go":       { "widget": "button", "parent": "marker", "text": "@sandbox.map.travel", "args": { "hours": "travelHours" },
-                    "style": "ui_button", "textScale": 1, "bindings": { "visible": "canTravel" } },
-
-      // Every discovered waystone, in any scene: the same journeys as a list (4g-7).
-      "travelTitle": { "widget": "label", "parent": "window", "text": "@sandbox.map.destinations", "style": "ui_dim",
-                       "bindings": { "visible": "hasDestinations" } },
-      "destinations": { "widget": "item_list", "parent": "window", "bind": "destinations", "direction": "Row", "spacing": 6 },
-      "destination":  { "widget": "button", "parent": "destinations", "text": "@sandbox.map.destination",
-                        "args": { "label": "label", "hours": "travelHours" }, "style": "ui_button", "textScale": 1 },
-
-      "footer":   { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
-      "range":    { "widget": "label", "parent": "footer", "text": "@sandbox.map.range", "args": { "range": "range", "count": "count" },
-                    "style": "ui_dim", "expand": 1, "vAlign": "Center" },
-      "hint":     { "widget": "label", "parent": "footer", "text": "@sandbox.map.hint", "style": "ui_dim", "textScale": 1, "vAlign": "Center" },
-      "close":    { "widget": "button", "parent": "footer", "text": "@sandbox.status.close", "style": "ui_button" }
-    } },
-  { "type": "screen", "id": "map", "layout": "map", "viewModel": "rpg_map" },
 
   // ---- the main menu (issue #99) -------------------------------------------------------------------
   // Resume, Save and Quit, and every save there is to load (SaveSystem.Slots) over the `sandbox_main_menu`

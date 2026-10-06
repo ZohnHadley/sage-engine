@@ -67,14 +67,15 @@ public sealed class SandboxClientModule : IModule
 
         // The widget screens (13 "As built (drawing)", #97, and "As built (the HUD, journal, map and
         // menus)", #99), built from records in content/data/ui.json: `sandbox:status` (C), the kit's
-        // journal (J) and map (N) view-models in this game's layouts, and the main menu (F10) with the
+        // journal (J) and map (N), and the main menu (F10) with the
         // saves to load. The HUD is one too, opened once and for good as a layer that never takes a key.
         // Their Close buttons are the one thing a layout cannot say, so it is said here.
 #pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
         var widgets = world.Resources.Get<Sage.UI.UiScreenStack>();
         widgets.Bind(_actions!.Get("Status"), new RecordId("sandbox", "status"));
-        widgets.Bind(_actions!.Get("Journal"), new RecordId("sandbox", "journal"));
-        widgets.Bind(_actions!.Get("Map"), new RecordId("sandbox", "map"));
+        // The journal and the map are the RPG kit's own screens (issue #349): J and N.
+        widgets.Bind(_actions!.Get("Journal"), RpgKitModule.JournalScreen);
+        widgets.Bind(_actions!.Get("Map"), RpgKitModule.MapScreen);
         // F10 is the RPG kit's pause menu (issue #342): Resume, Save, Load, Options, Quit, the world stood
         // still while it is open. The Sandbox's own menu of #99 is still `ui_open main_menu`.
         widgets.Bind(_actions!.Get("MainMenu"), RpgKitModule.PauseScreen);

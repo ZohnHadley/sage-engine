@@ -11,7 +11,15 @@ namespace Sage.UI;
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public class Box : Container
 {
+    private bool _clipChildren;
+
     public override string TypeName => "box";
+
+    // Cuts off what its children draw outside its content rect, as a Scroll does (a map's picture, zoomed in
+    // and panned, issue #349); off, a child may overhang it.
+    public bool ClipChildren { get => _clipChildren; set { if (_clipChildren == value) return; _clipChildren = value; InvalidateArrange(); } }
+
+    protected override Rect ChildClip => _clipChildren ? RectMath.Intersect(Clip, ContentRect) : Clip;
 
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
     {
@@ -288,7 +296,13 @@ public class ItemList : Stack
         else SetSelected(index);
     }
 
-    protected override void OnChildAdded(Widget child) => child.Focusable = true;
+    // An item is a focus target, and the pointer's even when it is a row of several widgets (a stack of
+    // labels: a journal's line, issue #349), so clicking it activates it as the comment above says.
+    protected override void OnChildAdded(Widget child)
+    {
+        child.Focusable = true;
+        child.HitTestable = true;
+    }
 
     protected override void OnChildRemoved(Widget child)
     {

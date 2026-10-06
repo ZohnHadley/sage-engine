@@ -158,11 +158,19 @@
       {
         "id": "hunt",
         "text": "The hermit asked you to thin the watchers below.",
-        "objectives": [ { "kind": "Kill", "faction": "sandbox:beasts", "count": 2 } ],
+        // A tracked quest's targets are on the map (issue #349): a watcher while the hunt is on, then the hermit.
+        "objectives": [ { "kind": "Kill", "faction": "sandbox:beasts", "count": 2, "target": "watcher" } ],
         "next": "report"
       },
-      { "id": "report", "text": "Tell the hermit it is done." }
+      { "id": "report", "text": "Tell the hermit it is done.", "target": "hermit" }
     ]
+  },
+  {
+    // The main scene's map (the RPG kit's `area_map`, issue #349; its id is the scene's): a picture one pixel
+    // a metre over the 128 m round the origin (tools/make_ui_art.py), and fog in 8 m squares that lifts 16 m
+    // round the player as they walk.
+    "type": "area_map", "id": "main", "picture": "textures/map_main.png",
+    "from": [448, 448], "to": [576, 576], "cell": 8, "reveal": 16
   },
   {
     // Four nodes and a trade. What the options *do* is machinery that already existed \u2014 taking an item,

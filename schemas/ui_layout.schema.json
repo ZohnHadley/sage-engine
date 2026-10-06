@@ -59,7 +59,7 @@
         "type": "object",
         "properties": {
           "widget": {
-            "description": "What it is: box, stack, grid, label, image, button, item_list, bar, scroll, slider, checkbox, dropdown, text_field or tabs. (string)",
+            "description": "What it is: box, stack, grid, label, image, button, item_list, bar, scroll, slider, checkbox, dropdown, text_field, tabs or view. (string)",
             "type": "string",
             "enum": [
               "box",
@@ -75,7 +75,8 @@
               "checkbox",
               "dropdown",
               "text_field",
-              "tabs"
+              "tabs",
+              "view"
             ]
           },
           "parent": {
@@ -93,6 +94,25 @@
                 "$ref": "ids.schema.json#/definitions/record:ui_style"
               }
             ]
+          },
+          "include": {
+            "description": "Another layout whose nodes go inside this one, before its own children, named 'this/inner': a part made once and used anywhere (a titled window, a labelled bar); with no widget, this node is a stack. Names a ui_layout record. (RecordRef<UiLayoutRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ui_layout"
+              }
+            ]
+          },
+          "params": {
+            "description": "For an include: what `{$name}` in the included layout's text and paths is. (Dictionary<string, string>)",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "description": "A path into the view-model (or the row) that this node and everything inside it read from; '$parent.' reaches back out. (string)",
+            "type": "string"
           },
           "text": {
             "description": "A label's, button's or checkbox's text, or what a text field starts with; '@ns.key' is a localisation key. (string)",
@@ -131,6 +151,130 @@
             "anyOf": [
               {
                 "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "description": "A view's picture: the render target it shows, by name (a camera's `target`, or its own camera's) (string)",
+            "type": "string"
+          },
+          "camera": {
+            "description": "A view's own camera, drawing its target: an orbit round the player (a paper doll) or a top-down map; none: a camera entity draws the target. (UiViewCameraNode)",
+            "type": "object",
+            "properties": {
+              "mode": {
+                "description": "Orbit: round its subject, looking at it from in front; TopDown: straight down on it, north up, a map. (ViewCamera)",
+                "type": "string",
+                "enum": [
+                  "None",
+                  "Orbit",
+                  "TopDown"
+                ]
+              },
+              "subject": {
+                "description": "What it looks at: 'player' (the screen's subject or the local player), 'other' (the NPC talked to, the corpse looted) or an entity by name; empty: centre. (string)",
+                "type": "string"
+              },
+              "centre": {
+                "description": "Where it looks with no subject (a fixed map) Unit: m. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "distance": {
+                "description": "Orbit: how far from the point it looks at. Unit: m. At least 0.01. (float)",
+                "type": "number",
+                "minimum": 0.01
+              },
+              "height": {
+                "description": "Orbit: how far above the subject's origin the point it looks at is. Unit: m. (float)",
+                "type": "number"
+              },
+              "yaw": {
+                "description": "Orbit: degrees round the subject from in front of it; TopDown: the map turned. Unit: deg. Range: -360 to 360. (float)",
+                "type": "number",
+                "minimum": -360,
+                "maximum": 360
+              },
+              "pitch": {
+                "description": "Orbit: degrees above the subject, looking down on it. Unit: deg. Range: -89 to 89. (float)",
+                "type": "number",
+                "minimum": -89,
+                "maximum": 89
+              },
+              "spin": {
+                "description": "Turns by itself this fast (a turntable); 0: still. Unit: deg/s. (float)",
+                "type": "number"
+              },
+              "fieldOfView": {
+                "description": "Orbit: the vertical field of view. Unit: deg. Range: 1 to 170. (float)",
+                "type": "number",
+                "minimum": 1,
+                "maximum": 170
+              },
+              "radius": {
+                "description": "TopDown: metres from the middle of the map to its edges. Unit: m. At least 0.01. (float)",
+                "type": "number",
+                "minimum": 0.01
+              },
+              "altitude": {
+                "description": "TopDown: how far above the point it looks at. Unit: m. At least 1. (float)",
+                "type": "number",
+                "minimum": 1
+              },
+              "far": {
+                "description": "The far clip plane. Unit: m. At least 1. (float)",
+                "type": "number",
+                "minimum": 1
+              },
+              "resolution": {
+                "description": "The target's pixels across its longer side; 0: as many as the view covers on screen. Unit: px. Range: 0 to 4096. (int)",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "rotatable": {
+                "description": "The player turns it, dragging across it or with Left and Right while it has focus. (bool)",
+                "type": "boolean"
+              },
+              "sky": {
+                "description": "Draws the sky behind (default: the clear colour) (bool)",
+                "type": "boolean"
+              },
+              "shadows": {
+                "description": "Casts shadows in it (default: none, no second shadow map) (bool)",
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "fogColour": {
+            "description": "What an image's or view's bound `fog` covers the unrevealed part of the picture with; empty: near-black. (uint?)",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\\s*$"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "minItems": 3,
+                "maxItems": 4
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295
               },
               {
                 "type": "null"
@@ -359,6 +503,10 @@
             "description": "A grid's cells are all the size of the biggest. (bool)",
             "type": "boolean"
           },
+          "clip": {
+            "description": "A box cuts off what is inside it at its edges (a map's picture, zoomed in and panned) (bool)",
+            "type": "boolean"
+          },
           "horizontal": {
             "description": "A scroll scrolls across (default false) (bool?)",
             "anyOf": [
@@ -580,11 +728,11 @@
             }
           },
           "bind": {
-            "description": "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to. (string)",
+            "description": "A path into the view-model for its main value (`name`, `items[0].name`, `stats[health]`; in a row, `$parent.` or `$root.` for the view-model): a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to. (string)",
             "type": "string"
           },
           "bindings": {
-            "description": "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options, icon, iconTurned, columnSpan, rowSpan. (Dictionary<string, string>)",
+            "description": "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options; icon, iconTurned, columnSpan, rowSpan; an image's or view's fog, a view's target and radius. (Dictionary<string, string>)",
             "type": "object",
             "additionalProperties": {
               "type": "string"
@@ -592,6 +740,13 @@
           }
         },
         "additionalProperties": false
+      }
+    },
+    "params": {
+      "description": "When another layout includes this one: what `{$name}` in its nodes' text and paths is unless the including node's `params` say otherwise. (Dictionary<string, string>)",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
       }
     }
   },

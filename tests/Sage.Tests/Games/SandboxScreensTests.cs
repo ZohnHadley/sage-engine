@@ -203,8 +203,8 @@ public class SandboxScreensTests
         Assert.True(saves.SlotsVersion > version);
     }
 
-    // The journal (the kit's view-model in the Sandbox's layout): a line per quest, its stage and its
-    // objective with progress, and the quest finished shows as done without them.
+    // The journal (the kit's own screen, rpg:journal, since #349): a line per quest, its stage and its
+    // objective with progress, and the quest finished shows as done, with the stage it ended at as history.
     [Fact]
     public void TheJournalShowsEachQuestItsStageAndItsObjectives()
     {
@@ -212,7 +212,7 @@ public class SandboxScreensTests
         var world = app.World;
         CameraRigTests.Step(world);
         var stack = Stack(world);
-        var layer = stack.Open(new RecordId("sandbox", "journal"), new UiBindContext(world, Player(world)));
+        var layer = stack.Open(RpgKitModule.JournalScreen, new UiBindContext(world, Player(world)));
         stack.Update(UiInput.Wait(0f));
         var journal = Assert.IsType<JournalView>(layer.Screen!.ViewModel);
         Assert.True(journal.Empty);
@@ -240,8 +240,10 @@ public class SandboxScreensTests
 
         Assert.True(Quests.Finish(world, Thin));
         stack.Update(UiInput.Wait(0f));
-        var done = Assert.Single(journal.Lines);
+        Assert.Equal(2, journal.Lines.Count);
+        var done = journal.Lines[0];
         Assert.True(done.Done);
+        Assert.True(journal.Lines[1].Past);                                  // the stage it ended at, kept (#349)
         Assert.True(lines.Child(0).Find("done")!.Visible);
         Assert.Equal(1, journal.Finished);
     }
@@ -255,7 +257,7 @@ public class SandboxScreensTests
         CameraRigTests.Step(world);
         var player = Player(world);
         var stack = Stack(world);
-        var layer = stack.Open(new RecordId("sandbox", "map"), new UiBindContext(world, player));
+        var layer = stack.Open(RpgKitModule.MapScreen, new UiBindContext(world, player));
         stack.Update(UiInput.Wait(0f));
         var map = Assert.IsType<MapView>(layer.Screen!.ViewModel);
 

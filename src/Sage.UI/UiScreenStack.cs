@@ -250,6 +250,47 @@ public sealed class UiScreenStack
     // Bottom to top, closing layers included until they have faded.
     public IReadOnlyList<UiLayer> Layers => _layers;
 
+    // The view widgets on screen that draw with a camera of their own (issue #348), each with its
+    // screen's subject and other, for the client to add a camera into the view's target. Uses the last
+    // layout; a layer not yet faded in at all, or hidden widgets, add nothing.
+    internal void CollectViews(List<UiWorldView> into)
+    {
+        into.Clear();
+        foreach (var layer in _layers)
+        {
+            if (layer.IsClosed || layer.Opacity <= 0f) continue;
+            var collector = new ViewCollector(layer.Root, layer.Screen?.Context ?? new UiBindContext(_world), into);
+            layer.Root.Walk(ref collector);
+        }
+    }
+
+    private readonly struct ViewCollector : IWidgetVisitor
+    {
+        private readonly UiRoot _root;
+        private readonly UiBindContext _context;
+        private readonly List<UiWorldView> _into;
+
+        public ViewCollector(UiRoot root, UiBindContext context, List<UiWorldView> into)
+        {
+            _root = root;
+            _context = context;
+            _into = into;
+        }
+
+        public bool Enter(Widget widget)
+        {
+            if (widget is View { Camera: not ViewCamera.None, Target.Length: > 0 } view)
+            {
+                var shown = RectMath.Intersect(view.ImageRect, view.Clip);
+                if (shown.Width > 0f && shown.Height > 0f)
+                    _into.Add(new UiWorldView { View = view, Context = _context, Pixels = _root.ToPixels(view.ImageRect) });
+            }
+            return true;
+        }
+
+        public void Leave(Widget widget) { }
+    }
+
     // A modal layer is open (and not on its way out): the UI has the input.
     public bool IsOpen => Top != null;
 

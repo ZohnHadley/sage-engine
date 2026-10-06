@@ -398,5 +398,79 @@
       "mismatch": { "widget": "label", "parent": "slot", "style": "warning", "bind": "mismatch", "bindings": { "visible": "hasMismatch" } },
       "message":  { "widget": "label", "parent": "window", "style": "text", "bind": "message", "args": { "slot": "messageSlot" } },
       "hint":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.saves.hint" }
+    } },
+
+  // ---- journal: the story so far, and the quests tracked (issue #349) -----------------------------
+  // JournalView's lines: a quest's (with `tracked` and `done`), the stages it moved on from (`past`), and
+  // the stage it is on with its objectives. Activating an unfinished quest's line tracks it or stops.
+  { "type": "screen", "id": "journal", "layout": "journal", "viewModel": "rpg_journal" },
+  { "type": "ui_layout", "id": "journal", "style": "panel",
+    "nodes": {
+      "window":    { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [600, 0] },
+      "title":     { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.journal.title" },
+      "summary":   { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.journal.summary",
+                     "args": { "count": "active", "finished": "finished" } },
+      "empty":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.journal.empty",
+                     "bindings": { "visible": "empty" } },
+      "page":      { "widget": "scroll", "parent": "window", "minSize": [0, 320] },
+      "lines":     { "widget": "item_list", "parent": "page", "bind": "lines" },
+      "line":      { "widget": "stack", "parent": "lines", "direction": "row", "spacing": 8, "style": "journal_line" },
+      "tracked":   { "widget": "label", "parent": "line", "style": "journal_quest", "text": "@rpg.journal.tracked",
+                     "bindings": { "visible": "tracked" } },
+      "quest":     { "widget": "label", "parent": "line", "style": "journal_quest", "bind": "text", "bindings": { "visible": "quest" } },
+      "done":      { "widget": "label", "parent": "line", "style": "hint", "text": "@rpg.journal.done", "bindings": { "visible": "done" } },
+      "past":      { "widget": "label", "parent": "line", "style": "hint", "bind": "text", "margin": [16, 0, 0, 0],
+                     "bindings": { "visible": "past" } },
+      "stage":     { "widget": "label", "parent": "line", "style": "text", "bind": "text", "margin": [16, 0, 0, 0],
+                     "bindings": { "visible": "stage" } },
+      "objective": { "widget": "label", "parent": "line", "style": "text", "bind": "text", "margin": [32, 0, 0, 0], "expand": 1,
+                     "bindings": { "visible": "objective" } },
+      "progress":  { "widget": "label", "parent": "line", "style": "hint", "bind": "progress", "textAlign": "end",
+                     "bindings": { "visible": "objective" } },
+      "hint":      { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.journal.hint" }
+    } },
+
+  // ---- map: the scene's picture under its fog, the markers, zoom and pan (issues #99, #349) --------
+  // MapView: `picture` and each square of `fog` are rects in the `clip` box (the x, y, w and h bindings);
+  // markers and you are points in it. A marker in the fog is hidden; a tracked quest's target never is.
+  { "type": "screen", "id": "map", "layout": "map", "viewModel": "rpg_map" },
+  { "type": "ui_layout", "id": "map", "style": "panel",
+    "nodes": {
+      "window":   { "widget": "stack", "anchors": "center", "spacing": 6 },
+      "title":    { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.map.title" },
+      "area":     { "widget": "box", "parent": "window", "style": "map_area", "minSize": [440, 440], "hAlign": "center", "clip": true },
+      "picture":  { "widget": "image", "parent": "area", "bind": "picture", "keepAspect": false,
+                    "bindings": { "x": "pictureX", "y": "pictureY", "w": "pictureW", "h": "pictureH", "visible": "hasPicture" } },
+      "fog":      { "widget": "box", "parent": "area", "anchors": "fill", "bindings": { "rows": "fog", "visible": "hasFog" } },
+      "fogSquare": { "widget": "box", "parent": "fog", "style": "map_fog", "bindings": { "x": "x", "y": "y", "w": "w", "h": "h" } },
+      "markers":  { "widget": "box", "parent": "area", "anchors": "fill", "bindings": { "rows": "markers" } },
+      "marker":   { "widget": "stack", "parent": "markers", "direction": "row", "spacing": 4,
+                    "bindings": { "x": "x", "y": "y", "visible": "discovered" } },
+      "dot":      { "widget": "label", "parent": "marker", "style": "map_dot", "text": "", "minSize": [8, 8], "vAlign": "center",
+                    "bindings": { "style": "style" } },
+      "name":     { "widget": "label", "parent": "marker", "style": "map_label", "bind": "label" },
+      "go":       { "widget": "button", "parent": "marker", "style": "button", "text": "@rpg.map.travel", "args": { "hours": "travelHours" },
+                    "bindings": { "visible": "canTravel" } },
+      "you":      { "widget": "stack", "parent": "area", "direction": "row", "spacing": 4, "bindings": { "x": "youX", "y": "youY" } },
+      "youDot":   { "widget": "label", "parent": "you", "style": "map_you", "text": "", "minSize": [10, 10], "vAlign": "center" },
+      "youName":  { "widget": "label", "parent": "you", "style": "map_label", "text": "@rpg.map.you" },
+
+      "controls": { "widget": "stack", "parent": "window", "direction": "row", "spacing": 4, "hAlign": "center" },
+      "zoom_in":  { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.map.zoom_in", "bindings": { "enabled": "canZoomIn" } },
+      "zoom_out": { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.map.zoom_out", "bindings": { "enabled": "canZoomOut" } },
+      "pan_west": { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.map.west" },
+      "pan_north": { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.map.north" },
+      "pan_south": { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.map.south" },
+      "pan_east": { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.map.east" },
+      "recentre": { "widget": "button", "parent": "controls", "style": "button", "text": "@rpg.map.recentre" },
+
+      "travelTitle": { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.map.destinations",
+                       "bindings": { "visible": "hasDestinations" } },
+      "destinations": { "widget": "item_list", "parent": "window", "bind": "destinations", "direction": "row", "spacing": 6 },
+      "destination":  { "widget": "button", "parent": "destinations", "style": "button", "text": "@rpg.map.destination",
+                        "args": { "label": "label", "hours": "travelHours" } },
+
+      "range":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.map.range", "args": { "range": "range", "count": "count" } },
+      "hint":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.map.hint" }
     } }
 ]
