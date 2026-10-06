@@ -45,6 +45,7 @@ public sealed class ContentService : IDisposable
     private readonly AssetTable<Texture2D> _textures;
     private readonly Dictionary<AssetPath, BitmapFont?> _fonts = new();
     private readonly Dictionary<AssetPath, Microsoft.Xna.Framework.Audio.SoundEffect?> _sounds = new();
+    private readonly HashSet<AssetPath> _streamed = new();   // files opened to stream, for hot reload (issue #326)
 
     internal ContentService(ClientHost host, VirtualFileSystem vfs)
     {
@@ -158,6 +159,16 @@ public sealed class ContentService : IDisposable
             return true;
         }
 
+        // A streamed sound (issue #326) holds no copy to replace: the voices on it let go of their file and
+        // the loops start again from the new one, as a sound loaded whole does.
+        if (_streamed.Contains(path) && _vfs.Exists(path.Path))
+        {
+            SoundReplacing?.Invoke(path);
+            Log.Info(LogCat.Assets, $"Reloaded streamed sound {path}");
+            Reloaded?.Invoke(path);
+            return true;
+        }
+
         if (path.Path.Value.EndsWith(".glb", StringComparison.OrdinalIgnoreCase) && ModelReloader?.Invoke(path) == true)
         {
             Log.Info(LogCat.Assets, $"Reloaded model {path}");
@@ -181,6 +192,7 @@ public sealed class ContentService : IDisposable
             foreach (var path in _effects.Keys) yield return (path, "effect", true);
             foreach (var path in _fonts.Keys) yield return (path, "font", true);
             foreach (var path in _sounds.Keys) yield return (path, "sound", true);
+            foreach (var path in _streamed) yield return (path, "sound (streamed)", true);
         }
     }
 
@@ -296,6 +308,22 @@ public sealed class ContentService : IDisposable
             }
         }
         return _sounds[path] = sound;
+    }
+
+    // An Ogg Vorbis file opened to be decoded as it plays (issue #326, `"stream": true` on the sound): nothing
+    // is cached, each voice reads its own copy of the file a few buffers ahead. Null when it is in no mount
+    // or is not Ogg Vorbis (logged once).
+    internal PcmStreamer? OpenSoundStream(AssetPath path, bool loop)
+    {
+        var streamer = PcmStreamer.Open(_vfs, path, loop, out string? error);
+        if (streamer == null)
+        {
+            Log.Once(LogCat.Audio, LogLevel.Error, $"sound-stream:{path}", $"Sound '{path}' cannot stream: {error}");
+            return null;
+        }
+        if (_streamed.Add(path))
+            Log.Debug(LogCat.Audio, $"Streaming sound {path} ({streamer.Channels} channel(s), {streamer.SampleRate} Hz, {streamer.BufferedBytes / 1024} KB buffered)");
+        return streamer;
     }
 
     // A texture, at the game's scope: kept for the process (a game's own code, a post effect's picture).
