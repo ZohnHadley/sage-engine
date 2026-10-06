@@ -335,6 +335,9 @@ public sealed class ScreenRecord
 
     [Property(Category = "Sound", Tooltip = "The ui_sounds this screen uses where it names a sound; each one it leaves empty is the game's default (sage:default_ui_sounds)")]
     public RecordRef<UiSoundsRecord> Sounds;
+
+    [Property(Tooltip = "The world's time stands still while it is open (a pause menu), and runs again when the last such screen closes")]
+    public bool Pauses;
 }
 
 // What the screens sound like (issue #330): the one noise per screen action, as data. A game patches

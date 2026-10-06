@@ -311,6 +311,18 @@ public sealed class Engine : IDisposable
         // The start scene (issue #29), placed before the rules start: they find the world populated,
         // and their SpawnPlayer finds the scene's player start.
         if (played != null) world.Resources.Add(played);   // what the scene places for the editor's document (#226)
+
+        // A game with a title screen (issue #342): the world is furnished but waits, paused, with no scene
+        // placed and its rules not started, until BeginGame — the title's "new game", or a save loaded.
+        if (!editing && played == null && !Scenes.Title.IsEmpty)
+        {
+            Scenes.Enter(world, default);
+            world.Resources.Add(new TitleWait(scene));
+            world.Paused = true;
+            Log.Info(LogCat.World, $"World '{name}' waits at the title ({Scenes.Title})");
+            Signals.RaiseWorldCreated(world);
+            return world;
+        }
         Scenes.Enter(world, scene);
 
         // Now that every module has had its turn, the game's rules may populate the world (16 §3.1). Not
@@ -318,6 +330,21 @@ public sealed class Engine : IDisposable
         if (!editing) rules.OnWorldStarted(world);
         Signals.RaiseWorldCreated(world);   // furnished, placed and started (#282)
         return world;
+    }
+
+    // Starts a world that waits at the title (Scenes.Title, issue #342): its start scene placed, its rules
+    // started — the player spawned — and its time running, as CreateWorld would have done. What a title's
+    // "new game" calls; a save loaded from the title calls it first. False for a world already started.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes (#29), with the title (#342)
+    public bool BeginGame(World world)
+    {
+        if (!world.Resources.TryGet<TitleWait>(out var wait) || wait == null) return false;
+        world.Resources.Remove<TitleWait>();
+        world.Paused = false;
+        Scenes.PlaceStart(world, wait.Scene);
+        if (world.Resources.TryGet<GameRules>(out var rules) && rules != null) rules.OnWorldStarted(world);
+        Log.Info(LogCat.World, $"World '{world.Name}' begins{(wait.Scene.IsEmpty ? "" : $" in '{wait.Scene}'")}");
+        return true;
     }
 
     public void DestroyWorld(World world)

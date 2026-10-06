@@ -2,6 +2,7 @@
 Sage.Client.GamepadListener.AnyButtonPressed.get -> bool
 Sage.Client.GamepadListener.GamepadListener(int index) -> void
 Sage.Client.GamepadListener.MaxAxis.get -> float
+Sage.Client.GamepadListener.Name.get -> string!
 Sage.Client.InputActions.ApplyRumble(Sage.Simulation.RumbleMixer? mixer) -> void
 Sage.Client.InputActions.Axis2Of(int player, Sage.Simulation.ActionId a) -> System.Numerics.Vector2
 Sage.Client.InputActions.HeldMaskOf(int player) -> Sage.Simulation.ActionMask

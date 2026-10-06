@@ -68,6 +68,9 @@ Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string
 Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
 Sage.Simulation.InputRebinds.Validator.set -> void
 Sage.Simulation.InputRebinds.Version.get -> int
+Sage.Simulation.LastUsedDevice.Pad.get -> Sage.Simulation.PadFamily
+Sage.Simulation.LastUsedDevice.SetPad(Sage.Simulation.PadFamily pad) -> void
+Sage.Simulation.LastUsedDevice.Version.get -> int
 Sage.Simulation.MouseCaptureFrame
 Sage.Simulation.MouseCaptureFrame.Captured.get -> bool
 Sage.Simulation.MouseCaptureFrame.Captured.init -> void
@@ -104,6 +107,9 @@ Sage.Simulation.MouseCaptureTracker
 Sage.Simulation.MouseCaptureTracker.Captured.get -> bool
 Sage.Simulation.MouseCaptureTracker.MouseCaptureTracker() -> void
 Sage.Simulation.MouseCaptureTracker.Step(bool want, int x, int y, int centreX, int centreY) -> Sage.Simulation.MouseCaptureFrame
+Sage.Simulation.PadFamily
+Sage.Simulation.PadFamily.PlayStation = 1 -> Sage.Simulation.PadFamily
+Sage.Simulation.PadFamily.Xbox = 0 -> Sage.Simulation.PadFamily
 Sage.Simulation.PendingRebind
 Sage.Simulation.PendingRebind.Action.get -> string!
 Sage.Simulation.PendingRebind.Action.init -> void
@@ -198,6 +204,9 @@ Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
 static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
+static Sage.Simulation.InputGlyphs.DefaultName(Sage.Simulation.InputBinding! binding, Sage.Simulation.PadFamily pad) -> string!
+static Sage.Simulation.InputGlyphs.FamilyOf(string? padName) -> Sage.Simulation.PadFamily
+static Sage.Simulation.InputGlyphs.GlyphKey(Sage.Simulation.InputBinding! binding, Sage.Simulation.PadFamily pad) -> string!
 static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
 static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
 static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float
@@ -594,3 +603,12 @@ Sage.Simulation.AudioMonitor.Refresh(Sage.Simulation.AudioMixer! mixer) -> void
 Sage.Simulation.AudioMonitor.Voices.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.VoiceRow>!
 Sage.Simulation.AudioMixer.BusVolume(Sage.Simulation.AudioBus bus) -> float
 Sage.Simulation.AudioMixer.Preview(Sage.Core.RecordId sound, Sage.Simulation.SoundRecord? record) -> Sage.Simulation.VoiceHandle
+Sage.Simulation.Engine.BeginGame(Sage.Simulation.World! world) -> bool
+Sage.Simulation.SageAppOptions.ShowTitle.get -> bool
+Sage.Simulation.SageAppOptions.ShowTitle.init -> void
+Sage.Simulation.SaveSlot.Scene.get -> Sage.Core.RecordId
+Sage.Simulation.Scenes.Title.get -> Sage.Core.RecordId
+Sage.Simulation.Scenes.Title.set -> void
+static Sage.Simulation.Scenes.AtTitle(Sage.Simulation.World! world) -> bool
+Sage.Simulation.SageAppOptions.Title.get -> string?
+Sage.Simulation.SageAppOptions.Title.init -> void

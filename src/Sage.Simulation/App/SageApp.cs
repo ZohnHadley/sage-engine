@@ -56,6 +56,15 @@ public sealed class SageAppOptions
     // manifest. Resolved like the manifest's, in the game's namespace (issue #29).
     public string? StartScene { get; init; }
 
+    // Whether worlds wait at game.json's `"title"` screen before they start (issue #342). A host with a
+    // window does, unless it was launched with `-notitle`; a test, a tool or a server starts the world at
+    // once unless it asks. The title itself is checked either way: a typo there is a load error.
+    public bool ShowTitle { get; init; }
+
+    // The title screen, overriding game.json's `"title"`: for a test, or a host with no manifest. Resolved
+    // in the game's namespace, like the start scene.
+    public string? Title { get; init; }
+
     // Whether `developer`, `log_file_level` and `log_queue_size` configure the process's log (issue
     // #11). The executable's app does; a test, a tool or a second app in the same process leaves the
     // log as the host set it (CoreCVars.OwnsProcessLog).
@@ -334,6 +343,7 @@ public sealed class SageApp : IDisposable
         Engine.Records.Load(Engine.Vfs);   // seals record types
         WriteModReport();
         ChooseStartScene();
+        ChooseTitle();
     }
 
     // `user://logs/mod_report.txt` (4j-3). A report that can't be written is a warning: the game still runs.
@@ -365,6 +375,22 @@ public sealed class SageApp : IDisposable
         }
         Engine.Scenes.Start = id;
         Log.Info(LogCat.World, $"Start scene: {id}");
+    }
+
+    // game.json's `"title"` (issue #342), which must name a `screen` record. Worlds wait at it only when
+    // ShowTitle says so; a headless app still checks it, so a test finds the typo the player would.
+    private void ChooseTitle()
+    {
+        string? text = _options.Title ?? Game?.Title;
+        if (string.IsNullOrWhiteSpace(text)) return;
+        RecordId id;
+        try { id = RecordId.Parse(text, Game?.Id ?? "sage"); }
+        catch (FormatException ex) { throw new InvalidDataException($"game.json's \"title\" '{text}': {ex.Message}", ex); }
+        if (!Engine.Records.Exists("screen", id))
+            throw new InvalidDataException($"game.json's \"title\" names '{id}', which is not a screen record (a title screen needs sage.ui and a `screen` of that id)");
+        if (!_options.ShowTitle) return;
+        Engine.Scenes.Title = id;
+        Log.Info(LogCat.World, $"Title screen: {id}");
     }
 
     public void Start()

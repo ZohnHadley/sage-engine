@@ -163,6 +163,13 @@ internal sealed class ActiveScene
     }
 }
 
+// What a world waiting at the title holds back (Scenes.Title, issue #342): the scene it will start in.
+internal sealed class TitleWait
+{
+    public TitleWait(RecordId scene) => Scene = scene;
+    public RecordId Scene { get; }
+}
+
 // The engine's scene service (Engine.Scenes).
 [Experimental("SAGE0121", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // scenes and placements (#29): the level editor (#61) will reshape them
 public sealed partial class Scenes
@@ -189,6 +196,21 @@ public sealed partial class Scenes
     internal void Enter(World world, RecordId start)
     {
         world.Resources.Add(new ActiveScene());
+        PlaceStart(world, start);
+    }
+
+    // **The title** (issue #342): the `screen` record a new world waits at before its start scene is
+    // placed and its rules start — game.json's `"title"`, set by SageApp when the host shows one (a host
+    // with a window, not launched with `-notitle`). Empty: worlds start at once, as they always did. The
+    // UI opens it over the waiting world; Engine.BeginGame (a "new game"), or a save loaded, starts it.
+    public RecordId Title { get; set; }
+
+    // Whether the world is waiting at the title: made with Title set, and not begun (Engine.BeginGame).
+    public static bool AtTitle(World world) => world.Resources.TryGet<TitleWait>(out var wait) && wait != null;
+
+    // The start scene of a world waiting at the title, placed now: what Engine.BeginGame does first.
+    internal void PlaceStart(World world, RecordId start)
+    {
         if (start.IsEmpty) return;
         if (!_engine.Records.TryGet(start, out SceneRecord scene))
         {
@@ -689,6 +711,15 @@ public sealed partial class Scenes
                 }
                 Travel.ToPoint(world, a.Rest);
             }
+        });
+
+        cvars.RegisterCommand("new_game", CVarFlags.None,
+            "new_game: start every world waiting at the title screen (game.json's \"title\"): its scene placed, its rules started.", _ =>
+        {
+            int begun = 0;
+            foreach (var world in _engine.Worlds.ToList())
+                if (_engine.BeginGame(world)) begun++;
+            if (begun == 0) Log.Info(LogCat.Console, "No world is waiting at the title");
         });
 
         cvars.RegisterCommand("scene_load", CVarFlags.Cheat,

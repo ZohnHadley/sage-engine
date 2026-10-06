@@ -71,6 +71,11 @@
           "$ref": "ids.schema.json#/definitions/record:ui_sounds"
         }
       ]
+    },
+    "pauses": {
+      "description": "The world's time stands still while it is open (a pause menu), and runs again when the last such screen closes. (bool, default false)",
+      "default": false,
+      "type": "boolean"
     }
   },
   "additionalProperties": false
