@@ -11,7 +11,8 @@ namespace Sage.Client;
 // scopes and async loading (05 §14 step 2):
 //   - models (.glb, read at runtime by `MeshGeometry.ReadGlb`);
 //   - compiled effects (.mgfxo, 07 §3.1 — the one thing still built ahead of time);
-//   - textures (.png/.jpg via Texture2D.FromStream, premultiplied on load, 07 §13);
+//   - textures (.png/.jpg/.tga decoded by StbImageSharp, premultiplied (07 §13) and mipmapped on load,
+//     issue #317);
 //   - sounds (.wav via SoundEffect.FromStream, .ogg decoded by OggVorbis, 11 §3), and the bitmap font,
 //     which is a texture.
 //
@@ -284,14 +285,13 @@ public sealed class ContentService : IDisposable
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
-                using var stream = mount.Open(path.Path);
-                texture = Texture2D.FromStream(_device, stream);
-                texture.Name = path.ToString();
-                Premultiply(texture);
-                WorkStats.Uploaded((long)texture.Width * texture.Height * 4);
-                Log.Debug(LogCat.Assets, $"Loaded texture {path} ({texture.Width}x{texture.Height}) from {mount.Name}");
+                // Decoded, premultiplied and mipmapped headlessly (issue #317), as a cook would, uncompressed.
+                var loose = CookedAssets.ReadLooseTexture(mount, path.Path);
+                texture = FromCooked(path, loose) ?? throw new InvalidDataException("the GPU texture could not be made");
+                WorkStats.Uploaded(loose.GpuBytes);
+                Log.Debug(LogCat.Assets, $"Loaded texture {path} ({texture.Width}x{texture.Height}, {texture.LevelCount} level(s)) from {mount.Name}");
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException)
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException or InvalidDataException)
             {
                 Log.Warn(LogCat.Assets, $"Texture '{path}' from {mount.Name} failed to decode: {ex.Message}");
             }
@@ -300,8 +300,9 @@ public sealed class ContentService : IDisposable
         return _textures[path] = texture;
     }
 
-    // A cooked texture on the GPU: its blocks as they are where the device samples DXT1/DXT5, decoded to
-    // RGBA on the CPU where it does not (MonoGame refuses the format with NotSupportedException).
+    // A cooked texture on the GPU, every mip level of it: its blocks as they are where the device samples
+    // DXT1/DXT5, decoded to RGBA on the CPU where it does not (MonoGame refuses the format with
+    // NotSupportedException). A loose texture comes here too, as RGBA (`CookedAssets.ReadLooseTexture`).
     private Texture2D? FromCooked(AssetPath path, CookedTextureData cooked)
     {
         var format = cooked.Format switch
@@ -314,42 +315,39 @@ public sealed class ContentService : IDisposable
         {
             if (format != SurfaceFormat.Color)
             {
-                try
-                {
-                    var compressed = new Texture2D(_device, cooked.Width, cooked.Height, false, format) { Name = path.ToString() };
-                    compressed.SetData(cooked.Data);
-                    return compressed;
-                }
+                try { return Upload(path, cooked, format, level => cooked.Levels[level]); }
                 catch (NotSupportedException)
                 {
                     Log.Once(LogCat.Assets, LogLevel.Warn, "cooked-no-s3tc",
                              "This graphics device does not sample DXT1/DXT5: cooked textures are decoded to RGBA as they load");
                 }
             }
-            var texture = new Texture2D(_device, cooked.Width, cooked.Height, false, SurfaceFormat.Color) { Name = path.ToString() };
-            texture.SetData(cooked.ToRgba());
-            return texture;
+            return Upload(path, cooked, SurfaceFormat.Color, cooked.ToRgba);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
-            Log.Warn(LogCat.Assets, $"Cooked texture for '{path}' could not be made ({ex.Message}); reading the loose file");
+            Log.Warn(LogCat.Assets, $"Texture data for '{path}' could not be made into a texture ({ex.Message})");
             return null;
         }
     }
 
-    // Blend states assume premultiplied alpha (07 §13); FromStream returns straight alpha.
-    private static void Premultiply(Texture2D texture)
+    private Texture2D Upload(AssetPath path, CookedTextureData cooked, SurfaceFormat format, Func<int, byte[]> level)
     {
-        if (texture.Format != SurfaceFormat.Color) return;
-        var pixels = new Color[texture.Width * texture.Height];
-        texture.GetData(pixels);
-        for (int i = 0; i < pixels.Length; i++)
+        var texture = new Texture2D(_device, cooked.Width, cooked.Height, cooked.HasMips, format) { Name = path.ToString() };
+        try
         {
-            var c = pixels[i];
-            if (c.A == 255) continue;
-            pixels[i] = new Color(c.R * c.A / 255, c.G * c.A / 255, c.B * c.A / 255, c.A);
+            for (int i = 0; i < cooked.LevelCount; i++)
+            {
+                var data = level(i);
+                texture.SetData(i, null, data, 0, data.Length);
+            }
+            return texture;
         }
-        texture.SetData(pixels);
+        catch
+        {
+            texture.Dispose();
+            throw;
+        }
     }
 
     public void Dispose()
