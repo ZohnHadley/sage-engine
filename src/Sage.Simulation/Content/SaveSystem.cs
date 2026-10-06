@@ -193,7 +193,9 @@ public sealed partial class SaveSystem
     private SaveTiming _lastTiming;
 
     // Null, said in the log, when a world cannot be captured: nothing was written and nothing changed.
-    private SaveSnapshot? Snapshot(string slot, SaveKind kind, string? title)
+    // `directory`: where it goes when that is not the slot's folder (a demo's start, issue #333); `picture`:
+    // whether the client's thumbnail hook is asked for one.
+    private SaveSnapshot? Snapshot(string slot, SaveKind kind, string? title, string? directory = null, bool picture = true)
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();
         try
@@ -230,7 +232,7 @@ public sealed partial class SaveSystem
             // The client's picture of the frame (SaveSystem.Thumbnail), taken now, on the thread that owns
             // the device; encoded and written with the rest. A hook that fails costs the picture, not the save.
             SaveThumbnail? thumbnail = null;
-            if (Thumbnail is { } capture)
+            if (picture && Thumbnail is { } capture)
             {
                 try { thumbnail = capture(); }
                 catch (Exception ex) { Log.Warn(LogCat.Save, $"Save '{slot}': the thumbnail could not be taken: {ex.Message}"); }
@@ -254,7 +256,7 @@ public sealed partial class SaveSystem
             _sinceAutosave = 0;   // the autosave clock counts from the last save of any kind
             return new SaveSnapshot
             {
-                Slot = slot, Directory = SlotDirectory(slot), Kind = kind, Header = header, Worlds = worlds, Entities = total,
+                Slot = slot, Directory = directory ?? SlotDirectory(slot), Kind = kind, Header = header, Worlds = worlds, Entities = total,
                 Compress = compress, Thumbnail = thumbnail, Took = clock.Elapsed,
             };
         }
@@ -507,9 +509,14 @@ public sealed partial class SaveSystem
             return true;
         }
 
-        string directory = SlotDirectory(slot);
         if (!Exists(slot)) { Log.Warn(LogCat.Save, $"No save '{slot}' in {Root}"); return false; }
+        return LoadFrom(SlotDirectory(slot), slot);
+    }
 
+    // The load itself, from a save's folder wherever it is (a slot's, or a demo's start, issue #333);
+    // `slot` names it in the log. Between ticks only.
+    internal bool LoadFrom(string directory, string slot)
+    {
         JsonObject header;
         var prepared = new List<PreparedWorld>();
         try
@@ -1043,7 +1050,7 @@ public sealed partial class SaveSystem
     // ---- the header's plugins and content (issue 4i-2) ---------------------------------------------
 
     // The runtime plugins loaded now: an editor's or a tool's own modules are not part of a game's state.
-    private IEnumerable<SavedPlugin> CurrentPlugins() =>
+    internal IEnumerable<SavedPlugin> CurrentPlugins() =>
         _engine.Modules.Modules
             .Select(m => _engine.Modules.Plugin(m))
             .Where(p => p.Kind == ModuleKind.Runtime)
@@ -1059,7 +1066,7 @@ public sealed partial class SaveSystem
 
     // The active mods now, in load order (Engine.Mods, phase 4j).
 #pragma warning disable SAGE0132 // Engine.Mods is experimental in the same phase as the header's mods
-    private IEnumerable<SavedMod> CurrentMods() =>
+    internal IEnumerable<SavedMod> CurrentMods() =>
         _engine.Mods.Active.Select(m => new SavedMod(m.Id, m.Version));
 #pragma warning restore SAGE0132
 
