@@ -18,7 +18,7 @@ It does not do pathfinding and navigation meshes (sheet [09](09-navigation-and-a
 - Move doors and lifts as data (`Mover`), keep joints, and save what a save needs (body velocities, joint state).
 - Keep bodies in step with a floating-origin rebase.
 
-Not responsible for: what hits do (the combat pipeline, sheet [16](16-gameplay.md)), footsteps and impact sounds (sheet [11](11-audio.md), which will read physics events).
+Not responsible for: what hits do (the combat pipeline, sheet [16](16-gameplay.md)), footsteps and impact sounds (sheet [11](11-audio.md), which reads the surface a ray reports).
 
 ## 3. Placement and dependencies
 
@@ -57,9 +57,9 @@ Events: trigger and contact spans are valid until the next step and are read in 
 
 | Kind | Ids as declared |
 |---|---|
-| Records | `physics_layers` (list of layer names, index = layer), `physics_material` (friction, restitution, footstep and impact cues, decal, penetration hint, brush textures; #270), `movement_profile` (walk and run speed, acceleration, friction, jump speed, gravity, slope limit, step height, radius, stand and crouch height, ground snap, eye offset) |
+| Records | `physics_layers` (list of layer names, index = layer), `physics_material` (friction, restitution, footstep, land, jump and impact cues, decal, penetration hint, brush textures; #270, #327), `movement_profile` (walk and run speed, acceleration, friction, jump speed, gravity, slope limit, step height, radius, stand and crouch height, ground snap, eye offset) |
 | Components | `sage:collider` (with its `Surface`), `sage:rigid_body`, `sage:physics_body` (runtime handle, never saved), `sage:body_motion` (linear and angular velocity, saved), `sage:character_controller`, `sage:joint`, `sage:mover` |
-| Prefab parts | `body` (size and mass, or shape, radius and height; options `trigger`, `contacts`, `layer` and `surface`), `footsteps` (stride, reach; #270), `character` (layer, profile), `joint`, `mover` |
+| Prefab parts | `body` (size and mass, or shape, radius and height; options `trigger`, `contacts`, `layer` and `surface`), `footsteps` (stride, reach, landSpeed, event, left, right; #270, #327), `character` (layer, profile), `joint`, `mover` |
 | Saved state | Body poses through transforms, `BodyMotion` for dynamic bodies, `Joint` (data, broken flag, how it was made), `Mover` (position, direction, hold) |
 
 A `joint` part looks like `"joint": { "kind": "Hinge", "target": "beam", "anchor": [0, 0.25, 0], "axis": [1, 0, 0], "min": -70, "max": 70 }`; angles are degrees in data and radians in the facade.

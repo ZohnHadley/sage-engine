@@ -119,9 +119,9 @@ Gaps: a window that cannot be created shows no native message box; the failure i
 | REQ-PLAT-06 | Resolve a per-user folder for config, logs, saves and mods, in a repository run and in an installed run. | Must | Done | `src/Sage.Core/UserPaths.cs` |
 | REQ-PLAT-07 | Run silent, not crash, when there is no audio device. | Must | Done | `MonoGameAudioBackend`, `NullAudioBackend` |
 | REQ-PLAT-08 | Give each app in a process its own user folder, log and crash report. | Should | Not started | #49 |
-| REQ-PLAT-09 | Capture and release the mouse for look, with a clean handoff between menu and gameplay. | Must | Partial | #334 |
-| REQ-PLAT-10 | Support several gamepads, hot-swap, rumble and device glyphs. | Should | Partial (player one, no rumble) | #331 |
-| REQ-PLAT-11 | Persist rebinding to a per-user file. | Must | Not started | #328 |
+| REQ-PLAT-09 | Capture and release the mouse for look, with a clean handoff between menu and gameplay. | Must | Done (#334): the cvar `m_capture`; the cursor is held for a possessed player and released for a screen, the console, the controls screen's capture, the dev UI, focus loss and the editor viewport | test: ThePossessedPlayerHoldsTheCursor, test: EachThingThatWantsAPointerReleasesIt, test: RecapturingAfterAScreenDoesNotJumpTheLook, test: RegainingFocusDoesNotJumpTheLook |
+| REQ-PLAT-10 | Support several gamepads, hot-swap, rumble and device glyphs. | Should | Done (#331): up to four pads for four local players, rumble from `rumble` records; no real pad has been tried | test: PadsAreHandedOutToPlayersInOrder, test: AnUnpluggedPadReturnsToItsOwnPlayer, test: ACuesRumbleIsFeltByThePlayerWhoseEntityRaisedIt, test: APromptShowsTheBindingOfTheDeviceInUse |
+| REQ-PLAT-11 | Persist rebinding to a per-user file. | Must | Done (#328): `user://input.json` | test: ARebindIsSavedAndTheNewKeyFiresAfterARestart |
 | REQ-PLAT-12 | Offer fullscreen, borderless, display choice and a resolution list. | Must | Not started | No issue yet; see section 10 |
 | REQ-PLAT-13 | Pause or throttle the simulation and mute audio on focus loss, as a setting. | Should | Not started | No issue yet; see section 10 |
 | REQ-PLAT-14 | Offer a frame-rate cap (`host_maxfps`) and an `autoexec.cfg` at boot. | Should | Done (#299): `autoexec.cfg` in the user folder runs after `config.cfg` | test: `FrameLimiter_WaitsOutTheRestOfTheFrame`, `Autoexec_RunsAfterConfigAndWinsOverIt`, `Autoexec_MissingIsNotAnError` |
@@ -131,12 +131,7 @@ Gaps: a window that cannot be created shows no native message box; the failure i
 
 ## 10. Open work
 
-P1:
-- #328 4o-4 Rebinding path: `bind`/`unbind` and `user://input.json` (P1)
-
 P2:
-- #334 4o-10 Mouse capture and the Menu/gameplay cursor handoff (P2)
-- #331 4o-7 Gamepad: rumble, multiple pads, glyphs and device hot-swap (P2)
 - #49 per-app log, user folder and crash reporter (P2)
 
 Gaps with no issue filed yet, to be raised before the platform sheet can be called complete: fullscreen and borderless modes with display choice (REQ-PLAT-12), focus-loss policy for the simulation and audio (REQ-PLAT-13), high-DPI scaling, and a native message box when no window can be created.

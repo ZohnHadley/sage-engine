@@ -19,7 +19,7 @@ It deliberately does not do: drawing and skinning on the GPU (rendering, [07](07
 - Run first-person arms and a held weapon (`viewmodel`).
 - Update far animators less often (LOD) without changing results near the player.
 
-Not responsible for: hit locations and hitboxes (gameplay), skinning shaders, footstep sounds (audio, planned in #327), or the AI that decides to walk.
+Not responsible for: hit locations and hitboxes (gameplay), skinning shaders, footstep sounds (audio and gameplay: the `footsteps` part, #327), or the AI that decides to walk.
 
 ## 3. Placement and dependencies
 
@@ -96,7 +96,7 @@ Content errors carry file and line, for graphs, events, sockets, ragdolls and vi
 | REQ-ANIM-14 | A graph shall support directional attack and block sets and animation-driven combat states. | Should | Not started | #359 |
 | REQ-ANIM-15 | A clip library shall be retargetable between skeletons. | Should | Not started | #360 |
 | REQ-ANIM-16 | IK shall tilt feet, smooth the pelvis, look at targets, grab with hands and check sockets at load. | Should | Not started | #361 |
-| REQ-ANIM-17 | The Sandbox and the editor shall exercise and preview skeletal animation. | Should | Not started | #362 |
+| REQ-ANIM-17 | The Sandbox and the editor shall exercise and preview skeletal animation. | Should | Partial: the Sandbox has one skeletal creature, the hut walker (#327); no editor preview | test: TheSandboxsWalkerAndPlayerStepOnTheirOwnSurfaces; #362 |
 | REQ-ANIM-18 | Morph targets and facial animation shall be supported. | Could | Not started | #363 |
 | REQ-ANIM-19 | Sprites shall be lit, listed by `anim_debug`, and play state-driven clips. | Could | Not started | #364 |
 
@@ -115,7 +115,7 @@ Milestone 7, animation (epic #356):
 
 Milestone 4k, joints and ragdolls (epic #130), is done.
 
-Related: #327 4o-3 Raise footstep and surface sounds from animation events (P1), in the audio sheet ([11](11-audio.md)).
+Related: #327 4o-3, footstep and surface sounds from animation events, is done (audio sheet [11](11-audio.md), design 10 "As built (surfaces)"): a skeleton's `foot_left` and `foot_right` clip events step on the surface under that foot.
 
 ## 11. References
 
