@@ -33,7 +33,11 @@ public class Label : Widget
         set { value ??= ""; if (string.Equals(_text, value, StringComparison.Ordinal)) return; _text = value; InvalidateMeasure(); }
     }
 
+    // The size content gave the text (its style's textScale, or the node's own).
     public float TextScale { get => _textScale; set { if (_textScale == value) return; _textScale = value; InvalidateMeasure(); } }
+
+    // The size it is measured and drawn at: TextScale times the player's text size (UiRoot.TextScale, #351).
+    public float EffectiveTextScale => _textScale * (Root?.TextScale ?? 1f);
 
     public Align TextAlign { get => _textAlign; set { if (_textAlign == value) return; _textAlign = value; InvalidateVisual(); } }
 
@@ -69,10 +73,10 @@ public class Label : Widget
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
     {
         var measure = MeasureOf(text);
-        if (_text.Length == 0) return new Vector2(0f, measure.LineHeight * _textScale);
-        if (!Fitted) return measure.Measure(_text, _textScale);
+        if (_text.Length == 0) return new Vector2(0f, measure.LineHeight * EffectiveTextScale);
+        if (!Fitted) return measure.Measure(_text, EffectiveTextScale);
         float limit = FitWidth(available.X);
-        var size = TextLayout.Break(_text, measure, _textScale, limit, float.PositiveInfinity, _wrap, _overflow,
+        var size = TextLayout.Break(_text, measure, EffectiveTextScale, limit, float.PositiveInfinity, _wrap, _overflow,
                                     Root?.TextLines ?? new System.Collections.Generic.List<TextLine>());
         if (float.IsFinite(limit)) size.X = MathF.Min(size.X, limit);
         return size;
