@@ -671,11 +671,14 @@ internal sealed class SpriteExtract : ISystem
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
+                // An alpha-tested sprite casts a cut-out shadow, turned to the sun (issue 4n-11).
+                bool casts = ShadowMath.Casts(material.Pass, material.CastShadows);
+
                 // Per view (issue #77): which way it faces depends on where *this* camera is.
                 for (int v = 0; v < views; v++)
                 {
                     ref var view = ref s.Views[v];
-                    if (view.ShadowCaster) continue;                       // sprites cast no shadow (4h-4)
+                    if (view.ShadowCaster && !casts) continue;             // the sun's views keep casters only (4n-11)
                     if (view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
                     Vector3 camera = view.CameraPosition;
 
@@ -691,7 +694,10 @@ internal sealed class SpriteExtract : ISystem
                     }
 
                     // Which way does it face the camera, and which frame is playing?
-                    int direction = SpriteMath.DirectionIndex(pose.Position, camera.ToNumerics(), SageMath.YawOf(pose.Rotation), sheet.Directions, out bool flipU);
+                    // A caster view's "camera" is the sun (its Forward is the light's direction): the shadow
+                    // shows the side of a directional sprite the sun sees.
+                    var viewer = view.ShadowCaster ? pose.Position - view.Forward.ToNumerics() * 1000f : camera.ToNumerics();
+                    int direction = SpriteMath.DirectionIndex(pose.Position, viewer, SageMath.YawOf(pose.Rotation), sheet.Directions, out bool flipU);
                     int frameIndex = 0;
                     if (animated && sheet.Clip(animator.Clip) is { } clip)
                         frameIndex = SpriteMath.FrameAt(clip, direction, animator.Time);

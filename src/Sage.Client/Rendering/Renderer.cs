@@ -908,15 +908,16 @@ public sealed partial class Renderer : IDisposable
     private ShadowFrame _shadow = new() { View = -1 };
     private Texture2D? _shadowMap;
 
-    // `sage:shadow`'s Draw: the caster view's items into the map, with lit.fx's ShadowCaster (or
-    // ShadowCasterSkinned) whatever each item's material is: a caster only needs its depth. The map holds
-    // light-space depth in [0, 1], cleared to 1 (nothing in the way).
+    // `sage:shadow`'s Draw: each cascade's casters into its square of the map. An opaque item is drawn with
+    // lit.fx's ShadowCaster (or ShadowCasterSkinned, with the item's palette) whatever its material is: a
+    // caster only needs its depth. An alpha-tested item, and a sprite, is drawn with its own material's
+    // effect and parameters and that effect's cut-out technique (`ShadowMath.CasterTechnique`, issue
+    // 4n-11), so a leaf card's shadow has the leaf's holes. The map holds light-space depth in [0, 1],
+    // cleared to 1 (nothing in the way).
     internal void DrawShadowCasters(RenderContext ctx)
     {
         var s = ctx.Snapshot;
         if (s.Shadow.View < 0) return;
-        ref var view = ref s.Views[s.Shadow.View];
-        _stats.ShadowCasters += view.ItemCount;   // what the caster view holds, drawn or not (r_stats)
 
         // A default material that could not be built (no shaders: Linux CI) is already reported, under Shaders.
         var material = Materials.Get(Materials.Resolve(MaterialRecord.Default));
@@ -930,15 +931,42 @@ public sealed partial class Renderer : IDisposable
 
         SetTarget(s.Shadow.Target);
         _device.Clear(ClearOptions.Target | ClearOptions.DepthBuffer, Vector4.One, 1f, 0);
-        _device.BlendState = BlendState.Opaque;
-        _device.DepthStencilState = DepthStencilState.Default;
-        _device.RasterizerState = RasterizerState.CullNone;   // open meshes (terrain) cast from either side
-        caster.ViewProj?.SetValue(view.ViewProj);
-        caster.FrameStamp = -1;   // the next view sets its own frame parameters on this effect
+        bool faceCamera = _sprites.FaceCameraPosition;
+        _sprites.FaceCameraPosition = false;   // a sprite's shadow is its silhouette as the sun sees it
+        for (int c = 0; c < s.Shadow.Count; c++)
+        {
+            ref var view = ref s.Views[s.Shadow.View + c];
+            _stats.ShadowCasters += view.ItemCount + view.SpriteCount;   // what the caster views hold, drawn or not (r_stats)
+            _device.Viewport = new Viewport(view.Viewport);
+            CasterState();
+            caster.ViewProj?.SetValue(view.ViewProj);
+            caster.FrameStamp = -1;   // the next view sets its own frame parameters on this effect
+            _current = -1;
+            DrawCasterItems(s, view, caster);
+            DrawCasterSprites(s, view);
+        }
+        _sprites.FaceCameraPosition = faceCamera;
         _current = -1;
 
-        // Instancing (issue 4n-5): a caster needs only its mesh and matrix, so runs of one mesh part are
-        // one draw with ShadowCasterInstanced, whatever their materials.
+        s.Shadow.Drawn = true;
+        _shadow = s.Shadow;
+        _shadowMap = _targets.Texture(s.Shadow.Target);
+    }
+
+    // What every caster draws with: depth tested and written, no blending (the map is a float target),
+    // both faces (open meshes such as terrain cast from either side).
+    private void CasterState()
+    {
+        _device.BlendState = BlendState.Opaque;
+        _device.DepthStencilState = DepthStencilState.Default;
+        _device.RasterizerState = RasterizerState.CullNone;
+    }
+
+    // One cascade's mesh casters. Instancing (issue 4n-5): an opaque caster needs only its mesh and matrix,
+    // so runs of one mesh part are one draw with ShadowCasterInstanced, whatever their materials. An
+    // alpha-tested one needs its own material's texture and cutoff (issue 4n-11), so it is never instanced.
+    private void DrawCasterItems(RenderSnapshot s, in RenderView view, EffectBinding caster)
+    {
         int from = view.ItemStart, n = view.ItemCount;
         if (InstancingOn && caster.ShadowCasterInstanced != null && n >= _instancingMin.Value)
         {
@@ -946,7 +974,7 @@ public sealed partial class Renderer : IDisposable
             for (int i = 0; i < n; i++)
             {
                 ref var item = ref s.Items[s.Order[from + i]];
-                _candidates[i] = new InstanceCandidate(0, item.Mesh, item.Part, 0, item.BoneCount == 0);
+                _candidates[i] = new InstanceCandidate(0, item.Mesh, item.Part, 0, item.BoneCount == 0 && !CutsOut(item));
             }
             int runs = Instancing.Plan(_candidates.AsSpan(0, n), _instancingMin.Value, Instancing.MaxPerDraw, _runs);
             for (int r = 0; r < runs; r++)
@@ -957,25 +985,30 @@ public sealed partial class Renderer : IDisposable
                     ref var first = ref s.Items[s.Order[from + run.Start]];
                     var data = Instances.Data;
                     for (int i = 0; i < run.Count; i++) data[i].Set(s.Items[s.Order[from + run.Start + i]].World);
+                    CasterState();
                     if (DrawInstances(Mesh(first.Mesh).Parts[first.Part], caster.ShadowCasterInstanced, run.Count, ref _stats)) continue;
                 }
-                DrawCasters(s, caster, from + run.Start, from + run.Start + run.Count);
+                DrawCasters(s, view, caster, from + run.Start, from + run.Start + run.Count);
             }
         }
-        else DrawCasters(s, caster, from, from + n);
-
-        s.Shadow.Drawn = true;
-        _shadow = s.Shadow;
-        _shadowMap = _targets.Texture(s.Shadow.Target);
+        else DrawCasters(s, view, caster, from, from + n);
     }
 
+    // Whether a caster is drawn with its material's cut-out (issue 4n-11).
+    private bool CutsOut(in RenderItem item) => Materials.Get(item.Material) is { Pass: RenderPass.AlphaTested, IsError: false };
+
     // Shadow casters [from, to) of the snapshot's order, one draw each.
-    private void DrawCasters(RenderSnapshot s, EffectBinding caster, int from, int to)
+    private void DrawCasters(RenderSnapshot s, in RenderView view, EffectBinding caster, int from, int to)
     {
         var effect = caster.Effect;
         for (int k = from; k < to; k++)
         {
             ref var item = ref s.Items[s.Order[k]];
+            if (Materials.Get(item.Material) is { Pass: RenderPass.AlphaTested, IsError: false } cutOut)
+            {
+                DrawCutOutCaster(s, view, item, cutOut);
+                continue;
+            }
             var technique = caster.ShadowCaster!;
             if (item.BoneCount > 0 && caster.ShadowCasterSkinned != null && caster.Bones != null)
             {
@@ -996,6 +1029,91 @@ public sealed partial class Renderer : IDisposable
                 _stats.DrawCalls++;
                 _stats.Triangles += part.PrimitiveCount;
             }
+        }
+    }
+
+    // An alpha-tested mesh (issue 4n-11): its own material's texture and cutoff, its effect's cut-out caster.
+    private void DrawCutOutCaster(RenderSnapshot s, in RenderView view, in RenderItem item, MaterialRuntime m)
+    {
+        bool skinned = item.BoneCount > 0 && m.Effect.Bones != null;
+        var technique = skinned ? m.Effect.ShadowCasterAlphaTestSkinned : m.Effect.ShadowCasterAlphaTest;
+        if (technique == null)
+        {
+            Log.Once(LogCat.Shaders, LogLevel.Warn, "no-cutout-caster:" + m.Id,
+                     $"Material {m.Id}: its effect has no {ShadowMath.CasterTechnique(RenderPass.AlphaTested, skinned)} technique; it casts no sun shadow");
+            return;
+        }
+        BindCaster(m, view);
+        if (skinned)
+        {
+            var palette = s.Bones.AsSpan().Slice(item.BoneStart, item.BoneCount);
+            for (int i = 0; i < palette.Length; i++) _bones[i] = palette[i];   // System.Numerics → MonoGame (implicit)
+            m.Effect.Bones!.SetValue(_bones);
+        }
+        m.Effect.World?.SetValue(item.World);
+        m.Effect.Tint?.SetValue(item.Tint);
+        m.Effect.Effect.CurrentTechnique = technique;
+        var part = Mesh(item.Mesh).Parts[item.Part];
+        _device.SetVertexBuffer(part.VertexBuffer);
+        _device.Indices = part.IndexBuffer;
+        foreach (var pass in technique.Passes)
+        {
+            pass.Apply();
+            _device.DrawIndexedPrimitives(PrimitiveType.TriangleList, part.VertexOffset, part.StartIndex, part.PrimitiveCount);
+            _stats.DrawCalls++;
+            _stats.Triangles += part.PrimitiveCount;
+        }
+    }
+
+    // A cut-out caster's material: its parameters and sampler (MaterialCache.Apply), the cascade's matrix,
+    // and the caster's own device state over the material's. Its frame parameters are set again by the
+    // next view that draws with it.
+    private void BindCaster(MaterialRuntime m, in RenderView view)
+    {
+        MaterialCache.Apply(_device, m, wireframe: false);
+        CasterState();
+        m.Effect.ViewProj?.SetValue(view.ViewProj);
+        m.Effect.FrameStamp = -1;
+        _current = -1;
+    }
+
+    // Sprites (issue 4n-11): in runs of one material and texture, as the scene draws them, turned to the
+    // sun (the caster view's axes are the light's; ShadowMath.BillboardAxes) and clipped at the material's
+    // cutoff by its effect's ShadowCasterAlphaTest.
+    private void DrawCasterSprites(RenderSnapshot s, in RenderView view)
+    {
+        if (view.SpriteCount == 0) return;
+        _sprites.Begin(view);
+        int run = view.SpriteStart, to = view.SpriteStart + view.SpriteCount;
+        while (run < to)
+        {
+            ref var first = ref s.Sprites[s.SpriteOrder[run]];
+            int material = first.Material, texture = first.Texture;
+            int end = run + 1;
+            while (end < to)
+            {
+                ref var next = ref s.Sprites[s.SpriteOrder[end]];
+                if (next.Material != material || next.Texture != texture) break;
+                end++;
+            }
+            var m = Materials.Get(material);
+            var technique = m?.Effect.ShadowCasterAlphaTest;
+            if (m != null && !m.IsError && technique == null)
+                Log.Once(LogCat.Shaders, LogLevel.Warn, "no-cutout-caster:" + m.Id,
+                         $"Material {m.Id}: its effect has no ShadowCasterAlphaTest technique; its sprites cast no sun shadow");
+            if (m != null && !m.IsError && technique != null)
+            {
+                BindCaster(m, view);
+                m.Effect.World?.SetValue(Matrix.Identity);   // sprite vertices are already in camera-relative space
+                m.Effect.Tint?.SetValue(Vector4.One);
+                m.Effect.Effect.CurrentTechnique = technique;
+                foreach (var pass in technique.Passes)
+                {
+                    _stats.DrawCalls += _sprites.Draw(s.Sprites, s.SpriteOrder, run, end - run, Texture(texture), pass, m.Albedo);
+                    _stats.Triangles += (end - run) * 2;
+                }
+            }
+            run = end;
         }
     }
 
@@ -1380,6 +1498,8 @@ internal sealed class RendererCVars
     public readonly CVar<bool> Shadows;
     public readonly CVar<int> ShadowSize;
     public readonly CVar<float> ShadowDistance;
+    public readonly CVar<int> ShadowCascades;      // issue 4n-11
+    public readonly CVar<float> ShadowSunStep;
 
     // Post-processing (issue 4h-6): the post_effect chain, the engine's two effects' switches, and the
     // render scale (06 §3.9), which works with the chain off too.
@@ -1418,11 +1538,17 @@ internal sealed class RendererCVars
         TestSkin = cvars.Register("r_testskin", false, CVarFlags.DevOnly | CVarFlags.Cheat,
             "Draw a generated skinned model in front of the camera, bending (issue #117): GPU skinning with no content.");
         Shadows = cvars.Register("r_shadows", false, CVarFlags.None,
-            "Sun shadows (issue 4h-4): one stable shadow map over the nearest r_shadow_distance metres of the view.");
+            "Sun shadows (issues 4h-4, 4n-11): stable cascaded shadow maps over the nearest r_shadow_distance metres of the view.");
         ShadowSize = cvars.Register("r_shadow_size", ShadowMath.DefaultSize, CVarFlags.None,
-            "The sun's shadow map, in texels a side.", 256, 4096);
+            "Each cascade of the sun's shadow map, in texels a side (less if the cascades together would pass 4096).", 256, 4096);
         ShadowDistance = cvars.Register("r_shadow_distance", ShadowMath.DefaultDistance, CVarFlags.None,
-            "How far from the camera the sun's shadows reach, in metres (the map covers this slice of the view).", 5f, 500f);
+            "How far from the camera the sun's shadows reach, in metres (the cascades cover this slice of the view).", 5f, 500f);
+        ShadowCascades = cvars.Register("r_shadow_cascades", ShadowMath.DefaultCascades, CVarFlags.None,
+            "Cascades of the sun's shadow map (issue 4n-11): the view's slice cut into this many maps, finer near the camera.",
+            1, ShadowMath.MaxCascades);
+        ShadowSunStep = cvars.Register("r_shadow_sun_step", ShadowMath.DefaultSunStep, CVarFlags.None,
+            "Degrees the sun's direction snaps to for its shadows (issue 4n-11), so the texel grid holds still as the sun moves; 0: no snapping.",
+            0f, 5f);
         Post = cvars.Register("r_post", false, CVarFlags.Archive,
             "Post-processing (issue 4h-6): the screen is drawn into sage:scene and through the post_effect chain (colour grade, vignette) before the UI.");
         Scale = cvars.Register("r_scale", 1f, CVarFlags.Archive,

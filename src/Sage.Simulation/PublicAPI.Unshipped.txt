@@ -191,3 +191,27 @@ Sage.Simulation.MaterialRecord.VertexColors -> bool
 Sage.Simulation.PostEffectRecord.Depth -> bool
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
+const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
+const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
+*REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
+const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
+const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
+const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
+const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
+Sage.Simulation.ShadowAtlas
+Sage.Simulation.ShadowAtlas.Cascades.get -> int
+Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
+Sage.Simulation.ShadowAtlas.Columns.get -> int
+Sage.Simulation.ShadowAtlas.Corner(int cascade) -> (int X, int Y)
+Sage.Simulation.ShadowAtlas.Height.get -> int
+Sage.Simulation.ShadowAtlas.Rows.get -> int
+Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
+Sage.Simulation.ShadowAtlas.Width.get -> int
+static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
+static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
+static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int
+static Sage.Simulation.ShadowMath.CascadeSplits(float near, float far, System.Span<float> splits, float blend = 0.75) -> void
+static Sage.Simulation.ShadowMath.CasterTechnique(Sage.Simulation.RenderPass pass, bool skinned) -> string!
+static Sage.Simulation.ShadowMath.CutOutKeeps(float alpha, float cutoff) -> bool
+static Sage.Simulation.ShadowMath.FitCascades(System.Numerics.Vector3 camera, System.Numerics.Vector3 forward, bool orthographic, float lensX, float lensY, float near, float far, System.Numerics.Vector3 sunDirection, int size, System.Numerics.Vector3 origin, System.Span<Sage.Simulation.ShadowFit> fits, System.Span<float> splits, float casterReach = 200, float blend = 0.75) -> void
+static Sage.Simulation.ShadowMath.QuantiseSun(System.Numerics.Vector3 sunDirection, float stepDegrees) -> System.Numerics.Vector3
