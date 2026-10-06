@@ -36,6 +36,10 @@ public struct RenderStats
     // Full-screen draws of the post-processing chain this frame (issue 4h-6): 0 while it is off.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")] public int PostSteps;
 
+    // Mesh LOD this frame (issue 4n-1, MeshLod), one per renderer per view: those not drawn because they
+    // were past their LOD group's cull point or their layer's draw distance, and those drawn coarser.
+    public int LodCulled, LodLowered;
+
     // What the renderer holds (`stat assets`, issue #300): mesh slots (an unloaded one counts until it is
     // reused), textures and materials, the placeholders not counted.
     public int Meshes, Textures, Materials;
@@ -159,7 +163,7 @@ public sealed class Renderer : IDisposable
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
                                      $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), " +
                                      $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}, " +
-                                     $"fog culled {LastFrame.FogCulled}, skies {LastFrame.Skies}; " +
+                                     $"fog culled {LastFrame.FogCulled}, lod culled {LastFrame.LodCulled}, lod lowered {LastFrame.LodLowered}, skies {LastFrame.Skies}; " +
                                      $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials" + PostStats()));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
@@ -524,6 +528,7 @@ public sealed class Renderer : IDisposable
         _stats = new RenderStats
         {
             Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, FogCulled = s.FogCulled, Lights = s.Lights.Count,
+            LodCulled = s.Lod.Culled, LodLowered = s.Lod.Lowered,
             Bones = s.Bones.Count,
             Meshes = _meshes.Count - 1, Textures = _textures.Count - 1, Materials = Materials.Count,
         };

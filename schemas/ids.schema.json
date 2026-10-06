@@ -420,6 +420,11 @@
         "wood"
       ]
     },
+    "record:mesh_lod": {
+      "description": "The id of a mesh_lod record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:movement_profile": {
       "description": "The id of a movement_profile record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1500,6 +1505,11 @@
         "weapons:floor",
         "wood"
       ]
+    },
+    "base:mesh_lod": {
+      "description": "The id of a mesh_lod record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:movement_profile": {
       "description": "Another movement_profile record to inherit every field from, abstract or not.",
