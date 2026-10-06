@@ -5,6 +5,12 @@ Sage.Gameplay.DamageInfo.Sound.init -> void
 Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.TickCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
+Sage.Gameplay.FootIk.LeftTilt -> float
+Sage.Gameplay.FootIk.MaxFootTilt -> float
+Sage.Gameplay.FootIk.PelvisSmoothing -> float
+Sage.Gameplay.FootIk.RightTilt -> float
+Sage.Gameplay.FootIkPart.MaxFootTilt -> float
+Sage.Gameplay.FootIkPart.PelvisSmoothing -> float
 Sage.Gameplay.Journal.Entry.History.get -> System.Collections.Generic.List<string!>!
 Sage.Gameplay.Journal.Entry.History.set -> void
 Sage.Gameplay.Journal.Entry.Tracked.get -> bool

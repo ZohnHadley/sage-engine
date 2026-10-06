@@ -44,6 +44,29 @@ Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
 Sage.Simulation.Engine.Rebinds.get -> Sage.Simulation.InputRebinds!
+Sage.Simulation.HandIk
+Sage.Simulation.HandIk.HandIk() -> void
+Sage.Simulation.HandIk.Left -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIk.LeftReached -> bool
+Sage.Simulation.HandIk.LeftTarget -> Sage.Simulation.Entity
+Sage.Simulation.HandIk.Right -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIk.RightReached -> bool
+Sage.Simulation.HandIk.RightTarget -> Sage.Simulation.Entity
+Sage.Simulation.HandIk.Weight -> float
+Sage.Simulation.HandIkArm
+Sage.Simulation.HandIkArm.Bone -> string!
+Sage.Simulation.HandIkArm.Elbow -> string!
+Sage.Simulation.HandIkArm.Hand -> string!
+Sage.Simulation.HandIkArm.HandIkArm() -> void
+Sage.Simulation.HandIkArm.Offset -> System.Numerics.Vector3
+Sage.Simulation.HandIkArm.Shoulder -> string!
+Sage.Simulation.HandIkArm.Weight -> float
+Sage.Simulation.HandIkPart
+Sage.Simulation.HandIkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.HandIkPart.HandIkPart() -> void
+Sage.Simulation.HandIkPart.Left -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIkPart.Right -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIkPart.Weight -> float
 Sage.Simulation.InputBinding.DisplayName.get -> string!
 Sage.Simulation.InputRebinds
 Sage.Simulation.InputRebinds.ActionsFor(Sage.Simulation.InputContext context, Sage.Simulation.InputBinding! input) -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -73,6 +96,28 @@ Sage.Simulation.InputRebinds.Version.get -> int
 Sage.Simulation.LastUsedDevice.Pad.get -> Sage.Simulation.PadFamily
 Sage.Simulation.LastUsedDevice.SetPad(Sage.Simulation.PadFamily pad) -> void
 Sage.Simulation.LastUsedDevice.Version.get -> int
+Sage.Simulation.LookAtIk
+Sage.Simulation.LookAtIk.Eye -> string!
+Sage.Simulation.LookAtIk.HasPoint -> bool
+Sage.Simulation.LookAtIk.Joints -> System.Collections.Generic.List<Sage.Simulation.AimIkJoint!>?
+Sage.Simulation.LookAtIk.LookAtIk() -> void
+Sage.Simulation.LookAtIk.Looking -> bool
+Sage.Simulation.LookAtIk.MaxAngle -> float
+Sage.Simulation.LookAtIk.Offset -> System.Numerics.Vector3
+Sage.Simulation.LookAtIk.Pitch -> float
+Sage.Simulation.LookAtIk.Point -> System.Numerics.Vector3
+Sage.Simulation.LookAtIk.Smoothing -> float
+Sage.Simulation.LookAtIk.Target -> Sage.Simulation.Entity
+Sage.Simulation.LookAtIk.Weight -> float
+Sage.Simulation.LookAtIk.Yaw -> float
+Sage.Simulation.LookAtIkPart
+Sage.Simulation.LookAtIkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LookAtIkPart.Eye -> string!
+Sage.Simulation.LookAtIkPart.Joints -> System.Collections.Generic.List<Sage.Simulation.AimIkJoint!>!
+Sage.Simulation.LookAtIkPart.LookAtIkPart() -> void
+Sage.Simulation.LookAtIkPart.MaxAngle -> float
+Sage.Simulation.LookAtIkPart.Smoothing -> float
+Sage.Simulation.LookAtIkPart.Weight -> float
 Sage.Simulation.MouseCaptureFrame
 Sage.Simulation.MouseCaptureFrame.Captured.get -> bool
 Sage.Simulation.MouseCaptureFrame.Captured.init -> void
