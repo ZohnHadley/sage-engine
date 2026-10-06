@@ -1475,6 +1475,11 @@
           "default": false,
           "type": "boolean"
         },
+        "baked": {
+          "description": "Static: baked into the lightmap of the level that places it, with shadows (a map record's \"lightmap\"); it should not switch. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
         "pattern": {
           "description": "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. SetPattern changes it. (string, default \"\")",
           "default": "",
