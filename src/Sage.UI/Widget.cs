@@ -21,7 +21,7 @@ namespace Sage.UI;
 public abstract class Widget
 {
     private List<Widget>? _children;
-    private bool _visible = true, _enabled = true, _focusable;
+    private bool _visible = true, _enabled = true, _focusable, _focusScope;
     private int _tabIndex;
     private Vector2 _minSize;
     private Thickness _margin, _padding;
@@ -68,6 +68,24 @@ public abstract class Widget
         get => _focusable;
         set { if (_focusable == value) return; _focusable = value; Root?.FocusChainChanged(); }
     }
+
+    // A modal part of its tree (issue #343): while it is visible, focus stays inside it — Tab, the D-pad,
+    // the pointer and UiRoot.Focus reach nothing outside it, and a press outside it lands on nothing —
+    // and when it hides, focus goes back to where it was before it showed. A confirm prompt over a menu
+    // in the same layer is one. With several showing, the last in tree order (the one drawn on top) holds.
+    public bool FocusScope
+    {
+        get => _focusScope;
+        set { if (_focusScope == value) return; _focusScope = value; Root?.FocusChainChanged(); }
+    }
+
+    // Where Up, Down, Left and Right go from here, by Name, instead of the nearest widget that way
+    // (issue #343). A neighbour that is not in the tree (or the focus scope), or cannot take focus now,
+    // is passed over and the nearest one is taken as if none were named.
+    public string? FocusUp { get; set; }
+    public string? FocusDown { get; set; }
+    public string? FocusLeft { get; set; }
+    public string? FocusRight { get; set; }
 
     // Tab order (UiNavigation.Next/Previous): ascending, then tree order among equals.
     public int TabIndex

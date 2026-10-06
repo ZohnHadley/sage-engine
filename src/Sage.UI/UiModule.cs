@@ -180,6 +180,9 @@ internal static class UiContentChecks
                 check.Error(at, $"'{name}' binds its rows, so it holds one node, the template each row is made from; it has {children}");
             if (node.Args.Count > 0 && node.Widget is not ("label" or "button"))
                 check.Error($"{at}.Args", $"a {node.Widget} has no text to fill placeholders in");
+            foreach (var (field, neighbour) in new[] { ("FocusUp", node.FocusUp), ("FocusDown", node.FocusDown), ("FocusLeft", node.FocusLeft), ("FocusRight", node.FocusRight) })
+                if (neighbour.Length > 0 && !layout.Nodes.ContainsKey(neighbour))
+                    check.Error($"{at}.{field}", $"node '{name}' goes to '{neighbour}', which is not a node of this layout" + Spelling.Suggest(neighbour, layout.Nodes.Keys));
         }
     }
 

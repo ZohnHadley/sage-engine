@@ -16,6 +16,8 @@ namespace Sage.UI;
 // - **Focus**: one focused widget, moved by UiInput — tab order (Next/Previous), spatial navigation
 //   (Up/Down/Left/Right: the nearest focusable widget that way, preferring ones in line), or the pointer
 //   (hover moves focus, a click focuses and activates, as the panel screens do).
+// - **Focus scopes** (issue #343): while a widget with FocusScope shows, the chain, navigation, Focus
+//   and the pointer are kept inside it, and focus goes back where it was when it hides.
 // - **Hit testing** in pixels or virtual units, respecting Scroll clipping.
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class UiRoot
@@ -23,6 +25,8 @@ public sealed class UiRoot
     public static readonly Vector2 DefaultDesignSize = new(1280f, 720f);
 
     private readonly List<Widget> _chain = new();
+    private readonly List<(Widget Scope, Widget? Return)> _scopes = new();   // the scopes entered, outermost first
+    private Widget? _scope;
     private bool _layoutDirty = true, _chainDirty = true;
     private ITextMeasure _text;
     private Widget? _focused, _hovered, _tooltipTarget;
@@ -73,8 +77,12 @@ public sealed class UiRoot
     public Widget? Focused => _focused;
     public Widget? Hovered => _hovered;
 
-    // The focusable widgets in tab order, as of the last change to the tree.
+    // The focusable widgets in tab order, as of the last change to the tree: only those inside the
+    // focus scope, while one shows.
     public IReadOnlyList<Widget> FocusChain { get { EnsureChain(); return _chain; } }
+
+    // The focus scope that holds focus now (Widget.FocusScope), or null: the whole tree.
+    public Widget? ActiveScope { get { EnsureChain(); return _scope; } }
 
     public void SetViewport(Vector2 pixels)
     {
@@ -127,24 +135,26 @@ public sealed class UiRoot
         var before = _focused;
         Layout();
         DropInvalidFocus();
+        SyncScope();
+        result.Scope = _scope;
 
         if (input.PointerMoved || input.PointerPressed || input.Wheel != 0f)
         {
+            // Inside a focus scope nothing outside it is under the pointer, and the whole screen is the
+            // UI's: a press beside a confirm prompt is on the prompt's backdrop, not the world or the menu.
             var hit = HitTestVirtual(ToVirtual(input.Pointer));
-            result.PointerOverUi = hit != null;
+            if (_scope != null && !_scope.Contains(hit)) hit = null;
+            result.PointerOverUi = hit != null || _scope != null;
             if (input.PointerMoved)
             {
                 _pointerLast = true;
                 SetHovered(hit);
-                if (FocusTarget(hit) is { } target) Focus(target);
+                if (FocusTarget(hit) is { } target) FocusCore(target);
             }
             if (input.Wheel != 0f && ScrollAncestor(hit) is { } scroll)
                 scroll.ScrollBy(new Vector2(0f, -input.Wheel * scroll.WheelStep));
-            if (input.PointerPressed && FocusTarget(hit) is { } pressed)
-            {
-                Focus(pressed);
+            if (input.PointerPressed && FocusTarget(hit) is { } pressed && FocusCore(pressed))
                 result.Activated = Activate(pressed);
-            }
         }
 
         if (input.Navigate != UiNavigation.None)
@@ -167,8 +177,10 @@ public sealed class UiRoot
     {
         if (direction == UiNavigation.None) return false;
         Layout();
-        EnsureChain();
         DropInvalidFocus();
+        var before = _focused;
+        SyncScope();
+        if (_focused != before) return true;   // a scope that has just shown took focus: that is the step
         if (_chain.Count == 0) return false;
 
         int index = _focused == null ? -1 : _chain.IndexOf(_focused);
@@ -178,7 +190,7 @@ public sealed class UiRoot
         {
             UiNavigation.Next => _chain[(index + 1) % _chain.Count],
             UiNavigation.Previous => _chain[(index - 1 + _chain.Count) % _chain.Count],
-            _ => Spatial(_focused!, direction),
+            _ => Neighbour(_focused!, direction) ?? Spatial(_focused!, direction),
         };
         if (next == null || next == _focused) return false;
         Focus(next);
@@ -186,11 +198,19 @@ public sealed class UiRoot
     }
 
     // Focuses `widget` (null clears focus), scrolling every Scroll it is in so it shows. Returns false
-    // when it cannot take focus (not in this tree, hidden, disabled or not Focusable).
+    // when it cannot take focus (not in this tree, hidden, disabled, not Focusable, or outside the focus
+    // scope that shows).
     public bool Focus(Widget? widget)
+    {
+        SyncScope();
+        return FocusCore(widget);
+    }
+
+    private bool FocusCore(Widget? widget)
     {
         if (widget == _focused) return true;
         if (widget != null && (widget.Root != this || !widget.CanFocus)) return false;
+        if (widget != null && _scope != null && !_scope.Contains(widget)) return false;
         _focused = widget;
         Version++;
         if (widget == null) return true;
@@ -289,7 +309,8 @@ public sealed class UiRoot
         if (!_chainDirty) return;
         _chainDirty = false;
         _chain.Clear();
-        Collect(Content, true);
+        _scope = FindScope(Content, null);
+        Collect(_scope ?? Content, _scope?.Parent?.IsEnabled ?? true);
         // Stable insertion sort by TabIndex: the chain is short, and List.Sort would allocate a comparer.
         for (int i = 1; i < _chain.Count; i++)
         {
@@ -298,6 +319,65 @@ public sealed class UiRoot
             while (j >= 0 && _chain[j].TabIndex > item.TabIndex) { _chain[j + 1] = _chain[j]; j--; }
             _chain[j + 1] = item;
         }
+    }
+
+    // The last visible FocusScope in tree order: the one drawn on top, an inner one over its outer one.
+    private static Widget? FindScope(Widget widget, Widget? found)
+    {
+        if (!widget.Visible) return found;
+        if (widget.FocusScope) found = widget;
+        for (int i = 0; i < widget.ChildCount; i++) found = FindScope(widget.Child(i), found);
+        return found;
+    }
+
+    // Brings focus in line with the scope that shows: one that has just shown takes focus (its first
+    // widget in tab order), remembering where it was; one that has gone gives it back.
+    private void SyncScope()
+    {
+        EnsureChain();
+        var current = _scopes.Count == 0 ? null : _scopes[^1].Scope;
+        if (_scope == current) return;
+
+        int outer = -1;
+        for (int i = 0; i < _scopes.Count; i++)
+            if (_scopes[i].Scope == _scope) outer = i;
+        if (_scope == null || outer >= 0)
+        {
+            // Back out to the whole tree, or to a scope entered before: focus returns to where it was
+            // when the innermost one being left was entered.
+            int keep = _scope == null ? 0 : outer + 1;
+            var back = _scopes[keep].Return;
+            _scopes.RemoveRange(keep, _scopes.Count - keep);
+            if (back == null || !FocusCore(back)) FocusCore(First());
+            return;
+        }
+
+        // A new scope: entered from wherever focus is, which it gets back when this one goes.
+        _scopes.Add((_scope, _focused));
+        if (_focused == null || !_scope.Contains(_focused))
+        {
+            _focused = null;
+            Version++;
+            FocusCore(First());
+        }
+    }
+
+    private Widget? First() => _chain.Count > 0 ? _chain[0] : null;
+
+    // The neighbour `from` names that way, when there is one that can take focus now.
+    private Widget? Neighbour(Widget from, UiNavigation direction)
+    {
+        string? name = direction switch
+        {
+            UiNavigation.Up => from.FocusUp,
+            UiNavigation.Down => from.FocusDown,
+            UiNavigation.Left => from.FocusLeft,
+            UiNavigation.Right => from.FocusRight,
+            _ => null,
+        };
+        if (string.IsNullOrEmpty(name)) return null;
+        var target = (_scope ?? Content).Find(name);
+        return target != null && target != from && target.CanFocus ? target : null;
     }
 
     private void Collect(Widget widget, bool enabled)
