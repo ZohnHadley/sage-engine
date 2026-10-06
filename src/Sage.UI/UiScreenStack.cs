@@ -303,6 +303,10 @@ public sealed class UiScreenStack
     // Something in any layer was confirmed or clicked.
     public event Action<UiLayer, Widget>? Activated;
 
+    // Whether layers lay out right to left (#345): the shown language's direction, or none for a stack
+    // with no records behind it.
+    private bool RightToLeft => _screens?.Text.IsRightToLeft ?? false;
+
     private int _pausing;        // open layers whose screen `pauses` (issue #342)
     private bool _pausedWorld;   // and the world was running when the first opened: this stack paused it
 
@@ -403,7 +407,7 @@ public sealed class UiScreenStack
 
     private UiLayer Add(Widget content, UiScreen? screen, bool modal, Widget? focus = null)
     {
-        var root = new UiRoot(_text) { Fonts = Fonts, UiScale = _uiScale, TextScale = _textScale };
+        var root = new UiRoot(_text) { Fonts = Fonts, RightToLeft = RightToLeft, UiScale = _uiScale, TextScale = _textScale };
         root.SetViewport(_viewport);
         if (TooltipStyle != null)
         {
@@ -490,9 +494,11 @@ public sealed class UiScreenStack
         var top = Top;
         var result = default(UiResult);
         var idle = UiInput.Wait(dt);
+        bool rightToLeft = RightToLeft;
         for (int i = 0; i < _layers.Count; i++)
         {
             var layer = _layers[i];
+            layer.Root.RightToLeft = rightToLeft;   // the language changed: every screen turns round (#345)
             if (layer.IsClosing) continue;   // frozen as it was: it is leaving
             if (layer.Rebuilt())
             {

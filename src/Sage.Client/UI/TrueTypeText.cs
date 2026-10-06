@@ -8,7 +8,7 @@ using Sage.UI;
 
 namespace Sage.Client;
 
-// Draws text in a TrueType font (issue #338): Sage.UI's GlyphAtlas rasterises each character the first
+// Draws text in a TrueType font (issue #338), and the fonts behind it (#345): Sage.UI's GlyphAtlas rasterises each character the first
 // time it is drawn at a pixel size, and this keeps a texture per atlas, copies the rows that changed
 // into it, and queues a UiDraw image per glyph — so it goes through the same batch, clip and fade as
 // every other widget. Positions come from the font's own advances and kerning at the drawn size, the
@@ -47,45 +47,49 @@ internal sealed class TrueTypeText : IDisposable
         _atlases.Clear();
     }
 
-    // text[start..start+length] at `pixelSize` (the em in pixels), its line's top-left at (x, y).
-    public void Draw(UiDraw ui, TrueTypeFont font, float pixelSize, string text, int start, int length, float x, float y, Color colour)
+    // text[start..start+length] at `pixelSize` (the em in pixels), its line's top-left at (x, y): each
+    // character in the first font of `chain` that has it (#345), on the primary font's baseline.
+    public void Draw(UiDraw ui, FontChain chain, float pixelSize, string text, int start, int length, float x, float y, Color colour)
     {
         if (length <= 0 || !(pixelSize > 0f)) return;
         int size = Math.Clamp((int)MathF.Round(pixelSize), 1, 512);
         float k = pixelSize / size;
-        var atlas = AtlasFor(font, size);
 
-        // Every glyph rasterised first, so the texture is uploaded once and big enough before a quad
+        // Every glyph rasterised first, so each texture is uploaded once and big enough before a quad
         // names it.
         var span = text.AsSpan(start, length);
         for (var rest = span; !rest.IsEmpty;)
         {
             Rune.DecodeFromUtf16(rest, out var rune, out int used);
             rest = rest[used..];
-            atlas.Glyphs.Get(rune.Value);
+            var (font, codepoint) = chain.Resolve(rune.Value);
+            AtlasFor(font, size).Glyphs.Get(codepoint);
         }
-        Upload(atlas);
-        var texture = atlas.Texture;
-        if (texture == null) return;
+        var fonts = chain.Fonts;
+        for (int i = 0; i < fonts.Count; i++)
+            if (_atlases.TryGetValue((fonts[i], size), out var used)) Upload(used);
 
-        float baseline = y + font.Ascent(pixelSize);
+        float baseline = y + chain.Primary.Ascent(pixelSize);
         float pen = x;
         int previous = -1;
+        TrueTypeFont? previousFont = null;
         for (var rest = span; !rest.IsEmpty;)
         {
             Rune.DecodeFromUtf16(rest, out var rune, out int used);
             rest = rest[used..];
-            int c = rune.Value;
-            if (previous >= 0) pen += font.Kerning(previous, c, pixelSize);
+            var (font, c) = chain.Resolve(rune.Value);
+            if (previous >= 0 && ReferenceEquals(font, previousFont)) pen += font.Kerning(previous, c, pixelSize);
+            var atlas = AtlasFor(font, size);
             var glyph = atlas.Glyphs.Get(c);
-            if (glyph.Width > 0)
+            if (glyph.Width > 0 && atlas.Texture != null)
             {
                 int left = (int)MathF.Round(pen + glyph.OffsetX * k), top = (int)MathF.Round(baseline + glyph.OffsetY * k);
                 var destination = new Rectangle(left, top, Math.Max((int)MathF.Round(glyph.Width * k), 1), Math.Max((int)MathF.Round(glyph.Height * k), 1));
-                ui.Image(texture, destination, colour, new Rectangle(glyph.X, glyph.Y, glyph.Width, glyph.Height));
+                ui.Image(atlas.Texture, destination, colour, new Rectangle(glyph.X, glyph.Y, glyph.Width, glyph.Height));
             }
             pen += font.Advance(c, pixelSize);
             previous = c;
+            previousFont = font;
         }
     }
 
