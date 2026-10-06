@@ -197,3 +197,23 @@ Sage.Simulation.WaterSurfaceRecord.WaveDirection -> float
 Sage.Simulation.WaterSurfaceRecord.WaveLength -> float
 Sage.Simulation.WaterSurfaceRecord.WaveSpeed -> float
 Sage.Simulation.WaterSurfaceRecord.WaveStrength -> float
+Sage.Simulation.Camera.NoDebugLines -> bool
+Sage.Simulation.Camera.NoShadows -> bool
+Sage.Simulation.Camera.NoSky -> bool
+Sage.Simulation.Camera.NoViewmodel -> bool
+Sage.Simulation.Camera.Slot -> int
+Sage.Simulation.CameraBlend.Out -> bool
+Sage.Simulation.CameraPart.NoDebugLines -> bool
+Sage.Simulation.CameraPart.NoShadows -> bool
+Sage.Simulation.CameraPart.NoSky -> bool
+Sage.Simulation.CameraPart.NoViewmodel -> bool
+Sage.Simulation.CameraPart.Slot -> int
+Sage.Simulation.CameraView.NoDebugLines -> bool
+Sage.Simulation.CameraView.NoShadows -> bool
+Sage.Simulation.CameraView.NoSky -> bool
+Sage.Simulation.CameraView.NoViewmodel -> bool
+Sage.Simulation.CameraView.Slot -> int
+Sage.Simulation.CameraViews.IndexOf(string! target, int slot) -> int
+Sage.Simulation.ScriptedCamera.BlendOutTime -> float
+Sage.Simulation.ScriptedCameraPart.BlendOutTime -> float
+static Sage.Simulation.CameraBlends.BeginOut(Sage.Simulation.World! world, Sage.Simulation.Entity camera, in Sage.Simulation.CameraView from, float seconds, Sage.Simulation.Ease ease) -> void

@@ -21,7 +21,10 @@ namespace Sage.Simulation;
 // (a tie: the lower entity id, so it is stable). Its pose is its CameraPose when a rig drives it, else
 // its GlobalTransform interpolated to this frame. Out-of-range values resolve to the defaults (see
 // Camera), so every view is usable as it stands. A winner with a CameraBlend running is eased from the
-// pose the blend began at (issue #90, CameraBlend) before the screen is mirrored.
+// pose the blend began at (issue #90, CameraBlend) before the screen is mirrored; so is whatever took the
+// place of a camera turned off with a blend out (issue 4n-19). Split screen (issue 4n-19): each target has
+// one view per `Camera.Slot`, each resolved as above; the screen's lowest slot is the main view, the one
+// ActiveCamera mirrors.
 //
 // **ActiveCamera (decision D1).** ActiveCamera stays, as a mirror of the screen view that only the
 // director writes once a camera entity draws to the screen: its position, rotation, field of view and
@@ -91,40 +94,40 @@ public sealed class CameraDirector : ISystem
             }
         }
 
+        // No camera entity on the screen: ActiveCamera as it is. If one had the screen until now (it was
+        // turned off, destroyed, or its rig let go), ActiveCamera is left where that camera last was, not
+        // snapped anywhere. Before the blends, so a camera blending out eases into it too.
+        var active = _active;
+        bool fallback = active != null && _views.IndexOfScreen() < 0;
+        if (fallback) _views.SetScreen(FromActiveCamera(active!));
+
         // Blends (issue #90): a camera that won its target and is blending in has its view eased from
-        // where the screen was, before anything — ActiveCamera included — reads it.
+        // where the screen was, before anything — ActiveCamera included — reads it. Blending out (issue
+        // 4n-19): a camera turned off with a blend eases whatever now holds its target and slot from where
+        // it was.
         foreach (var (cameras, blends, entities) in _blending.Chunks)
         {
             var c = cameras.Span;
             var b = blends.Span;
             for (int i = 0; i < c.Length; i++)
             {
-                if (!c[i].Enabled || !b[i].Active) continue;
-                int at = _views.IndexOf(entities.EntityAt(i));
+                if (!b[i].Active || c[i].Enabled == b[i].Out) continue;   // in: while on; out: while off
+                var self = entities.EntityAt(i);
+                int at = b[i].Out ? _views.IndexOf(c[i].Target ?? "", Math.Max(0, c[i].Slot)) : _views.IndexOf(self);
                 if (at >= 0) CameraBlends.Apply(b[i], ref _views.At(at), alpha);
             }
         }
 
-        int screen = _views.IndexOf("");
-        var active = _active;
-        if (active != null)
+        // ActiveCamera mirrors the screen's main view (blended) once a camera entity draws there.
+        int screen = _views.IndexOfScreen();
+        if (active != null && !fallback && screen >= 0)
         {
-            if (screen >= 0)
-            {
-                ref readonly var main = ref _views[screen];
-                active.Position = main.Position;
-                active.Rotation = main.Rotation;
-                active.FovY = main.FovY;
-                active.Near = main.Near;
-                active.Far = main.Far;
-            }
-            else
-            {
-                // No camera entity: ActiveCamera as it is. If one had the screen until now (it was turned
-                // off, destroyed, or its rig let go), ActiveCamera is left where that camera last was,
-                // not snapped anywhere.
-                _views.SetScreen(FromActiveCamera(active));
-            }
+            ref readonly var main = ref _views[screen];
+            active.Position = main.Position;
+            active.Rotation = main.Rotation;
+            active.FovY = main.FovY;
+            active.Near = main.Near;
+            active.Far = main.Far;
         }
         _views.End();
     }
@@ -148,6 +151,11 @@ public sealed class CameraDirector : ISystem
             Near = near,
             Far = far,
             Priority = camera.Priority,
+            Slot = Math.Max(0, camera.Slot),
+            NoShadows = camera.NoShadows,
+            NoViewmodel = camera.NoViewmodel,
+            NoSky = camera.NoSky,
+            NoDebugLines = camera.NoDebugLines,
         };
     }
 

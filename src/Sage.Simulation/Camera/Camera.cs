@@ -111,6 +111,24 @@ public struct Camera : IComponent
     [Property(Category = "Output", Tooltip = "The render target it draws to, by name; empty = the screen")]
     public string Target;
 
+    // Split screen (issue 4n-19): the cameras on one target compete per slot, so two players' cameras,
+    // each with its own viewport, both draw. The screen's lowest slot is its main view.
+    [Property(Min = 0, Max = 15, Category = "Output", Tooltip = "Split screen: each slot of a target draws its own view (its highest-priority camera); the screen's lowest is the main view")]
+    public int Slot;
+
+    // The passes a view from this camera leaves out (issue 4n-19). Every view draws the whole pass set by
+    // default — the sun's shadows, a first-person viewmodel, the sky, debug lines — and these turn one off:
+    // a cheap security monitor or a minimap. Written as "no" so that a camera with none of them set (a
+    // zeroed component, an old save) draws everything.
+    [Property(Category = "Passes", Tooltip = "This view has no sun shadows of its own (a cheap monitor, a minimap)")]
+    public bool NoShadows;
+    [Property(Category = "Passes", Tooltip = "This view draws no first-person viewmodel, even from a first-person rig")]
+    public bool NoViewmodel;
+    [Property(Category = "Passes", Tooltip = "This view draws no sky: the clear colour stays behind the world")]
+    public bool NoSky;
+    [Property(Category = "Passes", Tooltip = "This view draws no debug lines")]
+    public bool NoDebugLines;
+
     public readonly bool IsScreen => string.IsNullOrEmpty(Target);
 
     public static Camera Perspective(float fovYDegrees = DefaultFovY, int priority = 0,
