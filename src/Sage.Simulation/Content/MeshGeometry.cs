@@ -23,6 +23,10 @@ internal sealed class MeshGeometry
 {
     public readonly List<MeshGeometryPart> Parts = new();
     public MeshSkin? Skin;
+    // The model's morph targets (issue #363, GltfMorphs): names, and the rest weights a skinned part's
+    // vertices are baked at. A skinned part's MeshMorph deltas index these.
+    public string[] MorphTargets = Array.Empty<string>();
+    public float[] RestMorphWeights = Array.Empty<float>();
     public Vector3 BoundsCentre;
     public float BoundsRadius = 1f;
 
@@ -76,7 +80,10 @@ internal sealed class MeshGeometry
             // feeding it the flat list draws a hierarchy once per level of itself.
             var roots = root.DefaultScene?.VisualChildren
                         ?? System.Linq.Enumerable.Where(root.LogicalNodes, n => n.VisualParent == null);
-            foreach (var node in roots) Collect(node, name, model, ref min, ref max);
+            var morphs = GltfMorphs.Read(root);
+            model.MorphTargets = morphs.Names;
+            model.RestMorphWeights = morphs.Rest;
+            foreach (var node in roots) Collect(node, name, model, morphs, ref min, ref max);
         }
         catch (Exception ex)
         {
@@ -101,9 +108,9 @@ internal sealed class MeshGeometry
         return model;
     }
 
-    private static void Collect(SharpGLTF.Schema2.Node node, string name, MeshGeometry model, ref Vector3 min, ref Vector3 max)
+    private static void Collect(SharpGLTF.Schema2.Node node, string name, MeshGeometry model, GltfMorphs morphs, ref Vector3 min, ref Vector3 max)
     {
-        foreach (var child in node.VisualChildren) Collect(child, name, model, ref min, ref max);
+        foreach (var child in node.VisualChildren) Collect(child, name, model, morphs, ref min, ref max);
         if (node.Mesh == null) return;
 
         // A skinned node: its vertices stay in bind space, and its skin says where they go.
@@ -154,6 +161,13 @@ internal sealed class MeshGeometry
             if (skinned) part.Skinned = new SkinnedMeshVertex[positions.Count];
             else part.Rigid = new MeshVertex[positions.Count];
 
+            // Morph targets (issue #363): the vertices are baked at the rest weights; a skinned part keeps
+            // its deltas, so the renderer can move it from there by a pose's weights (MeshMorphing).
+            var deltas = ReadMorphs(primitive, morphs.Of(node.Mesh), positions.Count);
+            if (deltas != null && skinned) part.Morphs = deltas;
+            else if (deltas != null)
+                Log.Debug(LogCat.Assets, $"Model '{name}': rigid node '{node.Name}' has morph targets; drawn at its rest weights (only a skinned mesh animates them)");
+
             // Tangents (issue #410): the file's when it has them for every vertex, else worked out here, in
             // the file's own space; rigid ones are then turned with their node like the normals.
             var tangents = new Vector4[positions.Count];
@@ -181,6 +195,14 @@ internal sealed class MeshGeometry
                 var uv = uvs != null && i < uvs.Count ? uvs[i] : Vector2.Zero;
                 var colour = colours != null && i < colours.Count ? VertexColour.From(colours[i]) : VertexColour.White;
                 var t = tangents[i];
+                if (deltas != null)
+                    foreach (var morph in deltas)
+                    {
+                        float rw = model.RestMorphWeights[morph.Target];
+                        if (rw == 0f) continue;
+                        p += rw * morph.Positions[i];
+                        if (morph.Normals != null && normals != null) n += rw * morph.Normals[i];
+                    }
 
                 if (skinned)
                 {
@@ -211,6 +233,32 @@ internal sealed class MeshGeometry
             model.Parts.Add(part);
             Log.Debug(LogCat.Assets, $"Model {name}: {(skinned ? "skinned " : "")}primitive with {part.VertexCount} vertices, {part.Indices.Length / 3} triangles");
         }
+    }
+
+    // A primitive's morph targets as deltas per model target (`map`: the mesh's target i is the model's
+    // map[i]). Null when it has none. A target without POSITION deltas moves nothing; TANGENT deltas are
+    // not read (the tangent is kept across the normal).
+    private static MeshMorph[]? ReadMorphs(SharpGLTF.Schema2.MeshPrimitive primitive, int[]? map, int vertices)
+    {
+        int count = primitive.MorphTargetsCount;
+        if (count == 0 || map == null) return null;
+        var result = new List<MeshMorph>(count);
+        for (int i = 0; i < count && i < map.Length; i++)
+        {
+            var accessors = primitive.GetMorphTargetAccessors(i);
+            var positions = accessors.TryGetValue("POSITION", out var pa) ? pa.AsVector3Array() : null;
+            var normals = accessors.TryGetValue("NORMAL", out var na) ? na.AsVector3Array() : null;
+            if (positions == null && normals == null) continue;
+            var morph = new MeshMorph { Target = map[i], Positions = new Vector3[vertices] };
+            if (normals != null) morph.Normals = new Vector3[vertices];
+            for (int v = 0; v < vertices; v++)
+            {
+                if (positions != null && v < positions.Count) morph.Positions[v] = positions[v];
+                if (normals != null && v < normals.Count) morph.Normals![v] = normals[v];
+            }
+            result.Add(morph);
+        }
+        return result.Count == 0 ? null : result.ToArray();
     }
 
     private static int[] Triangles(SharpGLTF.Schema2.MeshPrimitive primitive)
@@ -341,11 +389,21 @@ internal sealed class MeshGeometryPart
     public SkinnedMeshVertex[]? Skinned;
     public required int[] Indices;
     public Vector2[]? Uv1;   // TEXCOORD_1 per vertex (issue #321), null when the file has no second set
+    public MeshMorph[]? Morphs;   // a skinned part's morph targets (issue #363), null when it has none
     public int VertexCount => Rigid?.Length ?? Skinned!.Length;
 }
 
 // The file's skin (the first one; a model with several is drawn with the first, logged): each joint's
 // inverse bind matrix and where it stands in the file's rest pose, both in model space.
+// One morph target of a skinned part (issue #363): per-vertex deltas, in bind space, for the model's
+// target `Target` (MeshGeometry.MorphTargets).
+internal sealed class MeshMorph
+{
+    public int Target;
+    public required Vector3[] Positions;
+    public Vector3[]? Normals;
+}
+
 internal sealed class MeshSkin
 {
     public required Matrix4x4[] InverseBind;
@@ -425,6 +483,16 @@ internal readonly struct SkinnedMeshVertex : IEquatable<SkinnedMeshVertex>
         Tangent = tangent;
         Colour = colour;
     }
+
+    private SkinnedMeshVertex(in SkinnedMeshVertex from, Vector3 position, Vector3 normal)
+    {
+        this = from;
+        Position = position;
+        Normal = normal;
+    }
+
+    // The same vertex moved: what a morph target does to it (issue #363).
+    public SkinnedMeshVertex WithShape(Vector3 position, Vector3 normal) => new(in this, position, normal);
 
     public bool Equals(SkinnedMeshVertex other) =>
         Position == other.Position && Normal == other.Normal && TextureCoordinate == other.TextureCoordinate

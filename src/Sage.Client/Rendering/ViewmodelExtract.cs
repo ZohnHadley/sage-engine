@@ -98,6 +98,7 @@ internal sealed class ViewmodelExtract : ISystem
         bool skinned = p.Skinned && boneCount > 0;
         item.BoneStart = skinned ? boneStart : 0;
         item.BoneCount = skinned ? boneCount : 0;
+        item.Morph = 0;   // pooled: the slot may have been a morphed draw (first-person arms are not morphed)
     }
 
     // The viewmodel's pieces into the snapshot, in its one view.

@@ -149,7 +149,7 @@ public sealed partial class Renderer
                 caster.World?.SetValue(item.World);
                 effect.CurrentTechnique = technique;
                 var part = Mesh(item.Mesh).Parts[item.Part];
-                _device.SetVertexBuffer(part.VertexBuffer);
+                _device.SetVertexBuffer(VertexBufferOf(item, part));
                 _device.Indices = part.IndexBuffer;
                 foreach (var p in technique.Passes)
                 {

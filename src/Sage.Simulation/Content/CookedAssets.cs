@@ -150,12 +150,15 @@ internal readonly record struct SourceStamp(long Length, ulong Hash)
 //   int32 parts; per part: byte kind (0 rigid, 1 skinned), int32 vertices, int32 indices,
 //                          vertices × 52 or 72 bytes (MeshVertex, SkinnedMeshVertex), indices × int32
 // Version 3 (issue #321) follows each part by a byte (1 = a second UV set) and then vertices × vec2.
+// Version 4 (issue #363) adds morph targets: after the skin, int32 targets; per target: string name, float
+// rest weight. After each part's UV set, int32 morphs; per morph: int32 target, vertices × vec3 position
+// deltas, byte (1 = normals) and then vertices × vec3 normal deltas.
 // Version 2 (issue #410): each vertex gained a tangent and a colour. A version-1 file is refused like any
 // file this engine does not read, so the client falls back to the loose `.glb` (with a warning) until it is
 // cooked again.
 internal static class CookedMesh
 {
-    public const int Version = 3;   // 3: a second UV set per part (issue #321)
+    public const int Version = 4;   // 3: a second UV set per part (issue #321); 4: morph targets (issue #363)
     private static ReadOnlySpan<byte> Magic => "SGMS"u8;
 
     public static void Write(Stream stream, MeshGeometry mesh, in SourceStamp stamp)
@@ -178,6 +181,13 @@ internal static class CookedMesh
             writer.Write(skin.LogicalIndex);
         }
 
+        writer.Write(mesh.MorphTargets.Length);
+        for (int i = 0; i < mesh.MorphTargets.Length; i++)
+        {
+            writer.Write(mesh.MorphTargets[i]);
+            writer.Write(i < mesh.RestMorphWeights.Length ? mesh.RestMorphWeights[i] : 0f);
+        }
+
         writer.Write(mesh.Parts.Count);
         foreach (var part in mesh.Parts)
         {
@@ -189,6 +199,15 @@ internal static class CookedMesh
             writer.Write(MemoryMarshal.AsBytes(part.Indices.AsSpan()));
             writer.Write((byte)(part.Uv1 != null ? 1 : 0));
             if (part.Uv1 != null) writer.Write(MemoryMarshal.AsBytes(part.Uv1.AsSpan()));
+            var morphs = part.Morphs ?? Array.Empty<MeshMorph>();
+            writer.Write(morphs.Length);
+            foreach (var morph in morphs)
+            {
+                writer.Write(morph.Target);
+                writer.Write(MemoryMarshal.AsBytes(morph.Positions.AsSpan()));
+                writer.Write((byte)(morph.Normals != null ? 1 : 0));
+                if (morph.Normals != null) writer.Write(MemoryMarshal.AsBytes(morph.Normals.AsSpan()));
+            }
         }
     }
 
@@ -217,6 +236,19 @@ internal static class CookedMesh
             mesh.Skin = skin;
         }
 
+        int targets = reader.ReadInt32();
+        if (targets < 0 || targets > 65535) throw new InvalidDataException($"{targets} morph targets");
+        if (targets > 0)
+        {
+            mesh.MorphTargets = new string[targets];
+            mesh.RestMorphWeights = new float[targets];
+            for (int i = 0; i < targets; i++)
+            {
+                mesh.MorphTargets[i] = reader.ReadString();
+                mesh.RestMorphWeights[i] = reader.ReadSingle();
+            }
+        }
+
         int parts = reader.ReadInt32();
         if (parts < 0 || parts > 1 << 16) throw new InvalidDataException($"{parts} parts");
         for (int p = 0; p < parts; p++)
@@ -235,6 +267,26 @@ internal static class CookedMesh
             byte hasUv1 = reader.ReadByte();
             if (hasUv1 > 1) throw new InvalidDataException($"part {p} is malformed");
             if (hasUv1 == 1) part.Uv1 = MemoryMarshal.Cast<byte, Vector2>(CookedAssets.ReadArray(reader, checked(vertices * 8))).ToArray();
+            int morphs = reader.ReadInt32();
+            if (morphs < 0 || morphs > targets || (morphs > 0 && kind != 1)) throw new InvalidDataException($"part {p} has {morphs} morph targets");
+            if (morphs > 0)
+            {
+                part.Morphs = new MeshMorph[morphs];
+                for (int m = 0; m < morphs; m++)
+                {
+                    int target = reader.ReadInt32();
+                    if ((uint)target >= (uint)targets) throw new InvalidDataException($"part {p} morphs target {target} of {targets}");
+                    var morph = new MeshMorph
+                    {
+                        Target = target,
+                        Positions = MemoryMarshal.Cast<byte, Vector3>(CookedAssets.ReadArray(reader, checked(vertices * 12))).ToArray(),
+                    };
+                    byte hasNormals = reader.ReadByte();
+                    if (hasNormals > 1) throw new InvalidDataException($"part {p} is malformed");
+                    if (hasNormals == 1) morph.Normals = MemoryMarshal.Cast<byte, Vector3>(CookedAssets.ReadArray(reader, checked(vertices * 12))).ToArray();
+                    part.Morphs[m] = morph;
+                }
+            }
             mesh.Parts.Add(part);
         }
         return mesh;

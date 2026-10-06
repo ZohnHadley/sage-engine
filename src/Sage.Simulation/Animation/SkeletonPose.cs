@@ -21,6 +21,7 @@ public sealed class SkeletonPose : IDisposable
 {
     private Pose[]? _local;
     private Matrix4x4[]? _model;
+    private float[]? _morph;
 
     // Starts at the skeleton's rest pose, with identity model-space matrices until ToModelSpace runs.
     public SkeletonPose(Skeleton skeleton)
@@ -30,6 +31,8 @@ public sealed class SkeletonPose : IDisposable
         JointCount = skeleton.JointCount;
         _local = ArrayPool<Pose>.Shared.Rent(Math.Max(JointCount, 1));
         _model = ArrayPool<Matrix4x4>.Shared.Rent(Math.Max(JointCount, 1));
+        MorphCount = skeleton.MorphTargetCount;
+        _morph = MorphCount > 0 ? ArrayPool<float>.Shared.Rent(MorphCount) : Array.Empty<float>();
         ResetToRest();
         ModelSpace.Fill(Matrix4x4.Identity);
     }
@@ -44,7 +47,18 @@ public sealed class SkeletonPose : IDisposable
     // is Skeleton.InverseBind[j] * ModelSpace[j] (#117).
     public Span<Matrix4x4> ModelSpace => _model == null ? Span<Matrix4x4>.Empty : _model.AsSpan(0, JointCount);
 
-    public void ResetToRest() => Skeleton.RestPose.CopyTo(Local);
+    // The morph_weights channel (issue #363): one weight per Skeleton morph target, sampled from clips'
+    // weight tracks and blended like the joints, which the renderer applies to the mesh before skinning.
+    public int MorphCount { get; }
+
+    public Span<float> MorphWeights => _morph == null ? Span<float>.Empty : _morph.AsSpan(0, MorphCount);
+
+    // Joints and morph weights back to the skeleton's rest.
+    public void ResetToRest()
+    {
+        Skeleton.RestPose.CopyTo(Local);
+        Skeleton.RestMorphWeights.CopyTo(MorphWeights);
+    }
 
     // Copies another pose of the same skeleton (local transforms and model-space matrices).
     public void CopyFrom(SkeletonPose other)
@@ -53,14 +67,17 @@ public sealed class SkeletonPose : IDisposable
         if (other.JointCount != JointCount) throw new ArgumentException($"A pose of {other.JointCount} joints cannot be copied into one of {JointCount}");
         other.Local.CopyTo(Local);
         other.ModelSpace.CopyTo(ModelSpace);
+        if (other.MorphCount == MorphCount) other.MorphWeights.CopyTo(MorphWeights);
     }
 
     public void Dispose()
     {
         if (_local != null) ArrayPool<Pose>.Shared.Return(_local);
         if (_model != null) ArrayPool<Matrix4x4>.Shared.Return(_model);
+        if (_morph is { Length: > 0 }) ArrayPool<float>.Shared.Return(_morph);
         _local = null;
         _model = null;
+        _morph = null;
     }
 }
 
@@ -70,18 +87,34 @@ public sealed class SkeletonPose : IDisposable
 public sealed class JointMask
 {
     private readonly float[] _weights;
+    private readonly float[] _morphWeights;
 
-    // Every joint at `weight` (0 by default: set the branches that should blend).
+    // Every joint (and morph target) at `weight` (0 by default: set the branches that should blend).
     public JointMask(Skeleton skeleton, float weight = 0f)
     {
         ArgumentNullException.ThrowIfNull(skeleton);
         Skeleton = skeleton;
         _weights = new float[skeleton.JointCount];
         Array.Fill(_weights, Math.Clamp(weight, 0f, 1f));
+        _morphWeights = new float[skeleton.MorphTargetCount];
+        Array.Fill(_morphWeights, Math.Clamp(weight, 0f, 1f));
     }
 
     public Skeleton Skeleton { get; }
     public ReadOnlySpan<float> Weights => _weights;
+
+    // A weight per morph target (issue #363): a face layer masks the targets it moves, and a body layer
+    // that names none leaves the face to what is below it.
+    public ReadOnlySpan<float> MorphWeights => _morphWeights;
+
+    // Sets one morph target's weight (clamped). False (and nothing changes) when there is no such target.
+    public bool SetMorph(string target, float weight)
+    {
+        int index = Skeleton.MorphIndexOf(target);
+        if (index < 0) return false;
+        _morphWeights[index] = Math.Clamp(weight, 0f, 1f);
+        return true;
+    }
 
     // Clamped to [0, 1].
     public float this[int joint]

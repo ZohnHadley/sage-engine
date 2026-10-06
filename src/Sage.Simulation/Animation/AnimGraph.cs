@@ -53,6 +53,12 @@ namespace Sage.Simulation;
 // at those markers rather than at the same fraction of their length. **Per-transition fades:** a
 // transition's own `fade` and `ease` win over the state's.
 //
+// **Morph targets** (issue #363) are animated like joints: a clip's weight tracks are sampled, blended and
+// cross-faded with it, and a layer's `mask` may name morph targets as well as joints (a face layer:
+// `"mask": ["blink", "jaw_open"]`; a layer whose mask names none leaves the face to what is below it).
+// `morphs` sets targets straight from params every tick, over what the clips gave: lip-sync's
+// `"morphs": { "jaw_open": "mouth" }` with SetAnimParam "mouth 0.6".
+//
 // Compiled once per record load (and again when a reload hands the record new states), so a tick finds
 // states, params and clips by index and allocates nothing.
 [Record("anim_graph", Plugin = RegistrationOwners.Core)]
@@ -75,6 +81,8 @@ public sealed class AnimGraphRecord
     public Ease Ease = Ease.SmoothStep;
     [Property(Tooltip = "The joint whose motion a state's rootMotion takes out of the pose and gives the body; empty: the skeleton's first joint")]
     public string RootJoint = "";
+    [Property(Tooltip = "Morph targets set from a Float or Bool param every tick, over what the clips give: { \"jaw_open\": \"mouth\" } (lip-sync)")]
+    public Dictionary<string, string> Morphs = new();
 
     private Compiled? _compiled;
 
@@ -98,6 +106,7 @@ public sealed class AnimGraphRecord
         private readonly float _fade;
         private readonly Ease _ease;
         private readonly string _rootJoint;
+        private readonly Dictionary<string, string> _morphs;
 
         public readonly int Version = Interlocked.Increment(ref _versions);   // never 0: an animator's unset one
 
@@ -110,6 +119,8 @@ public sealed class AnimGraphRecord
         public readonly int AimPitchParam, AimYawParam;           // -1: the graph has none (#120's AimIk)
         public readonly string[] ClipNames;
         public readonly bool HasRootMotion;                       // some state takes root motion (#357)
+        public readonly string[] MorphTargets;                    // `morphs`: each target, and the param it reads (-1: none)
+        public readonly int[] MorphParams;
         private readonly Dictionary<string, int> _paramIndex = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, int> _clipIndex = new(StringComparer.Ordinal);
 
@@ -123,6 +134,7 @@ public sealed class AnimGraphRecord
             _fade = record.Fade;
             _ease = record.Ease;
             _rootJoint = record.RootJoint ?? "";
+            _morphs = record.Morphs ??= new Dictionary<string, string>();
 
             ParamNames = new string[_params.Count];
             ParamKinds = new AnimParamKind[_params.Count];
@@ -155,11 +167,21 @@ public sealed class AnimGraphRecord
             }
             ClipNames = clips.ToArray();
             foreach (var state in Layers[0].States) HasRootMotion |= state.RootMotion != RootMotionMode.None;
+
+            MorphTargets = new string[_morphs.Count];
+            MorphParams = new int[_morphs.Count];
+            int m = 0;
+            foreach (var (target, param) in _morphs)
+            {
+                MorphTargets[m] = target ?? "";
+                MorphParams[m] = ParamIndex(param);
+                m++;
+            }
         }
 
         public bool Matches(AnimGraphRecord record) =>
             ReferenceEquals(_states, record.States) && ReferenceEquals(_any, record.Transitions) && ReferenceEquals(_params, record.Params)
-            && ReferenceEquals(_layers, record.Layers) && _initial == record.Initial && _fade == record.Fade && _ease == record.Ease
+            && ReferenceEquals(_layers, record.Layers) && ReferenceEquals(_morphs, record.Morphs) && _initial == record.Initial && _fade == record.Fade && _ease == record.Ease
             && _rootJoint == (record.RootJoint ?? "");
 
         public float DefaultFade => _fade;

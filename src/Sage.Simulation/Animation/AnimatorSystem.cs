@@ -30,6 +30,7 @@ internal sealed class AnimatorPoses
         public int ResolvedVersion;                              // the compiled graph Clips and Masks are for
         public AnimationClip?[] Clips = Array.Empty<AnimationClip?>();
         public JointMask?[] Masks = Array.Empty<JointMask?>();
+        public int[] MorphTargets = Array.Empty<int>();          // the graph's `morphs`: each one's target in the skeleton (-1: none)
         public Vector3 LastPosition;
         public bool HasLastPosition;
         public bool LoadTried;
@@ -238,6 +239,8 @@ internal static class AnimatorStepper
                 Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-root:{a.Graph}:{a.Model}:{g.RootJoint}",
                     $"Animator {a.Graph}: rootJoint '{g.RootJoint}' is not a joint of {set.Source}'s skeleton; its states take no root motion");
         }
+        instance.MorphTargets = new int[g.MorphTargets.Length];
+        Array.Fill(instance.MorphTargets, -1);
         if (set == null)
         {
             // A sprite's graph (issue #119): its leaves are the sheet's clips, which have no joints.
@@ -265,10 +268,17 @@ internal static class AnimatorStepper
             if (names == null || names.Count == 0) continue;            // the whole body
             var mask = new JointMask(set.Skeleton);
             foreach (var joint in names)
-                if (!string.IsNullOrEmpty(joint) && !mask.SetBranch(joint, 1f))
+                if (!string.IsNullOrEmpty(joint) && !mask.SetBranch(joint, 1f) && !mask.SetMorph(joint, 1f))
                     Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-mask:{a.Graph}:{a.Model}:{joint}",
-                        $"Animator {a.Graph}: layer '{g.Layers[l].Name}' masks joint '{joint}', which {set.Source}'s skeleton has not got");
+                        $"Animator {a.Graph}: layer '{g.Layers[l].Name}' masks joint '{joint}', which {set.Source}'s skeleton has not got (nor a morph target of that name)");
             instance.Masks[l] = mask;
+        }
+        for (int m = 0; m < g.MorphTargets.Length; m++)
+        {
+            instance.MorphTargets[m] = set.Skeleton.MorphIndexOf(g.MorphTargets[m]);
+            if (instance.MorphTargets[m] < 0)
+                Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-morph:{a.Graph}:{a.Model}:{g.MorphTargets[m]}",
+                    $"Animator {a.Graph} at {World.Describe(entity)}: {set.Source} has no morph target '{g.MorphTargets[m]}'; its `morphs` entry does nothing");
         }
         // Synced blends (issue #358) whose clips lack the markers, or have them unevenly: said once.
         for (int l = 0; l < g.Layers.Length; l++)
@@ -770,6 +780,21 @@ internal static class AnimatorStepper
             if (layer.Additive) AdditivePose.Add(pose, scratch.Layer, weight, instance.Masks[l]);
             else PoseSampler.Blend(pose, scratch.Layer, weight, instance.Masks[l], pose);
         }
+        DriveMorphs(g, values, instance, pose);
+    }
+
+    // The graph's `morphs` (issue #363): each target the model has takes its param's value, over the clips.
+    private static void DriveMorphs(AnimGraphRecord.Compiled g, AnimatorParam[] values, AnimatorPoses.Instance instance, SkeletonPose pose)
+    {
+        var targets = instance.MorphTargets;
+        var weights = pose.MorphWeights;
+        for (int m = 0; m < targets.Length && m < g.MorphParams.Length; m++)
+        {
+            int target = targets[m], param = g.MorphParams[m];
+            if ((uint)target >= (uint)weights.Length || (uint)param >= (uint)values.Length) continue;
+            float v = values[param].Value;
+            weights[target] = float.IsFinite(v) ? v : 0f;
+        }
     }
 
     // One layer into `into`: its state, cross-faded from the one it is leaving. Returns how much of the
@@ -937,6 +962,7 @@ internal sealed class AnimatorSystem : ISystem
                     instance.SampledTick = tick;
                     AnimatorStepper.Sample(in a, g, instance, Scratch(instance.Pose.Skeleton));
                     instance.Sampled!.Local.CopyTo(instance.Pose.Local);
+                    instance.Sampled.MorphWeights.CopyTo(instance.Pose.MorphWeights);
                     PoseSampler.ToModelSpace(instance.Pose.Skeleton, instance.Pose);
                     _registered.Set(entity, instance.Pose, a.Model);
                 }
@@ -967,6 +993,7 @@ internal sealed class AnimatorSystem : ISystem
             // Every tick, sampled or not: the readers' pose is rewritten from the graph's output, so what a
             // post-process (#120's IK) did to it last tick never compounds.
             instance.Sampled!.Local.CopyTo(instance.Pose.Local);
+            instance.Sampled.MorphWeights.CopyTo(instance.Pose.MorphWeights);
             PoseSampler.ToModelSpace(instance.Pose.Skeleton, instance.Pose);
             _registered.Set(entity, instance.Pose, a.Model);    // an overwrite: no allocation
         }
