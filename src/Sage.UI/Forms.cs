@@ -51,7 +51,10 @@ public class Slider : Bar
             var fill = FillRect;
             float size = MathF.Max(MathF.Min(c.Width, c.Height) * 0.5f, 2f);
             if (Direction == Orientation.Row)
-                return new Rect(Math.Clamp(fill.Right - size * 0.5f, c.X, MathF.Max(c.Right - size, c.X)), c.Y, size, c.Height);
+            {
+                float end = IsRightToLeft ? fill.X : fill.Right;   // a right-to-left slider fills from the right (#345)
+                return new Rect(Math.Clamp(end - size * 0.5f, c.X, MathF.Max(c.Right - size, c.X)), c.Y, size, c.Height);
+            }
             return new Rect(c.X, Math.Clamp(fill.Y - size * 0.5f, c.Y, MathF.Max(c.Bottom - size, c.Y)), c.Width, size);
         }
     }
@@ -59,7 +62,7 @@ public class Slider : Bar
     protected internal override bool OnNavigate(UiNavigation direction)
     {
         int sign = Direction == Orientation.Row
-            ? direction switch { UiNavigation.Left => -1, UiNavigation.Right => 1, _ => 0 }
+            ? direction switch { UiNavigation.Left => -1, UiNavigation.Right => 1, _ => 0 } * (IsRightToLeft ? -1 : 1)
             : direction switch { UiNavigation.Down => -1, UiNavigation.Up => 1, _ => 0 };
         if (sign == 0) return false;
         SetValue(Value + sign * Increment);
@@ -73,7 +76,7 @@ public class Slider : Bar
     {
         var c = ContentRect;
         float f = Direction == Orientation.Row
-            ? (c.Width > 0f ? (point.X - c.X) / c.Width : 0f)
+            ? (c.Width > 0f ? (IsRightToLeft ? c.Right - point.X : point.X - c.X) / c.Width : 0f)
             : (c.Height > 0f ? (c.Bottom - point.Y) / c.Height : 0f);
         SetValue(Min + Math.Clamp(f, 0f, 1f) * (Max - Min));
     }
@@ -102,7 +105,7 @@ public class Checkbox : Button
         get
         {
             var c = ContentRect;
-            return new Rect(c.X, c.Y + (c.Height - _box) * 0.5f, _box, _box);
+            return new Rect(IsRightToLeft ? c.Right - _box : c.X, c.Y + (c.Height - _box) * 0.5f, _box, _box);
         }
     }
 
@@ -112,7 +115,7 @@ public class Checkbox : Button
         {
             var c = ContentRect;
             float offset = _box * 1.5f;
-            return new Rect(c.X + offset, c.Y, MathF.Max(c.Width - offset, 0f), c.Height);
+            return new Rect(IsRightToLeft ? c.X : c.X + offset, c.Y, MathF.Max(c.Width - offset, 0f), c.Height);
         }
     }
 
@@ -253,6 +256,7 @@ public class Dropdown : Button
         get
         {
             var c = ContentRect;
+            if (IsRightToLeft) return new Rect(c.X, c.Y, MathF.Min(_arrow, c.Width), c.Height);   // at the end, which is the left (#345)
             return new Rect(MathF.Max(c.Right - _arrow, c.X), c.Y, MathF.Min(_arrow, c.Width), c.Height);
         }
     }
@@ -262,7 +266,7 @@ public class Dropdown : Button
         get
         {
             var c = ContentRect;
-            return new Rect(c.X, c.Y, MathF.Max(c.Width - _arrow * 2f, 0f), c.Height);
+            return new Rect(IsRightToLeft ? c.X + _arrow * 2f : c.X, c.Y, MathF.Max(c.Width - _arrow * 2f, 0f), c.Height);
         }
     }
 
@@ -343,6 +347,10 @@ public class TextBox : Label
     public TextBox() { Focusable = true; TextAlign = Align.Start; }
 
     public override string TypeName => "text_field";
+
+    // What is typed is shown as typed: the caret counts characters of it (#345 leaves editing joined
+    // Arabic for later).
+    internal override bool Shapes => false;
 
     public int MaxLength { get => _maxLength; set => _maxLength = Math.Max(value, 1); }
 

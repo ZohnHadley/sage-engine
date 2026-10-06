@@ -46,6 +46,7 @@
             "hitboxes",
             "input_map",
             "item",
+            "language",
             "map",
             "material",
             "mesh_lod",
@@ -416,6 +417,21 @@
           },
           "then": {
             "$ref": "item.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "language"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "language.schema.json"
           }
         },
         {

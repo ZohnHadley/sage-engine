@@ -128,14 +128,23 @@ public abstract class Widget
     // Measured size, padding included and margin not.
     public Vector2 DesiredSize { get; private set; }
 
-    // Arranged rect, in virtual units from the root's top-left, margin excluded.
+    // Arranged rect, in virtual units from the root's top-left, margin excluded. In a right-to-left
+    // tree (UiRoot.RightToLeft, #345) it is where the widget is on screen, mirrored: containers lay out
+    // from the start edge, which is the right one.
     public Rect Rect { get; private set; }
 
     // The part of the root that is visible to it: a Scroll clips what it holds.
     public Rect Clip { get; private set; }
 
-    // Rect without the padding: where content and children go.
-    public Rect ContentRect => Padding.Deflate(Rect);
+    // Rect without the padding: where content and children go. Mirrored with Rect, so a right-to-left
+    // tree's left padding is on the right.
+    public Rect ContentRect => Root is { RightToLeft: true } root ? root.Mirror(Padding.Deflate(_logical)) : Padding.Deflate(Rect);
+
+    // Whether this widget lays out right to left (its tree does, #345).
+    internal bool IsRightToLeft => Root is { RightToLeft: true };
+
+    // Rect and Clip as layout worked them out, before a right-to-left tree mirrors them.
+    private Rect _logical, _logicalClip;
 
     // ---- State ----------------------------------------------------------------------------------------
 
@@ -270,9 +279,11 @@ public abstract class Widget
     internal void Arrange(Rect rect, Rect clip)
     {
         if (!_visible) return;
-        if (!_arrangeDirty && rect == Rect && clip == Clip) return;
-        Rect = rect;
-        Clip = clip;
+        if (!_arrangeDirty && rect == _logical && clip == _logicalClip) return;
+        _logical = rect;
+        _logicalClip = clip;
+        Rect = Root?.Mirror(rect) ?? rect;
+        Clip = Root?.Mirror(clip) ?? clip;
         _arrangeDirty = false;
         ArrangeContent(_padding.Deflate(rect));
         Root?.Touch();
@@ -302,11 +313,14 @@ public abstract class Widget
         var inner = child._margin.Deflate(slot);
         var (x, width) = RectMath.Place(child._hAlign, inner.X, inner.Width, child.DesiredSize.X);
         var (y, height) = RectMath.Place(child._vAlign, inner.Y, inner.Height, child.DesiredSize.Y);
-        child.Arrange(new Rect(x, y, width, height), ChildClip);
+        child.Arrange(new Rect(x, y, width, height), LogicalChildClip);
     }
 
     // Place a child at exactly `rect` (margin and alignment already applied by the caller).
-    protected void ArrangeChildAt(Widget child, Rect rect) => child.Arrange(rect, ChildClip);
+    protected void ArrangeChildAt(Widget child, Rect rect) => child.Arrange(rect, LogicalChildClip);
+
+    // ChildClip (on screen) as layout sees it: mirroring is its own inverse.
+    private Rect LogicalChildClip => Root?.Mirror(ChildClip) ?? ChildClip;
 
     // ---- Hooks ----------------------------------------------------------------------------------------
 

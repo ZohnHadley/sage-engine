@@ -30,8 +30,17 @@ public class Label : Widget
     public string Text
     {
         get => _text;
-        set { value ??= ""; if (string.Equals(_text, value, StringComparison.Ordinal)) return; _text = value; InvalidateMeasure(); }
+        set { value ??= ""; if (string.Equals(_text, value, StringComparison.Ordinal)) return; _text = value; _shown = null; InvalidateMeasure(); }
     }
+
+    // The text as it is measured and drawn (#345): Arabic letters joined (Scripts.Shape), anything else
+    // Text itself. Worked out when Text changes.
+    internal string Shown => _shown ??= Shapes ? Scripts.Shape(_text) : _text;
+
+    private string? _shown;
+
+    // Whether Shown joins Arabic letters (a text field shows what is typed as typed).
+    internal virtual bool Shapes => true;
 
     public float TextScale { get => _textScale; set { if (_textScale == value) return; _textScale = value; InvalidateMeasure(); } }
 
@@ -69,10 +78,11 @@ public class Label : Widget
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
     {
         var measure = MeasureOf(text);
-        if (_text.Length == 0) return new Vector2(0f, measure.LineHeight * _textScale);
-        if (!Fitted) return measure.Measure(_text, _textScale);
+        string shown = Shown;
+        if (shown.Length == 0) return new Vector2(0f, measure.LineHeight * _textScale);
+        if (!Fitted) return measure.Measure(shown, _textScale);
         float limit = FitWidth(available.X);
-        var size = TextLayout.Break(_text, measure, _textScale, limit, float.PositiveInfinity, _wrap, _overflow,
+        var size = TextLayout.Break(shown, measure, _textScale, limit, float.PositiveInfinity, _wrap, _overflow,
                                     Root?.TextLines ?? new System.Collections.Generic.List<TextLine>());
         if (float.IsFinite(limit)) size.X = MathF.Min(size.X, limit);
         return size;
@@ -186,7 +196,7 @@ public class Bar : Widget
             var c = ContentRect;
             float f = Fraction;
             return _direction == Orientation.Row
-                ? new Rect(c.X, c.Y, c.Width * f, c.Height)
+                ? new Rect(IsRightToLeft ? c.Right - c.Width * f : c.X, c.Y, c.Width * f, c.Height)   // from the right, right to left (#345)
                 : new Rect(c.X, c.Bottom - c.Height * f, c.Width, c.Height * f);
         }
     }
