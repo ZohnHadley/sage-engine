@@ -116,6 +116,7 @@ public sealed class RenderContext
             Rect = rect ?? new Vector4(0f, 0f, 1f, 1f),
             Target = target == null ? RenderViewPlan.Screen : _renderer.TargetId(target),
             Order = order,
+            Source = -1,
         };
         if (request.Target == RenderViewPlan.Screen && !IsScreen) return -1;
         return CameraExtract.AddView(Snapshot, _renderer, request);

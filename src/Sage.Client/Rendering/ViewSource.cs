@@ -19,6 +19,8 @@ internal struct ViewRequest
     public int Order;           // within a target, lower draws first
     public bool Main;           // the screen's main view: what the HUD and floating numbers project with
     public Entity Hidden;       // an entity this view does not draw (null: none); see ViewSource.HiddenFor
+    public int Source;          // its index in the world's CameraViews; -1: none (issue 4n-19)
+    public bool NoShadows, NoViewmodel, NoSky, NoDebugLines;   // the passes its camera leaves out (issue 4n-19)
 }
 
 // Where a world's views come from (issue #77): the one place that knows. The world's `CameraViews`
@@ -79,9 +81,14 @@ internal sealed class ViewSource
             request.Far = view.Far;
             request.Rect = new Vector4(view.Viewport.X, view.Viewport.Y, view.Viewport.Width, view.Viewport.Height);
             request.Target = view.IsScreen ? RenderViewPlan.Screen : _renderer.TargetId(view.Target);
-            request.Order = 0;                        // one view per target (CameraViews' contract)
+            request.Order = view.Slot;                // one view per target and slot (CameraViews' contract)
             request.Main = i == resolved.MainIndex;
             request.Hidden = HiddenFor(view);
+            request.Source = i;
+            request.NoShadows = view.NoShadows;
+            request.NoViewmodel = view.NoViewmodel;
+            request.NoSky = view.NoSky;
+            request.NoDebugLines = view.NoDebugLines;
         }
     }
 
@@ -100,6 +107,8 @@ internal sealed class ViewSource
         main.Order = 0;
         main.Main = true;
         main.Hidden = default;
+        main.Source = -1;
+        main.NoShadows = main.NoViewmodel = main.NoSky = main.NoDebugLines = false;
     }
 
     // **The seam for "don't draw my own body"** (#79: a first-person camera must not see the pawn it
@@ -128,6 +137,7 @@ internal sealed class ViewSource
         second.Order = 1;
         second.Hidden = default;
         second.Rect = new Vector4(0.5f, 0f, 0.5f, 1f);
+        second.NoViewmodel = true;   // its eye is behind the camera's: arms there would float in front of it
         var back = Vector3.Transform(Vector3.Backward, main.Rotation);
         second.Position = main.Position + back * 4f + Vector3.Up * 2f;
     }
@@ -143,6 +153,7 @@ internal sealed class ViewSource
         map = main;
         map.Main = false;
         map.Hidden = default;
+        map.NoViewmodel = true;      // top-down: no arms
         map.Target = _testTarget;
         map.Rect = new Vector4(0f, 0f, 1f, 1f);
         map.Orthographic = true;
