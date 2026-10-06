@@ -31,6 +31,8 @@ public sealed class TerrainRecord
     public float Wavelength = 256f;
     [RecordRef("physics_material"), Property(Tooltip = "What the ground is made of, by terrain layer: the first is everywhere a generator paints nothing else")]
     public List<RecordId> Surfaces = new();
+    [RecordRef("terrain_material"), Property(Tooltip = "What the ground is drawn with: layers blended by height and slope. Empty: one tiling texture")]
+    public RecordId Material;
 }
 
 [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world

@@ -97,6 +97,14 @@
       "items": {
         "$ref": "ids.schema.json#/definitions/record:physics_material"
       }
+    },
+    "material": {
+      "description": "What the ground is drawn with: layers blended by height and slope. Empty: one tiling texture. Names a terrain_material record. (RecordId)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:terrain_material"
+        }
+      ]
     }
   },
   "additionalProperties": false
