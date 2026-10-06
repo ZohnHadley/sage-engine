@@ -131,6 +131,16 @@ public sealed class World : IDisposable
     public double SimTime => _lastTick.SimTime;
     internal TickTime LastTick => _lastTick;
 
+    // Sets the tick count and simulated time, between ticks: a demo's playback (issue #333) starts its world
+    // on the tick its recording started on, since a system may read the tick (a beat, a seed) and a save
+    // does not keep it.
+    internal void SetClock(long tick, double simTime)
+    {
+        Assert.Ensure(!InFixedTick, "World.SetClock during a tick");
+        _lastTick = new TickTime(tick, _lastTick.Dt, simTime);
+        _events.NowTick = tick;
+    }
+
     // ---- Entities -------------------------------------------------------------------------------
 
     // Every entity starts with a Transform (identity unless given), a GlobalTransform at the same pose
@@ -471,6 +481,8 @@ public sealed class World : IDisposable
             // The tick boundary (issue 4i-6): a save or a load asked for during the tick runs now, with
             // every phase of it done, and the autosave clock advances. Nothing to do costs a comparison.
             Engine?.Saves.TickEnded(this, _lastTick.Dt);   // autosaves count simulated seconds
+            // A demo with nothing left to play ends here, with the tick whole (issue #333).
+            if (step) Engine?.Demos.TickEnded(this);
         }
         // And a streamed scene places, and puts to sleep, the sectors the ring reached or left (4g-3): work
         // that allocates, so never inside the phases.
