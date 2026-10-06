@@ -88,6 +88,7 @@ internal sealed class UiRenderPlan
         var visitor = new Visitor(this, root, styles, pressed, previousFocus);
         root.Walk(ref visitor);
         while (_clipDepth > 0) PopClip(null);   // a walk always balances; this only guards a broken visitor
+        if (root.Popup is { IsOpen: true } popup) DrawPopup(root, styles, popup);
 
         _built = true;
         _root = root;
@@ -109,6 +110,51 @@ internal sealed class UiRenderPlan
     // the tree; a widget that wants the same box as its parent inside it names another style.
     internal static bool OwnsBox(Widget widget) =>
         widget.Style != null && !string.Equals(widget.Style, widget.Parent?.Style, StringComparison.Ordinal);
+
+    // An open dropdown's list (issue #340), after everything else so it is over it: a box in the
+    // dropdown's style (an opaque grey when the style has no background, so the rows are readable over
+    // whatever is under them), the highlighted row in the style's focused background, each option's text.
+    private void DrawPopup(UiRoot root, UiStyles styles, Dropdown dropdown)
+    {
+        var style = styles.Get(dropdown.Style);
+        var normal = style.Colours(UiState.Normal);
+        var focused = style.Colours(UiState.Focused);
+        float scale = root.Scale;
+        uint background = (normal.Background >> 24) != 0 ? normal.Background : ColourJsonConverter.Pack(32, 32, 32);
+        uint highlight = (focused.Background >> 24) != 0 && focused.Background != normal.Background ? focused.Background : ColourJsonConverter.Pack(64, 96, 160);
+
+        var list = root.ToPixels(dropdown.ListRect);
+        ref var box = ref Add(UiDrawKind.Rect, dropdown, list);
+        box.Colour = box.From = background;
+        if (style.BorderWidth > 0f && (normal.Border >> 24) != 0)
+        {
+            ref var border = ref Add(UiDrawKind.Border, dropdown, list);
+            border.Colour = border.From = normal.Border;
+            border.Size = style.BorderWidth * scale;
+        }
+        var options = dropdown.Options;
+        var padding = dropdown.Padding;
+        for (int i = 0; i < options.Count; i++)
+        {
+            var row = dropdown.OptionRect(i);
+            bool lit = i == dropdown.Highlighted;
+            if (lit)
+            {
+                ref var bar = ref Add(UiDrawKind.Rect, dropdown, root.ToPixels(row));
+                bar.Colour = bar.From = highlight;
+            }
+            if (options[i].Length == 0) continue;
+            var size = dropdown.MeasureOf(root.Text).Measure(options[i], dropdown.TextScale);   // in the dropdown's font (#338)
+            var at = new Rect(row.X + padding.Left, row.Y + (row.Height - size.Y) * 0.5f, size.X, size.Y);
+            ref var text = ref Add(UiDrawKind.Text, dropdown, root.ToPixels(at));
+            text.Colour = text.From = lit ? focused.Text : normal.Text;
+            text.Text = options[i];
+            text.Length = options[i].Length;
+            text.Font = dropdown.Font;
+            text.FontSize = dropdown.FontSize;
+            text.Size = dropdown.TextScale * scale;
+        }
+    }
 
     // Forgets the cached plan, so the next Update walks the tree whatever it says.
     public void Invalidate() => _built = false;
@@ -208,7 +254,7 @@ internal sealed class UiRenderPlan
                 from = style.Colours(widget.IsHovered ? UiState.Hover : UiState.Normal);
                 blend = true;
             }
-            else if (ReferenceEquals(widget, _previousFocus) && (state == UiState.Normal || state == UiState.Hover))
+            else if (ReferenceEquals(widget, _previousFocus) && state is UiState.Normal or UiState.Hover or UiState.Selected)
             {
                 from = style.Colours(UiState.Focused);
                 blend = true;
@@ -243,6 +289,9 @@ internal sealed class UiRenderPlan
                     var fill = bar.FillRect;
                     if (fill.Width > 0f && fill.Height > 0f && (Visible(to.Fill) || blend && Visible(from.Fill)))
                         Colour(ref _plan.Add(UiDrawKind.Rect, widget, _root.ToPixels(fill)), to.Fill, from.Fill, blend);
+                    // A slider's handle, in the text colour: what moves when the player moves it.
+                    if (bar is Slider slider)
+                        Colour(ref _plan.Add(UiDrawKind.Rect, widget, _root.ToPixels(slider.KnobRect)), to.Text, from.Text, blend);
                     break;
 
                 case Image picture when !string.IsNullOrEmpty(picture.Source):
@@ -256,68 +305,118 @@ internal sealed class UiRenderPlan
                     drawn.Size = scale;
                     break;
 
-                case Label label when label.Text.Length > 0:
-                    DrawText(label, to, from, blend, scale);
+                case Label label:
+                    DrawLabel(label, to, from, blend, scale);
                     break;
             }
         }
 
-        // A label's text, a command per line (#338). Lines are worked out again here, at the width the
-        // label was given rather than the one it measured in, so what is drawn always fits the rect.
-        private void DrawText(Label label, UiStyleColours to, UiStyleColours from, bool blend, float scale)
+        // A label's text, and what the form widgets that are labels add to it (issue #340): a checkbox's
+        // box and tick, a dropdown's arrow, a text field's placeholder (faded) and its caret while focused.
+        private void DrawLabel(Label label, UiStyleColours to, UiStyleColours from, bool blend, float scale)
         {
-            var measure = _root.MeasureFor(label.Font, label.FontSize);
-            var content = label.ContentRect;
+            if (label is Checkbox checkbox)
+            {
+                var box = checkbox.BoxRect;
+                ref var outline = ref _plan.Add(UiDrawKind.Border, label, _root.ToPixels(box));
+                Colour(ref outline, to.Text, from.Text, blend);
+                outline.Size = MathF.Max(box.Width / 8f, 1f) * scale;
+                if (checkbox.Checked)
+                {
+                    float inset = box.Width / 4f;
+                    var tick = new Rect(box.X + inset, box.Y + inset, MathF.Max(box.Width - inset * 2f, 0f), MathF.Max(box.Height - inset * 2f, 0f));
+                    Colour(ref _plan.Add(UiDrawKind.Rect, label, _root.ToPixels(tick)), to.Fill, from.Fill, blend);
+                }
+            }
+            if (label is Dropdown dropdown) Text(label, Dropdown.Arrow, dropdown.ArrowRect, Align.Center, to.Text, from.Text, blend, scale, fit: false);
+
+            string shown = label.Text;
+            uint colour = to.Text, was = from.Text;
+            if (shown.Length == 0 && label is TextBox { Placeholder.Length: > 0 } empty)
+            {
+                shown = empty.Placeholder;
+                colour = UiColour.Fade(colour, 0.5f);
+                was = UiColour.Fade(was, 0.5f);
+            }
+            var origin = shown.Length > 0 ? Text(label, shown, label.TextArea, label.TextAlign, colour, was, blend, scale, fit: true) : Placed(label, label.TextArea, Vector2.Zero, label.TextAlign);
+
+            if (label is TextBox field && field.IsFocused)
+            {
+                // The caret: a sliver a line high after the character before it (on the text actually
+                // typed, not the placeholder, which it sits in front of).
+                var measure = field.MeasureOf(_root.Text);   // in the field's own font (#338)
+                var at = field.Text.Length == 0 ? Vector2.Zero : field.CaretOffset(measure);
+                float line = measure.LineHeight * field.TextScale;
+                if (field.Text.Length == 0) origin = Placed(label, label.TextArea, new Vector2(0f, line), Align.Start);
+                var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.TextScale, 1f), line);
+                Colour(ref _plan.Add(UiDrawKind.Rect, label, _root.ToPixels(caret)), to.Text, from.Text, blend);
+            }
+        }
+
+        // Draws `text` in `area` in the label's font (#338) and returns its top-left, virtual units. With
+        // `fit`, the label's Wrap, Overflow and MaxWidth apply: lines are worked out again here, at the
+        // width the label was given rather than the one it measured in, so what is drawn always fits, and
+        // each line is a command of its own, a slice of the one string.
+        private Vector2 Text(Label label, string text, Rect area, Align align, uint colour, uint was, bool blend, float scale, bool fit)
+        {
+            var measure = label.MeasureOf(_root.Text);
             var lines = _plan._lines;
             Vector2 size;
-            if (label.Fitted)
+            fit &= label.Fitted;
+            if (fit)
             {
-                float height = label.Overflow == TextOverflow.Visible ? float.PositiveInfinity : content.Height;
-                size = TextLayout.Break(label.Text, measure, label.TextScale, label.FitWidth(content.Width), height,
-                                        label.Wrap, label.Overflow, lines);
+                float height = label.Overflow == TextOverflow.Visible ? float.PositiveInfinity : area.Height;
+                size = TextLayout.Break(text, measure, label.TextScale, label.FitWidth(area.Width), height, label.Wrap, label.Overflow, lines);
             }
             else
             {
-                size = measure.Measure(label.Text, label.TextScale);
+                size = measure.Measure(text, label.TextScale);
                 lines.Clear();
-                lines.Add(new TextLine(0, label.Text.Length, size.X, false));
+                lines.Add(new TextLine(0, text.Length, size.X, false));
             }
 
-            bool clip = label.Overflow == TextOverflow.Clip;
-            if (clip) _plan.PushClip(label, _root.ToPixels(RectMath.Intersect(label.Clip, content)));
+            bool clip = fit && label.Overflow == TextOverflow.Clip;
+            if (clip) _plan.PushClip(label, _root.ToPixels(RectMath.Intersect(label.Clip, area)));
 
-            // Centred down the label, unless it is taller than the label: then from the top, so the
-            // first lines show and what does not fit is what is cut.
-            // Not fitted, the text is one command whatever its '\n's, as tall as all its lines.
-            float lineHeight = label.Fitted ? measure.LineHeight * label.TextScale : size.Y;
-            float y = size.Y <= content.Height ? content.Y + (content.Height - size.Y) * 0.5f : content.Y;
-            float ellipsis = 0f;
+            // Centred down the area, unless it is taller: then from the top, so the first lines show and
+            // what does not fit is what is cut. Not fitted, the text is one command whatever its '\n's.
+            var origin = Placed(label, area, size, align);
+            if (size.Y > area.Height) origin.Y = area.Y;
+            float lineHeight = fit ? measure.LineHeight * label.TextScale : size.Y;
+            float y = origin.Y, ellipsis = 0f;
             foreach (var line in lines)
             {
                 if (line.Ellipsis && ellipsis == 0f) ellipsis = measure.Width(TextLayout.Ellipsis, label.TextScale);
                 if (line.Length > 0 || line.Ellipsis)
                 {
-                    float x = label.TextAlign switch
-                    {
-                        Align.Center => content.X + (content.Width - line.Width) * 0.5f,
-                        Align.End => content.Right - line.Width,
-                        _ => content.X,
-                    };
-                    ref var text = ref _plan.Add(UiDrawKind.Text, label, _root.ToPixels(new Rect(x, y, line.Width, lineHeight)));
-                    Colour(ref text, to.Text, from.Text, blend);
-                    text.Text = label.Text;
-                    text.Start = line.Start;
-                    text.Length = line.Length;
-                    text.Size = label.TextScale * scale;
-                    text.Font = label.Font;
-                    text.FontSize = label.FontSize;
-                    text.Ellipsis = line.Ellipsis;
-                    text.EllipsisAt = line.Ellipsis ? (line.Width - ellipsis) * scale : 0f;
+                    float x = Placed(label, area, new Vector2(line.Width, 0f), align).X;
+                    ref var command = ref _plan.Add(UiDrawKind.Text, label, _root.ToPixels(new Rect(x, y, line.Width, lineHeight)));
+                    Colour(ref command, colour, was, blend);
+                    command.Text = text;
+                    command.Start = line.Start;
+                    command.Length = line.Length;
+                    command.Size = label.TextScale * scale;
+                    command.Font = label.Font;
+                    command.FontSize = label.FontSize;
+                    command.Ellipsis = line.Ellipsis;
+                    command.EllipsisAt = line.Ellipsis ? (line.Width - ellipsis) * scale : 0f;
                 }
                 y += lineHeight;
             }
 
             if (clip) _plan.PopClip(label);
+            return origin;
+        }
+
+        private static Vector2 Placed(Label label, Rect area, Vector2 size, Align align)
+        {
+            float x = align switch
+            {
+                Align.Center => area.X + (area.Width - size.X) * 0.5f,
+                Align.End => area.Right - size.X,
+                _ => area.X,
+            };
+            return new Vector2(x, area.Y + (area.Height - size.Y) * 0.5f);
         }
 
         private static void Colour(ref UiDrawCommand command, uint to, uint from, bool blend)

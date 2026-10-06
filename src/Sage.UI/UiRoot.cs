@@ -30,6 +30,8 @@ public sealed class UiRoot
     private bool _layoutDirty = true, _chainDirty = true;
     private ITextMeasure _text;
     private Widget? _focused, _hovered, _tooltipTarget;
+    private Widget? _captured, _changed;   // the widget the pointer went down on, while held; the one the player changed
+    private Dropdown? _popup;
     private float _tooltipTime;
     private bool _pointerLast;
 
@@ -103,6 +105,9 @@ public sealed class UiRoot
     public Widget? Focused => _focused;
     public Widget? Hovered => _hovered;
 
+    // The dropdown whose list is open, drawn over everything and hit first (issue #340).
+    public Dropdown? Popup => _popup;
+
     // The focusable widgets in tab order, as of the last change to the tree: only those inside the
     // focus scope, while one shows.
     public IReadOnlyList<Widget> FocusChain { get { EnsureChain(); return _chain; } }
@@ -159,37 +164,70 @@ public sealed class UiRoot
     {
         var result = new UiResult();
         var before = _focused;
+        _changed = null;
         Layout();
         DropInvalidFocus();
+        if (_popup != null && (_popup.Root != this || !_popup.IsOpen || !_popup.IsVisibleInTree)) _popup = null;
         SyncScope();
         result.Scope = _scope;
 
-        if (input.PointerMoved || input.PointerPressed || input.Wheel != 0f)
+        var point = ToVirtual(input.Pointer);
+        if (_popup != null && (input.PointerMoved || input.PointerPressed))
+        {
+            // An open dropdown's list is over everything and has the pointer to itself: a row is
+            // highlighted under it and picked by a click, and a click anywhere else only closes it.
+            int row = _popup.OptionAt(point);
+            result.PointerOverUi = true;
+            if (input.PointerMoved) _pointerLast = true;
+            if (input.PointerMoved && row >= 0) _popup.Highlight(row);
+            if (input.PointerPressed)
+            {
+                var popup = _popup;
+                if (row >= 0) { popup.Pick(row); result.Activated = popup; }
+                else popup.Close();   // outside the list, its own box included: it folds
+            }
+        }
+        else if (input.PointerMoved || input.PointerPressed || input.Wheel != 0f)
         {
             // Inside a focus scope nothing outside it is under the pointer, and the whole screen is the
             // UI's: a press beside a confirm prompt is on the prompt's backdrop, not the world or the menu.
-            var hit = HitTestVirtual(ToVirtual(input.Pointer));
+            var hit = HitTestVirtual(point);
             if (_scope != null && !_scope.Contains(hit)) hit = null;
             result.PointerOverUi = hit != null || _scope != null;
             if (input.PointerMoved)
             {
                 _pointerLast = true;
                 SetHovered(hit);
-                if (FocusTarget(hit) is { } target) FocusCore(target);
+                // While a slider is held, the pointer drags it rather than moving focus away.
+                if (_captured == null && FocusTarget(hit) is { } target) FocusCore(target);
             }
             if (input.Wheel != 0f && ScrollAncestor(hit) is { } scroll)
                 scroll.ScrollBy(new Vector2(0f, -input.Wheel * scroll.WheelStep));
             if (input.PointerPressed && FocusTarget(hit) is { } pressed && FocusCore(pressed))
+            {
+                _captured = pressed;
+                if (pressed.IsEnabled) pressed.OnPointerPressed(point);
                 result.Activated = Activate(pressed);
+            }
+            else if (input.PointerDown && input.PointerMoved && _captured != null && _captured.Root == this && _captured.IsEnabled)
+                _captured.OnPointerDragged(point);
         }
+        if (!input.PointerDown) _captured = null;
 
-        if (input.Navigate != UiNavigation.None)
+        // A key that typed a character into the focused text field is not also a direction (W, A, S
+        // and D move focus in the `ui` context): arrows and the D-pad type nothing, so they still do.
+        bool typing = _focused != null && _focused.WantsText && _focused.IsEnabled && Printable(input.Typed);
+        if (input.Navigate != UiNavigation.None && !typing)
         {
             _pointerLast = false;
-            Navigate(input.Navigate);
+            if (_focused == null || !_focused.IsEnabled || !_focused.OnNavigate(input.Navigate)) Navigate(input.Navigate);
+            else Touch();
         }
+        if (!string.IsNullOrEmpty(input.Typed) && _focused != null && _focused.WantsText && _focused.IsEnabled)
+            _focused.OnText(input.Typed);
         if (input.Confirm && _focused != null) result.Activated = Activate(_focused);
-        result.Back = input.Back;
+        result.Back = input.Back && !(_focused != null && _focused.OnBack());
+        result.Changed = _changed;
 
         UpdateTooltip(input.DeltaTime);
         Layout();
@@ -237,6 +275,7 @@ public sealed class UiRoot
         if (widget == _focused) return true;
         if (widget != null && (widget.Root != this || !widget.CanFocus)) return false;
         if (widget != null && _scope != null && !_scope.Contains(widget)) return false;
+        if (_popup != null && widget != _popup) _popup.Close();   // focus leaving folds an open list
         _focused = widget;
         Version++;
         if (widget == null) return true;
@@ -299,9 +338,35 @@ public sealed class UiRoot
 
     internal void Detaching(Widget subtree)
     {
+        if (subtree.Contains(_captured)) _captured = null;
+        if (subtree.Contains(_popup)) _popup = null;
         if (subtree.Contains(_focused)) { _focused = null; Version++; }
         if (subtree.Contains(_hovered)) _hovered = null;
         if (subtree.Contains(_tooltipTarget)) HideTooltip();
+    }
+
+    internal void ValueChangedBy(Widget widget) { _changed = widget; Version++; }
+
+    internal void OpenPopup(Dropdown dropdown)
+    {
+        if (_popup != null && _popup != dropdown) _popup.Close();
+        _popup = dropdown;
+        Version++;
+    }
+
+    internal void ClosePopup(Dropdown dropdown)
+    {
+        if (_popup != dropdown) return;
+        _popup = null;
+        Version++;
+    }
+
+    private static bool Printable(string? typed)
+    {
+        if (typed == null) return false;
+        foreach (char c in typed)
+            if (!char.IsControl(c)) return true;
+        return false;
     }
 
     private void DropInvalidFocus()

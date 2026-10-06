@@ -143,6 +143,9 @@ internal sealed class ScreenSystem : ISystem
             PointerDown = mouse.IsButtonDown(MouseButton.LEFT),
             Wheel = mouse.ScrollWheelDelta,
             PointerTaken = _actions.UiWantsMouse,   // ImGui has the cursor: a dev window is under it
+            // A widget text field's characters (issue #340); a string only on a frame something was typed,
+            // and none while the dev console has the keyboard.
+            Typed = _actions.UiWantsKeyboard || _devices.Typed.Length == 0 ? null : new string(_devices.Typed),
             DeltaTime = dt,
         };
     }

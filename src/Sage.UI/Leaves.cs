@@ -63,9 +63,12 @@ public class Label : Widget
         return limit;
     }
 
+    // How this label's text measures: its font at its size (#338), else `fallback` (the root's).
+    internal ITextMeasure MeasureOf(ITextMeasure fallback) => Root?.MeasureFor(_font, _fontSize) ?? fallback;
+
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
     {
-        var measure = Root?.MeasureFor(_font, _fontSize) ?? text;
+        var measure = MeasureOf(text);
         if (_text.Length == 0) return new Vector2(0f, measure.LineHeight * _textScale);
         if (!Fitted) return measure.Measure(_text, _textScale);
         float limit = FitWidth(available.X);
@@ -74,6 +77,9 @@ public class Label : Widget
         if (float.IsFinite(limit)) size.X = MathF.Min(size.X, limit);
         return size;
     }
+
+    // Where the renderer places the text: the content rect, less a checkbox's box or a dropdown's arrow.
+    internal virtual Rect TextArea => ContentRect;
 }
 
 // A label that takes focus and does something when confirmed or clicked (Pressed). Disabled, it keeps

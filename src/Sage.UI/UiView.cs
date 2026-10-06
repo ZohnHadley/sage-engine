@@ -74,7 +74,7 @@ internal sealed class LayoutBuilder
         foreach (var (name, node) in tree.ChildrenOf(parent))
         {
             var child = BuildNode(tree, name, node, style, top);
-            Attach(host, child.Widget);
+            Attach(host, child.Widget, node.Title.Length > 0 ? _text.Text(node.Title) : name);
             if (child.Dynamic) children.Add(child);
         }
         bound.SetChildren(children);
@@ -97,13 +97,32 @@ internal sealed class LayoutBuilder
         var bound = new BoundNode(widget, node);
         Bind(bound, node, tree, name, styleId);
         if (bound.Rows == null) BuildChildren(tree, name, widget, bound, styleId);
+        if (widget is Tabs tabs) StyleTabs(tabs, node);
         return bound;
     }
 
-    private static void Attach(Widget host, Widget child)
+    // The tabs' buttons, made as its pages were attached: in its tab style, or in its own style without
+    // drawing that style's box again round each tab (the header carries it, UiRenderPlan.OwnsBox).
+    private void StyleTabs(Tabs tabs, UiNode node)
+    {
+        tabs.Header.Style = tabs.Style;
+        tabs.TabStyle = node.TabStyle.IsEmpty ? tabs.Style : node.TabStyle.Id.ToString();
+        var style = _styles.Get(tabs.TabStyle);
+        for (int i = 0; i < tabs.PageCount; i++)
+        {
+            var tab = tabs.Tab(i);
+            tab.TextScale = node.TextScale ?? style.TextScale;
+            if (!node.TabStyle.IsEmpty) tab.Padding = style.Padding;
+        }
+        if (node.Selected is { } selected) tabs.Selected = selected;
+    }
+
+    // `title`: what a page of tabs is called on its tab.
+    private static void Attach(Widget host, Widget child, string title)
     {
         switch (host)
         {
+            case Tabs tabs: tabs.AddPage(title, child); break;
             case Container container: container.Add(child); break;
             case Scroll scroll when scroll.Content == null: scroll.Content = child; break;
             default: Log.Warn(LogCat.UI, $"{host.TypeName} '{host.Name}' holds no child; '{child.Name}' is left out"); break;
@@ -166,6 +185,29 @@ internal sealed class LayoutBuilder
                 if (n.Horizontal is { } across) scroll.Horizontal = across;
                 if (n.Vertical is { } down) scroll.Vertical = down;
                 break;
+            case Tabs tabs:
+                tabs.Spacing = n.Spacing;
+                break;
+        }
+
+        // The form widgets (issue #340): what is theirs beyond a label's or a bar's.
+        switch (w)
+        {
+            case Slider slider:
+                if (n.Step is { } step) slider.Step = step;
+                break;
+            case Checkbox checkbox:
+                if (n.Checked is { } ticked) checkbox.Checked = ticked;
+                break;
+            case Dropdown dropdown:
+                if (n.Options.Count > 0) dropdown.SetOptions(n.Options.Select(o => _text.Text(o)));
+                dropdown.Selected = n.Selected ?? (dropdown.Options.Count > 0 ? 0 : -1);
+                break;
+            case TextBox field:
+                if (n.Placeholder.Length > 0) field.Placeholder = _text.Text(n.Placeholder);
+                if (n.MaxLength > 0) field.MaxLength = n.MaxLength;
+                field.Multiline = n.Multiline;
+                break;
         }
     }
 
@@ -180,7 +222,12 @@ internal sealed class LayoutBuilder
             var reader = new BindingReader(path);
             switch (target)
             {
+                // What a text field holds is the player's, shown as it is: never a key, never formatted.
+                case UiBindings.Text when bound.Widget is TextBox: bound.Content = reader; break;
                 case UiBindings.Text: bound.Text = new TextSlot(node.Text, reader, node.Args, _text); break;
+                case UiBindings.Checked: bound.Checked = reader; break;
+                case UiBindings.Selected: bound.Selected = reader; break;
+                case UiBindings.Options: bound.Options = reader; break;
                 case UiBindings.Tooltip: bound.Tooltip = new TextSlot("", reader, null, _text); break;
                 case UiBindings.Value: bound.Value = reader; break;
                 case UiBindings.Min: bound.Min = reader; break;
@@ -201,8 +248,9 @@ internal sealed class LayoutBuilder
             }
         }
         // Placeholders filled from the view-model, in text that is not itself bound.
-        if (bound.Text == null && node.Args.Count > 0 && bound.Widget is Label)
+        if (bound.Text == null && node.Args.Count > 0 && bound.Widget is Label and not TextBox)
             bound.Text = new TextSlot(node.Text, null, node.Args, _text);
+        bound.WriteBack();
     }
 }
 
@@ -235,27 +283,45 @@ internal static class UiBindings
 {
     public const string Text = "text", Tooltip = "tooltip", Value = "value", Min = "min", Max = "max", Source = "source",
                         Style = "style", Visible = "visible", Enabled = "enabled", Data = "data", Rows = "rows", Columns = "columns",
+                        // The form widgets' (issue #340): a checkbox's tick, a dropdown's or tabs' choice (an
+                        // index, or a dropdown's option text), a dropdown's options (a list, each shown as text).
+                        Checked = "checked", Selected = "selected", Options = "options",
                         // Where in its parent Box it sits, 0..1 across and down: a point anchor there (a map's
                         // markers, issue #99). Kept inside the box: a point anchor places the widget proportionally.
                         X = "x", Y = "y";
 
-    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y };
+    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, Checked, Selected, Options };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
     public static string? Primary(string widget) => widget switch
     {
-        "label" or "button" => Text,
-        "bar" => Value,
+        "label" or "button" or "text_field" => Text,
+        "bar" or "slider" => Value,
+        "checkbox" => Checked,
         "image" => Source,
         "stack" or "item_list" or "grid" => Rows,
+        "dropdown" or "tabs" => Selected,
+        _ => null,
+    };
+
+    // The property a widget writes back to its binding when the player changes it, or null.
+    public static string? Written(string widget) => widget switch
+    {
+        "slider" => Value,
+        "checkbox" => Checked,
+        "dropdown" or "tabs" => Selected,
+        "text_field" => Text,
         _ => null,
     };
 
     // Whether a widget of this type has the property at all.
     public static bool Applies(string widget, string target) => target switch
     {
-        Text => widget is "label" or "button",
-        Value or Min or Max => widget == "bar",
+        Text => widget is "label" or "button" or "checkbox" or "text_field",
+        Value or Min or Max => widget is "bar" or "slider",
+        Checked => widget == "checkbox",
+        Selected => widget is "dropdown" or "tabs",
+        Options => widget == "dropdown",
         Source => widget == "image",
         Rows => widget is "stack" or "item_list" or "grid" or "box",
         Columns => widget == "grid",   // a grid as wide as its view-model says (an inventory's, issue #98)
@@ -296,21 +362,63 @@ internal sealed class BoundNode
     public ICondition? VisibleIf, EnabledIf;
     public TextSlot? Text, Tooltip;
     public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
+    public BindingReader? Checked, Selected, Options, Content;   // the form widgets' (issue #340)
     public RowsSlot? Rows;
-    private string? _source, _style;
+    private string? _source, _style, _content;
+    private object? _read;          // what this node last read: where the player's changes are written
+    private IList? _options;
+    private int _optionCount = -1;
+    private bool _selectedIsText;
 
     public bool Dynamic => _children.Length > 0 || Rows != null || VisibleIf != null || EnabledIf != null || Text != null || Tooltip != null
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
-                           || Enabled != null || Data != null || Columns != null || X != null || Y != null;
+                           || Enabled != null || Data != null || Columns != null || X != null || Y != null
+                           || Checked != null || Selected != null || Options != null || Content != null;
+
+    // Listens for the player changing the widget, when its value is bound, to write it back (issue #340).
+    public void WriteBack()
+    {
+        bool bound = Widget switch
+        {
+            Slider => Value != null,
+            Checkbox => Checked != null,
+            Dropdown or Tabs => Selected != null,
+            TextBox => Content != null,
+            _ => false,
+        };
+        if (bound) Widget.ValueChanged += Written;
+    }
+
+    private void Written(Widget widget)
+    {
+        var target = _read;
+        if (target == null) return;
+        switch (widget)
+        {
+            case Slider slider: Value!.Write(target, UiValue.Double(slider.Value)); break;
+            case Checkbox checkbox: Checked!.Write(target, UiValue.Flag(checkbox.Checked)); break;
+            case Dropdown dropdown:
+                Selected!.Write(target, _selectedIsText ? UiValue.Text(dropdown.SelectedOption) : UiValue.Integer(dropdown.Selected));
+                break;
+            case Tabs tabs: Selected!.Write(target, UiValue.Integer(tabs.Selected)); break;
+            case TextBox field:
+                _content = field.Text;   // what is written is what will be read back: no change then
+                Content!.Write(target, UiValue.Text(field.Text));
+                break;
+        }
+    }
 
     public void SetChildren(List<BoundNode> children) => _children = children.ToArray();
 
     public void Refresh(object? source, in UiBindContext context)
     {
+        _read = source;
         if (Node != null)
         {
             bool visible = Node.Visible && Holds(VisibleIf, in context) && (Visible == null || Visible.Read(source).IsTrue);
-            Widget.Visible = visible;
+            // A page of tabs is shown by the tabs, not by its node or its conditions; it is read while
+            // hidden, so a tab opens on what is current.
+            if (Widget.Parent is not Tabs) Widget.Visible = visible;
             if (!visible) return;   // nothing below a hidden widget is read
             Widget.Enabled = _enabled && Holds(EnabledIf, in context) && (Enabled == null || Enabled.Read(source).IsTrue);
         }
@@ -334,6 +442,39 @@ internal sealed class BoundNode
             string? style = Style.Read(source).AsString;
             if (!ReferenceEquals(style, _style)) { _style = style; Widget.Style = style; }
         }
+        if (Checked != null && Widget is Checkbox checkbox) checkbox.Checked = Checked.Read(source).IsTrue;
+        if (Widget is Dropdown dropdown)
+        {
+            if (Options != null)
+            {
+                // Worked out again when the list is another one or its length changed (not per frame).
+                var list = Options.Read(source).Ref as IList;
+                int count = list?.Count ?? 0;
+                if (!ReferenceEquals(list, _options) || count != _optionCount)
+                {
+                    _options = list;
+                    _optionCount = count;
+                    dropdown.SetOptions(list == null ? Array.Empty<string>() : list.Cast<object?>().Select(o => o?.ToString() ?? "").ToArray());
+                }
+            }
+            if (Selected != null)
+            {
+                var value = Selected.Read(source);
+                _selectedIsText = value.Kind == UiValueKind.Text;
+                dropdown.Selected = _selectedIsText ? IndexOf(dropdown.Options, value.AsString!) : value.Kind == UiValueKind.None ? -1 : (int)value.Number;
+            }
+        }
+        if (Selected != null && Widget is Tabs tabs)
+        {
+            var value = Selected.Read(source);
+            if (value.Kind != UiValueKind.None) tabs.Selected = (int)value.Number;
+        }
+        if (Content != null && Widget is TextBox field)
+        {
+            // Compared by reference: the string written back is the one read next frame, costing nothing.
+            string text = Content.Read(source).AsString ?? "";
+            if (!ReferenceEquals(text, _content)) { _content = text; field.Text = text; }
+        }
         if (Data != null) Widget.Data = Data.Read(source).Ref;
         if (Columns != null && Widget is Grid grid) grid.Columns = (int)Columns.Read(source).AsFloat;   // Grid keeps at least 1
         if (X != null || Y != null)
@@ -346,6 +487,13 @@ internal sealed class BoundNode
 
         Rows?.Refresh(source, in context);
         for (int i = 0; i < _children.Length; i++) _children[i].Refresh(source, in context);
+    }
+
+    private static int IndexOf(IReadOnlyList<string> options, string option)
+    {
+        for (int i = 0; i < options.Count; i++)
+            if (string.Equals(options[i], option, StringComparison.Ordinal)) return i;
+        return -1;
     }
 
     private static bool Holds(ICondition? condition, in UiBindContext context) =>

@@ -160,7 +160,7 @@
       ]
     },
     "fill": {
-      "description": "A bar's filled part. (uint, default \"#FFFFFFFF\")",
+      "description": "A bar's or slider's filled part, a checkbox's tick. (uint, default \"#FFFFFFFF\")",
       "default": "#FFFFFFFF",
       "anyOf": [
         {
@@ -230,7 +230,7 @@
       ]
     },
     "states": {
-      "description": "Colours that change with the widget's state: hover, focused, pressed, disabled. (UiStyleStates)",
+      "description": "Colours that change with the widget's state: hover, focused, pressed, disabled, selected. (UiStyleStates)",
       "type": "object",
       "properties": {
         "hover": {
@@ -660,6 +660,148 @@
           "additionalProperties": false
         },
         "disabled": {
+          "description": "(UiStyleState)",
+          "type": "object",
+          "properties": {
+            "textColour": {
+              "description": "(uint?)",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\\s*$"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 4
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "background": {
+              "description": "(uint?)",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\\s*$"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 4
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "border": {
+              "description": "(uint?)",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\\s*$"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 4
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fill": {
+              "description": "(uint?)",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\\s*$"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 4
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tint": {
+              "description": "(uint?)",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})\\s*$"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 4
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "selected": {
           "description": "(UiStyleState)",
           "type": "object",
           "properties": {

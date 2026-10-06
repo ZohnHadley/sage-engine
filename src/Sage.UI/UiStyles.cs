@@ -9,7 +9,7 @@ namespace Sage.UI;
 // (a ui_style record, with `base` already applied by the record store), in the state it is in. Colours
 // are packed as ColourJsonConverter packs them (red in the low byte, as MonoGame's Color.PackedValue).
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
-public enum UiState { Normal, Hover, Focused, Pressed, Disabled }
+public enum UiState { Normal, Hover, Focused, Pressed, Disabled, Selected }
 
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public readonly record struct UiStyleColours(uint Text, uint Background, uint Border, uint Fill, uint Tint);
@@ -18,7 +18,7 @@ public readonly record struct UiStyleColours(uint Text, uint Background, uint Bo
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class UiStyle
 {
-    private readonly UiStyleColours[] _colours = new UiStyleColours[5];
+    private readonly UiStyleColours[] _colours = new UiStyleColours[6];
 
     internal UiStyle(RecordId id, UiStyleRecord record)
     {
@@ -36,6 +36,7 @@ public sealed class UiStyle
         _colours[(int)UiState.Focused] = Over(normal, record.States.Focused);
         _colours[(int)UiState.Pressed] = Over(normal, record.States.Pressed);
         _colours[(int)UiState.Disabled] = Over(normal, record.States.Disabled);
+        _colours[(int)UiState.Selected] = Over(normal, record.States.Selected);
     }
 
     public RecordId Id { get; }
@@ -88,12 +89,13 @@ public sealed class UiStyles
     public bool TryGet(RecordId id, [NotNullWhen(true)] out UiStyle? style) => _byId.TryGetValue(id, out style);
 
     // The state a widget is drawn in: disabled, else pressed (the renderer knows; the UI does not track
-    // a held button), else focused, else hovered.
+    // a held button), else focused, else hovered, else selected (a ticked checkbox, the open tab).
     public static UiState StateOf(Widget widget, bool pressed = false) =>
         !widget.IsEnabled ? UiState.Disabled
         : pressed ? UiState.Pressed
         : widget.IsFocused ? UiState.Focused
         : widget.IsHovered ? UiState.Hover
+        : widget.IsSelected ? UiState.Selected
         : UiState.Normal;
 
     // The colours `widget` is drawn with now.
