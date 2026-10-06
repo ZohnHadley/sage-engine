@@ -11,7 +11,8 @@ namespace Sage.Client;
 // scopes and async loading (05 §14 step 2):
 //   - models (.glb, read at runtime by `MeshGeometry.ReadGlb`);
 //   - compiled effects (.mgfxo, 07 §3.1 — the one thing still built ahead of time);
-//   - textures (.png/.jpg via Texture2D.FromStream, premultiplied on load, 07 §13);
+//   - textures (.png/.jpg/.tga decoded by StbImageSharp, premultiplied (07 §13) and mipmapped on load,
+//     issue #317);
 //   - sounds (.wav via SoundEffect.FromStream, .ogg decoded by OggVorbis, 11 §3), and the bitmap font,
 //     which is a texture.
 //
@@ -23,8 +24,13 @@ namespace Sage.Client;
 //
 // **Nothing here is built by a content pipeline** (R12): every asset is a file the VFS hands over as
 // bytes, which is what lets a mod replace one and a game ship art it made this morning.
-// Everything loaded is cached for the process and disposed with the service. A failed load logs once
-// and returns null; callers draw placeholders (05 §8).
+// A failed load logs once and returns null; callers draw placeholders (05 §8).
+//
+// **Textures have scopes** (issue #308, Sage.Simulation's Content/AssetScopes.cs): they live in an
+// `AssetTable` by stable id (the renderer's sprite and particle ids are these), each at the strongest
+// scope it was asked for. A Sector texture is evicted when the sectors that drew it unload (the renderer
+// collects them at its frame's safe point), a Ui one when no screen has drawn it for a while, and an
+// Engine or Game one stays. Effects, fonts and sounds are kept for the process, as before.
 //
 // Dev hot reload (05 §3.6, F32): `Reload` drops one asset and raises `Reloaded`. Anything holding the
 // old object by reference — the renderer's texture table, a built material — listens and re-resolves;
@@ -36,7 +42,7 @@ public sealed class ContentService : IDisposable
     private readonly GraphicsDevice _device;
     private readonly VirtualFileSystem _vfs;
     private readonly Dictionary<AssetPath, Effect?> _effects = new();
-    private readonly Dictionary<AssetPath, Texture2D?> _textures = new();
+    private readonly AssetTable<Texture2D> _textures;
     private readonly Dictionary<AssetPath, BitmapFont?> _fonts = new();
     private readonly Dictionary<AssetPath, Microsoft.Xna.Framework.Audio.SoundEffect?> _sounds = new();
 
@@ -44,7 +50,27 @@ public sealed class ContentService : IDisposable
     {
         _device = host.GraphicsDevice;
         _vfs = vfs;
+        // Missing textures: a magenta/black checker (05 §8), impossible to mistake for real content. Slot 0.
+        MissingTexture = new Texture2D(_device, 2, 2) { Name = "(missing)" };
+        MissingTexture.SetData(new[] { Color.Magenta, Color.Black, Color.Black, Color.Magenta });
+        _textures = new AssetTable<Texture2D>(MissingTexture);
+        _readTexture = path => (ReadTexture(path, out long bytes), bytes);
     }
+
+    private readonly Func<AssetPath, (Texture2D?, long)> _readTexture;   // made once: resolving is per sprite per frame
+
+    // The checker every missing texture draws as: texture id 0, never evicted.
+    internal Texture2D MissingTexture { get; }
+
+    // The frame the renderer is on, set at its safe point: what a texture asked for now was last used in.
+    internal long Frame { get; set; }
+
+    // The texture table (ids, scopes, sizes), for the renderer and `asset_list`.
+    internal AssetTable<Texture2D> Textures => _textures;
+
+    // Raised after a texture was evicted, with its path: whoever holds it by reference lets go (the
+    // renderer rebuilds its materials).
+    internal event Action<AssetPath>? Evicted;
 
     // Raised on the main thread after an asset has been reloaded, with the path that changed.
     public event Action<AssetPath>? Reloaded;
@@ -68,17 +94,21 @@ public sealed class ContentService : IDisposable
     // done about it.
     public bool Reload(AssetPath path)
     {
-        if (_textures.TryGetValue(path, out var oldTexture))
+        if (_textures.TryFind(path, out int textureId))
         {
-            _textures.Remove(path);
-            var fresh = LoadTexture(path);
-            if (fresh == null || ReferenceEquals(fresh, oldTexture))
+            // Read again outside the table, and swapped into the same slot so every id handed out sees it
+            // (issue #308). A path that had failed is forgotten instead: it loads on next use.
+            if (textureId == 0) _textures.Forget(path);
+            else
             {
-                _textures[path] = oldTexture;
-                Log.Warn(LogCat.Assets, $"{path} did not reload; keeping the copy already loaded");
-                return false;
+                var fresh = ReadTexture(path, out long bytes);
+                if (fresh == null)
+                {
+                    Log.Warn(LogCat.Assets, $"{path} did not reload; keeping the copy already loaded");
+                    return false;
+                }
+                _textures.Replace(textureId, fresh, bytes)?.Dispose();
             }
-            oldTexture?.Dispose();
 
             // A font is a texture with a grid over it, and `LoadFont` goes through `LoadTexture`, which
             // caches even a failure — so a font's path is *always* a texture entry too, and always
@@ -138,14 +168,16 @@ public sealed class ContentService : IDisposable
         return false;
     }
 
-    // Everything currently loaded, for `asset_list`. Every one of them is a *file* since R12, and all
+    // Everything currently loaded, for `asset_reload`. Every one of them is a *file* since R12, and all
     // of them can be reloaded: a sound since issue 4h-3 (the backends drop their instances first).
     // Models are not listed: the renderer's mesh table holds them, and `asset_reload <path>` asks it.
+    // `asset_list` reads `Listing`, which adds scopes and sizes (issue #308).
     public IEnumerable<(AssetPath Path, string Kind, bool CanReload)> Cached
     {
         get
         {
-            foreach (var path in _textures.Keys) yield return (path, "texture", true);
+            foreach (var (_, entry) in _textures.Entries) yield return (entry.Path, "texture", true);
+            foreach (var path in _textures.Failed) yield return (path, "texture", true);
             foreach (var path in _effects.Keys) yield return (path, "effect", true);
             foreach (var path in _fonts.Keys) yield return (path, "font", true);
             foreach (var path in _sounds.Keys) yield return (path, "sound", true);
@@ -157,11 +189,12 @@ public sealed class ContentService : IDisposable
     public BitmapFont? LoadFont(AssetPath path)
     {
         if (_fonts.TryGetValue(path, out var font)) return font;
+        // A font's texture is the engine's or the game's for good: a label may be drawn from it any time.
+        var texture = LoadTexture(path, AssetScope.Game);
 
         // A character the font does not have draws as a gap rather than throwing: `SpriteBatch`'s own
         // `DrawString` threw on one, so an em dash in a hint line or a name a player typed took the
         // frame and the process with it (13 §3). The grid answers "is this glyph here" with arithmetic.
-        var texture = LoadTexture(path);
         font = texture == null ? null : new BitmapFont(texture);
         if (font != null) Log.Debug(LogCat.Assets, $"Loaded font {path}");
         _fonts[path] = font;
@@ -265,14 +298,60 @@ public sealed class ContentService : IDisposable
         return _sounds[path] = sound;
     }
 
-    public Texture2D? LoadTexture(AssetPath path)
+    // A texture, at the game's scope: kept for the process (a game's own code, a post effect's picture).
+    public Texture2D? LoadTexture(AssetPath path) => LoadTexture(path, AssetScope.Game);
+
+    // A texture at a scope (issue #308): loaded on first use, and asked for again it keeps the stronger of
+    // the two scopes. Null when it cannot be read (logged once; the path is not tried again until reload).
+    internal Texture2D? LoadTexture(AssetPath path, AssetScope scope)
     {
-        if (_textures.TryGetValue(path, out var texture)) return texture;
-        texture = null;
+        int id = ResolveTexture(path, scope);
+        return id == 0 ? null : _textures[id];
+    }
+
+    // The texture's id in the table, loading it on first use; 0 (the checker) when it cannot be read.
+    internal int ResolveTexture(AssetPath path, AssetScope scope)
+    {
+        _textures.TryResolve(path, scope, Frame, null, _readTexture, out int id);
+        return id;
+    }
+
+    // As ResolveTexture, a Sector-scoped load waiting for a frame with upload budget left (05 §3.4).
+    internal bool TryResolveTexture(AssetPath path, AssetScope scope, UploadBudget budget, out int id) =>
+        _textures.TryResolve(path, scope, Frame, budget, _readTexture, out id);
+
+    // Frees a texture (issue #308): the renderer's eviction, at its safe point. Fonts drawn from it go too
+    // (made again on next use), and `Evicted` tells whoever holds it by reference. False when it was not
+    // loaded, or is the engine's.
+    internal bool EvictTexture(AssetPath path)
+    {
+        if (!_textures.TryEvict(path, out var texture) || texture == null) return false;
+        Released(path, texture);
+        return true;
+    }
+
+    // UI-scoped textures no screen has drawn for a while (AssetScopes.UiKeepFrames). Returns how many.
+    internal int EvictUnusedUi() =>
+        _textures.CollectUnusedUi(Frame, AssetScopes.UiKeepFrames, Released);
+
+    private void Released(AssetPath path, Texture2D texture)
+    {
+        _fonts.Remove(path);
+        texture.Dispose();
+        Log.Debug(LogCat.Assets, $"Evicted texture {path}");
+        Evicted?.Invoke(path);
+    }
+
+    // Reads a texture off its mount (or its cooked file) onto the GPU, outside the table.
+    private Texture2D? ReadTexture(AssetPath path, out long bytes)
+    {
+        bytes = 0;
+        Texture2D? texture = null;
         if (CookedAssets.LoadTexture(_vfs, path.Path) is { } cooked && FromCooked(path, cooked) is { } fromCooked)
         {
             Log.Debug(LogCat.Assets, $"Loaded cooked texture {path} ({cooked.Width}x{cooked.Height} {cooked.Format})");
-            return _textures[path] = fromCooked;
+            bytes = cooked.Data.Length;
+            return fromCooked;
         }
         if (_vfs.Which(path.Path) is not { } mount)
         {
@@ -284,24 +363,25 @@ public sealed class ContentService : IDisposable
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
-                using var stream = mount.Open(path.Path);
-                texture = Texture2D.FromStream(_device, stream);
-                texture.Name = path.ToString();
-                Premultiply(texture);
-                WorkStats.Uploaded((long)texture.Width * texture.Height * 4);
-                Log.Debug(LogCat.Assets, $"Loaded texture {path} ({texture.Width}x{texture.Height}) from {mount.Name}");
+                // Decoded, premultiplied and mipmapped headlessly (issue #317), as a cook would, uncompressed.
+                var loose = CookedAssets.ReadLooseTexture(mount, path.Path);
+                texture = FromCooked(path, loose) ?? throw new InvalidDataException("the GPU texture could not be made");
+                bytes = loose.GpuBytes;
+                WorkStats.Uploaded(bytes);
+                Log.Debug(LogCat.Assets, $"Loaded texture {path} ({texture.Width}x{texture.Height}, {texture.LevelCount} level(s)) from {mount.Name}");
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException)
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException or InvalidDataException)
             {
                 Log.Warn(LogCat.Assets, $"Texture '{path}' from {mount.Name} failed to decode: {ex.Message}");
             }
             finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
         }
-        return _textures[path] = texture;
+        return texture;
     }
 
-    // A cooked texture on the GPU: its blocks as they are where the device samples DXT1/DXT5, decoded to
-    // RGBA on the CPU where it does not (MonoGame refuses the format with NotSupportedException).
+    // A cooked texture on the GPU, every mip level of it: its blocks as they are where the device samples
+    // DXT1/DXT5, decoded to RGBA on the CPU where it does not (MonoGame refuses the format with
+    // NotSupportedException). A loose texture comes here too, as RGBA (`CookedAssets.ReadLooseTexture`).
     private Texture2D? FromCooked(AssetPath path, CookedTextureData cooked)
     {
         var format = cooked.Format switch
@@ -314,48 +394,46 @@ public sealed class ContentService : IDisposable
         {
             if (format != SurfaceFormat.Color)
             {
-                try
-                {
-                    var compressed = new Texture2D(_device, cooked.Width, cooked.Height, false, format) { Name = path.ToString() };
-                    compressed.SetData(cooked.Data);
-                    return compressed;
-                }
+                try { return Upload(path, cooked, format, level => cooked.Levels[level]); }
                 catch (NotSupportedException)
                 {
                     Log.Once(LogCat.Assets, LogLevel.Warn, "cooked-no-s3tc",
                              "This graphics device does not sample DXT1/DXT5: cooked textures are decoded to RGBA as they load");
                 }
             }
-            var texture = new Texture2D(_device, cooked.Width, cooked.Height, false, SurfaceFormat.Color) { Name = path.ToString() };
-            texture.SetData(cooked.ToRgba());
-            return texture;
+            return Upload(path, cooked, SurfaceFormat.Color, cooked.ToRgba);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
-            Log.Warn(LogCat.Assets, $"Cooked texture for '{path}' could not be made ({ex.Message}); reading the loose file");
+            Log.Warn(LogCat.Assets, $"Texture data for '{path}' could not be made into a texture ({ex.Message})");
             return null;
         }
     }
 
-    // Blend states assume premultiplied alpha (07 §13); FromStream returns straight alpha.
-    private static void Premultiply(Texture2D texture)
+    private Texture2D Upload(AssetPath path, CookedTextureData cooked, SurfaceFormat format, Func<int, byte[]> level)
     {
-        if (texture.Format != SurfaceFormat.Color) return;
-        var pixels = new Color[texture.Width * texture.Height];
-        texture.GetData(pixels);
-        for (int i = 0; i < pixels.Length; i++)
+        var texture = new Texture2D(_device, cooked.Width, cooked.Height, cooked.HasMips, format) { Name = path.ToString() };
+        try
         {
-            var c = pixels[i];
-            if (c.A == 255) continue;
-            pixels[i] = new Color(c.R * c.A / 255, c.G * c.A / 255, c.B * c.A / 255, c.A);
+            for (int i = 0; i < cooked.LevelCount; i++)
+            {
+                var data = level(i);
+                texture.SetData(i, null, data, 0, data.Length);
+            }
+            return texture;
         }
-        texture.SetData(pixels);
+        catch
+        {
+            texture.Dispose();
+            throw;
+        }
     }
 
     public void Dispose()
     {
         foreach (var e in _effects.Values) e?.Dispose();
-        foreach (var t in _textures.Values) t?.Dispose();
+        foreach (var (_, entry) in _textures.Entries) entry.Value?.Dispose();
+        MissingTexture.Dispose();
         foreach (var sound in _sounds.Values) sound?.Dispose();
     }
 }
