@@ -72,7 +72,6 @@ internal static class RootMotion
         var clips = instance.Clips;
         int joint = instance.RootJoint;
         if (joint < 0) return;
-        bool wrapped = state.Loop && (state.Speed >= 0f ? after < before : after > before);
         Span<float> weights = stackalloc float[Animators.MaxBlendPoints];
         int n = AnimatorStepper.Weights(state, values, weights);
         for (int i = 0; i < n; i++)
@@ -81,15 +80,18 @@ internal static class RootMotion
             float w = weights[i] * weight;
             if (w <= 0f || c >= clips.Length || clips[c] is not { } clip || !(clip.Duration > 0f)) continue;
             float d = clip.Duration;
+            // A synced blend (issue #358) plays each clip where its markers put it, so each wraps on its own.
+            float b0 = SyncMarkers.ClipPhase(state, clip, before), a0 = SyncMarkers.ClipPhase(state, clip, after);
+            bool wrapped = state.Loop && (state.Speed >= 0f ? a0 < b0 : a0 > b0);
             Vector3 t;
             float r;
-            if (!wrapped) Segment(clip, joint, state, before * d, after * d, out t, out r);
+            if (!wrapped) Segment(clip, joint, state, b0 * d, a0 * d, out t, out r);
             else
             {
                 // The pass's end first, then the next pass's start, in the frame the first left it facing.
                 float end = state.Speed >= 0f ? d : 0f, start = d - end;
-                Segment(clip, joint, state, before * d, end, out var t1, out var r1);
-                Segment(clip, joint, state, start, after * d, out var t2, out var r2);
+                Segment(clip, joint, state, b0 * d, end, out var t1, out var r1);
+                Segment(clip, joint, state, start, a0 * d, out var t2, out var r2);
                 t = t1 + (r1 != 0f ? Vector3.Transform(t2, Quaternion.CreateFromAxisAngle(Vector3.UnitY, r1)) : t2);
                 r = r1 + r2;
             }

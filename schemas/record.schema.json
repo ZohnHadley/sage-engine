@@ -70,6 +70,7 @@
             "rumble",
             "scene",
             "screen",
+            "skeleton_map",
             "skeleton_sockets",
             "sky",
             "sound",
@@ -780,6 +781,21 @@
           },
           "then": {
             "$ref": "screen.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "skeleton_map"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "skeleton_map.schema.json"
           }
         },
         {

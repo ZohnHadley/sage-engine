@@ -51,11 +51,13 @@ public sealed class Engine : IDisposable
             Components.TryResolveComponent(key, ns, out var type, out _) ? type : null);
         Records.AddBodyTypes<PrefabRecord>(nameof(PrefabRecord.Parts), (key, body, _) => PrefabChecks.BodyType(Prefabs, key, body));
         // Sockets name a model and a joint (issue #120).
-        Records.AddCheck<SkeletonSocketsRecord>(BoneAttachments.Check);
+        Records.AddCheck<SkeletonSocketsRecord>((record, check) => BoneAttachments.Check(record, check, SkinnedSkeletonOf));   // and its joints (#361)
         // A ragdoll names a model and bodies with shapes, masses and limits (issue #243).
         Records.AddCheck<RagdollRecord>(Ragdolls.Check);
         // Clip events name a model, and each a time and a name (issue #119).
         Records.AddCheck<AnimEventsRecord>(AnimEvents.Check);
+        // A skeleton map names two models and the joints of one that follow the other's (issue #360).
+        Records.AddCheck<SkeletonMapRecord>(SkeletonMaps.Check);
         // First-person arms name a model, and a weapon a socket (issue #121).
         Records.AddCheck<ViewmodelRecord>(ViewmodelRecord.Check);
         // A decal names a texture and a size, lifetime and fade that make sense (issue #306).
@@ -169,6 +171,11 @@ public sealed class Engine : IDisposable
     [System.Diagnostics.CodeAnalysis.Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
     public GltfAnimationReader Animations { get; }
 
+    // A skinned model's skeleton for a content check, when the model is in a mount and has a skin (the
+    // reader's cache, so the Animator finds it read already); null otherwise, without a second warning.
+    private Skeleton? SkinnedSkeletonOf(AssetPath model) =>
+        Vfs.Which(model.Path) == null ? null : Animations.Load(model)?.Skeleton;
+
     // Save and load (09 §3.5, F27).
     public SaveSystem Saves { get; }
 
@@ -278,6 +285,8 @@ public sealed class Engine : IDisposable
             // registration passes through to SkinPoses, which skinned meshes are drawn from (#117).
             world.Resources.Add(new SkeletonPoses(world.Resources.GetOrAdd(() => new SkinPoses())));
             world.AddSystem(new AimIkSystem(world));
+            world.AddSystem(new LookAtIkSystem(world));          // sage:look_at_ik (issue #361)
+            world.AddSystem(new HandIkSystem(world));            // sage:hand_ik (issue #361)
             world.AddSystem(new AttachmentSystem(world));
             world.Resources.Add(Animations);                     // skinned models' skeletons and clips (issue #118)
             world.AddSystem(new AnimatorSystem(world));          // sage:animator (issue #118)

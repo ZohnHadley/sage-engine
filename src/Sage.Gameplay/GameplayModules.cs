@@ -143,6 +143,7 @@ public sealed class AnimationModule : IModule
         world.AddSystem(new FootstepSystem(world, _records!));   // a step makes its surface's noise (issue #270)
         // The animator's clip events become AnimationEvents (issue #119).
         world.Resources.Replace<IAnimationEventSink>(new AnimationEventBus());
+        world.Resources.Replace<IAnimDebugSource>(new SpriteAnimDebug(_records!));   // anim_debug lists sprites too
     }
 }
 

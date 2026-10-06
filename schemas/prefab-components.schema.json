@@ -244,6 +244,14 @@
         }
       ]
     },
+    "hand_ik": {
+      "description": "The component sage:hand_ik (HandIk), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:hand_ik"
+        }
+      ]
+    },
     "hitbox": {
       "description": "The component sage:hitbox (Hitbox), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -401,6 +409,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:logic_relay_script"
+        }
+      ]
+    },
+    "look_at_ik": {
+      "description": "The component sage:look_at_ik (LookAtIk), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:look_at_ik"
         }
       ]
     },
@@ -892,6 +908,14 @@
         }
       ]
     },
+    "sage:hand_ik": {
+      "description": "Component sage:hand_ik (HandIk).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:hand_ik"
+        }
+      ]
+    },
     "sage:hitbox": {
       "description": "Component sage:hitbox (Hitbox).",
       "allOf": [
@@ -1033,6 +1057,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:logic_relay_script"
+        }
+      ]
+    },
+    "sage:look_at_ik": {
+      "description": "Component sage:look_at_ik (LookAtIk).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:look_at_ik"
         }
       ]
     },
@@ -3447,6 +3479,19 @@
           "minimum": 0,
           "maximum": 1
         },
+        "maxFootTilt": {
+          "description": "How far a planted foot may tilt to lie along the ground; 0 = feet stay as animated. Unit: deg. Range: 0 to 90. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "pelvisSmoothing": {
+          "description": "How long the pelvis takes to ease to a new height (about two thirds of the way); 0 = at once. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
         "pelvisDrop": {
           "description": "(float, default 0)",
           "default": 0,
@@ -3461,6 +3506,16 @@
           "description": "(bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "leftTilt": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "rightTilt": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
         }
       },
       "additionalProperties": false,
@@ -3645,6 +3700,112 @@
       },
       "additionalProperties": false,
       "description": "Component sage:global_transform (GlobalTransform)."
+    },
+    "sage:hand_ik": {
+      "type": "object",
+      "properties": {
+        "left": {
+          "description": "(HandIkArm)",
+          "type": "object",
+          "properties": {
+            "shoulder": {
+              "description": "The upper arm (the chain's root) (string)",
+              "type": "string"
+            },
+            "elbow": {
+              "description": "The forearm (where the arm bends) (string)",
+              "type": "string"
+            },
+            "hand": {
+              "description": "The wrist (what reaches the target) (string)",
+              "type": "string"
+            },
+            "bone": {
+              "description": "A joint of the same skeleton to reach (a grip on what the other hand holds); empty = the component's target. (string)",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Where the hand goes, in the space of `bone` or of the target. Unit: m. (Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "weight": {
+              "description": "How much of the reach to apply over the animation. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "right": {
+          "description": "(HandIkArm)",
+          "type": "object",
+          "properties": {
+            "shoulder": {
+              "description": "The upper arm (the chain's root) (string)",
+              "type": "string"
+            },
+            "elbow": {
+              "description": "The forearm (where the arm bends) (string)",
+              "type": "string"
+            },
+            "hand": {
+              "description": "The wrist (what reaches the target) (string)",
+              "type": "string"
+            },
+            "bone": {
+              "description": "A joint of the same skeleton to reach (a grip on what the other hand holds); empty = the component's target. (string)",
+              "type": "string"
+            },
+            "offset": {
+              "description": "Where the hand goes, in the space of `bone` or of the target. Unit: m. (Vector3)",
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "weight": {
+              "description": "How much of the reach to apply over the animation. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "weight": {
+          "description": "How much of both arms' reach to apply over the animation. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "leftTarget": {
+          "description": "What the left hand reaches for when its arm names no bone; none = nothing. (Entity)"
+        },
+        "rightTarget": {
+          "description": "What the right hand reaches for when its arm names no bone; none = nothing. (Entity)"
+        },
+        "leftReached": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "rightReached": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:hand_ik (HandIk)."
     },
     "sage:hitbox": {
       "type": "object",
@@ -4359,6 +4520,184 @@
       },
       "additionalProperties": false,
       "description": "Component sage:logic_relay_script (LogicRelayScript)."
+    },
+    "sage:look_at_ik": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "description": "What to look at; none = `point`, when it has one. (Entity)"
+        },
+        "offset": {
+          "description": "Where on the target to look, in its space (eye height on a person) Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "point": {
+          "description": "A point in the world to look at when there is no target. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "hasPoint": {
+          "description": "Whether `point` is set (with no target and no point, the head looks ahead) (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "weight": {
+          "description": "How much of the look to apply over the animation. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maxAngle": {
+          "description": "A target further round than this from the character's forward is ignored (it looks ahead) Unit: deg. Range: 0 to 180. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 180
+        },
+        "smoothing": {
+          "description": "How long the head takes to turn to a new look (about two thirds of the way); 0 = at once. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "joints": {
+          "description": "(List<AimIkJoint>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints+": {
+          "description": "Adds to \"joints\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "joints-": {
+          "description": "Removes these from \"joints\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "joint": {
+                "description": "The joint, by name as the model writes it. (string)",
+                "type": "string"
+              },
+              "weight": {
+                "description": "Its share of the aim; the chain's shares usually add up to 1. Range: 0 to 1. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pitchLimit": {
+                "description": "How far this joint alone may pitch, up or down. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "yawLimit": {
+                "description": "How far this joint alone may yaw, left or right. Unit: deg. Range: 0 to 180. (float)",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "eye": {
+          "description": "(string)",
+          "type": "string"
+        },
+        "pitch": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "yaw": {
+          "description": "(float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "looking": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:look_at_ik (LookAtIk)."
     },
     "sage:magazine": {
       "type": "object",

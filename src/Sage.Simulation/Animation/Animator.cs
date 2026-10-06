@@ -171,7 +171,7 @@ public static partial class Animators
             "Animation LOD: animators farther than this from the main camera sample their pose every 2nd tick, past twice it every 4th " +
             "(their states and times still step every tick); 0 = every animator every tick.", 0f, 100000f);
         engine.CVars.RegisterCommand("anim_debug", CVarFlags.None,
-            "anim_debug [filter]: every animator's layers (state, time, cross-fade, blend weights), params and LOD rate.", a =>
+            "anim_debug [filter]: every animator's layers (state, time, cross-fade, blend weights), params and LOD rate, and every sprite's clip and frame.", a =>
         {
             string filter = a.Count > 0 ? a[0] : "";
             int shown = 0;
@@ -184,8 +184,15 @@ public static partial class Animators
                     Log.Info(LogCat.Console, $"[{world.Name}] {Describe(world, e)}");
                     shown++;
                 }
+                if (world.Resources.TryGet<IAnimDebugSource>(out var extra) && extra != null)
+                {
+                    var lines = new List<string>();
+                    extra.Describe(world, filter, lines);
+                    foreach (var line in lines) Log.Info(LogCat.Console, $"[{world.Name}] {line}");
+                    shown += lines.Count;
+                }
             }
-            Log.Info(LogCat.Console, $"anim_debug: {shown} animator(s)");
+            Log.Info(LogCat.Console, $"anim_debug: {shown} animator(s) and sprite(s)");
         });
     }
 
@@ -378,7 +385,7 @@ public static partial class Animators
         clip = g.ClipNames[c];
         if (world.Resources.TryGet<AnimatorPoses>(out var poses) && poses != null && poses.Find(a.Slot, entity) is { } instance
             && c < instance.Clips.Length && instance.Clips[c] is { } resolved)
-            time = s.Phase * resolved.Duration;
+            time = SyncMarkers.ClipPhase(g.Layers[l].States[s.Index], resolved, s.Phase) * resolved.Duration;
         return true;
     }
 
@@ -462,7 +469,7 @@ public static partial class Animators
         {
             ref var s = ref a.Layers![l];
             var layer = g.Layers[l];
-            sb.Append("\n  ").Append(layer.Name).Append(": ").Append(s.State ?? "(none)")
+            sb.Append("\n  ").Append(layer.Name).Append(layer.Additive ? " (additive)" : "").Append(": ").Append(s.State ?? "(none)")
               .Append(CultureInfo.InvariantCulture, $" t={s.Time:F2}s phase={s.Phase:F2}");
             if (s.Fading)
                 sb.Append(CultureInfo.InvariantCulture, $", fading from {s.From ?? "a pose snapshot"} ({s.Fade:F2}/{s.FadeDuration:F2}s {s.FadeEase})");
@@ -472,7 +479,7 @@ public static partial class Animators
             {
                 var state = layer.States[s.Index];
                 int count = AnimatorStepper.Weights(state, a.Params!, weights);
-                sb.Append(", blend");
+                sb.Append(state.Sync != null ? ", blend synced on " + string.Join('/', state.Sync) : ", blend");
                 for (int i = 0; i < count; i++)
                     sb.Append(CultureInfo.InvariantCulture, $" {g.ClipNames[state.PointClips[i]]}={weights[i]:F2}");
             }
@@ -554,6 +561,13 @@ public static partial class Animators
             if (source.RootMotionY && source.RootMotion is not (RootMotionMode.Translation or RootMotionMode.Full))
                 check.Warn($"{path}.RootMotionY", "rootMotionY moves the body up and down only with a rootMotion of Translation or Full");
             if (source.Blend is { } blend && string.IsNullOrEmpty(source.Clip)) CheckBlend(g, blend, $"{path}.Blend", check);
+            if (source.Blend is { Sync.Count: > 0 } synced)
+            {
+                // Sync markers (issue #358) line up a looping blend's clips.
+                foreach (var name in synced.Sync)
+                    if (string.IsNullOrWhiteSpace(name)) check.Error($"{path}.Blend.Sync", "an empty marker name");
+                if (!source.Loop) check.Warn($"{path}.Blend.Sync", "sync markers line up looping blends only; this one-shot plays by normalised time");
+            }
             CheckTransitions(g, layer, source.Transitions, $"{path}.Transitions", check, s);
         }
         CheckTransitions(g, layer, layer.Any, $"{at}Transitions", check, -1);
@@ -594,6 +608,7 @@ public static partial class Animators
             if (string.IsNullOrEmpty(t.To)) check.Error(at, "a transition needs a \"to\" (the state it goes to)");
             else if (layer.Target(t) < 0) check.Error($"{at}.To", $"'{t.To}' is not one of the layer's states" + Spelling.Suggest(t.To, layer.Names));
             if (!(t.After >= 0f) || !float.IsFinite(t.After)) check.Error($"{at}.After", $"{t.After} is not a time in seconds");
+            if (t.Fade is { } fade && (!(fade >= 0f) || !float.IsFinite(fade))) check.Error($"{at}.Fade", $"{fade} is not a time in seconds");
             if (!string.IsNullOrEmpty(t.On))
             {
                 int p = g.ParamIndex(t.On);

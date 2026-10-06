@@ -721,3 +721,67 @@ Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void
 *REMOVED*virtual Sage.Simulation.Screen.Hint.get -> string!
 *REMOVED*virtual Sage.Simulation.Screen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
 *REMOVED*virtual Sage.Simulation.Screen.Width.get -> float
+Sage.Simulation.HandIk
+Sage.Simulation.HandIk.HandIk() -> void
+Sage.Simulation.HandIk.Left -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIk.LeftReached -> bool
+Sage.Simulation.HandIk.LeftTarget -> Sage.Simulation.Entity
+Sage.Simulation.HandIk.Right -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIk.RightReached -> bool
+Sage.Simulation.HandIk.RightTarget -> Sage.Simulation.Entity
+Sage.Simulation.HandIk.Weight -> float
+Sage.Simulation.HandIkArm
+Sage.Simulation.HandIkArm.Bone -> string!
+Sage.Simulation.HandIkArm.Elbow -> string!
+Sage.Simulation.HandIkArm.Hand -> string!
+Sage.Simulation.HandIkArm.HandIkArm() -> void
+Sage.Simulation.HandIkArm.Offset -> System.Numerics.Vector3
+Sage.Simulation.HandIkArm.Shoulder -> string!
+Sage.Simulation.HandIkArm.Weight -> float
+Sage.Simulation.HandIkPart
+Sage.Simulation.HandIkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.HandIkPart.HandIkPart() -> void
+Sage.Simulation.HandIkPart.Left -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIkPart.Right -> Sage.Simulation.HandIkArm?
+Sage.Simulation.HandIkPart.Weight -> float
+Sage.Simulation.LookAtIk
+Sage.Simulation.LookAtIk.Eye -> string!
+Sage.Simulation.LookAtIk.HasPoint -> bool
+Sage.Simulation.LookAtIk.Joints -> System.Collections.Generic.List<Sage.Simulation.AimIkJoint!>?
+Sage.Simulation.LookAtIk.LookAtIk() -> void
+Sage.Simulation.LookAtIk.Looking -> bool
+Sage.Simulation.LookAtIk.MaxAngle -> float
+Sage.Simulation.LookAtIk.Offset -> System.Numerics.Vector3
+Sage.Simulation.LookAtIk.Pitch -> float
+Sage.Simulation.LookAtIk.Point -> System.Numerics.Vector3
+Sage.Simulation.LookAtIk.Smoothing -> float
+Sage.Simulation.LookAtIk.Target -> Sage.Simulation.Entity
+Sage.Simulation.LookAtIk.Weight -> float
+Sage.Simulation.LookAtIk.Yaw -> float
+Sage.Simulation.LookAtIkPart
+Sage.Simulation.LookAtIkPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.LookAtIkPart.Eye -> string!
+Sage.Simulation.LookAtIkPart.Joints -> System.Collections.Generic.List<Sage.Simulation.AimIkJoint!>!
+Sage.Simulation.LookAtIkPart.LookAtIkPart() -> void
+Sage.Simulation.LookAtIkPart.MaxAngle -> float
+Sage.Simulation.LookAtIkPart.Smoothing -> float
+Sage.Simulation.LookAtIkPart.Weight -> float
+Sage.Simulation.AnimBlendSpace.Sync -> System.Collections.Generic.List<string!>!
+Sage.Simulation.AnimLayer.Blend -> Sage.Simulation.AnimLayerBlend
+Sage.Simulation.AnimLayerBlend
+Sage.Simulation.AnimLayerBlend.Additive = 1 -> Sage.Simulation.AnimLayerBlend
+Sage.Simulation.AnimLayerBlend.Override = 0 -> Sage.Simulation.AnimLayerBlend
+Sage.Simulation.StateTransition.Ease -> Sage.Simulation.Ease?
+Sage.Simulation.StateTransition.Fade -> float?
+Sage.Simulation.IAnimDebugSource
+Sage.Simulation.IAnimDebugSource.Describe(Sage.Simulation.World! world, string! filter, System.Collections.Generic.List<string!>! lines) -> void
+const Sage.Simulation.ClipRetargeter.DefaultSampleRate = 30 -> float
+Sage.Simulation.ClipRetargeter
+Sage.Simulation.SkeletonMapRecord
+Sage.Simulation.SkeletonMapRecord.Bones -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.Simulation.SkeletonMapRecord.SampleRate -> float
+Sage.Simulation.SkeletonMapRecord.Scale -> float
+Sage.Simulation.SkeletonMapRecord.SkeletonMapRecord() -> void
+Sage.Simulation.SkeletonMapRecord.Source -> Sage.Core.AssetPath
+Sage.Simulation.SkeletonMapRecord.Target -> Sage.Core.AssetPath
+static Sage.Simulation.ClipRetargeter.Retarget(Sage.Simulation.AnimationClip! clip, Sage.Simulation.Skeleton! source, Sage.Simulation.Skeleton! target, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! bones, float scale = 0, float sampleRate = 30) -> Sage.Simulation.AnimationClip!
