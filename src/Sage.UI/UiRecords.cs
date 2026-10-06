@@ -241,6 +241,59 @@ public sealed class ScreenRecord
 
     [VocabularyRef(UiScreens.ViewModelVocabulary), Property(Tooltip = "The view-model its bindings read, by id; empty: none, and the layout may bind nothing")]
     public string ViewModel = "";
+
+    [Property(Category = "Sound", Tooltip = "The ui_sounds this screen uses where it names a sound; each one it leaves empty is the game's default (sage:default_ui_sounds)")]
+    public RecordRef<UiSoundsRecord> Sounds;
+}
+
+// What the screens sound like (issue #330): the one noise per screen action, as data. A game patches
+// `sage:default_ui_sounds` (engine_content/data/ui.json, every field empty = silent) and a `screen`
+// may name a set of its own with `sounds`. Raised as `SoundRequested` for the client's audio system,
+// which plays them on whatever bus the `sound` record names (`Ui`), so a headless world raises them
+// and nobody hears.
+[Record("ui_sounds", Plugin = UiModule.Id)]
+[Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
+public sealed class UiSoundsRecord
+{
+    public static readonly RecordId DefaultId = new(ComponentSchema.EngineNamespace, "default_ui_sounds");
+
+    [Property(Tooltip = "Focus moved by the arrow keys, the D-pad or Tab (`ui_move`)")]
+    public RecordRef<SoundRecord> Move;
+    [Property(Tooltip = "A widget was confirmed or clicked (`ui_select`)")]
+    public RecordRef<SoundRecord> Select;
+    [Property(Tooltip = "A window opened")]
+    public RecordRef<SoundRecord> Open;
+    [Property(Tooltip = "A window closed: Back, a click outside, or the game closing it")]
+    public RecordRef<SoundRecord> Close;
+}
+
+internal enum UiSound { Move, Select, Open, Close }
+
+// Finds the sound for a screen action and raises it (issue #330): the screen's own set first, field by
+// field, then the game's default.
+internal static class UiSounds
+{
+    public static void Raise(World? world, UiScreens? screens, UiScreen? screen, UiSound action)
+    {
+        if (world == null || screens == null) return;
+        var records = screens.Records;
+        var sound = Pick(screen?.Record.Sounds.Id ?? default, records, action);
+        if (sound.IsEmpty) sound = Pick(UiSoundsRecord.DefaultId, records, action);
+        if (sound.IsEmpty) return;
+        world.Events.Send(new SoundRequested(sound, default, System.Numerics.Vector3.Zero, false, 0f));
+    }
+
+    private static RecordId Pick(RecordId set, RecordStore records, UiSound action)
+    {
+        if (set.IsEmpty || !records.TryGet(set, out UiSoundsRecord sounds)) return default;
+        return action switch
+        {
+            UiSound.Move => sounds.Move.Id,
+            UiSound.Select => sounds.Select.Id,
+            UiSound.Open => sounds.Open.Id,
+            _ => sounds.Close.Id,
+        };
+    }
 }
 
 // ---- JSON -----------------------------------------------------------------------------------------

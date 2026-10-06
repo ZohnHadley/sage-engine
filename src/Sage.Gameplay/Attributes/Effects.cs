@@ -31,9 +31,15 @@ public sealed class EffectRecord
     public List<RecordRef<TagRecord>> GrantTags = new();    // held while the effect is active
     public List<RecordRef<TagRecord>> RequireTags = new();  // the target must have all of these
     public List<RecordRef<TagRecord>> BlockTags = new();    // the target must have none of these
-    public List<RecordRef<CueRecord>> Cues = new();         // presentation only (16 §3.3). Not raised yet: an effect
-                                                // has three moments (applied, ticked, removed) and which
-                                                // of them a cue means is an open question, 11 §13.
+    // Presentation only (16 §3.3), one list per moment of an effect's life (issue #330): a single list
+    // cannot say which of the three it means, which is the mistake an ability's cue list made (11 §13).
+    // Each cue is raised at the target's position with the effect's source as its source.
+    [Property(Category = "Cues", Tooltip = "Cues raised when the effect is applied (and again each time a refresh or stack re-applies it)")]
+    public List<RecordRef<CueRecord>> AppliedCues = new();
+    [Property(Category = "Cues", Tooltip = "Cues raised on each period of a periodic effect (a poison's pulse)")]
+    public List<RecordRef<CueRecord>> TickCues = new();
+    [Property(Category = "Cues", Tooltip = "Cues raised when the effect ends: it ran out, or was removed or dispelled")]
+    public List<RecordRef<CueRecord>> RemovedCues = new();
 
     // What this effect costs to *build a spell out of* (16 §3.3, F21's spellmaker). Zero means it is
     // not for sale: an effect the game applies itself — a cooldown, a mana spend, a trap's poison —
@@ -102,6 +108,7 @@ public static class Effects
         {
             ApplyInstant(world, target, record, registries, 1, magnitude);
             EffectExecutions.Run(world, target, source, effect, record, 1, magnitude);
+            RaiseCues(world, record.AppliedCues, target, source);
             return true;
         }
 
@@ -120,6 +127,7 @@ public static class Effects
                     existing.Stacks = Math.Min(existing.Stacks + 1, Math.Max(record.MaxStacks, 1));
                 list[i] = existing;
                 EffectExecutions.Run(world, target, source, effect, record, existing.Stacks, magnitude);
+                RaiseCues(world, record.AppliedCues, target, source);
                 return true;
             }
         }
@@ -134,16 +142,29 @@ public static class Effects
             Magnitude = magnitude,
         });
         EffectExecutions.Run(world, target, source, effect, record, 1, magnitude);
+        RaiseCues(world, record.AppliedCues, target, source);
         return true;
     }
 
-    // Removes every instance of an effect. Returns how many were removed.
+    // Removes every instance of an effect (raising its RemovedCues for each). Returns how many were removed.
     public static int Remove(World world, Entity target, RecordId effect)
     {
         if (!world.Has<ActiveEffects>(target)) return 0;
         ref var active = ref world.Get<ActiveEffects>(target);
         int removed = active.Effects.RemoveAll(e => e.Record == effect);
+        if (removed > 0 && world.Records().TryGet(effect, out EffectRecord record))
+            for (int i = 0; i < removed; i++) RaiseCues(world, record.RemovedCues, target, default);
         return removed;
+    }
+
+    // An effect's presentation moment (issue #330): each cue at the target's position, from the effect's
+    // source. Nothing here reads what a cue sounds or looks like.
+    internal static void RaiseCues(World world, List<RecordRef<CueRecord>> cues, Entity target, Entity source)
+    {
+        if (cues.Count == 0) return;
+        var point = world.TryGet<Transform>(target, out var transform) ? transform.LocalPosition : default;
+        foreach (var cue in cues)
+            if (!cue.IsEmpty) world.Events.Send(new CueTriggered(cue, source.IsNull ? target : source, point));
     }
 
     public static bool IsActive(World world, Entity target, RecordId effect)
@@ -281,6 +302,7 @@ internal sealed class EffectSystem : ISystem
                     running.PeriodTimer -= record.Period;
                     Effects.ApplyInstant(world, entity, record, _registries, running.Stacks, Magnitude(running));
                     EffectExecutions.Run(world, entity, world.Resolve(running.Source), running.Record, record, running.Stacks, Magnitude(running));
+                    Effects.RaiseCues(world, record.TickCues, entity, world.Resolve(running.Source));
                 }
             }
 
@@ -290,6 +312,7 @@ internal sealed class EffectSystem : ISystem
                 if (running.Remaining <= 0f)
                 {
                     list.RemoveAt(i);
+                    Effects.RaiseCues(world, record.RemovedCues, entity, world.Resolve(running.Source));
                     continue;
                 }
             }

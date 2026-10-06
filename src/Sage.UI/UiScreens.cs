@@ -162,6 +162,8 @@ public sealed class UiScreens
     private readonly LayoutBuilder _builder;
     private readonly List<UiScreen> _open = new();
 
+    internal RecordStore Records => _records;
+
     internal UiScreens(RecordStore records, Vocabulary<IViewModel> viewModels, UiStyles styles, Localisation text)
     {
         _records = records;
