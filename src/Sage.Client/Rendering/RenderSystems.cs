@@ -117,7 +117,7 @@ internal sealed class CameraExtract : ISystem
             ? Matrix.CreateOrthographic(request.OrthoHeight * aspect, request.OrthoHeight, request.Near, request.Far)
             : Matrix.CreatePerspectiveFieldOfView(request.FovY, aspect, request.Near, request.Far);
         view.ViewProj = view.View * view.Projection;
-        view.LightStart = view.LightCount = 0;
+        view.LightStart = view.LightCount = view.DynamicLightCount = 0;
         view.DebugStart = view.DebugCount = 0;
         view.Culled = 0;
         view.ItemStart = view.ItemCount = 0;
@@ -487,9 +487,10 @@ internal sealed class RenderPassExtract : ISystem
 // simulation records shapes nobody is going to look at.
 // Extract: the frame's point lights, camera-relative like everything else (06 §3.9).
 //
-// No culling beyond what `LightRules` does per object: a hundred lamps in a level is a list of a hundred
-// structs, and the work that matters is per *draw*, not per light. When that stops being true the answer
-// is a grid, not a longer loop here.
+// No culling here: a hundred lamps in a level is a list of a hundred structs, and the work that matters is
+// per *draw*, which the renderer's `LightGrid` (issue #314) cuts down to the lamps that reach the draw's cell.
+// Each lamp is sampled as it is this frame (`LightRules.Sample`): its flicker pattern at the world's
+// simulated seconds, and a spot light's cone along the entity's forward.
 [System("sage.client.extract.lights", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class LightExtract : ISystem
 {
@@ -512,6 +513,7 @@ internal sealed class LightExtract : ISystem
         if (!snapshot.HasView || !_enabled.Value) return;
 
         float alpha = ctx.Frame.Alpha;
+        double seconds = WorldTime.Of(ctx.World).Scaled;
         // A view at a time, so each view's lights are one run of the list (RenderView.LightStart).
         for (int v = 0; v < snapshot.Views.Count; v++)
         {
@@ -520,16 +522,24 @@ internal sealed class LightExtract : ISystem
             Vector3 camera = view.CameraPosition;
             view.LightStart = snapshot.Lights.Count;
 
-            foreach (var (globals, lights, _) in _lights.Chunks)
-                for (int n = 0; n < globals.Length; n++)
-                {
-                    ref readonly var light = ref lights[n];
-                    if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
+            // The lamps that are not baked first, then the baked ones (issue #313): a lightmapped draw takes
+            // the first run only (`DynamicLightCount`), everything else the lot.
+            for (int baked = 0; baked < 2; baked++)
+            {
+                if (baked == 1) view.DynamicLightCount = snapshot.Lights.Count - view.LightStart;
+                foreach (var (globals, lights, _) in _lights.Chunks)
+                    for (int n = 0; n < globals.Length; n++)
+                    {
+                        ref readonly var light = ref lights[n];
+                        if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
+                        if (light.Baked != (baked == 1)) continue;
 
-                    var world = globals[n].Interpolated(alpha).Position;
-                    var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
-                    snapshot.Lights.Add() = new LightSample(at, light.Colour * light.Intensity, light.Range);
-                }
+                        var pose = globals[n].Interpolated(alpha);
+                        var world = pose.Position;
+                        var at = new System.Numerics.Vector3(world.X - camera.X, world.Y - camera.Y, world.Z - camera.Z);
+                        snapshot.Lights.Add() = LightRules.Sample(light, at, pose.Rotation, seconds);
+                    }
+            }
             view.LightCount = snapshot.Lights.Count - view.LightStart;
         }
     }

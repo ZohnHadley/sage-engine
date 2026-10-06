@@ -119,6 +119,8 @@ internal sealed class StatOverlay
             var r = renderer.LastFrame;
             ImGui.Text($"draw calls {r.DrawCalls,6}   triangles {r.Triangles,8}   material switches {r.MaterialSwitches,4}");
             ImGui.Text($"items {r.Items,6} (culled {r.Culled})   sprites {r.Sprites}   lights {r.Lights}   debug lines {r.DebugLines}");
+            if (r.Instanced > 0 || r.InstancedSprites > 0)
+                ImGui.Text($"instanced {r.Instanced,6} in {r.InstancedDraws} draws (saved {r.Instanced - r.InstancedDraws})   instanced sprites {r.InstancedSprites}");
         }
         else ImGui.Text("no renderer");
         ImGui.Text($"uploads {work.Uploads,4} ({work.UploadBytes / 1024,6} KB)   total {WorkStats.Uploads} ({WorkStats.UploadBytes / (1024 * 1024)} MB)");

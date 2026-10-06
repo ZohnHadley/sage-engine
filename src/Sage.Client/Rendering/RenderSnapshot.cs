@@ -68,6 +68,9 @@ internal struct RenderView
     // Written during extract: lights and debug lines are added by one system each, a view at a time,
     // so each view's are contiguous.
     public int LightStart, LightCount;
+    // Of those, the first this many are not baked (issue #313): a lightmapped draw is lit by these only,
+    // its baked lamps being in its lightmap. The baked ones follow them in the run.
+    public int DynamicLightCount;
     public int DebugStart, DebugCount;   // vertices (pairs)
     public int Culled;
 

@@ -220,6 +220,45 @@ public sealed class MaterialRecord
     public SamplerDesc Sampler = new();
     public Dictionary<string, MaterialParam> Params = new(StringComparer.Ordinal);
 
+    // The surface (issue #410): what lit.fx draws beyond the albedo. Each map is optional, and a missing one
+    // is a 1x1 texture that changes nothing (`MaterialSurface`), so a material that names none draws as it
+    // always did, with the same technique. An effect that does not declare them (unlit, sprites) ignores them.
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [AssetKind("texture"), Property(Category = "Surface", Tooltip = "Tangent-space normal map (glTF convention: green is up the image). Empty: the mesh's own normals")]
+    public AssetPath NormalMap;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [AssetKind("texture"), Property(Category = "Surface", Tooltip = "Red: how shiny (times specular); green: how glossy (times gloss). Empty: white, the factors alone")]
+    public AssetPath SpecularMap;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Max = 4, Category = "Surface", Tooltip = "Strength of the sun's and lamps' highlights; 0 (the default) is a matt surface")]
+    public float Specular;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Max = 1, Category = "Surface", Tooltip = "How tight the highlights are: 0 broad and dull, 1 a pin-point like polished metal")]
+    public float Gloss = 0.5f;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [AssetKind("texture"), Property(Category = "Surface", Tooltip = "What glows in the dark, times emissive. Empty: emissive alone, everywhere")]
+    public AssetPath EmissiveMap;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Category = "Surface", Tooltip = "Linear RGB light the surface gives off, unlit and unshadowed; 0 0 0 (the default) is none")]
+    public Vector3 Emissive;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Category = "Surface", Tooltip = "Multiply the albedo by the mesh's vertex colours: glTF COLOR_0, white where a model has none")]
+    public bool VertexColors;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [AssetKind("texture"), Property(Category = "Surface", Tooltip = "A panorama (longitude across, sky at the top) reflected in the surface; needs reflectivity")]
+    public AssetPath EnvironmentMap;
+
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Max = 1, Category = "Surface", Tooltip = "How much of environmentMap the surface reflects (times the specular map's red); 0 is none")]
+    public float Reflectivity;
+
     public static readonly RecordId Default = new("sage", "lit_default");
     public static readonly RecordId Error = new("sage", "error");
 }

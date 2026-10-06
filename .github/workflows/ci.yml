@@ -188,6 +188,14 @@ jobs:
           # maths is DuskToNightExitTests; the shaders compile in the Windows job.
           SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_post 1\n+r_scale 0.5\n+wait 1\n+r_stats\n+time_set 19:20\n+time_scale 3600\n+wait 2\n+time\n+r_stats\n+r_passes\n+weather rain 1\n+wait 1\n+time_set 22\n+wait 1\n+r_stats' \
             tools/smoke_run.sh "$host" games/Sandbox 6 Shaders Audio
+          # HDR, bloom, anti-aliasing and the depth hook (issue #316): the Sandbox with r_post, a half-float scene,
+          # the bloom chain, FXAA and its depth haze (a post effect that reads the scene's depth, so sage:depth is
+          # drawn), then 4x MSAA at half scale. Without shaders the steps fall back to plain copies and the
+          # depth pass to its clear: this proves the targets (HdrBlendable, multisampled, R32F), the plan and
+          # the cvars in the real host. The curves and the plan are PostHdrTests; post.fx and depth_haze.fx
+          # compile in the Windows job.
+          SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_post 1\n+r_hdr 1\n+r_bloom 1\n+r_aa fxaa\n+wait 1\n+r_stats\n+wait 1\n+r_aa msaa4\n+r_scale 0.5\n+wait 1\n+r_post_haze 0\n+r_hdr 0\n+wait 1' \
+            tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
           # Several views a frame (issue #77): a split screen, then a top-down view into a render target the
           # HUD shows. Without shaders nothing is drawn but the clears, so this proves the path, not the picture.
           SAGE_SMOKE_COMMANDS=$'+sv_cheats 1\n+r_testview 1\n+wait 1\n+r_testview 2\n+wait 1\n+r_stats' \

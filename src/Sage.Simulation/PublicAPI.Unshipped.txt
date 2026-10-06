@@ -51,6 +51,8 @@ Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
+Sage.Simulation.MapRecord.Lightmap -> float
+Sage.Simulation.PointLight.Baked -> bool
 const Sage.Simulation.MeshLod.Culled = -1 -> int
 const Sage.Simulation.MeshLod.Unknown = -2 -> int
 readonly Sage.Simulation.RenderEnvironment.LayerDrawDistance -> float[]!
@@ -103,3 +105,73 @@ static Sage.Simulation.ShadowMath.CasterTechnique(Sage.Simulation.RenderPass pas
 static Sage.Simulation.ShadowMath.CutOutKeeps(float alpha, float cutoff) -> bool
 static Sage.Simulation.ShadowMath.FitCascades(System.Numerics.Vector3 camera, System.Numerics.Vector3 forward, bool orthographic, float lensX, float lensY, float near, float far, System.Numerics.Vector3 sunDirection, int size, System.Numerics.Vector3 origin, System.Span<Sage.Simulation.ShadowFit> fits, System.Span<float> splits, float casterReach = 200, float blend = 0.75) -> void
 static Sage.Simulation.ShadowMath.QuantiseSun(System.Numerics.Vector3 sunDirection, float stepDegrees) -> System.Numerics.Vector3
+Sage.Simulation.PostEffectRecord.Depth -> bool
+Sage.Simulation.SceneEnvironment.WeatherPattern -> Sage.Core.RecordRef<Sage.Simulation.WeatherPatternRecord!>
+Sage.Simulation.SceneEnvironment.WeatherRegion -> string!
+Sage.Simulation.Weather.Pattern.get -> Sage.Core.RecordId
+Sage.Simulation.Weather.Pattern.set -> void
+Sage.Simulation.Weather.PickedSlot.get -> long
+Sage.Simulation.Weather.PickedSlot.set -> void
+Sage.Simulation.Weather.Region.get -> string!
+Sage.Simulation.Weather.Region.set -> void
+Sage.Simulation.WeatherPatternRecord
+Sage.Simulation.WeatherPatternRecord.Label -> string!
+Sage.Simulation.WeatherPatternRecord.Picks -> System.Collections.Generic.List<Sage.Simulation.WeatherPick!>!
+Sage.Simulation.WeatherPatternRecord.Seed -> int
+Sage.Simulation.WeatherPatternRecord.SlotHours -> float
+Sage.Simulation.WeatherPatternRecord.Transition -> float
+Sage.Simulation.WeatherPatternRecord.WeatherPatternRecord() -> void
+Sage.Simulation.WeatherPick
+Sage.Simulation.WeatherPick.From -> float
+Sage.Simulation.WeatherPick.Region -> string!
+Sage.Simulation.WeatherPick.To -> float
+Sage.Simulation.WeatherPick.Weather -> Sage.Core.RecordRef<Sage.Simulation.WeatherRecord!>
+Sage.Simulation.WeatherPick.WeatherPick() -> void
+Sage.Simulation.WeatherPick.Weight -> float
+Sage.Simulation.WeatherRecord.LightningFlash -> float
+Sage.Simulation.WeatherRecord.LightningRate -> float
+Sage.Simulation.WeatherRecord.ShelteredVolume -> float
+Sage.Simulation.WeatherRecord.Thunder -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Simulation.WeatherRecord.ThunderVolume -> float
+static Sage.Simulation.WeatherRules.LightningRateNow(Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather) -> float
+const Sage.Simulation.LightStyles.DefaultRate = 10 -> float
+Sage.Simulation.LightSample.ConeAt(System.Numerics.Vector3 at) -> float
+Sage.Simulation.LightSample.Spot.get -> System.Numerics.Vector4
+Sage.Simulation.LightSample.Spot.init -> void
+Sage.Simulation.LightStyles
+Sage.Simulation.PointLight.Cone -> float
+Sage.Simulation.PointLight.InnerCone -> float
+Sage.Simulation.PointLight.Pattern -> string?
+Sage.Simulation.PointLight.PatternRate -> float
+static Sage.Simulation.LightStyles.Brightness(string? pattern, float rate, double seconds) -> float
+static Sage.Simulation.LightStyles.PresetNames.get -> System.Collections.Generic.IEnumerable<string!>!
+static Sage.Simulation.LightStyles.TryResolve(string? pattern, out string! letters) -> bool
+Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Bounce = 1 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Die = 2 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.None = 0 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Collision -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Friction -> float
+Sage.Simulation.ParticleRecord.Restitution -> float
+Sage.Simulation.ParticleRecord.SheetColumns -> int
+Sage.Simulation.ParticleRecord.SheetCycles -> float
+Sage.Simulation.ParticleRecord.SheetFrames -> int
+Sage.Simulation.ParticleRecord.SheetRandomStart -> bool
+Sage.Simulation.ParticleRecord.SheetRows -> int
+Sage.Simulation.Particles.CollisionBudget.get -> int
+Sage.Simulation.Particles.CollisionBudget.set -> void
+Sage.Simulation.Particles.Group.FirstFrame -> int[]!
+Sage.Simulation.Particles.Group.FrameOf(int i) -> int
+Sage.Simulation.Particles.Group.UvOf(int i) -> System.Numerics.Vector4
+Sage.Simulation.Particles.Hits.get -> int
+Sage.Simulation.Particles.Rays.get -> int
+Sage.Simulation.Particles.RaysSkipped.get -> int
+Sage.Simulation.MaterialRecord.Emissive -> System.Numerics.Vector3
+Sage.Simulation.MaterialRecord.EmissiveMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.EnvironmentMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Gloss -> float
+Sage.Simulation.MaterialRecord.NormalMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Reflectivity -> float
+Sage.Simulation.MaterialRecord.Specular -> float
+Sage.Simulation.MaterialRecord.SpecularMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.VertexColors -> bool

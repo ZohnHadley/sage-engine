@@ -104,6 +104,9 @@ public static partial class Profiler
             _threadNamedIn = buffer;
             buffer.Threads.TryAdd(thread, ThreadName(thread, buffer.MainThread));
         }
+        // A scope that opened before the capture started (on any thread) is cut at the capture's start: a
+        // trace's times count from there, and Perfetto rejects a negative one.
+        if (start < buffer.Started) start = Math.Min(buffer.Started, end);
         ref var e = ref buffer.Events[i];
         e.Start = start;
         e.End = end;
