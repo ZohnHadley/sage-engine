@@ -183,6 +183,16 @@
       "description": "Decode as it plays instead of whole: for music, ambience and dialogue. Ogg Vorbis (.ogg) only. (bool, default false)",
       "default": false,
       "type": "boolean"
+    },
+    "caption": {
+      "description": "Subtitle or caption shown when it plays: text or @key; empty: none. Category: Accessibility. (string, default \"\")",
+      "default": "",
+      "type": "string"
+    },
+    "speaker": {
+      "description": "Who says the caption, shown before it: text or @key; empty: a caption of the sound, not a line. Category: Accessibility. (string, default \"\")",
+      "default": "",
+      "type": "string"
     }
   },
   "additionalProperties": false

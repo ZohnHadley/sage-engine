@@ -129,7 +129,7 @@ public class Checkbox : Button
 
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
     {
-        _box = MeasureOf(text).LineHeight * TextScale;
+        _box = MeasureOf(text).LineHeight * EffectiveTextScale;
         if (Text.Length == 0) return new Vector2(_box, _box);
         var label = base.MeasureContent(available, text);
         return new Vector2(_box * 1.5f + label.X, MathF.Max(_box, label.Y));
@@ -218,7 +218,7 @@ public class Dropdown : Button
 
     // ---- The open list: rows a line of text high (plus the padding), as wide as the dropdown ---------
 
-    public float RowHeight => (Root is { } root ? MeasureOf(root.Text).LineHeight : 0f) * TextScale + Padding.Top + Padding.Bottom;
+    public float RowHeight => (Root is { } root ? MeasureOf(root.Text).LineHeight : 0f) * EffectiveTextScale + Padding.Top + Padding.Bottom;
 
     public Rect ListRect
     {
@@ -321,7 +321,7 @@ public class Dropdown : Button
     // As wide as its widest option (so choosing one does not move what is beside it), plus the arrow.
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
     {
-        float scale = TextScale;
+        float scale = EffectiveTextScale;
         text = MeasureOf(text);   // in its own font (#338)
         var size = new Vector2(0f, text.LineHeight * scale);
         for (int i = 0; i < _options.Count; i++) size = Vector2.Max(size, text.Measure(_options[i], scale));
@@ -414,12 +414,12 @@ public class TextBox : Label
         int start = text.LastIndexOf('\n', caret - 1) + 1;
         int line = 0;
         for (int i = 0; i < start; i++) if (text[i] == '\n') line++;
-        float x = start == caret ? 0f : measure.Measure(text.Substring(start, caret - start), TextScale).X;
-        return new Vector2(x, line * measure.LineHeight * TextScale);
+        float x = start == caret ? 0f : measure.Measure(text.Substring(start, caret - start), EffectiveTextScale).X;
+        return new Vector2(x, line * measure.LineHeight * EffectiveTextScale);
     }
 
     protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text) =>
-        Text.Length == 0 && _placeholder.Length > 0 ? MeasureOf(text).Measure(_placeholder, TextScale) : base.MeasureContent(available, text);
+        Text.Length == 0 && _placeholder.Length > 0 ? MeasureOf(text).Measure(_placeholder, EffectiveTextScale) : base.MeasureContent(available, text);
 }
 
 // Pages, one shown at a time, under a row of tabs (Godot's TabContainer): a settings screen's General,

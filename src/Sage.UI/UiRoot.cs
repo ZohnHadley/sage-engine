@@ -16,6 +16,8 @@ namespace Sage.UI;
 // - **Focus**: one focused widget, moved by UiInput — tab order (Next/Previous), spatial navigation
 //   (Up/Down/Left/Right: the nearest focusable widget that way, preferring ones in line), or the pointer
 //   (hover moves focus, a click focuses and activates, as the panel screens do).
+// - **Player scale** (issue #351): UiScale makes everything bigger (the virtual screen smaller) and
+//   TextScale only the text, both live; the `ui_scale` and `ui_text_scale` cvars set them.
 // - **Focus scopes** (issue #343): while a widget with FocusScope shows, the chain, navigation, Focus
 //   and the pointer are kept inside it, and focus goes back where it was when it hides.
 // - **Hit testing** in pixels or virtual units, respecting Scroll clipping.
@@ -34,6 +36,7 @@ public sealed class UiRoot
     private Dropdown? _popup;
     private float _tooltipTime;
     private bool _pointerLast;
+    private float _uiScale = 1f, _textScale = 1f;
     private Widget? _dragCandidate;   // a Draggable widget the pointer went down on: a click or a drag, as it turns out
     private Vector2 _pressPoint;
     private UiDrag _drag;
@@ -120,7 +123,41 @@ public sealed class UiRoot
 
     public Vector2 DesignSize { get; }
     public Vector2 Viewport { get; private set; }
+    // Pixels per virtual unit: the viewport's fit to DesignSize, times UiScale.
     public float Scale { get; private set; }
+
+    // The player's UI scale (issue #351): 1.5 draws everything half as big again, laid out on a virtual
+    // screen two thirds the size — so a window anchored to a corner stays in it, and one that no longer
+    // fits gets less room rather than going off the screen. Clamped to MinUiScale..MaxUiScale.
+    public float UiScale
+    {
+        get => _uiScale;
+        set
+        {
+            value = float.IsFinite(value) ? Math.Clamp(value, MinUiScale, MaxUiScale) : 1f;
+            if (value == _uiScale) return;
+            _uiScale = value;
+            Fit();
+        }
+    }
+
+    public const float MinUiScale = 0.5f, MaxUiScale = 3f;
+
+    // The player's text size (issue #351): every label's TextScale is multiplied by it, so text grows
+    // and the boxes around it with it, while what holds no text keeps its size. Same clamp as UiScale.
+    public float TextScale
+    {
+        get => _textScale;
+        set
+        {
+            value = float.IsFinite(value) ? Math.Clamp(value, MinUiScale, MaxUiScale) : 1f;
+            if (value == _textScale) return;
+            _textScale = value;
+            Content.InvalidateTree();
+            Tooltip.InvalidateTree();
+            LayoutChanged();
+        }
+    }
 
     // The viewport in virtual units: DesignSize, plus whatever the viewport's aspect adds on one axis.
     public Vector2 Size { get; private set; }
@@ -160,8 +197,13 @@ public sealed class UiRoot
     {
         if (pixels == Viewport) return;
         Viewport = pixels;
-        Scale = MathF.Max(MathF.Min(pixels.X / DesignSize.X, pixels.Y / DesignSize.Y), 1e-4f);
-        Size = pixels / Scale;
+        Fit();
+    }
+
+    private void Fit()
+    {
+        Scale = MathF.Max(MathF.Min(Viewport.X / DesignSize.X, Viewport.Y / DesignSize.Y) * _uiScale, 1e-4f);
+        Size = Viewport / Scale;
         LayoutChanged();
     }
 

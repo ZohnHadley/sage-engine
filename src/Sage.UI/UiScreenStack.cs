@@ -189,6 +189,7 @@ public sealed class UiScreenStack
     private readonly Dictionary<int, RecordId> _byAction = new();
     private ITextMeasure _text = FontCells;
     private Vector2 _viewport = UiRoot.DefaultDesignSize;
+    private float _uiScale = 1f, _textScale = 1f;
 
     // The engine font's cell (BitmapFont: a 5×7 glyph with a pixel of air each way), in font pixels:
     // what the client measures with too, so a layout is the same headless and on screen.
@@ -223,6 +224,28 @@ public sealed class UiScreenStack
     }
 
     public Vector2 Viewport => _viewport;
+
+    // The player's UI and text scale (UiRoot.UiScale, UiRoot.TextScale), for every layer, open and to
+    // come; UiModule keeps them at the `ui_scale` and `ui_text_scale` cvars (issue #351).
+    public float UiScale
+    {
+        get => _uiScale;
+        set
+        {
+            _uiScale = float.IsFinite(value) ? Math.Clamp(value, UiRoot.MinUiScale, UiRoot.MaxUiScale) : 1f;
+            foreach (var layer in _layers) layer.Root.UiScale = _uiScale;
+        }
+    }
+
+    public float TextScale
+    {
+        get => _textScale;
+        set
+        {
+            _textScale = float.IsFinite(value) ? Math.Clamp(value, UiRoot.MinUiScale, UiRoot.MaxUiScale) : 1f;
+            foreach (var layer in _layers) layer.Root.TextScale = _textScale;
+        }
+    }
 
     // Bottom to top, closing layers included until they have faded.
     public IReadOnlyList<UiLayer> Layers => _layers;
@@ -262,6 +285,20 @@ public sealed class UiScreenStack
     // The style ids a confirm prompt's or message box's window and buttons are drawn in (Confirm, Message).
     public string? DialogStyle { get; set; }
     public string? DialogButtonStyle { get; set; }
+
+    // The subtitles shown over every layer (issue #351): the world's, set by UiModule; null shows none.
+    // Their layer is made when the first line comes and stays on top of whatever opens after it.
+    public Subtitles? Subtitles { get; set; }
+
+    // The style ids subtitle lines and captions are drawn in (sage:subtitles, engine content).
+    public string? SubtitleStyle { get; set; } = "sage:subtitles";
+    public string? CaptionStyle { get; set; } = "sage:captions";
+
+    // The layer subtitles show in, once there has been one; never modal, never Top.
+    public UiLayer? SubtitleLayer => _subtitleLayer;
+
+    private UiLayer? _subtitleLayer;
+    private SubtitleBox? _subtitleBox;
 
     // Something in any layer was confirmed or clicked.
     public event Action<UiLayer, Widget>? Activated;
@@ -370,7 +407,7 @@ public sealed class UiScreenStack
 
     private UiLayer Add(Widget content, UiScreen? screen, bool modal, Widget? focus = null)
     {
-        var root = new UiRoot(_text) { Fonts = Fonts, RightToLeft = RightToLeft };
+        var root = new UiRoot(_text) { Fonts = Fonts, RightToLeft = RightToLeft, UiScale = _uiScale, TextScale = _textScale };
         root.SetViewport(_viewport);
         if (TooltipStyle != null)
         {
@@ -390,6 +427,8 @@ public sealed class UiScreenStack
         MarkSolid(content);
         _layers.Add(layer);
         if (modal && screen is { Record.Pauses: true }) Hold(layer);
+        // Subtitles stay over everything, a window opened after them included.
+        if (_subtitleLayer != null && _layers.Remove(_subtitleLayer)) _layers.Add(_subtitleLayer);
         if (modal && (focus == null || !root.Focus(focus))) root.Navigate(UiNavigation.Next);
         layer.Opened(this);
         if (modal) UiSounds.Raise(_world, _screens, screen, UiSound.Open);
@@ -445,6 +484,7 @@ public sealed class UiScreenStack
     public UiResult Update(in UiInput input)
     {
         float dt = MathF.Max(input.DeltaTime, 0f);
+        SyncSubtitles();
         for (int i = _layers.Count - 1; i >= 0; i--)
         {
             _layers[i].Advance(this, dt);
@@ -506,6 +546,39 @@ public sealed class UiScreenStack
         _layers.RemoveAt(index);
         Release(layer);
         layer.Screen?.Close();
+        if (layer == _subtitleLayer) { _subtitleLayer = null; _subtitleBox = null; }
+    }
+
+    private void SyncSubtitles()
+    {
+        var feed = Subtitles;
+        if (_subtitleBox != null && !ReferenceEquals(_subtitleBox.Feed, feed))
+        {
+            // Another feed (or none): the old layer goes, and a new one comes with the next line.
+            int at = _subtitleLayer == null ? -1 : _layers.IndexOf(_subtitleLayer);
+            if (at >= 0) Remove(at);
+            _subtitleLayer = null;
+            _subtitleBox = null;
+        }
+        if (feed == null) return;
+        if (_subtitleBox == null)
+        {
+            if (feed.Lines.Count == 0) return;
+            var box = new SubtitleBox(feed) { LineStyle = SubtitleStyle, CaptionStyle = CaptionStyle };
+            if (_styles != null)
+            {
+                var line = _styles.Get(SubtitleStyle);
+                var caption = CaptionStyle == null ? line : _styles.Get(CaptionStyle);
+                box.LineTextScale = line.TextScale;
+                box.LinePadding = line.Padding;
+                box.CaptionTextScale = caption.TextScale;
+                box.CaptionPadding = caption.Padding;
+            }
+            _subtitleBox = box;
+            _subtitleLayer = Add(box, null, modal: false);
+            _subtitleLayer.CloseOnBack = _subtitleLayer.CloseOnClickOutside = false;
+        }
+        _subtitleBox.Sync();
     }
 
     // A widget that paints something behind itself — a window's background, a frame (the box its style

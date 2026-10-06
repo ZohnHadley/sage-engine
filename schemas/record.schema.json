@@ -81,6 +81,7 @@
             "ui_layout",
             "ui_sounds",
             "ui_style",
+            "ui_style_set",
             "viewmodel",
             "water_surface",
             "weather",
@@ -942,6 +943,21 @@
           },
           "then": {
             "$ref": "ui_style.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "ui_style_set"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "ui_style_set.schema.json"
           }
         },
         {

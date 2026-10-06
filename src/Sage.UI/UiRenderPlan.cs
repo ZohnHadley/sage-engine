@@ -149,7 +149,7 @@ internal sealed class UiRenderPlan
             }
             if (options[i].Length == 0) continue;
             string option = Scripts.Shape(options[i]);   // joined, and in the order it is seen (#345)
-            var size = dropdown.MeasureOf(root.Text).Measure(option, dropdown.TextScale);   // in the dropdown's font (#338)
+            var size = dropdown.MeasureOf(root.Text).Measure(option, dropdown.EffectiveTextScale);   // in the dropdown's font (#338)
             if (Scripts.HasRightToLeft(option)) option = Scripts.Reorder(option, Scripts.ParagraphIsRightToLeft(option, root.RightToLeft));
             float left = root.RightToLeft ? row.Right - padding.Right - size.X : row.X + padding.Left;
             var at = new Rect(left, row.Y + (row.Height - size.Y) * 0.5f, size.X, size.Y);
@@ -159,7 +159,7 @@ internal sealed class UiRenderPlan
             text.Length = option.Length;
             text.Font = dropdown.Font;
             text.FontSize = dropdown.FontSize;
-            text.Size = dropdown.TextScale * scale;
+            text.Size = dropdown.EffectiveTextScale * scale;
         }
     }
 
@@ -387,9 +387,9 @@ internal sealed class UiRenderPlan
                 // typed, not the placeholder, which it sits in front of).
                 var measure = field.MeasureOf(_root.Text);   // in the field's own font (#338)
                 var at = field.Text.Length == 0 ? Vector2.Zero : field.CaretOffset(measure);
-                float line = measure.LineHeight * field.TextScale;
+                float line = measure.LineHeight * field.EffectiveTextScale;
                 if (field.Text.Length == 0) origin = Placed(label, label.TextArea, new Vector2(0f, line), Align.Start);
-                var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.TextScale, 1f), line);
+                var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.EffectiveTextScale, 1f), line);
                 Colour(ref _plan.Add(UiDrawKind.Rect, label, _root.ToPixels(caret)), to.Text, from.Text, blend);
             }
         }
@@ -409,16 +409,16 @@ internal sealed class UiRenderPlan
             if (fit)
             {
                 float height = label.Overflow == TextOverflow.Visible ? float.PositiveInfinity : area.Height;
-                size = TextLayout.Break(text, measure, label.TextScale, label.FitWidth(area.Width), height, label.Wrap, label.Overflow, lines);
+                size = TextLayout.Break(text, measure, label.EffectiveTextScale, label.FitWidth(area.Width), height, label.Wrap, label.Overflow, lines);
             }
             else if (bidi)
             {
-                size = TextLayout.Break(text, measure, label.TextScale, float.PositiveInfinity, float.PositiveInfinity, false, TextOverflow.Visible, lines);
+                size = TextLayout.Break(text, measure, label.EffectiveTextScale, float.PositiveInfinity, float.PositiveInfinity, false, TextOverflow.Visible, lines);
                 fit = true;   // a command per line, so each is reordered on its own
             }
             else
             {
-                size = measure.Measure(text, label.TextScale);
+                size = measure.Measure(text, label.EffectiveTextScale);
                 lines.Clear();
                 lines.Add(new TextLine(0, text.Length, size.X, false));
             }
@@ -430,11 +430,11 @@ internal sealed class UiRenderPlan
             // what does not fit is what is cut. Not fitted, the text is one command whatever its '\n's.
             var origin = Placed(label, area, size, align);
             if (size.Y > area.Height) origin.Y = area.Y;
-            float lineHeight = fit ? measure.LineHeight * label.TextScale : size.Y;
+            float lineHeight = fit ? measure.LineHeight * label.EffectiveTextScale : size.Y;
             float y = origin.Y, ellipsis = 0f;
             foreach (var line in lines)
             {
-                if (line.Ellipsis && ellipsis == 0f) ellipsis = measure.Width(TextLayout.Ellipsis, label.TextScale);
+                if (line.Ellipsis && ellipsis == 0f) ellipsis = measure.Width(TextLayout.Ellipsis, label.EffectiveTextScale);
                 if (line.Length > 0 || line.Ellipsis)
                 {
                     float x = Placed(label, area, new Vector2(line.Width, 0f), align).X;
@@ -443,7 +443,7 @@ internal sealed class UiRenderPlan
                     command.Text = text;
                     command.Start = line.Start;
                     command.Length = line.Length;
-                    command.Size = label.TextScale * scale;
+                    command.Size = label.EffectiveTextScale * scale;
                     command.Font = label.Font;
                     command.FontSize = label.FontSize;
                     command.Ellipsis = line.Ellipsis;

@@ -26,7 +26,9 @@ public sealed class UiModule : IModule
     public const string Id = "sage.ui";
 
     private Engine? _engine;
-    private CVar<string>? _lang;
+    private CVar<string>? _lang, _styleSet;
+    private CVar<float>? _uiScale, _textScale;
+    private CVar<bool>? _subtitles, _captions;
 
     public Localisation Localisation { get; } = new();
     public UiStyles Styles { get; } = new();
@@ -103,7 +105,28 @@ public sealed class UiModule : IModule
                 }
         });
 
+        // Accessibility (issue #351): the player's scale, text size, style set and subtitles, live.
+        _uiScale = ctx.Engine.CVars.Register("ui_scale", 1f, CVarFlags.Archive,
+            "How big the game's UI is drawn, 1 = as designed (0.5 to 3); the layout reflows to fit.", UiRoot.MinUiScale, UiRoot.MaxUiScale);
+        _textScale = ctx.Engine.CVars.Register("ui_text_scale", 1f, CVarFlags.Archive,
+            "How big the UI's text is, 1 = as designed (0.5 to 3), on top of ui_scale.", UiRoot.MinUiScale, UiRoot.MaxUiScale);
+        _styleSet = ctx.Engine.CVars.Register("ui_style_set", "", CVarFlags.Archive,
+            "The ui_style_set the UI is drawn with (high contrast, a colour-blind palette), by id; empty: the styles as written.");
+        _subtitles = ctx.Engine.CVars.Register("subtitles", true, CVarFlags.Archive, "Show lines of dialogue that are heard as subtitles.");
+        _captions = ctx.Engine.CVars.Register("captions", false, CVarFlags.Archive, "Show captions of sounds (\"[door creaks]\") that have one.");
+        _uiScale.Changed += _ => EachStack(stack => stack.UiScale = _uiScale.Value);
+        _textScale.Changed += _ => EachStack(stack => stack.TextScale = _textScale.Value);
+        _subtitles.Changed += _ => EachWorld(world => { if (world.Resources.TryGet<Subtitles>(out var s) && s != null) s.ShowDialogue = _subtitles.Value; });
+        _captions.Changed += _ => EachWorld(world => { if (world.Resources.TryGet<Subtitles>(out var s) && s != null) s.ShowCaptions = _captions.Value; });
+        _styleSet.Changed += _ =>
+        {
+            if (!_started) return;
+            Styles.UseSet(ActiveSet());
+            Screens.RebuildAll();
+        };
+
         ctx.Engine.Records.AddCheck<UiLayoutRecord>(UiContentChecks.Layout);
+        ctx.Engine.Records.AddCheck<UiStyleSetRecord>(UiAccessibilityChecks.StyleSet);
         ctx.Engine.Records.AddCheck<ScreenRecord>((screen, check) => UiContentChecks.ScreenViewModel(screen, check, viewModels));
 
         ctx.Engine.CVars.RegisterCommand("loc", CVarFlags.None,
@@ -169,8 +192,28 @@ public sealed class UiModule : IModule
         world.Resources.Add(Screens);
         world.Resources.Add(Fonts);
         // The widget screens this world has open (#97): headless here, drawn and fed by the client.
-        world.Resources.Add(new UiScreenStack(Screens, Styles, world, Fonts));
+        var subtitles = new Subtitles(Localisation) { ShowDialogue = _subtitles!.Value, ShowCaptions = _captions!.Value };
+        world.Resources.Add(subtitles);
+        world.Resources.Add(new UiScreenStack(Screens, Styles, world, Fonts)
+        {
+            UiScale = _uiScale!.Value,
+            TextScale = _textScale!.Value,
+            Subtitles = subtitles,
+        });
+        world.AddSystem(new SubtitleSystem(world));
     }
+
+    private void EachWorld(Action<World> act)
+    {
+        if (_engine == null) return;
+        foreach (var world in _engine.Worlds) act(world);
+    }
+
+    private void EachStack(Action<UiScreenStack> act) =>
+        EachWorld(world => { if (world.Resources.TryGet<UiScreenStack>(out var stack) && stack != null) act(stack); });
+
+    // The style set the cvar names, by id ("high_contrast" finds it in any namespace); empty when none.
+    private RecordId ActiveSet() => _styleSet!.Value.Length == 0 ? default : _engine!.Records.Resolve("ui_style_set", _styleSet.Value);
 
     // The entity a screen opened from the console is about: the first player-controlled one.
     private static Entity LocalPlayer(World world)
@@ -182,6 +225,7 @@ public sealed class UiModule : IModule
     private void ContentChanged()
     {
         var engine = _engine!;
+        Styles.UseSet(ActiveSet());
         if (_fontsRead) Fonts.Clear();   // a font file may have changed with the rest: read again on next use
         _fontsRead = true;
         Styles.Rebuild(engine.Records);
@@ -191,6 +235,7 @@ public sealed class UiModule : IModule
         // Every translation's completeness (#345): `sage validate` (and loc_check) only, as it reads
         // every language's tables and fonts.
         if (engine.Records.MissingAssetsAreErrors) UiContentChecks.Languages(engine.Records, engine.Vfs, Fonts);
+        if (BuildInfo.IsDevBuild) UiAccessibilityChecks.Contrast(engine.Records);
         Screens.RebuildAll();
     }
 }

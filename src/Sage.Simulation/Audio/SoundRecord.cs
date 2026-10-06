@@ -80,6 +80,15 @@ public sealed class SoundRecord
     [Property(Tooltip = "Decode as it plays instead of whole: for music, ambience and dialogue. Ogg Vorbis (.ogg) only")]
     public bool Stream;
 
+    // What a deaf or hard-of-hearing player reads when it plays (issue #351): text or a localisation
+    // key. With a Speaker (or on the Voice bus) it is a line of dialogue, shown while `subtitles` is on;
+    // otherwise a caption for the noise itself ("[door creaks]"), shown while `captions` is on.
+    [Property(Category = "Accessibility", Tooltip = "Subtitle or caption shown when it plays: text or @key; empty: none")]
+    public string Caption = "";
+
+    [Property(Category = "Accessibility", Tooltip = "Who says the caption, shown before it: text or @key; empty: a caption of the sound, not a line")]
+    public string Speaker = "";
+
     public bool Is2D => MaxDistance <= 0f;
 
     // What a sound's files are (issue #326): a `.wav` or an `.ogg`, which are what the client can play, and
