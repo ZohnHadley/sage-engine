@@ -604,6 +604,14 @@
         }
       ]
     },
+    "reverb_zone": {
+      "description": "The component sage:reverb_zone (ReverbZone), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:reverb_zone"
+        }
+      ]
+    },
     "rigid_body": {
       "description": "The component sage:rigid_body (RigidBody), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -1201,6 +1209,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:ragdoll_get_up"
+        }
+      ]
+    },
+    "sage:reverb_zone": {
+      "description": "Component sage:reverb_zone (ReverbZone).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:reverb_zone"
         }
       ]
     },
@@ -5368,6 +5384,62 @@
       },
       "additionalProperties": false,
       "description": "Component sage:ragdoll_get_up (RagdollGetUp)."
+    },
+    "sage:reverb_zone": {
+      "type": "object",
+      "properties": {
+        "reverb": {
+          "description": "Names a reverb record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:reverb"
+            }
+          ]
+        },
+        "size": {
+          "description": "Full extents of the box; a map brush entity's own brushes fill it in. Unit: m. At least 0. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "offset": {
+          "description": "Where the box's centre is, relative to the entity. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "priority": {
+          "description": "Higher wins where zones overlap. (int, default 0)",
+          "default": 0,
+          "type": "integer"
+        },
+        "fade": {
+          "description": "Seconds to blend into this zone's reverb (and out of it); 0 = the default, 1 s. Unit: s. Range: 0 to 30. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 30
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:reverb_zone (ReverbZone)."
     },
     "sage:rigid_body": {
       "type": "object",

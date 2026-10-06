@@ -286,6 +286,12 @@ public sealed class ClientModule : IModule
         voices.Changed += _ => _audioSettings!.MaxVoices = Math.Max(voices.Value, 1);
         _audioSettings.MaxVoices = Math.Max(voices.Value, 1);
 
+        // Occlusion's budget (issue #329): rays per frame from the listener to the voices, round-robin.
+        var occlusion = ctx.Engine.CVars.Register("snd_occlusion_rays", 8, CVarFlags.Archive,
+            "Occlusion rays per frame, listener to voice, shared round-robin by the voices; 0 turns occlusion off.");
+        occlusion.Changed += _ => _audioSettings!.OcclusionRays = Math.Max(occlusion.Value, 0);
+        _audioSettings.OcclusionRays = Math.Max(occlusion.Value, 0);
+
         ctx.Engine.CVars.RegisterCommand("snd_stats", CVarFlags.None,
             "What is playing, and what the mixer has refused or stolen.", _ =>
         {
@@ -300,8 +306,13 @@ public sealed class ClientModule : IModule
                 Log.Info(LogCat.Console, $"'{world.Name}': {mixer.Playing} voice(s) playing, " +
                                          $"backend {backend?.Playing ?? 0}; {mixer.Refused} refused, " +
                                          $"{mixer.Stolen} stolen since the last reset");
+                if (mixer.Environment is { } room)
+                    Log.Info(LogCat.Console, $"  reverb {(room.Zone.IsEmpty ? "none" : room.Zone.ToString())} " +
+                                             $"mix {room.Reverb.Mix:F2} (blend {room.Blend:F2}); " +
+                                             $"{room.RaysLastUpdate} occlusion ray(s) last frame");
                 foreach (var voice in mixer.Voices)
                     Log.Info(LogCat.Console, $"  {voice.Sound,-28} gain {voice.Gain:F2} pan {voice.Pan,5:F2} " +
+                                             $"occl {voice.Occlusion:F2} lowpass {voice.LowPass:F2} " +
                                              $"{(voice.Loop ? "loop" : "one-shot")}{(voice.Stopping ? " (stopping)" : "")}");
                 mixer.ResetStats();
             }
@@ -463,7 +474,8 @@ public sealed class ClientModule : IModule
         // world's origin space (R6), and two worlds do not share a frame. The backend is a world
         // resource so that the world's own teardown disposes it, and because voice handles are only
         // unique within one mixer — one shared backend would confuse two worlds' voices.
-        world.Resources.Add(new AudioMixer(_audioSettings!));
+        // With the room's effect on it (issue #329): occlusion rays and reverb zones, both headless.
+        world.Resources.Add(new AudioMixer(_audioSettings!) { Environment = new AudioEnvironment(world, _audioSettings!) });
         world.Resources.Add<IAudioBackend>(_audioDevice && _content != null
             ? new MonoGameAudioBackend(_content) : new NullAudioBackend());
         // Particles and the numbers over a fight are per world, like everything else that holds a
