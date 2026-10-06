@@ -110,6 +110,35 @@ public sealed class RenderEnvironment
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public float FogDensity;                                 // exp² only, per metre; 0: complete at FogEnd
 
+    // Written by the sky (issue 4n-16, SkyRules): the haze, the turning stars, the moon and the clouds. The
+    // defaults draw none of them and leave the haze where it was.
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float HazeBand = 0.12f;                           // sin of elevation the fog's haze reaches
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float HazeAbove;                                  // fog colour left over the whole sky, 0 to 1
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public Vector3 StarAxis = new(0f, 0.7071f, -0.7071f);    // the stars turn about it
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float StarTurn;                                   // radians through the day
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public AssetPath MoonTexture;                            // empty: no moon
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public Vector3 MoonDirection = Vector3.UnitY;            // toward the moon
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float MoonAge;                                    // 0 new, 0.5 full, of its cycle
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float MoonSize = 0.0436f;                         // angular radius, radians
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float MoonLevel;                                  // 0 (hidden by day or a heavy sky) to 1
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public AssetPath CloudTexture;                           // empty: no clouds
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float CloudCover;                                 // 0 clear to 1 overcast
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float CloudScale = 1.5f;
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public Vector2 CloudScroll;                              // repeats of the picture, 0..1
+
     // Draw distance per sort layer (issue 4n-1, MeshLod.PastLayerDistance): a mesh on layer i farther from
     // the camera than LayerDrawDistance[i] metres is not drawn. 0 (the default): no limit. Put small props
     // on a layer of their own and give it a short one.

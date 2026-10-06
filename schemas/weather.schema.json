@@ -171,6 +171,13 @@
       "minItems": 3,
       "maxItems": 3
     },
+    "cloudCover": {
+      "description": "With a sky that names a cloud picture: how much of the sky is cloud, 0 clear to 1 overcast; blended as the weather changes (issue 4n-16) Range: 0 to 1. Category: Sky. (float, default 0.3)",
+      "default": 0.3,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
     "fogStartScale": {
       "description": "With a sky: multiplies where fog begins (below 1 pulls it in) At least 0. Category: Sky. (float, default 1)",
       "default": 1,

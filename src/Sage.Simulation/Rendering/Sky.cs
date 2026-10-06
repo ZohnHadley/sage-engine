@@ -42,6 +42,28 @@ public sealed class SkyRecord
     [Property(Tooltip = "How fog thickens with distance: Linear (start to end) or Exp2 (soft, then closing in fast; issue 4h-5)", Category = "Fog")]
     public FogMode FogMode = FogMode.Linear;
 
+    [Property(Min = 0.01f, Max = 1, Tooltip = "How high above the horizon fog's haze reaches (sin of elevation); 0.12 is about seven degrees", Category = "Fog")]
+    public float HazeBand = SkyRules.HazeBand;
+    [Property(Min = 0, Max = 1, Tooltip = "How much fog colour stays over the whole sky above the haze band: 0 leaves it clear, 1 is a fog bank to the zenith (issue 4n-16)", Category = "Fog")]
+    public float HazeAbove;
+
+    [AssetKind("texture"), Property(Tooltip = "The moon's picture, drawn as a disc whose phase follows the world's calendar (CalendarRecord.MoonCycle) and which crosses the sky opposite the sun at the full. Empty: no moon (issue 4n-16)", Category = "Moon")]
+    public AssetPath Moon;
+    [Property(Min = 0.1f, Max = 45, Unit = "deg", Tooltip = "The moon's angular width", Category = "Moon")]
+    public float MoonSize = 5f;
+
+    [AssetKind("texture"), Property(Tooltip = "A cloud layer: a tiling grey picture whose bright parts are cloud, thresholded by the weather's cloudCover and scrolled across the sky with the hour. Empty: no clouds (issue 4n-16)", Category = "Clouds")]
+    public AssetPath Clouds;
+    [Property(Min = 0.05f, Max = 20, Tooltip = "How many times the cloud picture repeats across the sky", Category = "Clouds")]
+    public float CloudScale = 1.5f;
+    [Property(Min = 0, Unit = "1/h", Tooltip = "How fast the clouds drift, in repeats of the picture per game hour", Category = "Clouds")]
+    public float CloudSpeed = 0.05f;
+    [Property(Min = 0, Max = 360, Unit = "deg", Tooltip = "Which way the clouds drift, turning from +x toward +z", Category = "Clouds")]
+    public float CloudDirection;
+
+    [Property(Min = 0, Max = 90, Unit = "deg", Tooltip = "How high the pole star is: the stars turn about an axis this far above the northern (-z) horizon, once a day (issue 4n-16)", Category = "Stars")]
+    public float StarTilt = 45f;
+
     [Property(Tooltip = "The keyframes, by hour; any order, any number. One is a sky that never changes")]
     public List<SkyKey> Keys = new();
 }
@@ -198,7 +220,12 @@ public static class SkyRules
 
     // How much fog colour covers the sky at a sin(elevation): all of it at and below the horizon, none
     // above `HazeBand`.
-    public static float Haze(float elevation) => 1f - Smooth(elevation / HazeBand);
+    public static float Haze(float elevation) => Haze(elevation, HazeBand, 0f);
+
+    // The same with the sky's own band, and the fog colour that stays over the whole sky above it
+    // (`SkyRecord.HazeAbove`, issue 4n-16): never less than `above`.
+    public static float Haze(float elevation, float band, float above) =>
+        MathF.Max(1f - Smooth(elevation / MathF.Max(band, 0.001f)), Math.Clamp(above, 0f, 1f));
 
     // How much of the sun disc covers a view direction (0 to 1). The disc is where the light comes from:
     // `sunDirection` is the way the light travels.
@@ -214,8 +241,130 @@ public static class SkyRules
     {
         var d = Vector3.Normalize(direction);
         var sky = Gradient(environment.ClearColor, environment.Zenith, d.Y);
-        if (environment.Fog) sky = Vector3.Lerp(sky, environment.FogColor, Haze(d.Y));
-        return sky + environment.SunColor * (SunDiscGain * SunDisc(d, environment.SunDirection));
+        var cloud = environment.CloudCover > 0f && !environment.CloudTexture.IsEmpty ? CloudColor(environment) : Vector3.Zero;
+        // Clouds need the picture: `ColorAt` (no texture here) draws them at their mean, which is what a
+        // test of the colours around a cloud needs; the shader samples the picture instead.
+        float cloudAlpha = cloud != Vector3.Zero ? CloudAlpha(0.5f, environment.CloudCover) * CloudFade(d.Y) : 0f;
+        if (cloudAlpha > 0f) sky = Vector3.Lerp(sky, cloud, cloudAlpha);
+        if (environment.Fog) sky = Vector3.Lerp(sky, environment.FogColor, Haze(d.Y, environment.HazeBand, environment.HazeAbove));
+        return sky + environment.SunColor * (SunDiscGain * SunDisc(d, environment.SunDirection) * (1f - CloudBlock * cloudAlpha));
+    }
+
+    // ---- Moon, clouds, turning stars (issue 4n-16) ------------------------------------------------------
+    //
+    // All of it is arithmetic on the clock, the calendar and the weather, so "is the moon up at midnight at
+    // the full" and "how much cloud is there in a storm" are numbers a test asks (test: SkyExtrasTests).
+    // `sky.fx` repeats `MoonDisc`, `MoonLit`, `CloudAlpha` and `RotateStars` over the same values.
+
+    // How much of the sun disc, the moon and the stars a full cloud hides.
+    public const float CloudBlock = 0.9f;
+    // How far across (in cloud sample) the coverage threshold softens a cloud's edge.
+    private const float CloudSoftness = 0.3f;
+    // Where, over the horizon (sin of elevation), the cloud layer is gone: it flattens out in the distance.
+    private const float CloudHorizon = 0.25f;
+    // The moon at its brightest, over its picture.
+    public const float MoonGain = 1.4f;
+
+    // How far through its cycle the moon is at a moment, in [0, 1): 0 new, 0.5 full. Continuous through the
+    // day, so it does not step at midnight.
+    public static double MoonAgeAt(CalendarRecord? calendar, int day, double hour) =>
+        (calendar ?? CalendarRecord.Default).MoonAgeAt(day + hour / 24.0);
+
+    // Which way the moon is, as the direction toward it. A new moon is where the sun is; each day it falls
+    // a twenty-ninth of the circle behind, so a first quarter peaks at sunset and the full rises as the sun
+    // sets: the sun's own path read at an earlier hour.
+    public static Vector3 MoonDirection(SkyRecord sky, double hour, double moonAge) =>
+        SunAt(sky, hour - moonAge * 24.0).ToSun;
+
+    // How much of the moon disc covers a view direction (0 to 1), and where in the disc it is: `local` runs
+    // -1..1 across, x to the viewer's right as they face the moon, y up. `radius` is the angular radius, in
+    // radians.
+    public static float MoonDisc(Vector3 direction, Vector3 toMoon, float radius, out Vector2 local)
+    {
+        local = Vector2.Zero;
+        var d = Vector3.Normalize(direction);
+        var m = Vector3.Normalize(toMoon);
+        float c = Vector3.Dot(d, m);
+        if (c <= 0f) return 0f;
+        var right = Vector3.Cross(m, Vector3.UnitY);
+        right = right.LengthSquared() < 1e-6f ? Vector3.UnitX : Vector3.Normalize(right);
+        var up = Vector3.Cross(right, m);
+        var p = d / c - m;                          // where the view ray meets the plane, from the disc's centre
+        local = new Vector2(Vector3.Dot(p, right), Vector3.Dot(p, up)) / MathF.Tan(radius);
+        float r = local.Length();
+        return 1f - Smooth((r - 0.92f) / 0.08f);
+    }
+
+    // How much of the disc's surface at `local` the sun lights at this age: all of it at the full, none at
+    // the new, the right half at the first quarter (as seen from the northern hemisphere).
+    public static float MoonLit(Vector2 local, double moonAge)
+    {
+        float r2 = Math.Min(1f, local.LengthSquared());
+        float z = MathF.Sqrt(1f - r2);
+        float alpha = (float)(moonAge * 2.0 * Math.PI);
+        float facing = local.X * MathF.Sin(alpha) + z * -MathF.Cos(alpha);   // the surface normal against the sun
+        return Smooth(facing * 5f);
+    }
+
+    // How much of a cloud picture's sample (0 to 1) is cloud at a coverage (0 clear to 1 overcast): none of
+    // it at 0, all of it at 1, the brightest parts first as coverage grows.
+    public static float CloudAlpha(float sample, float cover) =>
+        Smooth((sample - 1f + (1f + CloudSoftness) * Math.Clamp(cover, 0f, 1f)) / CloudSoftness);
+
+    // How much of the cloud layer shows toward a view direction: it thins to nothing at the horizon.
+    public static float CloudFade(float elevation) => Smooth(elevation / CloudHorizon);
+
+    // Where the cloud picture is looked up for a view direction: the layer is a plane overhead, so far
+    // clouds bunch toward the horizon. `scroll` is `CloudScroll`.
+    public static Vector2 CloudUv(Vector3 direction, float scale, Vector2 scroll)
+    {
+        var d = Vector3.Normalize(direction);
+        return new Vector2(d.X, d.Z) / (MathF.Max(d.Y, 0f) + 0.2f) * scale + scroll;
+    }
+
+    // The clouds' lighting: the sky's own ambient and the sun on top, so they are bright by day and gone
+    // dark at night, and take the weather's dimming.
+    public static Vector3 CloudColor(RenderEnvironment environment) =>
+        Vector3.Min(environment.AmbientSky * 1.8f + environment.SunColor * 0.6f, new Vector3(1.2f));
+
+    // How far the clouds have drifted (in repeats of the picture, wrapped to 0..1) after this many game
+    // hours since day 0, at the sky's speed and direction.
+    public static Vector2 CloudScroll(SkyRecord sky, double elapsedHours)
+    {
+        double rad = sky.CloudDirection * Math.PI / 180.0;
+        double travel = elapsedHours * sky.CloudSpeed;
+        double x = travel * Math.Cos(rad), z = travel * Math.Sin(rad);
+        return new Vector2((float)(x - Math.Floor(x)), (float)(z - Math.Floor(z)));
+    }
+
+    // How much cloud the weather has now: its `CloudCover`, blended as the weather is.
+    public static float CloudCoverOf(RecordStore records, Weather weather)
+    {
+        var (from, to, t) = WeatherRules.Blend(records, weather);
+        return Math.Clamp(Lerp(from.CloudCover, to.CloudCover, t), 0f, 1f);
+    }
+
+    // The stars' turn: once round in a day, so they are where they were at the same hour tomorrow.
+    public static float StarTurn(double hour)
+    {
+        hour -= Math.Floor(hour / 24.0) * 24.0;
+        return (float)(hour / 24.0 * 2.0 * Math.PI);
+    }
+
+    // The axis the stars turn about: toward the pole, `tilt` degrees above the northern (-z) horizon.
+    public static Vector3 StarAxis(float tiltDegrees)
+    {
+        float t = Math.Clamp(tiltDegrees, 0f, 90f) * MathF.PI / 180f;
+        return new Vector3(0f, MathF.Sin(t), -MathF.Cos(t));
+    }
+
+    // A view direction in the stars' own frame (the stars are fixed in it; the sky turns round them): the
+    // direction turned about the axis by minus the day's angle.
+    public static Vector3 RotateStars(Vector3 direction, Vector3 axis, float turn)
+    {
+        var k = Vector3.Normalize(axis);
+        float c = MathF.Cos(-turn), s = MathF.Sin(-turn);
+        return direction * c + Vector3.Cross(k, direction) * s + k * (Vector3.Dot(k, direction) * (1f - c));
     }
 
     // ---- Putting the sky in the world --------------------------------------------------------------
@@ -230,7 +379,12 @@ public static class SkyRules
     // fog and sky colours and pulls its fog in. `sage:clear` is all ones, and changes nothing. The
     // baseline is recomputed from the clock each time, so weather never bakes into it: a storm at dusk
     // goes on dimming as dusk does (test: AStormAtDuskKeepsDimmingWithTheDusk).
-    public static void Apply(SkyRecord sky, double hour, RecordStore records, Weather weather, RenderEnvironment environment)
+    public static void Apply(SkyRecord sky, double hour, RecordStore records, Weather weather, RenderEnvironment environment) =>
+        Apply(sky, hour, 0, null, records, weather, environment);
+
+    // The same on a given day of a calendar, which the moon's phase and the clouds' drift are read from
+    // (issue 4n-16); with no calendar the default one.
+    public static void Apply(SkyRecord sky, double hour, int day, CalendarRecord? calendar, RecordStore records, Weather weather, RenderEnvironment environment)
     {
         var state = Evaluate(sky, hour);
         var (from, to, t) = WeatherRules.Blend(records, weather);
@@ -257,6 +411,27 @@ public static class SkyRules
         environment.FogMode = sky.FogMode;
         environment.FogDensity = state.FogDensity > 0f ? state.FogDensity / MathF.Max(endScale, 0.01f) : 0f;
         environment.Stars = state.Stars * Math.Clamp(sun, 0f, 1f);
+
+        // Issue 4n-16: the haze, the turning stars, the moon and the clouds. A sky that names no moon and no
+        // clouds leaves their parameters at their defaults, and the pass draws what it did.
+        environment.HazeBand = sky.HazeBand;
+        environment.HazeAbove = sky.HazeAbove;
+        environment.StarAxis = StarAxis(sky.StarTilt);
+        environment.StarTurn = StarTurn(hour);
+
+        double age = MoonAgeAt(calendar, day, hour);
+        environment.MoonTexture = sky.Moon;
+        environment.MoonAge = (float)age;
+        environment.MoonDirection = MoonDirection(sky, hour, age);
+        environment.MoonSize = sky.MoonSize * MathF.PI / 180f * 0.5f;
+        // Bright at night, faint by day (the sun's daylight), and dimmed as the weather is heavy.
+        float daylight = Smooth(state.SunElevation / Fade);
+        environment.MoonLevel = (1f - 0.9f * daylight) * Math.Clamp(sun, 0f, 1f);
+
+        environment.CloudTexture = sky.Clouds;
+        environment.CloudCover = CloudCoverOf(records, weather);
+        environment.CloudScale = sky.CloudScale;
+        environment.CloudScroll = CloudScroll(sky, day * 24.0 + hour);
     }
 
     private static float Smooth(float x)
@@ -293,7 +468,7 @@ internal sealed class SkySystem : ISystem
             && SkyRules.Current(records, clock) is { } sky
             && resources.TryGet<Weather>(out var weather) && weather != null)
         {
-            SkyRules.Apply(sky, clock.Hour, records, weather, environment);
+            SkyRules.Apply(sky, clock.Hour, clock.Day, Calendars.Of(_world), records, weather, environment);
             if (resources.TryGet<WeatherSky>(out var overhead) && overhead != null) LightningRules.Apply(overhead, environment);
             _drew = true;
         }

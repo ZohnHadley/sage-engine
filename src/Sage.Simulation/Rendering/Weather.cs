@@ -49,6 +49,8 @@ public sealed class WeatherRecord
     public Vector3 FogTint = Vector3.One;
     [Property(Tooltip = "With a sky: multiplies the sky's horizon and zenith colours", Category = "Sky")]
     public Vector3 SkyTint = Vector3.One;
+    [Property(Min = 0, Max = 1, Tooltip = "With a sky that names a cloud picture: how much of the sky is cloud, 0 clear to 1 overcast; blended as the weather changes (issue 4n-16)", Category = "Sky")]
+    public float CloudCover = 0.3f;
     [Property(Min = 0, Tooltip = "With a sky: multiplies where fog begins (below 1 pulls it in)", Category = "Sky")]
     public float FogStartScale = 1f;
     [Property(Min = 0, Tooltip = "With a sky: multiplies where fog is complete", Category = "Sky")]
