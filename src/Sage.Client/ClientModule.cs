@@ -22,6 +22,7 @@ public sealed class ClientModule : IModule
 {
     private ContentService? _content;
     private ClientHost? _host;
+    private DropDownConsole? _console;
     private UiResources? _ui;
     private Renderer? _renderer;
     private RendererCVars? _rendererCVars;
@@ -438,6 +439,9 @@ public sealed class ClientModule : IModule
         _audioDevice = HasAudioDevice();
         _actionIds = ctx.Engine.Actions;
         _devices = ctx.Get<InputDevices>();   // typed characters for a screen's field (13 §3)
+        // The Shipping console the host drives (#353); a host without one (a tool) has no drop-down.
+        try { _console = ctx.Get<DropDownConsole>(); }
+        catch (InvalidOperationException) { _console = null; }
     }
 
     public void OnWorldCreated(World world)
@@ -507,6 +511,7 @@ public sealed class ClientModule : IModule
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
         world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!));
+        if (_console != null) world.AddSystem(new ConsoleSystem(world, _console));
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _shaders!, _assetHotReload!));
     }
 
