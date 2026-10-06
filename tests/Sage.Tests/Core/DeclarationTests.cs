@@ -61,6 +61,7 @@ public class DeclarationTests
             ["viewmodel"] = RegistrationOwners.Core,          // first-person arms (#121)
             ["mesh_lod"] = RegistrationOwners.Core,           // a LOD group a mesh renderer names (issue 4n-1)
             ["water_surface"] = RegistrationOwners.Core,      // how a water volume's top looks (issue #411)
+            ["skeleton_map"] = RegistrationOwners.Core,       // retargeting a clip library onto another rig (#360)
             ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
             ["rpg_item"] = "sage.kits.rpg",          // an item's footprint on the inventory grid (#98)
             ["area_map"] = "sage.kits.rpg",          // a scene's map picture and fog (#349)
@@ -80,7 +81,7 @@ public class DeclarationTests
     public void APluginThatIsNotLoadedRegistersNothing()
     {
         using var app = HeadlessApp.Bare().Build();
-        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "calendar_event", "mesh_lod", "placements", "prefab", "ragdoll", "reverb", "rumble", "scene", "skeleton_sockets", "sky", "state_machine", "terrain", "terrain_material", "viewmodel", "water_surface" }, app.Records.TypeNames);
+        Assert.Equal(new[] { "anim_events", "anim_graph", "calendar", "calendar_event", "mesh_lod", "placements", "prefab", "ragdoll", "reverb", "rumble", "scene", "skeleton_map", "skeleton_sockets", "sky", "state_machine", "terrain", "terrain_material", "viewmodel", "water_surface" }, app.Records.TypeNames);
     }
 
     // Plugin ids on declarations are strings, and one naming a plugin in another assembly (the client)

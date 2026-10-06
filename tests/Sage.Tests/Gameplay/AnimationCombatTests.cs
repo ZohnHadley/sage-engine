@@ -70,6 +70,47 @@ public class AnimationCombatTests
         return app;
     }
 
+    // anim_debug lists sprites (issue #364): a plain sprite's clip, step and sheet frame, and a graph-driven
+    // one's too, naming its graph; the filter narrows by entity name.
+    [Xunit.Fact]
+    public void AnimDebugListsSpriteClipsAndFrames()
+    {
+        using var app = NewGame();
+        var world = app.World;
+        var sheet = app.Records.Get<SpriteSheetRecord>(new RecordId("sage", "goblin"));
+        var plain = world.Create(Transform.At(Vector3.Zero), "plain_goblin");
+        world.Add(plain, new SpriteRenderer { Sheet = new RecordId("sage", "goblin") });
+        world.Add(plain, SpriteAnimator.Play(sheet.ClipIndex("idle")));
+        var graphed = world.Create(Transform.At(Vector3.Zero), "graph_goblin");
+        world.Add(graphed, new SpriteRenderer { Sheet = new RecordId("sage", "goblin") });
+        world.Add(graphed, new Animator { Graph = new RecordId("sage", "goblin") });
+        world.Add(graphed, new SpriteAnimator());
+        for (int i = 0; i < 5; i++) world.RunFixed(Dt);
+
+        using var log = new CaptureSink();
+        app.CVars.Execute("anim_debug goblin");
+        string text = string.Join("\n", log.Entries.Select(e => e.Message));
+        Assert.Contains("plain_goblin", text);
+        Assert.Contains("sprite sage:goblin, clip idle step", text);
+        Assert.Contains("sheet frame", text);
+        Assert.Contains("driven by graph", text);
+
+        string line = SpriteAnimDebugLine(world, plain, app);
+        Assert.Contains("playing", line);
+        Assert.DoesNotContain("driven by graph", line);
+
+        using var filtered = new CaptureSink();
+        app.CVars.Execute("anim_debug plain_");
+        Assert.DoesNotContain("graph_goblin", string.Join("\n", filtered.Entries.Select(e => e.Message)));
+    }
+
+    private static string SpriteAnimDebugLine(World world, Entity e, HeadlessApp app)
+    {
+        var lines = new List<string>();
+        world.Resources.Get<IAnimDebugSource>().Describe(world, World.Describe(e), lines);
+        return string.Join("\n", lines);
+    }
+
     // A fighter at `x` swinging `attack` at a victim 1.2 m in front of it, and the victim.
     private static (Entity Fighter, Entity Victim) Pair(HeadlessApp app, float x, string attack, Action<Entity> dress)
     {

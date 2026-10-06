@@ -61,6 +61,15 @@ public interface IAnimationEventSink
     void Raise(World world, Entity entity, string name);
 }
 
+// Extra lines for anim_debug, from what plays animation without an Animator (a sprite's own clip, which
+// lives in Sage.Gameplay). One per world, a resource; Sage.Gameplay installs one for sprites. Adds a line
+// to `lines` per entity whose label contains `filter` (all of them when it is empty).
+[Experimental(AnimationApi.Experimental, UrlFormat = AnimationApi.Url)]
+public interface IAnimDebugSource
+{
+    void Describe(World world, string filter, List<string> lines);
+}
+
 internal static class AnimEvents
 {
     // Gives a loaded set's clips the events the anim_events records name for its model, replacing what
