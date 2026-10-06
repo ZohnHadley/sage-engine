@@ -22,6 +22,24 @@ namespace Sage.Simulation;
 // past the sphere toward the sun, so a cliff behind you still shades the path in front
 // (test: CastersBetweenTheSunAndTheViewAreKept).
 //
+// **Cascades** (issue 4n-11): the view from its near plane to `r_shadow_distance` is cut into up to three
+// slices (`CascadeSplits`, a blend of even and logarithmic splits), and each slice gets its own map fitted
+// as above (`FitCascades`), so the ground at your feet has centimetre texels and the hillside 100 m off
+// still has a shadow. Each cascade is stable on its own: its own sphere, its own snapped grid
+// (test: EveryCascadeKeepsItsTexelGrid). The maps share one render target, laid out by `Atlas`, and a
+// surface reads the first cascade that holds it with a texel to spare for the filter (`CascadeOf`, the
+// shader's choice; test: EachCascadeHoldsItsSliceAndTheNearerOnesAreFiner).
+//
+// **The sun's direction is quantised** (`QuantiseSun`): its elevation and azimuth snap to a step
+// (`r_shadow_sun_step` degrees), so the light's axes, and with them every cascade's texel grid, hold
+// still while the sun creeps across the sky, and move once a step instead of every frame
+// (test: AQuantisedSunHoldsTheGridStill). Lighting still uses the true sun.
+//
+// **Alpha-tested materials cast cut-out shadows** (`Casts`, `CasterTechnique`): a leaf card or a fence
+// drawn with an AlphaTested material is drawn into the map with its texture's alpha clipped at its
+// `AlphaCutoff`, as the scene draws it; sprites do the same, turned to face the sun (`BillboardAxes`)
+// (test: ALeafBillboardCastsACutOutShadow).
+//
 // Everything is camera-relative, like the renderer (06 §3.3): `View` has no translation, and the matrices
 // take a position relative to the camera the fit was made for.
 [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
@@ -59,9 +77,24 @@ public readonly struct ShadowFit
 [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
 public static class ShadowMath
 {
-    // Decision 1's defaults: `r_shadow_size` and `r_shadow_distance`.
+    // Decision 1's defaults: `r_shadow_size` (texels a side of each cascade) and `r_shadow_distance`.
+    // Three cascades reach well past the single map's 60 m (issue 4n-11).
     public const int DefaultSize = 2048;
-    public const float DefaultDistance = 60f;
+    public const float DefaultDistance = 150f;
+
+    // Cascades (issue 4n-11): `r_shadow_cascades`, 1 to MaxCascades (the shaders read three).
+    public const int DefaultCascades = 3;
+    public const int MaxCascades = 3;
+
+    // How far the splits lean from even (0) toward logarithmic (1): mostly logarithmic, so the nearest
+    // cascade is a few metres deep, with enough of the even split that the far ones are not enormous.
+    public const float DefaultSplitBlend = 0.75f;
+
+    // The largest render target the atlas of cascades may be, a side (MonoGame's HiDef limit).
+    public const int MaxAtlasSize = 4096;
+
+    // `r_shadow_sun_step`: the sun's direction snaps to this many degrees of elevation and azimuth.
+    public const float DefaultSunStep = 0.25f;
 
     // How far toward the sun, past the slice's sphere, a caster is still drawn into the map. A low sun
     // throws long shadows: a 20 m tree 150 m away at dusk reaches the path.
@@ -101,14 +134,15 @@ public static class ShadowMath
     public static ShadowFit Fit(Vector3 camera, Vector3 forward, float centerDistance, float radius, Vector3 sunDirection,
                                 int size, Vector3 origin, float casterReach = DefaultCasterReach)
     {
-        if (size < 2) throw new ArgumentOutOfRangeException(nameof(size), "A shadow map is at least two texels a side.");
         var sun = Vector3.Normalize(sunDirection);
         var up = MathF.Abs(sun.Y) > 0.99f ? Vector3.UnitZ : Vector3.UnitY;
         var view = Matrix4x4.CreateLookAt(Vector3.Zero, sun, up);   // camera-relative: no translation
 
+        if (size < 4) throw new ArgumentOutOfRangeException(nameof(size), "A shadow map is at least four texels a side.");
         radius = MathF.Ceiling(MathF.Max(radius, RadiusStep) / RadiusStep) * RadiusStep;
-        // One texel spare: the corner snaps down by up to a texel, and the sphere must still fit.
-        float texel = 2f * radius / (size - 1);
+        // Three texels spare: the corner snaps down by up to a texel, and the filter's texel on each side
+        // of the sphere must still be on this map (CascadeOf keeps one texel off each edge).
+        float texel = 2f * radius / (size - 3);
 
         var center = Vector3.Normalize(forward) * centerDistance;
         var local = Vector3.Transform(center, view);
@@ -119,8 +153,8 @@ public static class ShadowMath
         double anchorX = ax * view.M11 + ay * view.M21 + az * view.M31;
         double anchorY = ax * view.M12 + ay * view.M22 + az * view.M32;
 
-        double minX = Math.Floor((anchorX + local.X - radius) / texel) * texel;
-        double minY = Math.Floor((anchorY + local.Y - radius) / texel) * texel;
+        double minX = (Math.Floor((anchorX + local.X - radius) / texel) - 1) * texel;
+        double minY = (Math.Floor((anchorY + local.Y - radius) / texel) - 1) * texel;
         float left = (float)(minX - anchorX), bottom = (float)(minY - anchorY);
         float right = left + size * texel, top = bottom + size * texel;
 
@@ -167,8 +201,146 @@ public static class ShadowMath
         return elevation <= MinElevation ? 0f : Math.Clamp(environment, 0f, 1f);
     }
 
-    // What casts a shadow (the extract's rule): an opaque material that says so. Alpha-tested and
-    // transparent ones do not (no clip in the caster yet), nor do sprites, particles, debug lines or the
-    // viewmodel, which the caster view never collects (test: OnlyOpaqueMaterialsThatSaySoCastShadows).
-    public static bool Casts(RenderPass pass, bool castShadows) => castShadows && pass == RenderPass.Opaque;
+    // What casts a shadow (the extract's rule): an opaque or alpha-tested material that says so — an
+    // alpha-tested one with its cut-out (issue 4n-11; `CasterTechnique`), meshes and sprites alike.
+    // Transparent ones do not, nor do particles, decals, debug lines or the viewmodel, which the caster
+    // views never collect (tests: OnlyOpaqueMaterialsThatSaySoCastShadows, AlphaTestedMaterialsCastCutOutShadows).
+    public static bool Casts(RenderPass pass, bool castShadows) =>
+        castShadows && (pass == RenderPass.Opaque || pass == RenderPass.AlphaTested);
+
+    // The technique a caster is drawn into the map with. An opaque mesh needs only its depth, so it is
+    // drawn with the default effect's `ShadowCaster` (`ShadowCasterSkinned`) whatever its material; an
+    // alpha-tested one is drawn with its own material's effect and parameters and that effect's
+    // `ShadowCasterAlphaTest` (`ShadowCasterAlphaTestSkinned`), which clips at its `AlphaCutoff` as the
+    // scene does. lit.fx and sprite.fx have them; an effect without one casts nothing, said once.
+    public static string CasterTechnique(RenderPass pass, bool skinned) => pass == RenderPass.AlphaTested
+        ? (skinned ? "ShadowCasterAlphaTestSkinned" : "ShadowCasterAlphaTest")
+        : (skinned ? "ShadowCasterSkinned" : "ShadowCaster");
+
+    // Whether a texel of a cut-out caster is drawn into the map: the shaders' `clip(alpha - cutoff)`,
+    // which keeps alpha at the cutoff and discards what is below it.
+    public static bool CutOutKeeps(float alpha, float cutoff) => alpha - cutoff >= 0f;
+
+    // ---- Cascades (issue 4n-11) ----
+
+    // Where each of `splits.Length` cascades ends, from `near` to `far`: a blend of the even split and the
+    // logarithmic one (`blend` 0 even, 1 logarithmic). The last is `far`; each is past the one before.
+    public static void CascadeSplits(float near, float far, Span<float> splits, float blend = DefaultSplitBlend)
+    {
+        int n = splits.Length;
+        if (n == 0) return;
+        if (!(far > near)) throw new ArgumentOutOfRangeException(nameof(far), "The far end is past the near one.");
+        float logNear = MathF.Max(near, 1e-3f);
+        blend = Math.Clamp(blend, 0f, 1f);
+        for (int i = 1; i < n; i++)
+        {
+            float f = (float)i / n;
+            float even = near + (far - near) * f;
+            float log = logNear * MathF.Pow(far / logNear, f);
+            splits[i - 1] = even + (log - even) * blend;
+        }
+        splits[n - 1] = far;
+    }
+
+    // The maps of a cascaded view: `fits.Length` cascades (1 to MaxCascades) from `near` to `far`, each
+    // `Fit` to its own slice's sphere, with `splits` (as long as `fits`) where each ends. The lens is the
+    // view's: `orthographic` false with `lensX`/`lensY` the tangents of half its fields of view, or true with
+    // them its half width and height in metres.
+    public static void FitCascades(Vector3 camera, Vector3 forward, bool orthographic, float lensX, float lensY, float near, float far,
+                                   Vector3 sunDirection, int size, Vector3 origin, Span<ShadowFit> fits, Span<float> splits,
+                                   float casterReach = DefaultCasterReach, float blend = DefaultSplitBlend)
+    {
+        if (fits.Length is < 1 or > MaxCascades) throw new ArgumentOutOfRangeException(nameof(fits), $"1 to {MaxCascades} cascades.");
+        if (splits.Length != fits.Length) throw new ArgumentException("One split per cascade.", nameof(splits));
+        CascadeSplits(near, far, splits, blend);
+        float from = near;
+        for (int i = 0; i < fits.Length; i++)
+        {
+            var (centre, radius) = orthographic
+                ? OrthographicSlice(from, splits[i], lensX, lensY)
+                : PerspectiveSlice(from, splits[i], lensX, lensY);
+            fits[i] = Fit(camera, forward, centre, radius, sunDirection, size, origin, casterReach);
+            from = splits[i];
+        }
+    }
+
+    // Which cascade a camera-relative point is shadowed by: the first whose map holds it with a texel to
+    // spare on every side (the 2x2 filter reads its neighbour), within its depth range — common.fxh's
+    // `ShadowLit` makes the same choice. -1: none (the sun is unshadowed there).
+    public static int CascadeOf(ReadOnlySpan<ShadowFit> fits, Vector3 relative)
+    {
+        for (int i = 0; i < fits.Length; i++)
+        {
+            var c = ToClip(fits[i], relative);
+            float edge = 1f - 2f / fits[i].Size;   // one texel, in clip units
+            if (MathF.Abs(c.X) <= edge && MathF.Abs(c.Y) <= edge && c.Z >= 0f && c.Z <= 1f) return i;
+        }
+        return -1;
+    }
+
+    // How the cascades share one render target: `cascades` maps of `CascadeSize` texels a side (`size`,
+    // or less, so the whole is at most `maxTexture` a side), side by side in up to two columns and rows.
+    public static ShadowAtlas Atlas(int cascades, int size, int maxTexture = MaxAtlasSize)
+    {
+        cascades = Math.Clamp(cascades, 1, MaxCascades);
+        int columns = cascades == 1 ? 1 : 2;
+        int rows = cascades <= 2 ? 1 : 2;
+        int cascadeSize = Math.Max(4, Math.Min(size, maxTexture / Math.Max(columns, rows)));
+        return new ShadowAtlas(cascades, cascadeSize, columns, rows);
+    }
+
+    // ---- The sun (issue 4n-11) ----
+
+    // The sun's direction with its elevation and azimuth snapped to `stepDegrees` (0: as it is). Two
+    // directions within the same step give the same answer, so the same light axes and the same grids.
+    public static Vector3 QuantiseSun(Vector3 sunDirection, float stepDegrees)
+    {
+        if (sunDirection.LengthSquared() < 1e-12f) return sunDirection;
+        var d = Vector3.Normalize(sunDirection);
+        if (!(stepDegrees > 0f)) return d;
+        double step = stepDegrees * Math.PI / 180.0;
+        double elevation = Math.Asin(Math.Clamp(-d.Y, -1f, 1f));   // the light travels down when the sun is up
+        double azimuth = Math.Atan2(d.X, d.Z);
+        elevation = Math.Round(elevation / step) * step;
+        azimuth = Math.Round(azimuth / step) * step;
+        double c = Math.Cos(elevation);
+        return Vector3.Normalize(new Vector3((float)(c * Math.Sin(azimuth)), (float)-Math.Sin(elevation), (float)(c * Math.Cos(azimuth))));
+    }
+
+    // Which way a billboard's quad runs when it is drawn into a map: turned to face the sun, as the
+    // sprite batcher turns it to face a camera whose axes are the light's (`View`). A cylindrical one
+    // (a tree, a character) stays upright and turns about Y only; a spherical one faces the sun fully.
+    // Its shadow is then its silhouette as the sun sees it, whichever way the player looks.
+    public static (Vector3 Right, Vector3 Up) BillboardAxes(in ShadowFit fit, bool cylindrical)
+    {
+        var right = new Vector3(fit.View.M11, fit.View.M21, fit.View.M31);
+        var up = new Vector3(fit.View.M12, fit.View.M22, fit.View.M32);
+        if (!cylindrical) return (right, up);
+        var flat = new Vector3(right.X, 0f, right.Z);
+        return (flat.LengthSquared() > 1e-8f ? Vector3.Normalize(flat) : right, Vector3.UnitY);
+    }
+}
+
+// How the cascades of a shadow map share its one render target (issue 4n-11): `Cascades` squares of
+// `CascadeSize` texels in `Columns` by `Rows`, cascade k at column k % Columns, row k / Columns.
+[Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+public readonly struct ShadowAtlas
+{
+    internal ShadowAtlas(int cascades, int cascadeSize, int columns, int rows)
+    {
+        Cascades = cascades;
+        CascadeSize = cascadeSize;
+        Columns = columns;
+        Rows = rows;
+    }
+
+    public int Cascades { get; }
+    public int CascadeSize { get; }
+    public int Columns { get; }
+    public int Rows { get; }
+    public int Width => Columns * CascadeSize;
+    public int Height => Rows * CascadeSize;
+
+    // Cascade k's corner in the target, in texels.
+    public (int X, int Y) Corner(int cascade) => (cascade % Columns * CascadeSize, cascade / Columns * CascadeSize);
 }
