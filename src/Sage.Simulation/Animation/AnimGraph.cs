@@ -72,6 +72,8 @@ public sealed class AnimGraphRecord
     public float Fade = 0.2f;
     [Property(Tooltip = "The curve a cross-fade follows, when the state does not say")]
     public Ease Ease = Ease.SmoothStep;
+    [Property(Tooltip = "The joint whose motion a state's rootMotion takes out of the pose and gives the body; empty: the skeleton's first joint")]
+    public string RootJoint = "";
     [Property(Tooltip = "Morph targets set from a Float or Bool param every tick, over what the clips give: { \"jaw_open\": \"mouth\" } (lip-sync)")]
     public Dictionary<string, string> Morphs = new();
 
@@ -96,6 +98,7 @@ public sealed class AnimGraphRecord
         private readonly string _initial;
         private readonly float _fade;
         private readonly Ease _ease;
+        private readonly string _rootJoint;
         private readonly Dictionary<string, string> _morphs;
 
         public readonly int Version = Interlocked.Increment(ref _versions);   // never 0: an animator's unset one
@@ -108,6 +111,7 @@ public sealed class AnimGraphRecord
         public readonly bool HasSources;
         public readonly int AimPitchParam, AimYawParam;           // -1: the graph has none (#120's AimIk)
         public readonly string[] ClipNames;
+        public readonly bool HasRootMotion;                       // some state takes root motion (#357)
         public readonly string[] MorphTargets;                    // `morphs`: each target, and the param it reads (-1: none)
         public readonly int[] MorphParams;
         private readonly Dictionary<string, int> _paramIndex = new(StringComparer.OrdinalIgnoreCase);
@@ -122,6 +126,7 @@ public sealed class AnimGraphRecord
             _initial = record.Initial ?? "";
             _fade = record.Fade;
             _ease = record.Ease;
+            _rootJoint = record.RootJoint ?? "";
             _morphs = record.Morphs ??= new Dictionary<string, string>();
 
             ParamNames = new string[_params.Count];
@@ -154,6 +159,7 @@ public sealed class AnimGraphRecord
                                           l.Initial ?? "", l.States ?? new(), l.Transitions ?? new(), clips);
             }
             ClipNames = clips.ToArray();
+            foreach (var state in Layers[0].States) HasRootMotion |= state.RootMotion != RootMotionMode.None;
 
             MorphTargets = new string[_morphs.Count];
             MorphParams = new int[_morphs.Count];
@@ -168,10 +174,12 @@ public sealed class AnimGraphRecord
 
         public bool Matches(AnimGraphRecord record) =>
             ReferenceEquals(_states, record.States) && ReferenceEquals(_any, record.Transitions) && ReferenceEquals(_params, record.Params)
-            && ReferenceEquals(_layers, record.Layers) && ReferenceEquals(_morphs, record.Morphs) && _initial == record.Initial && _fade == record.Fade && _ease == record.Ease;
+            && ReferenceEquals(_layers, record.Layers) && ReferenceEquals(_morphs, record.Morphs) && _initial == record.Initial && _fade == record.Fade && _ease == record.Ease
+            && _rootJoint == (record.RootJoint ?? "");
 
         public float DefaultFade => _fade;
         public Ease DefaultEase => _ease;
+        public string RootJoint => _rootJoint;
 
         public int ParamIndex(string? name) => name != null && _paramIndex.TryGetValue(name, out int i) ? i : -1;
 
@@ -256,6 +264,8 @@ public sealed class AnimGraphRecord
         public readonly float[] PointX = Array.Empty<float>();
         public readonly float[] PointY = Array.Empty<float>();
         public readonly List<string>? Tags;
+        public readonly RootMotionMode RootMotion;
+        public readonly bool RootMotionY;
 
         public State(Compiled graph, AnimState source, List<string> clips)
         {
@@ -265,6 +275,8 @@ public sealed class AnimGraphRecord
             Fade = source.Fade is { } fade && fade >= 0f && float.IsFinite(fade) ? fade : Math.Max(0f, graph.DefaultFade);
             Ease = source.Ease ?? graph.DefaultEase;
             Tags = source.Tags;
+            RootMotion = Enum.IsDefined(source.RootMotion) ? source.RootMotion : RootMotionMode.None;
+            RootMotionY = source.RootMotionY && RootMotion is RootMotionMode.Translation or RootMotionMode.Full;
             if (!string.IsNullOrEmpty(source.Clip))
             {
                 Clip = graph.ClipIndex(source.Clip, clips);
@@ -322,6 +334,10 @@ public sealed class AnimState
     public Ease? Ease;
     [Property(Tooltip = "Free words for whatever reads the animator (Animators.HasTag)")]
     public List<string> Tags = new();
+    [Property(Tooltip = "Root motion (base layer only): None, Rotation (turns about up), Translation (moves across the ground) or Full; what it takes out of the root joint moves the body instead, so feet do not slide")]
+    public RootMotionMode RootMotion = RootMotionMode.None;
+    [Property(Tooltip = "With Translation or Full: the root's height moves the body too, instead of gravity (a climb, a vault); off, only across the ground")]
+    public bool RootMotionY;
     [Property(Tooltip = "Where it can go, tried in order: the first that matches wins")]
     public List<StateTransition> Transitions = new();
 }

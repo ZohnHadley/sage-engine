@@ -1,4 +1,12 @@
 #nullable enable
+Sage.Simulation.AnimGraphRecord.RootJoint -> string!
+Sage.Simulation.AnimState.RootMotion -> Sage.Simulation.RootMotionMode
+Sage.Simulation.AnimState.RootMotionY -> bool
+Sage.Simulation.RootMotionMode
+Sage.Simulation.RootMotionMode.Full = 3 -> Sage.Simulation.RootMotionMode
+Sage.Simulation.RootMotionMode.None = 0 -> Sage.Simulation.RootMotionMode
+Sage.Simulation.RootMotionMode.Rotation = 1 -> Sage.Simulation.RootMotionMode
+Sage.Simulation.RootMotionMode.Translation = 2 -> Sage.Simulation.RootMotionMode
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
 const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
 const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
@@ -195,6 +203,7 @@ Sage.Simulation.SkeletonPose.MorphCount.get -> int
 Sage.Simulation.SkeletonPose.MorphWeights.get -> System.Span<float>
 Sage.Simulation.SoundRecord.Caption -> string!
 Sage.Simulation.SoundRecord.Speaker -> string!
+static Sage.Simulation.Animators.TryTakeRootMotion(Sage.Simulation.World! world, Sage.Simulation.Entity entity, out System.Numerics.Vector3 travel, out bool vertical) -> bool
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
@@ -698,3 +707,15 @@ Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void
 *REMOVED*virtual Sage.Simulation.Screen.Hint.get -> string!
 *REMOVED*virtual Sage.Simulation.Screen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
 *REMOVED*virtual Sage.Simulation.Screen.Width.get -> float
+Sage.Simulation.IAnimDebugSource
+Sage.Simulation.IAnimDebugSource.Describe(Sage.Simulation.World! world, string! filter, System.Collections.Generic.List<string!>! lines) -> void
+const Sage.Simulation.ClipRetargeter.DefaultSampleRate = 30 -> float
+Sage.Simulation.ClipRetargeter
+Sage.Simulation.SkeletonMapRecord
+Sage.Simulation.SkeletonMapRecord.Bones -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.Simulation.SkeletonMapRecord.SampleRate -> float
+Sage.Simulation.SkeletonMapRecord.Scale -> float
+Sage.Simulation.SkeletonMapRecord.SkeletonMapRecord() -> void
+Sage.Simulation.SkeletonMapRecord.Source -> Sage.Core.AssetPath
+Sage.Simulation.SkeletonMapRecord.Target -> Sage.Core.AssetPath
+static Sage.Simulation.ClipRetargeter.Retarget(Sage.Simulation.AnimationClip! clip, Sage.Simulation.Skeleton! source, Sage.Simulation.Skeleton! target, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! bones, float scale = 0, float sampleRate = 30) -> Sage.Simulation.AnimationClip!

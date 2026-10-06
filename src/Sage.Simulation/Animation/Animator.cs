@@ -175,7 +175,7 @@ public static partial class Animators
             "Animation LOD: animators farther than this from the main camera sample their pose every 2nd tick, past twice it every 4th " +
             "(their states and times still step every tick); 0 = every animator every tick.", 0f, 100000f);
         engine.CVars.RegisterCommand("anim_debug", CVarFlags.None,
-            "anim_debug [filter]: every animator's layers (state, time, cross-fade, blend weights), params and LOD rate.", a =>
+            "anim_debug [filter]: every animator's layers (state, time, cross-fade, blend weights), params and LOD rate, and every sprite's clip and frame.", a =>
         {
             string filter = a.Count > 0 ? a[0] : "";
             int shown = 0;
@@ -188,8 +188,15 @@ public static partial class Animators
                     Log.Info(LogCat.Console, $"[{world.Name}] {Describe(world, e)}");
                     shown++;
                 }
+                if (world.Resources.TryGet<IAnimDebugSource>(out var extra) && extra != null)
+                {
+                    var lines = new List<string>();
+                    extra.Describe(world, filter, lines);
+                    foreach (var line in lines) Log.Info(LogCat.Console, $"[{world.Name}] {line}");
+                    shown += lines.Count;
+                }
             }
-            Log.Info(LogCat.Console, $"anim_debug: {shown} animator(s)");
+            Log.Info(LogCat.Console, $"anim_debug: {shown} animator(s) and sprite(s)");
         });
     }
 
@@ -481,6 +488,8 @@ public static partial class Animators
               .Append(CultureInfo.InvariantCulture, $" t={s.Time:F2}s phase={s.Phase:F2}");
             if (s.Fading)
                 sb.Append(CultureInfo.InvariantCulture, $", fading from {s.From ?? "a pose snapshot"} ({s.Fade:F2}/{s.FadeDuration:F2}s {s.FadeEase})");
+            if (s.Index >= 0 && layer.States[s.Index].RootMotion != RootMotionMode.None)
+                sb.Append(", root motion ").Append(layer.States[s.Index].RootMotion).Append(layer.States[s.Index].RootMotionY ? " (with height)" : "");
             if (s.Index >= 0 && layer.States[s.Index].IsBlend)
             {
                 var state = layer.States[s.Index];
@@ -571,6 +580,11 @@ public static partial class Animators
                 check.Error(path, "a state plays a clip or a blend, not both");
             if (source.Fade is { } fade && (!(fade >= 0f) || !float.IsFinite(fade))) check.Error($"{path}.Fade", $"{fade} is not a time in seconds");
             if (!float.IsFinite(source.Speed)) check.Error($"{path}.Speed", $"{source.Speed} is not a rate");
+            // Root motion (issue #357) is the base layer's: a layer over it moves joints, never the body.
+            if (source.RootMotion != RootMotionMode.None && at.Length > 0)
+                check.Warn($"{path}.RootMotion", "root motion is taken from the base layer's states only; this layer's is ignored");
+            if (source.RootMotionY && source.RootMotion is not (RootMotionMode.Translation or RootMotionMode.Full))
+                check.Warn($"{path}.RootMotionY", "rootMotionY moves the body up and down only with a rootMotion of Translation or Full");
             if (source.Blend is { } blend && string.IsNullOrEmpty(source.Clip)) CheckBlend(g, blend, $"{path}.Blend", check);
             CheckTransitions(g, layer, source.Transitions, $"{path}.Transitions", check, s);
         }
