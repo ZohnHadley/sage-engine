@@ -72,6 +72,7 @@
             "state_machine",
             "tag",
             "terrain",
+            "terrain_material",
             "ui_layout",
             "ui_style",
             "viewmodel",
@@ -798,6 +799,21 @@
           },
           "then": {
             "$ref": "terrain.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "terrain_material"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "terrain_material.schema.json"
           }
         },
         {

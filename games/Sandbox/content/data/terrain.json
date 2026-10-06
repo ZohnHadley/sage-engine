@@ -1,0 +1,18 @@
+[
+  // The Sandbox's ground (engine issue #307): grass everywhere, and bare rock painted over it where the
+  // hills are steep, fading in over six degrees so the edge of the rock is a blend and not a line. The
+  // weights come from each vertex's slope, which is the same on both sides of a sector edge, so walking
+  // east into the next sector there is no seam. SandboxModule names it (`Terrain.Material`).
+  // Textures: tools/make_terrain_art.py.
+  {
+    "type": "terrain_material",
+    "id": "hills",
+    "layers": [
+      { "texture": "textures/ground.png", "tile": 8 },
+      { "texture": "textures/terrain_rock.png", "tile": 12, "minSlope": 12, "slopeBlend": 6 }
+    ],
+    "detail": "textures/terrain_detail.png",
+    "detailTile": 2,
+    "detailStrength": 0.35
+  }
+]

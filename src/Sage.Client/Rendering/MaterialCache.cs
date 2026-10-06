@@ -221,11 +221,50 @@ internal sealed class MaterialCache : IDisposable
     {
         if (!_records.TryGet(id, out MaterialRecord record))
         {
+            // A terrain material (issue #307) is drawn as a material of the splat effect, made from it.
+            if (_records.TryGet(id, out TerrainMaterialRecord terrain)) return Build(id, SplatMaterial(terrain));
             if (id != MaterialRecord.Error)
                 Log.Error(LogCat.Shaders, $"Material {id} not found; drawing sage:error");
             return null;
         }
         return Build(id, record);
+    }
+
+    // ---- terrain materials (issue #307) ----------------------------------------------------------------
+
+    private static readonly AssetPath White = AssetPath.Intern("textures/white.png");
+
+    private static MaterialRecord SplatMaterial(TerrainMaterialRecord terrain) => new()
+    {
+        Effect = TerrainSplat.Effect,
+        Technique = TerrainSplat.Technique,
+        Params = TerrainSplat.Params(terrain, White),
+    };
+
+    // What terrain named `material` (a world's `Terrain.Material`) is drawn with: the terrain material
+    // itself, whose layers the mesh then carries weights for (`splat`), or — with no such record, or no
+    // splat effect to draw it (a build without shaders) — a plain material and no weights, said once.
+    public RecordId TerrainLook(RecordId material, out TerrainMaterialRecord? splat)
+    {
+        splat = null;
+        if (material.IsEmpty) return TerrainSplat.DefaultMaterial;
+        if (!_records.TryGet(material, out TerrainMaterialRecord record))
+        {
+            Log.Once(LogCat.Shaders, LogLevel.Error, "terrain-material:" + material,
+                     $"Terrain material {material} not found; drawing {TerrainSplat.DefaultMaterial}");
+            return TerrainSplat.DefaultMaterial;
+        }
+        var fallback = record.Fallback.IsEmpty ? TerrainSplat.DefaultMaterial : record.Fallback;
+        var effect = _content.LoadEffect(TerrainSplat.Effect);
+        if (effect == null || effect.Techniques[TerrainSplat.Technique] == null)
+        {
+            Log.Once(LogCat.Shaders, LogLevel.Warn, "terrain-fallback:" + material,
+                     $"Terrain material {material}: {TerrainSplat.Effect} (technique '{TerrainSplat.Technique}') is not available " +
+                     $"(a build without shaders?); drawing its fallback {fallback}");
+            return fallback;
+        }
+        splat = record;
+        return material;
     }
 
     private MaterialRuntime? Build(RecordId id, MaterialRecord record)

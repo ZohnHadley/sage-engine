@@ -38,7 +38,9 @@ internal sealed class FarLodSystem : ISystem
         public readonly List<MeshHandle> Meshes = new();
     }
 
-    private static readonly RecordId TerrainMaterial = new("sage", "terrain_default");
+    // Splat terrain (issue #307): the weighted copy of _vertices, and which grid vertex each skirt one hangs from.
+    private readonly List<VertexTerrain> _splatVertices = new();
+    private readonly List<int> _hungFrom = new();
 
     public FarLodSystem(World world, Renderer renderer)
     {
@@ -99,6 +101,7 @@ internal sealed class FarLodSystem : ISystem
         float spacing = heights.Spacing;
         _vertices.Clear();
         _indices.Clear();
+        _hungFrom.Clear();
         float min = float.MaxValue, max = float.MinValue;
 
         for (int z = 0; z < side; z++)
@@ -137,9 +140,22 @@ internal sealed class FarLodSystem : ISystem
         float half = heights.Size * 0.5f;
         var bounds = new BoundingSphere(new Vector3(half, (min + max) * 0.5f, half),
                                         MathF.Sqrt(2 * half * half + MathF.Pow((max - min) * 0.5f + Skirt, 2)));
-        var handle = _renderer.CreateMesh(CollectionsMarshal.AsSpan(_vertices), CollectionsMarshal.AsSpan(_indices), bounds, $"far ground {far.Coord}");
+        // The same look as the full ring's ground (issue #307), its weights from the coarse heights and normals.
+        var material = _renderer.Materials.TerrainLook(_terrain.Material, out var splat);
+        MeshHandle handle;
+        if (splat != null)
+        {
+            _splatVertices.Clear();
+            for (int i = 0; i < _vertices.Count; i++)
+            {
+                int grid = i < side * side ? i : _hungFrom[i - side * side];
+                _splatVertices.Add(new VertexTerrain(_vertices[i], TerrainSplat.Weights(splat, heights, grid % side, grid / side)));
+            }
+            handle = _renderer.CreateMesh(CollectionsMarshal.AsSpan(_splatVertices), CollectionsMarshal.AsSpan(_indices), bounds, $"far ground {far.Coord}");
+        }
+        else handle = _renderer.CreateMesh(CollectionsMarshal.AsSpan(_vertices), CollectionsMarshal.AsSpan(_indices), bounds, $"far ground {far.Coord}");
         var entity = _world.Create(Transform.At(_terrain.CornerOf(far.Coord)), $"far ground {far.Coord}");
-        _world.Add(entity, new MeshRenderer { Handle = handle, Material = TerrainMaterial });
+        _world.Add(entity, new MeshRenderer { Handle = handle, Material = material });
         var built = For(far.Coord);
         built.Entities.Add(entity);
         built.Meshes.Add(handle);
@@ -148,6 +164,7 @@ internal sealed class FarLodSystem : ISystem
     private void Hang(int vertex)
     {
         var top = _vertices[vertex];
+        _hungFrom.Add(vertex);
         _vertices.Add(new VertexPositionNormalTexture(top.Position - new Vector3(0, Skirt, 0), top.Normal, top.TextureCoordinate));
     }
 
