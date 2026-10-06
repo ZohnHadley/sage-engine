@@ -144,7 +144,7 @@ public class WeatherCoverTests
 
         var player = Assert.Single(world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList());
         var terrain = world.Resources.Get<Terrain>();
-        var lamp = world.Query<PointLight>().Entities.ToEntityList().First();
+        var lamp = world.Query<PointLight, FromMap>().Entities.ToEntityList().First();   // a lamp the hut placed
         var hut = world.Get<GlobalTransform>(lamp).Current.Position;
 
         // Out in the open, 30 m from the hut's door: all the rain there is.
