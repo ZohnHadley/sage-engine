@@ -7,12 +7,20 @@ namespace Sage.UI;
 
 // A line (or lines, split at '\n') of text, as big as ITextMeasure says it is. TextAlign is for the
 // renderer: where the text sits when the label is given more room than it measured.
+//
+// Since #338 a label has a font — a TTF/OTF or grid atlas by asset path, at FontSize, both usually from
+// its ui_style — and can wrap and cut its text: with Wrap it breaks at spaces to fit the width it is
+// offered (and MaxWidth, when set), so a long dialogue line becomes a paragraph its box grows down to
+// hold; Overflow says what happens to what still does not fit (clipped, or ended with "…").
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public class Label : Widget
 {
     private string _text = "";
-    private float _textScale = 1f;
+    private float _textScale = 1f, _fontSize, _maxWidth;
     private Align _textAlign = Align.Start;
+    private AssetPath _font;
+    private bool _wrap;
+    private TextOverflow _overflow;
 
     public Label() { }
     public Label(string text) { _text = text ?? ""; }
@@ -29,8 +37,46 @@ public class Label : Widget
 
     public Align TextAlign { get => _textAlign; set { if (_textAlign == value) return; _textAlign = value; InvalidateVisual(); } }
 
-    protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text) =>
-        _text.Length == 0 ? new Vector2(0f, text.LineHeight * _textScale) : text.Measure(_text, _textScale);
+    // The font text is drawn in (UiFonts): a .ttf/.otf, a .png grid atlas, or none for the engine's.
+    public AssetPath Font { get => _font; set { if (_font == value) return; _font = value; InvalidateMeasure(); } }
+
+    // The font's em in virtual units at TextScale 1; 0 is UiFonts.DefaultSize, the engine font's line.
+    public float FontSize { get => _fontSize; set { if (_fontSize == value) return; _fontSize = value; InvalidateMeasure(); } }
+
+    // Breaks lines at spaces to fit the width offered (and MaxWidth).
+    public bool Wrap { get => _wrap; set { if (_wrap == value) return; _wrap = value; InvalidateMeasure(); } }
+
+    // What text that is still too wide (or, wrapped, too tall) does: run past, be clipped, or end in "…".
+    public TextOverflow Overflow { get => _overflow; set { if (_overflow == value) return; _overflow = value; InvalidateMeasure(); } }
+
+    // Never measured wider than this, in virtual units; 0: no limit but the room offered.
+    public float MaxWidth { get => _maxWidth; set { if (_maxWidth == value) return; _maxWidth = value; InvalidateMeasure(); } }
+
+    // Whether the text is laid out in lines that depend on the width (wrapped, cut or capped).
+    internal bool Fitted => _wrap || _overflow != TextOverflow.Visible || _maxWidth > 0f;
+
+    // The width text is fitted to, given `room` (infinite when nothing limits it).
+    internal float FitWidth(float room)
+    {
+        float limit = float.IsFinite(room) ? room : float.PositiveInfinity;
+        if (_maxWidth > 0f) limit = MathF.Min(limit, _maxWidth);
+        return limit;
+    }
+
+    // How this label's text measures: its font at its size (#338), else `fallback` (the root's).
+    internal ITextMeasure MeasureOf(ITextMeasure fallback) => Root?.MeasureFor(_font, _fontSize) ?? fallback;
+
+    protected override Vector2 MeasureContent(Vector2 available, ITextMeasure text)
+    {
+        var measure = MeasureOf(text);
+        if (_text.Length == 0) return new Vector2(0f, measure.LineHeight * _textScale);
+        if (!Fitted) return measure.Measure(_text, _textScale);
+        float limit = FitWidth(available.X);
+        var size = TextLayout.Break(_text, measure, _textScale, limit, float.PositiveInfinity, _wrap, _overflow,
+                                    Root?.TextLines ?? new System.Collections.Generic.List<TextLine>());
+        if (float.IsFinite(limit)) size.X = MathF.Min(size.X, limit);
+        return size;
+    }
 
     // Where the renderer places the text: the content rect, less a checkbox's box or a dropdown's arrow.
     internal virtual Rect TextArea => ContentRect;

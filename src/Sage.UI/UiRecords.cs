@@ -32,8 +32,11 @@ namespace Sage.UI;
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class UiStyleRecord
 {
-    [AssetKind("font"), Property(Tooltip = "The bitmap font atlas text is drawn with; empty: the client's own font")]
+    [AssetKind("font"), Property(Tooltip = "The font text is drawn with: a .ttf or .otf, rasterised at run time, or a .png grid atlas like the engine's; empty: the engine's own font")]
     public AssetPath Font;
+
+    [Property(Min = 0, Max = 200, Unit = "units", Tooltip = "The font's size (its em) in virtual units at textScale 1; 0: 9, the engine font's line")]
+    public float FontSize;
 
     [Property(Min = 0.1, Max = 10, Tooltip = "Text size, 1 = the font's own; laid out, so a label measures with it")]
     public float TextScale = 1f;
@@ -152,6 +155,15 @@ public sealed class UiNode
 
     [Property(Tooltip = "Where text sits in a bigger label: Start, Center, End")]
     public Align? TextAlign;
+
+    [Property(Tooltip = "A label's text breaks at spaces to fit its width (and maxWidth): a paragraph")]
+    public bool Wrap;
+
+    [Property(Tooltip = "What a label's text that still does not fit does: Visible (runs past), Clip, Ellipsis (ends in '…')")]
+    public TextOverflow? Overflow;
+
+    [Property(Min = 0, Unit = "units", Tooltip = "A label is never wider than this; 0: no limit but its room")]
+    public float MaxWidth;
 
     // ---- where it goes
 

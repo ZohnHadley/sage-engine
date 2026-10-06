@@ -30,7 +30,15 @@ internal struct UiDrawCommand
     // pixels per texture pixel, for the corners of a nine-slice.
     public float Size;
 
+    // Text: the line drawn is Text[Start..Start+Length] (#338: a wrapped label is a command per line,
+    // each a slice of the one string), in Font at FontSize (0: UiFonts.DefaultSize) — so its em is
+    // FontSize × Size pixels. With Ellipsis, "…" follows it, EllipsisAt pixels from the line's left.
     public string? Text;
+    public int Start, Length;
+    public AssetPath Font;
+    public float FontSize;
+    public bool Ellipsis;
+    public float EllipsisAt;
     public AssetPath Texture;
 
     // Nine-slice insets in texture pixels; zero draws the texture stretched whole.
@@ -43,6 +51,7 @@ internal struct UiDrawCommand
 internal sealed class UiRenderPlan
 {
     private UiDrawCommand[] _commands = new UiDrawCommand[64];
+    private readonly System.Collections.Generic.List<TextLine> _lines = new();
     private Rect[] _clips = new Rect[8];
     private int _clipDepth;
 
@@ -135,11 +144,14 @@ internal sealed class UiRenderPlan
                 bar.Colour = bar.From = highlight;
             }
             if (options[i].Length == 0) continue;
-            var size = root.Text.Measure(options[i], dropdown.TextScale);
+            var size = dropdown.MeasureOf(root.Text).Measure(options[i], dropdown.TextScale);   // in the dropdown's font (#338)
             var at = new Rect(row.X + padding.Left, row.Y + (row.Height - size.Y) * 0.5f, size.X, size.Y);
             ref var text = ref Add(UiDrawKind.Text, dropdown, root.ToPixels(at));
             text.Colour = text.From = lit ? focused.Text : normal.Text;
             text.Text = options[i];
+            text.Length = options[i].Length;
+            text.Font = dropdown.Font;
+            text.FontSize = dropdown.FontSize;
             text.Size = dropdown.TextScale * scale;
         }
     }
@@ -316,7 +328,7 @@ internal sealed class UiRenderPlan
                     Colour(ref _plan.Add(UiDrawKind.Rect, label, _root.ToPixels(tick)), to.Fill, from.Fill, blend);
                 }
             }
-            if (label is Dropdown dropdown) Text(label, Dropdown.Arrow, dropdown.ArrowRect, Align.Center, to.Text, from.Text, blend, scale);
+            if (label is Dropdown dropdown) Text(label, Dropdown.Arrow, dropdown.ArrowRect, Align.Center, to.Text, from.Text, blend, scale, fit: false);
 
             string shown = label.Text;
             uint colour = to.Text, was = from.Text;
@@ -326,30 +338,74 @@ internal sealed class UiRenderPlan
                 colour = UiColour.Fade(colour, 0.5f);
                 was = UiColour.Fade(was, 0.5f);
             }
-            var origin = shown.Length > 0 ? Text(label, shown, label.TextArea, label.TextAlign, colour, was, blend, scale) : Placed(label, label.TextArea, Vector2.Zero, label.TextAlign);
+            var origin = shown.Length > 0 ? Text(label, shown, label.TextArea, label.TextAlign, colour, was, blend, scale, fit: true) : Placed(label, label.TextArea, Vector2.Zero, label.TextAlign);
 
             if (label is TextBox field && field.IsFocused)
             {
                 // The caret: a sliver a line high after the character before it (on the text actually
                 // typed, not the placeholder, which it sits in front of).
-                var at = field.Text.Length == 0 ? Vector2.Zero : field.CaretOffset(_root.Text);
-                float line = _root.Text.LineHeight * field.TextScale;
+                var measure = field.MeasureOf(_root.Text);   // in the field's own font (#338)
+                var at = field.Text.Length == 0 ? Vector2.Zero : field.CaretOffset(measure);
+                float line = measure.LineHeight * field.TextScale;
                 if (field.Text.Length == 0) origin = Placed(label, label.TextArea, new Vector2(0f, line), Align.Start);
                 var caret = new Rect(origin.X + at.X, origin.Y + at.Y, MathF.Max(field.TextScale, 1f), line);
                 Colour(ref _plan.Add(UiDrawKind.Rect, label, _root.ToPixels(caret)), to.Text, from.Text, blend);
             }
         }
 
-        // Draws `text` in `area` (aligned across, centred down) and returns its top-left, virtual units.
-        private Vector2 Text(Label label, string text, Rect area, Align align, uint colour, uint was, bool blend, float scale)
+        // Draws `text` in `area` in the label's font (#338) and returns its top-left, virtual units. With
+        // `fit`, the label's Wrap, Overflow and MaxWidth apply: lines are worked out again here, at the
+        // width the label was given rather than the one it measured in, so what is drawn always fits, and
+        // each line is a command of its own, a slice of the one string.
+        private Vector2 Text(Label label, string text, Rect area, Align align, uint colour, uint was, bool blend, float scale, bool fit)
         {
-            var size = _root.Text.Measure(text, label.TextScale);
-            var at = Placed(label, area, size, align);
-            ref var command = ref _plan.Add(UiDrawKind.Text, label, _root.ToPixels(new Rect(at.X, at.Y, size.X, size.Y)));
-            Colour(ref command, colour, was, blend);
-            command.Text = text;
-            command.Size = label.TextScale * scale;
-            return at;
+            var measure = label.MeasureOf(_root.Text);
+            var lines = _plan._lines;
+            Vector2 size;
+            fit &= label.Fitted;
+            if (fit)
+            {
+                float height = label.Overflow == TextOverflow.Visible ? float.PositiveInfinity : area.Height;
+                size = TextLayout.Break(text, measure, label.TextScale, label.FitWidth(area.Width), height, label.Wrap, label.Overflow, lines);
+            }
+            else
+            {
+                size = measure.Measure(text, label.TextScale);
+                lines.Clear();
+                lines.Add(new TextLine(0, text.Length, size.X, false));
+            }
+
+            bool clip = fit && label.Overflow == TextOverflow.Clip;
+            if (clip) _plan.PushClip(label, _root.ToPixels(RectMath.Intersect(label.Clip, area)));
+
+            // Centred down the area, unless it is taller: then from the top, so the first lines show and
+            // what does not fit is what is cut. Not fitted, the text is one command whatever its '\n's.
+            var origin = Placed(label, area, size, align);
+            if (size.Y > area.Height) origin.Y = area.Y;
+            float lineHeight = fit ? measure.LineHeight * label.TextScale : size.Y;
+            float y = origin.Y, ellipsis = 0f;
+            foreach (var line in lines)
+            {
+                if (line.Ellipsis && ellipsis == 0f) ellipsis = measure.Width(TextLayout.Ellipsis, label.TextScale);
+                if (line.Length > 0 || line.Ellipsis)
+                {
+                    float x = Placed(label, area, new Vector2(line.Width, 0f), align).X;
+                    ref var command = ref _plan.Add(UiDrawKind.Text, label, _root.ToPixels(new Rect(x, y, line.Width, lineHeight)));
+                    Colour(ref command, colour, was, blend);
+                    command.Text = text;
+                    command.Start = line.Start;
+                    command.Length = line.Length;
+                    command.Size = label.TextScale * scale;
+                    command.Font = label.Font;
+                    command.FontSize = label.FontSize;
+                    command.Ellipsis = line.Ellipsis;
+                    command.EllipsisAt = line.Ellipsis ? (line.Width - ellipsis) * scale : 0f;
+                }
+                y += lineHeight;
+            }
+
+            if (clip) _plan.PopClip(label);
+            return origin;
         }
 
         private static Vector2 Placed(Label label, Rect area, Vector2 size, Align align)

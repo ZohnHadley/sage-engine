@@ -63,9 +63,13 @@ public sealed class BitmapFont
         return new Vector2(longest * Advance * scale, lines * LineHeight * scale);
     }
 
-    public void Draw(SpriteBatch batch, string text, Vector2 at, Color colour, float scale = 1f)
+    public void Draw(SpriteBatch batch, string text, Vector2 at, Color colour, float scale = 1f) =>
+        Draw(batch, text.AsSpan(), at, colour, scale);
+
+    // A slice of a string (a wrapped label's line, #338), without making one.
+    internal void Draw(SpriteBatch batch, ReadOnlySpan<char> text, Vector2 at, Color colour, float scale = 1f)
     {
-        if (string.IsNullOrEmpty(text)) return;
+        if (text.IsEmpty) return;
 
         float x = at.X, y = at.Y;
         float pixel = PixelSize * scale;
