@@ -7,6 +7,11 @@ namespace Sage.Simulation;
 
 // Camera blends (issue #90): `CameraOn` with a blend time eases the screen from the view it had to the
 // camera it turns on, instead of cutting (CameraIO). What was deferred from 4a (#80) to 4b's tweens.
+// **Blending out** (issue 4n-19): `CameraOff` with a blend time (or ScriptedCamera.BlendOutTime) eases
+// from the view the camera drew to whatever has its target and slot next — the player's rig, another
+// camera, ActiveCamera — instead of cutting back. It is the same component on the camera turned off,
+// with `Out` set: the director applies it to the view that took the camera's place, so a blend out to a
+// moving rig lands on it, as a blend in to a moving camera does.
 //
 // **The shape.** A `CameraBlend` on the camera entity holds the pose it blends *from* (the main view when
 // the blend began: whatever drew the screen, a rig, another scripted camera, ActiveCamera), how long and
@@ -32,6 +37,9 @@ public struct CameraBlend : IComponent
     public float Elapsed;                   // seconds, as of the last tick
     public float PreviousElapsed;           // as of the tick before, for the frame's interpolation
     public Ease Ease;
+    // Blending out (issue 4n-19): the camera is off, and the view now holding its target and slot is eased
+    // from `From…` (where this camera was). False: blending in, to this camera's own view.
+    public bool Out;
 
     // Still changing the view: false once a tick has passed with it complete.
     public readonly bool Active => PreviousElapsed < Duration;
@@ -49,16 +57,26 @@ public struct CameraBlend : IComponent
 public static class CameraBlends
 {
     // Blends `camera` in from `from` over `seconds` (see CameraBlend). CameraOn does this; so may a game.
-    public static void Begin(World world, Entity camera, in CameraView from, float seconds, Ease ease)
+    public static void Begin(World world, Entity camera, in CameraView from, float seconds, Ease ease) =>
+        Set(world, camera, Make(from, seconds, ease, blendOut: false));
+
+    // Blends out of `camera`, which is being turned off (issue 4n-19): whatever holds its target and slot
+    // next is eased from `from` — the view the camera drew — over `seconds`. CameraOff does this.
+    public static void BeginOut(World world, Entity camera, in CameraView from, float seconds, Ease ease) =>
+        Set(world, camera, Make(from, seconds, ease, blendOut: true));
+
+    internal static CameraBlend Make(in CameraView from, float seconds, Ease ease, bool blendOut) => new()
     {
-        var blend = new CameraBlend
-        {
-            FromPosition = from.Position,
-            FromRotation = from.Rotation,
-            FromFovY = from.Projection == CameraProjection.Perspective ? from.FovY : 0f,
-            Duration = seconds > 0f && float.IsFinite(seconds) ? seconds : 0f,
-            Ease = ease,
-        };
+        FromPosition = from.Position,
+        FromRotation = from.Rotation,
+        FromFovY = from.Projection == CameraProjection.Perspective ? from.FovY : 0f,
+        Duration = seconds > 0f && float.IsFinite(seconds) ? seconds : 0f,
+        Ease = ease,
+        Out = blendOut,
+    };
+
+    private static void Set(World world, Entity camera, in CameraBlend blend)
+    {
         if (world.Has<CameraBlend>(camera)) world.Get<CameraBlend>(camera) = blend;
         else world.Add(camera, blend);
     }
@@ -71,7 +89,8 @@ public static class CameraBlends
         blend.Elapsed = blend.PreviousElapsed = blend.Duration;
     }
 
-    // The director's step: the view `blend` makes of `view` this frame.
+    // The director's step: the view `blend` makes of `view` this frame — the camera's own blending in, or
+    // the one that took its place blending out (the same easing from the stored pose either way).
     internal static void Apply(in CameraBlend blend, ref CameraView view, float alpha)
     {
         float t = blend.Amount(alpha);

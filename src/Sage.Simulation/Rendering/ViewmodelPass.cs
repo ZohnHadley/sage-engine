@@ -5,11 +5,11 @@ using System.Numerics;
 namespace Sage.Simulation;
 
 // The deciding half of the viewmodel pass (issue #121, docs/design/06 "As built (the viewmodel pass)"):
-// whether the screen draws first-person arms this frame, with which projection, and where each piece
+// whether a view draws first-person arms this frame, with which projection, and where each piece
 // is. Pure and allocation free, so it lives here where a headless test can reach it, the way
 // RenderViewPlan and SkinnedExtract do; the client's ViewmodelExtract adds the view and its items.
 
-// The viewmodel the screen draws this frame (ViewmodelPass.TryGet).
+// The viewmodel a view draws this frame (ViewmodelPass.TryGet).
 internal struct ViewmodelView
 {
     public Entity Camera;
@@ -41,16 +41,27 @@ internal static class ViewmodelPass
     {
         view = default;
         if (!world.Resources.TryGet<CameraViews>(out var views) || views == null || !views.TryGetMain(out var main)) return false;
-        var camera = main.Entity;
-        if (camera.IsNull || main.Projection != CameraProjection.Perspective) return false;
+        return TryGet(world, in main, out view);
+    }
+
+    // The viewmodel a view from `source` draws (issue 4n-19: every view, not only the screen's main one —
+    // each split-screen partner looking out of its own first-person rig draws its own arms; a view into a
+    // render target does too, if its camera is such a one). The same rule as the screen's: a perspective
+    // camera with its first-person rig on and an enabled Viewmodel whose arms are spawned, and the
+    // camera's `NoViewmodel` not set.
+    public static bool TryGet(World world, in CameraView source, out ViewmodelView view)
+    {
+        view = default;
+        var camera = source.Entity;
+        if (camera.IsNull || source.Projection != CameraProjection.Perspective || source.NoViewmodel) return false;
         if (CameraRigs.RigOf(world, camera) != CameraRigKind.FirstPerson) return false;
         if (!world.TryGet<Viewmodel>(camera, out var viewmodel) || !viewmodel.Enabled || !world.IsAlive(viewmodel.Arms)) return false;
 
         view.Camera = camera;
         view.Arms = viewmodel.Arms;
         view.Weapon = world.IsAlive(viewmodel.Weapon) ? viewmodel.Weapon : default;
-        view.Rotation = main.Rotation;
-        view.FovY = viewmodel.FovY > 0f && viewmodel.FovY < 180f ? viewmodel.FovY * ToRadians : main.FovY;
+        view.Rotation = source.Rotation;
+        view.FovY = viewmodel.FovY > 0f && viewmodel.FovY < 180f ? viewmodel.FovY * ToRadians : source.FovY;
         bool depth = viewmodel.Near > 0f && viewmodel.Far > viewmodel.Near;
         view.Near = depth ? viewmodel.Near : Viewmodel.DefaultNear;
         view.Far = depth ? viewmodel.Far : Viewmodel.DefaultFar;

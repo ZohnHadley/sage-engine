@@ -985,6 +985,33 @@
           "description": "The render target it draws to, by name; empty = the screen. Category: Output. (string, default \"\")",
           "default": "",
           "type": "string"
+        },
+        "slot": {
+          "description": "Split screen: each slot of a target draws its own view (its highest-priority camera); the screen's lowest is the main view. Range: 0 to 15. Category: Output. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "noShadows": {
+          "description": "This view has no sun shadows of its own (a cheap monitor, a minimap) Category: Passes. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "noViewmodel": {
+          "description": "This view draws no first-person viewmodel, even from a first-person rig. Category: Passes. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "noSky": {
+          "description": "This view draws no sky: the clear colour stays behind the world. Category: Passes. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "noDebugLines": {
+          "description": "This view draws no debug lines. Category: Passes. (bool, default false)",
+          "default": false,
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2245,6 +2272,12 @@
             "SmoothStep",
             "SmootherStep"
           ]
+        },
+        "blendOutTime": {
+          "description": "Seconds CameraOff (or the hold ending) blends back to what had the screen when the wire gives none; 0 = a cut. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
