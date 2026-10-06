@@ -89,6 +89,7 @@ public sealed class HeadlessAppBuilder
     private string? _modList;
     private string? _modReport;
     private string? _inputFile;
+    private string? _configFile;
     private bool _showTitle;
     private string? _title;
 
@@ -174,6 +175,14 @@ public sealed class HeadlessAppBuilder
         return this;
     }
 
+    // The config.cfg the boot reads and the shutdown writes the archived cvars to (`user://config.cfg`
+    // in the host). A test gives its own file, to see a setting survive a restart.
+    public HeadlessAppBuilder WithConfig(string file)
+    {
+        _configFile = file;
+        return this;
+    }
+
     // Worlds wait at the title screen (issue #342), as a host with a window has them: game.json's
     // `"title"`, or `screen` ("ns:name") in its place. Without it a headless world starts at once.
     public HeadlessAppBuilder AtTitle(string? screen = null)
@@ -214,6 +223,7 @@ public sealed class HeadlessAppBuilder
             ModListFile = _modList,
             ModReportFile = _modReport,
             InputFile = _inputFile,
+            ConfigFile = _configFile,
             ShowTitle = _showTitle,
             Title = _title,
         });

@@ -127,6 +127,7 @@ public sealed class Engine : IDisposable
     // world without them uses the defaults.
     internal SchedulingCVars? Scheduling { get; set; }
     internal VisualLogCVars? VisualLogSettings { get; set; }   // vlog_record, vlog_ticks, vlog_show (#300)
+    internal CVar<float>? PlayerFov { get; set; }              // `fov`: the player camera's field of view (#339)
 
     // Who registered each cvar, command, record type, prefab part, entity input and action (issue #12).
     public RegistrationLedger Registrations { get; } = new();
