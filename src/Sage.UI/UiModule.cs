@@ -30,6 +30,9 @@ public sealed class UiModule : IModule
     public Localisation Localisation { get; } = new();
     public UiStyles Styles { get; } = new();
 
+    // The fonts styles name (#338), read through the VFS; from Init on.
+    public UiFonts Fonts { get; private set; } = null!;
+
     // From Init on.
     public UiScreens Screens { get; private set; } = null!;
 
@@ -37,8 +40,10 @@ public sealed class UiModule : IModule
     {
         _engine = ctx.Engine;
         var viewModels = ctx.Engine.Vocabularies.Of<IViewModel>();   // made now, so it is sealed with the rest
+        Fonts = new UiFonts(ctx.Engine.Vfs);
         Screens = new UiScreens(ctx.Engine.Records, viewModels, Styles, Localisation);
         ctx.Provide(Localisation);
+        ctx.Provide(Fonts);
         ctx.Provide(Styles);
         ctx.Provide(Screens);
 
@@ -96,7 +101,7 @@ public sealed class UiModule : IModule
         });
     }
 
-    private bool _started;
+    private bool _started, _fontsRead;
 
     public void Start(ModuleContext ctx)
     {
@@ -125,8 +130,9 @@ public sealed class UiModule : IModule
         world.Resources.Add(Localisation);
         world.Resources.Add(Styles);
         world.Resources.Add(Screens);
+        world.Resources.Add(Fonts);
         // The widget screens this world has open (#97): headless here, drawn and fed by the client.
-        world.Resources.Add(new UiScreenStack(Screens, Styles, world));
+        world.Resources.Add(new UiScreenStack(Screens, Styles, world, Fonts));
     }
 
     // The entity a screen opened from the console is about: the first player-controlled one.
@@ -139,6 +145,8 @@ public sealed class UiModule : IModule
     private void ContentChanged()
     {
         var engine = _engine!;
+        if (_fontsRead) Fonts.Clear();   // a font file may have changed with the rest: read again on next use
+        _fontsRead = true;
         Styles.Rebuild(engine.Records);
         Localisation.Load(engine.Vfs, _lang!.Value);
         UiContentChecks.Screens(engine.Records, engine.Vocabularies.Of<IViewModel>());
@@ -152,7 +160,7 @@ public sealed class UiModule : IModule
 // paths its layout binds. Errors at the record's line, like every other content check (05 §3.6).
 internal static class UiContentChecks
 {
-    private static readonly string[] Leaves = { "label", "button", "image", "bar" };
+    private static readonly string[] Leaves = { "label", "button", "image", "bar", "slider", "checkbox", "dropdown", "text_field" };
 
     public static void Layout(UiLayoutRecord layout, RecordCheck check)
     {
@@ -192,6 +200,8 @@ internal static class UiContentChecks
                 check.Error(at, $"'{name}' binds its rows, so it holds one node, the template each row is made from; it has {children}");
             if (node.Args.Count > 0 && node.Widget is not ("label" or "button"))
                 check.Error($"{at}.Args", $"a {node.Widget} has no text to fill placeholders in");
+            if ((node.Wrap || node.Overflow != null || node.MaxWidth > 0f) && node.Widget is not ("label" or "button"))
+                check.Error($"{at}.{(node.Wrap ? "Wrap" : node.Overflow != null ? "Overflow" : "MaxWidth")}", $"a {node.Widget} has no text to wrap or cut");
             foreach (var (field, neighbour) in new[] { ("FocusUp", node.FocusUp), ("FocusDown", node.FocusDown), ("FocusLeft", node.FocusLeft), ("FocusRight", node.FocusRight) })
                 if (neighbour.Length > 0 && !layout.Nodes.ContainsKey(neighbour))
                     check.Error($"{at}.{field}", $"node '{name}' goes to '{neighbour}', which is not a node of this layout" + Spelling.Suggest(neighbour, layout.Nodes.Keys));
@@ -256,6 +266,11 @@ internal static class UiContentChecks
                 else if (!BindingPaths.IsReadable(leaf))
                     Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                               $"{target} to '{path}', a {leaf.Name}: a binding reads a number, a flag, text or an object");
+                // A form widget writes what the player sets back to its binding (issue #340): a path
+                // that cannot be written shows the value and forgets every change, which is a warning.
+                else if (target == UiBindings.Written(node.Widget) && !BindingPaths.IsWritable(source, path, out string? readOnly))
+                    Log.Warn(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
+                                             $"{target} to '{path}': {readOnly}, so what the player changes is not kept");
             }
             // A row template's paths are into its row, not the view-model; a plain IList's rows can't be told.
             if (rows != null) { if (rows != typeof(object)) CheckPaths(records, id, screen, layout, tree, name, rows); }

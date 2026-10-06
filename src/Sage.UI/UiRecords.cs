@@ -32,8 +32,11 @@ namespace Sage.UI;
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class UiStyleRecord
 {
-    [AssetKind("font"), Property(Tooltip = "The bitmap font atlas text is drawn with; empty: the client's own font")]
+    [AssetKind("font"), Property(Tooltip = "The font text is drawn with: a .ttf or .otf, rasterised at run time, or a .png grid atlas like the engine's; empty: the engine's own font")]
     public AssetPath Font;
+
+    [Property(Min = 0, Max = 200, Unit = "units", Tooltip = "The font's size (its em) in virtual units at textScale 1; 0: 9, the engine font's line")]
+    public float FontSize;
 
     [Property(Min = 0.1, Max = 10, Tooltip = "Text size, 1 = the font's own; laid out, so a label measures with it")]
     public float TextScale = 1f;
@@ -53,7 +56,7 @@ public sealed class UiStyleRecord
     [JsonConverter(typeof(ColourJsonConverter)), Property(Tooltip = "The border's colour")]
     public uint Border;
 
-    [JsonConverter(typeof(ColourJsonConverter)), Property(Tooltip = "A bar's filled part")]
+    [JsonConverter(typeof(ColourJsonConverter)), Property(Tooltip = "A bar's or slider's filled part, a checkbox's tick")]
     public uint Fill = ColourJsonConverter.Pack(255, 255, 255);
 
     [JsonConverter(typeof(ColourJsonConverter)), Property(Tooltip = "What an image is multiplied by; white leaves it as drawn")]
@@ -65,7 +68,7 @@ public sealed class UiStyleRecord
     [Property(Tooltip = "Nine-slice insets in texture pixels — the corners that keep their size while the middle stretches — for the style's image and an image widget's picture; 0: stretched whole. 4, [h, v] or [left, top, right, bottom]")]
     public Thickness Slice;
 
-    [Property(Tooltip = "Colours that change with the widget's state: hover, focused, pressed, disabled")]
+    [Property(Tooltip = "Colours that change with the widget's state: hover, focused, pressed, disabled, selected")]
     public UiStyleStates States = new();
 }
 
@@ -77,6 +80,9 @@ public sealed class UiStyleStates
     public UiStyleState? Focused;
     public UiStyleState? Pressed;
     public UiStyleState? Disabled;
+
+    // A ticked checkbox, the open tab (Widget.IsSelected), when it is not focused, hovered or pressed.
+    public UiStyleState? Selected;
 }
 
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
@@ -112,7 +118,7 @@ public sealed class UiLayoutRecord
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class UiNode
 {
-    [JsonConverter(typeof(WidgetTypeJsonConverter)), Property(Tooltip = "What it is: box, stack, grid, label, image, button, item_list, bar or scroll")]
+    [JsonConverter(typeof(WidgetTypeJsonConverter)), Property(Tooltip = "What it is: box, stack, grid, label, image, button, item_list, bar, scroll, slider, checkbox, dropdown, text_field or tabs")]
     public string Widget = "";
 
     [Property(Tooltip = "The node it is inside, by name; empty: the layout's root")]
@@ -126,7 +132,7 @@ public sealed class UiNode
 
     // ---- what it shows
 
-    [Property(Tooltip = "A label's or button's text; '@ns.key' is a localisation key")]
+    [Property(Tooltip = "A label's, button's or checkbox's text, or what a text field starts with; '@ns.key' is a localisation key")]
     public string Text = "";
 
     [Property(Tooltip = "Values for the text's {placeholders}, by name: each a path into the view-model ({count} also picks the plural form)")]
@@ -149,6 +155,15 @@ public sealed class UiNode
 
     [Property(Tooltip = "Where text sits in a bigger label: Start, Center, End")]
     public Align? TextAlign;
+
+    [Property(Tooltip = "A label's text breaks at spaces to fit its width (and maxWidth): a paragraph")]
+    public bool Wrap;
+
+    [Property(Tooltip = "What a label's text that still does not fit does: Visible (runs past), Clip, Ellipsis (ends in '…')")]
+    public TextOverflow? Overflow;
+
+    [Property(Min = 0, Unit = "units", Tooltip = "A label is never wider than this; 0: no limit but its room")]
+    public float MaxWidth;
 
     // ---- where it goes
 
@@ -193,11 +208,40 @@ public sealed class UiNode
     [Property(Tooltip = "A scroll scrolls down (default true)")]
     public bool? Vertical;
 
-    // ---- a bar
+    // ---- a bar or a slider
 
     public float? Min;
     public float? Max;
     public float? Value;
+
+    // ---- form widgets (issue #340)
+
+    [Property(Min = 0, Tooltip = "A slider's step: the values it snaps to from min, and what a press moves it; empty: a twentieth of the range, unsnapped")]
+    public float? Step;
+
+    [Property(Tooltip = "A checkbox starts ticked")]
+    public bool? Checked;
+
+    [Property(Tooltip = "A dropdown's options, in order; '@ns.key' is a localisation key")]
+    public List<string> Options = new();
+
+    [Property(Min = -1, Tooltip = "The dropdown option or tab shown at first, from 0")]
+    public int? Selected;
+
+    [Property(Tooltip = "What an empty text field shows, faded; '@ns.key' is a localisation key")]
+    public string Placeholder = "";
+
+    [Property(Min = 0, Tooltip = "The most characters a text field takes; 0: 256")]
+    public int MaxLength;
+
+    [Property(Tooltip = "A text field takes Enter as a new line")]
+    public bool Multiline;
+
+    [Property(Tooltip = "Its tab's title, when it is a page of tabs; '@ns.key' is a localisation key")]
+    public string Title = "";
+
+    [Property(Tooltip = "The style of a tabs' tab buttons; the open one is drawn in its `selected` state")]
+    public RecordRef<UiStyleRecord> TabStyle;
 
     // ---- state
 
@@ -236,10 +280,10 @@ public sealed class UiNode
 
     // ---- bindings
 
-    [Property(Tooltip = "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows")]
+    [Property(Tooltip = "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to")]
     public string Bind = "";
 
-    [Property(Tooltip = "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows")]
+    [Property(Tooltip = "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options")]
     public Dictionary<string, string> Bindings = new();
 }
 
@@ -321,7 +365,7 @@ internal static class UiSounds
     {
       "description": "A widget type.",
       "type": "string",
-      "enum": ["box", "stack", "grid", "label", "image", "button", "item_list", "bar", "scroll"]
+      "enum": ["box", "stack", "grid", "label", "image", "button", "item_list", "bar", "scroll", "slider", "checkbox", "dropdown", "text_field", "tabs"]
     }
     """)]
 internal sealed class WidgetTypeJsonConverter : JsonConverter<string>

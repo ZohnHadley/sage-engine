@@ -12,6 +12,9 @@
          NVorbis is the version MonoGame.Framework.DesktopGL already brings, so the client has one copy. -->
     <PackageVersion Include="StbImageSharp" Version="2.30.16" />
     <PackageVersion Include="NVorbis" Version="0.10.4" />
+    <!-- Fonts (issue #338): TTF/OTF read and rasterised at run time, headlessly, so layout measures
+         with the same metrics the client draws with. The same StbSharp family as StbImageSharp. -->
+    <PackageVersion Include="StbTrueTypeSharp" Version="1.26.12" />
     <!-- Client and tools -->
     <PackageVersion Include="MonoGame.Framework.DesktopGL" Version="3.8.5.1" />
     <PackageVersion Include="SharpGLTF.Core" Version="1.0.7" />

@@ -222,6 +222,38 @@ public class RpgScreenTests
         Assert.Equal("Ten gold, friend.", Text(talk.Screen, "answer"));                    // the guard's own answer
     }
 
+    // A long answer is a paragraph (#338): the topics screen's answer wraps inside its 420 units, a line
+    // under another, and the window grows down to hold it rather than off the side of the screen.
+    [Fact]
+    public void ALongAnswerWrapsInsideTheTopicsScreensAnswerBox()
+    {
+        const string speech = "The bridge has been closed since the spring floods took the middle span, and the " +
+                              "captain will not open it again until the masons from the city have looked at every stone.";
+        using var app = Boot("""
+            [ { "type": "dialogue_topic", "id": "the_bridge", "patch": true, "infos": [ { "text": "SPEECH" } ] } ]
+            """.Replace("SPEECH", speech));
+        var world = app.World;
+        var hero = Carrier(world, "hero", 0f);
+        var guard = world.Create(Transform.At(Vector3.Zero), "guard");
+        var talk = Open(app, RpgKitModule.TopicsScreen, hero, guard);
+        talk.A();                                                                           // ask about the bridge
+
+        var answer = talk.Screen.View.Find<Label>("answer")!;
+        Assert.Equal(speech, answer.Text);
+        Assert.True(answer.Wrap);
+        talk.Root.Layout();
+        float line = talk.Root.Text.LineHeight * answer.TextScale;
+        Assert.True(answer.Rect.Width <= 420f + 0.01f, $"the answer is {answer.Rect.Width} wide");
+        Assert.True(answer.DesiredSize.Y >= 3 * line, $"the answer is {answer.DesiredSize.Y / line} line(s)");
+
+        var plan = new UiRenderPlan();
+        plan.Update(talk.Root, app.World.Resources.Get<UiStyles>());
+        var lines = plan.Commands.ToArray().Where(c => c.Kind == UiDrawKind.Text && c.Widget == answer).ToArray();
+        Assert.True(lines.Length >= 3);
+        Assert.Equal(speech.Replace(" ", ""), string.Concat(lines.Select(l => l.Text!.Substring(l.Start, l.Length))).Replace(" ", ""));   // every word, once
+        Assert.All(lines, l => Assert.True(l.Rect.Right <= talk.Root.ToPixels(answer.ContentRect).Right + 0.01f));
+    }
+
     // Equipment over EquipSlots: the kit's two hands, what fills them, and what could.
     [Fact]
     public void TheEquipmentScreenPutsOnAndTakesOffThroughTheItemRules()

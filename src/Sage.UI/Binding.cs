@@ -58,6 +58,10 @@ internal readonly struct UiValue
 
     public string? AsString => Kind == UiValueKind.Text ? (string)Ref! : null;
 
+    // For a binding written back (issue #340): text as it is, anything else as it shows; a number rounded.
+    public static string ToText(UiValue value) => value.Kind == UiValueKind.Text ? (string)value.Ref! : value.ToString();
+    public static long ToWhole(UiValue value) => (long)Math.Round(value.Number);
+
     // As text to show. Allocates for a number: called when the value changed, not every frame.
     public override string ToString() => Kind switch
     {
@@ -134,6 +138,79 @@ internal static class BindingPaths
             if (candidate.IsGenericType && candidate.GetGenericTypeDefinition() is var d && (d == typeof(IList<>) || d == typeof(IReadOnlyList<>) || d == typeof(IEnumerable<>)))
                 return candidate.GetGenericArguments()[0];
         return typeof(object);
+    }
+
+    private static readonly ConcurrentDictionary<(Type, string), Action<object, UiValue>?> Writers = new();
+
+    // Whether `path` on `type` can be written (issue #340): it ends at a settable field or property of a
+    // number, flag, enum or string, and every step before it is a class (a struct read along the way is
+    // a copy, and writing into it would be lost).
+    public static bool IsWritable(Type type, string path, out string? problem)
+    {
+        problem = null;
+        if (IsSelf(path)) { problem = "'.' is the object itself, which cannot be replaced"; return false; }
+        if (!TryWalk(type, path, out var members, out var leaf, out problem)) return false;
+        var owner = type;
+        for (int i = 0; i < members.Count; i++)
+        {
+            if (owner.IsValueType) { problem = $"{Describe(owner)} is a struct: a value written into it would be lost"; return false; }
+            owner = members[i] is FieldInfo f ? f.FieldType : ((PropertyInfo)members[i]).PropertyType;
+        }
+        var last = members[^1];
+        bool settable = last is FieldInfo field ? !field.IsInitOnly && !field.IsLiteral : ((PropertyInfo)last).SetMethod is { IsPublic: true };
+        if (!settable) { problem = $"'{last.Name}' is read-only"; return false; }
+        if (Kind(leaf) is UiValueKind.None or UiValueKind.Object) { problem = $"{Describe(leaf)} is not a number, flag or text"; return false; }
+        return true;
+    }
+
+    // What writes a value to `path` on objects of exactly `type`, or null when it cannot be (said once).
+    public static Action<object, UiValue>? Writer(Type type, string path) =>
+        Writers.GetOrAdd((type, path), static key => CompileWriter(key.Item1, key.Item2));
+
+    private static Action<object, UiValue>? CompileWriter(Type type, string path)
+    {
+        if (!IsWritable(type, path, out string? problem))
+        {
+            Log.Warn(LogCat.UI, $"binding '{path}': {problem}; what the player changes is not written back");
+            return null;
+        }
+        TryWalk(type, path, out var members, out var leaf, out _);
+        var o = Expression.Parameter(typeof(object), "o");
+        var value = Expression.Parameter(typeof(UiValue), "value");
+        var done = Expression.Label("done");
+        var variables = new List<ParameterExpression>();
+        var body = new List<Expression>();
+        Expression current = Expression.Convert(o, type);
+        for (int i = 0; i < members.Count - 1; i++)
+        {
+            var v = Expression.Variable(current.Type);
+            variables.Add(v);
+            body.Add(Expression.Assign(v, current));
+            body.Add(Expression.IfThen(Expression.ReferenceEqual(v, Expression.Constant(null, current.Type)), Expression.Return(done)));
+            current = Expression.MakeMemberAccess(v, members[i]);
+        }
+        var holder = Expression.Variable(current.Type);
+        variables.Add(holder);
+        body.Add(Expression.Assign(holder, current));
+        body.Add(Expression.IfThen(Expression.ReferenceEqual(holder, Expression.Constant(null, current.Type)), Expression.Return(done)));
+        body.Add(Expression.Assign(Expression.MakeMemberAccess(holder, members[^1]), Unwrap(value, leaf)));
+        body.Add(Expression.Label(done));
+        return Expression.Lambda<Action<object, UiValue>>(Expression.Block(variables, body), o, value).Compile();
+    }
+
+    // A UiValue as a value of `type`: a number rounded to a whole one for an integer or an enum.
+    private static Expression Unwrap(Expression value, Type type)
+    {
+        var underlying = Nullable.GetUnderlyingType(type) ?? type;
+        Expression result;
+        if (underlying == typeof(string)) result = Expression.Call(typeof(UiValue).GetMethod(nameof(UiValue.ToText))!, value);
+        else if (underlying == typeof(bool)) result = Expression.Property(value, nameof(UiValue.IsTrue));
+        else if (underlying.IsEnum)
+            result = Expression.Convert(Expression.Convert(Expression.Call(typeof(UiValue).GetMethod(nameof(UiValue.ToWhole))!, value), Enum.GetUnderlyingType(underlying)), underlying);
+        else if (underlying == typeof(float) || underlying == typeof(double) || underlying == typeof(decimal))
+            result = Expression.Convert(Expression.Field(value, nameof(UiValue.Number)), underlying);
+        else result = Expression.Convert(Expression.Call(typeof(UiValue).GetMethod(nameof(UiValue.ToWhole))!, value), underlying);
+        return underlying == type ? result : Expression.Convert(result, type);
     }
 
     // The reader for `path` on objects of exactly `type`. Compiled once per (type, path) for the process.
@@ -254,5 +331,21 @@ internal sealed class BindingReader
             _type = type;
         }
         return _read!(source);
+    }
+
+    private Type? _writeType;
+    private Action<object, UiValue>? _write;
+
+    // Writes `value` to the path on `target` (the player changed a widget, issue #340); nothing when the
+    // path cannot be written, which is said once.
+    public void Write(object target, UiValue value)
+    {
+        var type = target.GetType();
+        if (type != _writeType)
+        {
+            _write = BindingPaths.Writer(type, Path);
+            _writeType = type;
+        }
+        _write?.Invoke(target, value);
     }
 }

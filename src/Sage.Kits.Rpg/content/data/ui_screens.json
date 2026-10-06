@@ -93,7 +93,8 @@
       "list":    { "widget": "item_list", "parent": "scroll", "bind": "topics", "spacing": 1 },
       "topic":   { "widget": "button", "parent": "list", "style": "topic", "bind": "keyword",
                    "bindings": { "style": "style" }, "textAlign": "start" },
-      "answer":  { "widget": "label", "parent": "body", "style": "text", "bind": "answer", "minSize": [420, 0], "vAlign": "start" },
+      "answer":  { "widget": "label", "parent": "body", "style": "text", "bind": "answer", "minSize": [420, 0], "vAlign": "start",
+                   "wrap": true, "maxWidth": 420 },
       "none":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.topics.none",
                    "bindings": { "visible": "noTopics" } },
       "hint":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.topics.hint" }
