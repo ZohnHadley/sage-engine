@@ -79,8 +79,11 @@ public sealed class RenderPassAttribute : Attribute
 [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
 public sealed class RenderPassInfo
 {
-    internal RenderPassInfo(string id, RenderStage stage, IReadOnlyList<string> after, IReadOnlyList<string> before, Type type, int registration)
+    internal RenderPassInfo(string id, RenderStage stage, IReadOnlyList<string> after, IReadOnlyList<string> before, Type type, int registration,
+                            Type? replaces = null, string? by = null)
     {
+        Replaces = replaces;
+        By = by;
         Id = id;
         Stage = stage;
         After = after;
@@ -95,6 +98,11 @@ public sealed class RenderPassInfo
     public IReadOnlyList<string> Before { get; }
     public Type Type { get; }
     internal int Registration { get; }
+
+    // Set when this pass took the place of another under the same id (`Replace`): the type it replaced,
+    // and who asked (a plugin or assembly name). For a disabled pass (`RenderPassRegistry.Disabled`), By is who switched it off.
+    public Type? Replaces { get; }
+    public string? By { get; }
 }
 
 // The render passes, in the order they draw (REDESIGN §4.7, issue 4h-1). Headless — the client's
@@ -104,6 +112,11 @@ public sealed class RenderPassInfo
 // Mistakes are load errors, each at the line or the stage that makes them:
 //   - a pass without [RenderPass], or an id already taken: Add throws;
 //   - adding after the seal (the client seals it in its Start): Add throws (RegistrationSeal);
+//   - `Replace(id, pass)` swaps the pass registered under `id` for another in the same stage (it keeps the
+//     id, so the passes ordered against it stay ordered); `Disable(id)` leaves it out. Both are applied at
+//     the seal, so a plugin may ask before the pass it names is added. Two requests for one id (two
+//     replacements, or a replacement and a disable), an id nothing added, or a replacement in another
+//     stage are load errors naming who asked. A constraint that names a disabled pass is dropped.
 //   - at the seal: an After/Before naming an id nothing added (unless written "?id"), naming a pass in
 //     another stage (the stage order already decides it, as with systems' phases), or a cycle: Seal
 //     throws, naming the passes.
@@ -114,6 +127,11 @@ public class RenderPassRegistry<TPass> where TPass : class
     private readonly Dictionary<string, int> _ids = new(StringComparer.Ordinal);
     private readonly TPass[][] _stages = new TPass[RenderStages.Count][];
     private RenderPassInfo[] _ordered = Array.Empty<RenderPassInfo>();
+    private readonly List<Override> _overrides = new();
+    private readonly HashSet<string> _disabledIds = new(StringComparer.Ordinal);
+    private RenderPassInfo[] _disabled = Array.Empty<RenderPassInfo>();
+
+    private readonly record struct Override(string Id, TPass? Replacement, string By);
 
     public RenderPassRegistry()
     {
@@ -131,6 +149,82 @@ public class RenderPassRegistry<TPass> where TPass : class
     public ReadOnlySpan<TPass> In(RenderStage stage) => _stages[(int)stage];
 
     public int Count => _added.Count;
+
+    // The passes switched off (`Disable`). Empty until sealed.
+    public IReadOnlyList<RenderPassInfo> Disabled => _disabled;
+
+    // Swaps the pass registered under `id` (an engine pass, say "sage:transparent") for `pass`, which must
+    // draw in the same stage. It takes the id and the old pass's After/Before as well as its own, so
+    // everything ordered against the old one stays ordered. `by` names who asks (default: the pass's assembly).
+    public void Replace(string id, TPass pass, string? by = null)
+    {
+        ArgumentNullException.ThrowIfNull(pass);
+        by ??= pass.GetType().Assembly.GetName().Name ?? "?";
+        _seal.Check(id);
+        Claim(id, by);
+        _overrides.Add(new Override(id, pass, by));
+    }
+
+    // Leaves the pass registered under `id` out of every frame. `by` names who asks.
+    public void Disable(string id, string by)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(by);
+        _seal.Check(id);
+        Claim(id, by);
+        _overrides.Add(new Override(id, default, by));
+    }
+
+    private void Claim(string id, string by)
+    {
+        foreach (var o in _overrides)
+            if (o.Id == id)
+                throw new InvalidOperationException(
+                    $"Render pass '{id}' is already {(o.Replacement != null ? "replaced" : "disabled")} by {o.By}; {by} cannot also change it. " +
+                    "One module owns a pass: drop one of the two.");
+    }
+
+    // Applies the replacements and disables to what was added. Errors name who asked.
+    private void ApplyOverrides()
+    {
+        var disabled = new List<RenderPassInfo>();
+        foreach (var o in _overrides)
+        {
+            if (!_ids.TryGetValue(o.Id, out int at))
+                throw new InvalidOperationException(
+                    $"{o.By} {(o.Replacement != null ? "replaces" : "disables")} render pass '{o.Id}', which no module added: a typo, or a plugin that is not installed.");
+            var (old, _) = _added[at];
+            if (o.Replacement is { } pass)
+            {
+                var type = pass.GetType();
+                var declared = type.GetCustomAttribute<RenderPassAttribute>(inherit: false)
+                    ?? throw new InvalidOperationException($"Render pass {type.Name} has no [RenderPass(\"ns:id\", RenderStage.X)]: declare its stage.");
+                if (declared.Stage != old.Stage)
+                    throw new InvalidOperationException(
+                        $"{o.By} replaces render pass '{o.Id}' ({old.Stage}) with {type.Name}, which draws in {declared.Stage}. A replacement draws in the stage of the pass it replaces.");
+                _added[at] = (new RenderPassInfo(o.Id, old.Stage, Union(old.After, declared.After), Union(old.Before, declared.Before), type, old.Registration, old.Type, o.By), pass);
+            }
+            else
+            {
+                disabled.Add(new RenderPassInfo(old.Id, old.Stage, old.After, old.Before, old.Type, old.Registration, null, o.By));
+                _disabledIds.Add(o.Id);
+                _added[at] = default;
+            }
+        }
+        if (disabled.Count > 0)
+        {
+            _added.RemoveAll(e => e.Info == null);
+            _ids.Clear();
+            for (int i = 0; i < _added.Count; i++) _ids[_added[i].Info.Id] = i;
+        }
+        _disabled = disabled.ToArray();
+    }
+
+    private static string[] Union(IReadOnlyList<string> a, IReadOnlyList<string> b)
+    {
+        var list = new List<string>(a);
+        foreach (var x in b) if (!list.Contains(x)) list.Add(x);
+        return list.ToArray();
+    }
 
     public RenderPassInfo Add(TPass pass)
     {
@@ -159,6 +253,7 @@ public class RenderPassRegistry<TPass> where TPass : class
     public void Seal(string stage)
     {
         if (_seal.IsSealed) return;
+        ApplyOverrides();
         var ordered = new List<(RenderPassInfo Info, TPass Pass)>(_added.Count);
         for (int s = 0; s < RenderStages.Count; s++)
         {
@@ -227,7 +322,7 @@ public class RenderPassRegistry<TPass> where TPass : class
             throw new InvalidOperationException(
                 $"Render pass '{pass.Id}' ({stage}) draws {relation} '{id}', which draws in {_added[other].Info.Stage}. " +
                 "After/Before orders passes within one stage; the stage order already decides this one.");
-        if (name.StartsWith('?')) return null;
+        if (name.StartsWith('?') || _disabledIds.Contains(id)) return null;   // a disabled pass constrains nothing
         throw new InvalidOperationException(
             $"Render pass '{pass.Id}' draws {relation} '{id}', which no module added: a typo, or a plugin that is not installed " +
             $"(write \"?{id}\" if that plugin is optional).");

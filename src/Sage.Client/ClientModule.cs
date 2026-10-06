@@ -118,8 +118,11 @@ public sealed class ClientModule : IModule
             {
                 string after = pass.After.Count > 0 ? $" after {string.Join(", ", pass.After)}" : "";
                 string before = pass.Before.Count > 0 ? $" before {string.Join(", ", pass.Before)}" : "";
-                Log.Info(LogCat.Console, $"  {pass.Stage,-12} {pass.Id,-28} {pass.Type.Name} ({pass.Type.Assembly.GetName().Name}){after}{before}");
+                string replaced = pass.Replaces != null ? $" (replaces {pass.Replaces.Name}, by {pass.By})" : "";
+                Log.Info(LogCat.Console, $"  {pass.Stage,-12} {pass.Id,-28} {pass.Type.Name} ({pass.Type.Assembly.GetName().Name}){replaced}{after}{before}");
             }
+            foreach (var pass in Passes.Disabled)
+                Log.Info(LogCat.Console, $"  {pass.Stage,-12} {pass.Id,-28} {pass.Type.Name} DISABLED by {pass.By}");
             Log.Info(LogCat.Console, $"{Passes.Count} render pass(es)");
         });
         _assetHotReload = ctx.Engine.CVars.Register("asset_hotreload", BuildInfo.IsDevBuild && ctx.Engine.Core.Developer.Value >= 1,

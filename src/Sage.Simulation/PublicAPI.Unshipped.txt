@@ -1,5 +1,8 @@
 #nullable enable
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
+Sage.Simulation.DebugDraw.CopyLabelsTo(System.Collections.Generic.List<Sage.Simulation.DebugLine>! into, System.Numerics.Vector3 right, System.Numerics.Vector3 up) -> void
+Sage.Simulation.DebugDraw.LabelCount.get -> int
+Sage.Simulation.DebugDraw.Text3D(System.Numerics.Vector3 at, string! text, uint colour = 4294967295, float height = 0.25, float seconds = 0) -> void
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
 Sage.Simulation.Decal.Alpha.get -> float
@@ -34,6 +37,11 @@ Sage.Simulation.Decals.Place(Sage.Core.RecordId effect, Sage.Simulation.DecalRec
 Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
+Sage.Simulation.RenderPassInfo.By.get -> string?
+Sage.Simulation.RenderPassInfo.Replaces.get -> System.Type?
+Sage.Simulation.RenderPassRegistry<TPass>.Disable(string! id, string! by) -> void
+Sage.Simulation.RenderPassRegistry<TPass>.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.RenderPassInfo!>!
+Sage.Simulation.RenderPassRegistry<TPass>.Replace(string! id, TPass! pass, string? by = null) -> void
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 const Sage.Simulation.MeshLod.Culled = -1 -> int
 const Sage.Simulation.MeshLod.Unknown = -2 -> int

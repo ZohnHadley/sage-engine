@@ -546,6 +546,7 @@ internal sealed class DebugExtract : ISystem
     private readonly VisualLog _visualLog;
     private readonly CVar<bool> _enabled;
     private readonly List<DebugLine> _lines = new(256);   // reused: the frame budget allows no garbage
+    private readonly List<DebugLine> _labelLines = new(256);   // Text3D, per view
 
     public DebugExtract(World world, CVar<bool> enabled)
     {
@@ -572,7 +573,12 @@ internal sealed class DebugExtract : ISystem
             if (view.ShadowCaster) continue;   // debug lines cast no shadow (4h-4)
             var camera = view.CameraPosition;
             view.DebugStart = s.DebugLines.Count;
-            foreach (var line in _lines)
+            _labelLines.Clear();
+            if (_debug.LabelCount > 0)   // labels turn to face this view: its screen axes are the View matrix's columns
+                _debug.CopyLabelsTo(_labelLines, new System.Numerics.Vector3(view.View.M11, view.View.M21, view.View.M31),
+                                                 new System.Numerics.Vector3(view.View.M12, view.View.M22, view.View.M32));
+            for (int pass = 0; pass < 2; pass++)
+            foreach (var line in pass == 0 ? _lines : _labelLines)
             {
                 var colour = new Color((byte)(line.Rgba >> 24), (byte)(line.Rgba >> 16), (byte)(line.Rgba >> 8), (byte)line.Rgba);
                 Vector3 a = line.A, b = line.B;   // System.Numerics → MonoGame (implicit)
