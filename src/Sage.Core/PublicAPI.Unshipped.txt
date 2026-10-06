@@ -1,4 +1,40 @@
 #nullable enable
+const Sage.Core.DropDownConsole.MaxLine = 512 -> int
+const Sage.Core.DropDownConsole.SlideSeconds = 0.18 -> float
+Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.Down = 1 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.End = 5 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.Home = 4 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.Left = 2 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.PageDown = 8 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.PageUp = 7 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.Right = 3 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.Tab = 6 -> Sage.Core.ConsoleNavKey
+Sage.Core.ConsoleNavKey.Up = 0 -> Sage.Core.ConsoleNavKey
+Sage.Core.DropDownConsole
+Sage.Core.DropDownConsole.Candidates.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.DropDownConsole.Caret.get -> int
+Sage.Core.DropDownConsole.Close() -> void
+Sage.Core.DropDownConsole.DropDownConsole(Sage.Core.CVarRegistry! cvars, Sage.Core.CoreCVars! core, System.Func<System.Collections.Generic.IEnumerable<string!>!>? recordIds = null, System.Func<bool>? available = null) -> void
+Sage.Core.DropDownConsole.Input.get -> Sage.Core.ConsoleInput!
+Sage.Core.DropDownConsole.IsOpen.get -> bool
+Sage.Core.DropDownConsole.IsVisible.get -> bool
+Sage.Core.DropDownConsole.Levels.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.LogLevel>!
+Sage.Core.DropDownConsole.Line.get -> string!
+Sage.Core.DropDownConsole.Lines.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Core.DropDownConsole.Open() -> void
+Sage.Core.DropDownConsole.PageLines.get -> int
+Sage.Core.DropDownConsole.PageLines.set -> void
+Sage.Core.DropDownConsole.Press(Sage.Core.ConsoleNavKey key) -> void
+Sage.Core.DropDownConsole.Refresh() -> void
+Sage.Core.DropDownConsole.RegisterCommands() -> void
+Sage.Core.DropDownConsole.Scroll.get -> int
+Sage.Core.DropDownConsole.ScrollBy(int lines) -> void
+Sage.Core.DropDownConsole.Slide.get -> float
+Sage.Core.DropDownConsole.Submit() -> void
+Sage.Core.DropDownConsole.Toggle() -> void
+Sage.Core.DropDownConsole.Type(System.ReadOnlySpan<char> typed) -> void
+Sage.Core.DropDownConsole.Update(float seconds) -> void
 Sage.Core.CVarRegistry.Version.get -> int
 Sage.Core.GameManifest.Title.get -> string?
 Sage.Core.GameManifest.Title.set -> void
