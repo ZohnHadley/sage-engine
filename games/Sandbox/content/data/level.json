@@ -26,13 +26,13 @@
   // condition and the light's TurnOn/TurnOff inputs. Lit, it flickers like the oil lamp it is (engine issue
   // #314): the "on" state also sends it SetPattern with the `torch` preset (Quake's second flicker), and
   // "off" sets it steady again — `ent_fire lamp SetPattern candle` tries another, `ent_fire lamp Toggle`
-  // switches it by hand.
+  // switches it by hand. It casts shadows (engine issue #315): the hut's things throw them on its walls.
   {
     "type": "prefab",
     "id": "light",
     "name": "lamp",
     "parts": {
-      "light": { "colour": [1.0, 0.82, 0.55], "range": 7, "intensity": 2.2, "off": true },
+      "light": { "colour": [1.0, 0.82, 0.55], "range": 7, "intensity": 2.2, "off": true, "shadows": true },
       "state_machine": { "machine": "lamp" }
     }
   },

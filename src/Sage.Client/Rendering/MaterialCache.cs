@@ -22,6 +22,8 @@ internal sealed class EffectBinding
         "Lightmap",   // a lightmapped draw's baked light (issue #313), set per draw
         "WetParams", "PuddleMask",   // rain on the world (issue #311), frame tier
         "SceneDepth", "SoftParams", "SoftRect",   // a soft particle run's depth and fade (issue 4n-6), set per run
+        "LampShadowMap", "LampShadowAtlas",       // the lamps' shadow atlas (issue #315), frame tier
+        "LampShadowForward", "LampShadowRight", "LampShadowUp", "LampShadowCorner",   // its first two lamps' maps, per draw
     };
 
     public EffectBinding(Effect effect)
@@ -45,6 +47,9 @@ internal sealed class EffectBinding
         ShadowCasterAlphaTestSkinned = effect.Techniques[ShadowMath.CasterTechnique(RenderPass.AlphaTested, skinned: true)];
         ShadowCasterInstanced = effect.Techniques[Instancing.TechniqueFor("ShadowCaster")];
         SceneDepth = P("SceneDepth"); SoftParams = P("SoftParams"); SoftRect = P("SoftRect");
+        LampShadowMap = P("LampShadowMap"); LampShadowAtlas = P("LampShadowAtlas");
+        LampShadowForward = P("LampShadowForward"); LampShadowRight = P("LampShadowRight");
+        LampShadowUp = P("LampShadowUp"); LampShadowCorner = P("LampShadowCorner");
     }
 
     public Effect Effect { get; }
@@ -59,6 +64,17 @@ internal sealed class EffectBinding
     public readonly EffectParameter? ShadowCascadeRects, ShadowCascadeBias;      // issue 4n-11
     public readonly EffectTechnique? ShadowCasterAlphaTest, ShadowCasterAlphaTestSkinned;   // a cut-out caster (4n-11)
     public readonly EffectParameter? SceneDepth, SoftParams, SoftRect;          // soft particles (issue 4n-6)
+    public readonly EffectParameter? LampShadowMap, LampShadowAtlas;             // lamp shadows (issue #315)
+    public readonly EffectParameter? LampShadowForward, LampShadowRight, LampShadowUp, LampShadowCorner;
+
+    // The lamps' maps this view reads (null: none drawn), and the per-draw arrays for the first PerDraw lamps.
+    private LampShadowFrame? _lampMaps;
+    private bool _lampsSet;   // whether the arrays on the effect hold a map (else they all say "none")
+    private readonly Vector4[] _lampForward = new Vector4[LampShadows.PerDraw];
+    private readonly Vector4[] _lampRight = new Vector4[LampShadows.PerDraw];
+    private readonly Vector4[] _lampUp = new Vector4[LampShadows.PerDraw];
+    private readonly Vector4[] _lampCorner = new Vector4[LampShadows.PerDraw];
+    private readonly int[] _lightOrder = new int[LightRules.PerObject];
 
     // The cascades' matrices and rectangles, reused (set once a view).
     private readonly Matrix[] _cascadeViewProj = new Matrix[ShadowMath.MaxCascades];
@@ -75,12 +91,17 @@ internal sealed class EffectBinding
     {
         if (LightCount == null) return;                 // an effect that does not light, such as debug lines
 
+        // The lamps with a shadow map first (issue #315; LampShadows.DrawOrder): the shaders look up the first two.
+        var order = _lightOrder.AsSpan(0, chosen.Length);
+        LampShadows.DrawOrder(chosen, order);
         for (int i = 0; i < chosen.Length; i++)
         {
-            _positions[i] = new Vector3(chosen[i].Position.X, chosen[i].Position.Y, chosen[i].Position.Z);
-            _colours[i] = new Vector4(chosen[i].Colour.X, chosen[i].Colour.Y, chosen[i].Colour.Z, chosen[i].Range);
-            _spots[i] = new Vector4(chosen[i].Spot.X, chosen[i].Spot.Y, chosen[i].Spot.Z, chosen[i].Spot.W);
+            ref readonly var light = ref chosen[order[i]];
+            _positions[i] = new Vector3(light.Position.X, light.Position.Y, light.Position.Z);
+            _colours[i] = new Vector4(light.Colour.X, light.Colour.Y, light.Colour.Z, light.Range);
+            _spots[i] = new Vector4(light.Spot.X, light.Spot.Y, light.Spot.Z, light.Spot.W);
         }
+        if (LampShadowCorner != null) SetLampShadows(chosen, order);
 
         LightCount.SetValue((float)chosen.Length);
         if (chosen.Length == 0) return;                 // nothing may be read past the count
@@ -90,9 +111,47 @@ internal sealed class EffectBinding
         LightSpots?.SetValue(_spots);
     }
 
-    public void SetFrame(in RenderView view, in EnvironmentParams env, in ShadowFrame shadow, Texture2D? shadowMap, Texture2D none,
-                         Texture2D puddleMask)
+    // The first PerDraw lamps' maps (common.fxh `LampShadow`): each one's axes, its z/w curve and where its
+    // block is, or w = 0 in LampShadowCorner for a lamp without one. Nothing is set while no lamp of any draw
+    // has had a map since the arrays last said "none": a level without lamp shadows sets nothing per draw.
+    private void SetLampShadows(ReadOnlySpan<LightSample> chosen, ReadOnlySpan<int> order)
     {
+        bool any = false;
+        for (int k = 0; k < LampShadows.PerDraw; k++)
+        {
+            int slot = k < chosen.Length && _lampMaps != null ? chosen[order[k]].ShadowSlot : 0;
+            if (slot <= 0 || slot > _lampMaps!.Count)
+            {
+                _lampForward[k] = _lampRight[k] = _lampUp[k] = _lampCorner[k] = Vector4.Zero;
+                continue;
+            }
+            ref readonly var fit = ref _lampMaps.Fits[slot - 1];
+            _lampForward[k] = new Vector4(fit.Forward.X, fit.Forward.Y, fit.Forward.Z, fit.InvTan);
+            _lampRight[k] = new Vector4(fit.Right.X, fit.Right.Y, fit.Right.Z, fit.DepthA);
+            _lampUp[k] = new Vector4(fit.Up.X, fit.Up.Y, fit.Up.Z, fit.DepthB);
+            _lampCorner[k] = new Vector4(fit.Corner.X, fit.Corner.Y, fit.BiasSlope, 1f);
+            any = true;
+        }
+        if (!any && !_lampsSet) return;
+        _lampsSet = any;
+        LampShadowForward?.SetValue(_lampForward);
+        LampShadowRight?.SetValue(_lampRight);
+        LampShadowUp?.SetValue(_lampUp);
+        LampShadowCorner!.SetValue(_lampCorner);
+    }
+
+    public void SetFrame(in RenderView view, in EnvironmentParams env, in ShadowFrame shadow, Texture2D? shadowMap, Texture2D none,
+                         Texture2D puddleMask, LampShadowFrame? lampMaps = null, Texture2D? lampMap = null)
+    {
+        // The lamps' atlas (issue #315): x, y = one texel in uv, z = texels a side of a face, w = the depth margin in metres.
+        _lampMaps = lampMap != null ? lampMaps : null;
+        if (LampShadowMap != null)
+        {
+            LampShadowMap.SetValue(_lampMaps != null ? lampMap : none);
+            var atlas = _lampMaps?.Atlas ?? new LampShadowAtlas(1, LampShadows.MinSize);
+            LampShadowAtlas?.SetValue(new Vector4(1f / atlas.Width, 1f / atlas.Height, atlas.TileSize, LampShadows.BiasMetres));
+        }
+
         ViewProj?.SetValue(view.ViewProj);
         SunDir?.SetValue(env.SunDirection);
         SunColor?.SetValue(env.SunColor);

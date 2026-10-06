@@ -17,7 +17,7 @@ namespace Sage.Gameplay;
 // ---- looks ---------------------------------------------------------------------------------------
 
 // "light": { "colour": [1, 0.85, 0.6], "range": 8, "intensity": 1.4, "off": false,
-//            "pattern": "torch", "patternRate": 10, "cone": 30, "innerCone": 20 }
+//            "pattern": "torch", "patternRate": 10, "cone": 30, "innerCone": 20, "shadows": true }
 //
 // A lamp. The engine carries it because a light is a fact about the world rather than about the
 // screen — a headless server has lamps and never draws one — and because a map places them by
@@ -43,6 +43,8 @@ public sealed class LightPart : IPrefabPart
     public float Cone;
     [Property(Min = 0, Max = 179, Unit = "deg", Tooltip = "Spot light: full strength inside this half-angle, fading to the cone's edge; 0 = three quarters of the cone")]
     public float InnerCone;
+    [Property(Tooltip = "Casts shadows (a cube, or a spot's cone) when among the r_shadow_lamps nearest lamps that ask; off costs nothing")]
+    public bool Shadows;
 
     public void Apply(in PrefabPartContext ctx)
     {
@@ -66,6 +68,7 @@ public sealed class LightPart : IPrefabPart
             PatternRate = PatternRate,
             Cone = Cone,
             InnerCone = InnerCone,
+            Shadows = Shadows,
         });
     }
 }

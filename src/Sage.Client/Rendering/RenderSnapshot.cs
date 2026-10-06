@@ -151,6 +151,37 @@ internal struct ShadowCascades
     private ShadowCascade _first;
 }
 
+// The frame's lamp shadows (issue #315), written by `sage:shadow`: the lamps that got a map
+// (LampShadows.Choose), their maps (LampShadows.Fit, camera-relative to `Camera`) and the caster views
+// they are drawn through, `ViewCount` of them from `View` on, into one atlas `Target`. `Drawn` only once
+// the atlas has been drawn this frame. Every view reads it: the lookup is relative to each lamp.
+internal sealed class LampShadowFrame
+{
+    public int Count;                // lamps with a map, 0..LampShadows.MaxLamps
+    public readonly Entity[] Lamps = new Entity[LampShadows.MaxLamps];          // whose map is block k
+    public readonly LampShadowFit[] Fits = new LampShadowFit[LampShadows.MaxLamps];
+    public LampShadowAtlas Atlas;
+    public int Target = -1;
+    public int View = -1, ViewCount;
+    public Vector3 Camera;
+    public bool Drawn;
+
+    // 1 + the block of the lamp `entity`'s map, or 0: what LightSample.ShadowSlot says.
+    public int SlotOf(Entity entity)
+    {
+        for (int k = 0; k < Count; k++) if (Lamps[k] == entity) return k + 1;
+        return 0;
+    }
+
+    public void Clear()
+    {
+        Count = 0;
+        View = -1;
+        ViewCount = 0;
+        Drawn = false;
+    }
+}
+
 // One draw: a mesh part with a material at a camera-relative world matrix (06 §4).
 internal struct RenderItem
 {
@@ -217,6 +248,9 @@ internal sealed class RenderSnapshot
 
     // The water the main view sees (issue #411), written by WaterExtract: drawn by the chain's water step.
     public readonly WaterFrame Water = new();
+
+    // The lamps' shadow maps this frame (issue #315), written by `sage:shadow`.
+    public readonly LampShadowFrame LampMaps = new();
 
     public int Culled;                   // items rejected by frustum culling this frame, every view
     public int FogCulled;                // of those, rejected because fog hides them wholly (issue 4h-5)
@@ -295,6 +329,7 @@ internal sealed class RenderSnapshot
         SoftSprites = 0;
         MainView = -1;
         Water.Clear();
+        LampMaps.Clear();
     }
 }
 

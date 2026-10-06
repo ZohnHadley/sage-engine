@@ -70,6 +70,8 @@ public sealed class RenderContext
 
     // The run of the view's sorted items and sprites a scene stage draws (Renderer.DrawView).
     internal int ItemFrom, ItemTo, SpriteFrom, SpriteTo;
+    // The frame's interpolation between ticks (FrameTime.Alpha), in Extract: where the lamps are drawn from (issue #315).
+    internal float Alpha;
 
     internal RenderContext(Renderer renderer) { _renderer = renderer; }
 

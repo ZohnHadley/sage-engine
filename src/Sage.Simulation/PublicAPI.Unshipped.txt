@@ -271,3 +271,4 @@ Sage.Simulation.Weather.Wetness.set -> void
 Sage.Simulation.WeatherRecord.Drying -> float
 Sage.Simulation.WeatherRecord.Wetting -> float
 Sage.Simulation.ParticleRecord.Soft -> float
+Sage.Simulation.PointLight.Shadows -> bool
