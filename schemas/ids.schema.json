@@ -601,6 +601,7 @@
         "crate",
         "crossbow_pickup",
         "crypt_door",
+        "crypt_echo",
         "crypt_exit",
         "crypt_torch",
         "dial",
@@ -634,6 +635,7 @@
         "hermit",
         "hopper",
         "hut_path",
+        "hut_room",
         "hut_walker",
         "hut_yard",
         "jogger",
@@ -700,6 +702,7 @@
         "sandbox:crate",
         "sandbox:crossbow_pickup",
         "sandbox:crypt_door",
+        "sandbox:crypt_echo",
         "sandbox:crypt_exit",
         "sandbox:crypt_torch",
         "sandbox:door",
@@ -714,6 +717,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:hut_room",
         "sandbox:hut_walker",
         "sandbox:hut_yard",
         "sandbox:lake",
@@ -825,6 +829,20 @@
         "pistol_recoil",
         "sandbox:pistol_recoil",
         "weapons:pistol_recoil"
+      ]
+    },
+    "record:reverb": {
+      "description": "The id of a reverb record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "cave",
+        "hall",
+        "outdoors",
+        "room",
+        "sage:cave",
+        "sage:hall",
+        "sage:outdoors",
+        "sage:room"
       ]
     },
     "record:routine": {
@@ -1826,6 +1844,7 @@
         "creature",
         "crossbow_pickup",
         "crypt_door",
+        "crypt_echo",
         "crypt_exit",
         "crypt_torch",
         "dial",
@@ -1859,6 +1878,7 @@
         "hermit",
         "hopper",
         "hut_path",
+        "hut_room",
         "hut_walker",
         "hut_yard",
         "jogger",
@@ -1926,6 +1946,7 @@
         "sandbox:creature",
         "sandbox:crossbow_pickup",
         "sandbox:crypt_door",
+        "sandbox:crypt_echo",
         "sandbox:crypt_exit",
         "sandbox:crypt_torch",
         "sandbox:door",
@@ -1940,6 +1961,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:hut_room",
         "sandbox:hut_walker",
         "sandbox:hut_yard",
         "sandbox:lake",
@@ -2051,6 +2073,20 @@
         "pistol_recoil",
         "sandbox:pistol_recoil",
         "weapons:pistol_recoil"
+      ]
+    },
+    "base:reverb": {
+      "description": "Another reverb record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "cave",
+        "hall",
+        "outdoors",
+        "room",
+        "sage:cave",
+        "sage:hall",
+        "sage:outdoors",
+        "sage:room"
       ]
     },
     "base:routine": {
