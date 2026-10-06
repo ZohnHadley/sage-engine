@@ -122,11 +122,12 @@ internal sealed class AnimatorPoses
 // Scratch poses for one skeleton: a layer's pose, the state it fades from, and one clip of a blend.
 internal sealed class AnimatorScratch
 {
-    public readonly SkeletonPose Layer, From, Clip;
+    public readonly SkeletonPose Layer, From, Clip, Reference;   // Reference: an additive clip's first frame (#358)
 
     public AnimatorScratch(Skeleton skeleton)
     {
         Layer = new SkeletonPose(skeleton);
+        Reference = new SkeletonPose(skeleton);
         From = new SkeletonPose(skeleton);
         Clip = new SkeletonPose(skeleton);
     }
@@ -268,6 +269,15 @@ internal static class AnimatorStepper
                         $"Animator {a.Graph}: layer '{g.Layers[l].Name}' masks joint '{joint}', which {set.Source}'s skeleton has not got");
             instance.Masks[l] = mask;
         }
+        // Synced blends (issue #358) whose clips lack the markers, or have them unevenly: said once.
+        for (int l = 0; l < g.Layers.Length; l++)
+        {
+            var layer = g.Layers[l];
+            for (int st = 0; st < layer.Count; st++)
+                if (SyncMarkers.Problem(layer.States[st], instance.Clips, g.ClipNames) is { } problem)
+                    Log.Once(LogCat.Animation, LogLevel.Warn, $"anim-sync:{a.Graph}:{a.Model}:{layer.Name}:{layer.Names[st]}",
+                        $"Animator {a.Graph}: state '{layer.Names[st]}' syncs its blend, but in {set.Source} {problem}");
+        }
     }
 
     // ---- logic: every tick, whatever the LOD ---------------------------------------------------------
@@ -350,7 +360,7 @@ internal static class AnimatorStepper
                     taken = Pick(layer, s.Index, g.ParamNames[p], s.Time, in context);
             taken ??= Pick(layer, s.Index, null, s.Time, in context);
             if (taken == null) continue;
-            Change(g, layer, ref s, layer.Target(taken));
+            Change(g, layer, ref s, layer.Target(taken), taken);
             if (s.Index >= 0)
             {
                 var entered = layer.States[s.Index];
@@ -458,6 +468,14 @@ internal static class AnimatorStepper
         if (list.Count == 0) return;
         float duration = clip.Duration;
         float slack = duration > 0f ? SlackTicks * e.Dt * MathF.Abs(state.Speed) / duration : 0f;
+        // A synced blend (issue #358): the range in this clip's own phase, where its markers put it.
+        float start = state.Speed >= 0f ? 0f : 1f;
+        if (state.Sync != null)
+        {
+            start = SyncMarkers.ClipPhase(state, clip, 0f);
+            before = SyncMarkers.ClipPhase(state, clip, before);
+            after = SyncMarkers.ClipPhase(state, clip, after);
+        }
         if (state.Speed >= 0f)
         {
             if (state.Loop && after < before)
@@ -465,7 +483,7 @@ internal static class AnimatorStepper
                 Forward(in e, list, duration, before + slack, false, 2f, pending);
                 Forward(in e, list, duration, 0f, true, after + slack, pending);
             }
-            else Forward(in e, list, duration, entered ? 0f : before + slack, entered, after + slack, pending);
+            else Forward(in e, list, duration, entered ? start : before + slack, entered, after + slack, pending);
         }
         else
         {
@@ -474,7 +492,7 @@ internal static class AnimatorStepper
                 Backward(in e, list, duration, before - slack, false, -1f, pending);
                 Backward(in e, list, duration, 1f, true, after - slack, pending);
             }
-            else Backward(in e, list, duration, entered ? 1f : before - slack, entered, after - slack, pending);
+            else Backward(in e, list, duration, entered ? start : before - slack, entered, after - slack, pending);
         }
     }
 
@@ -560,21 +578,23 @@ internal static class AnimatorStepper
         return one;
     }
 
-    // Goes to state `to`, cross-fading from the one it is in over the new state's fade. A change while
-    // already fading fades from the state it was going to (the older one drops out).
-    public static void Change(AnimGraphRecord.Compiled g, AnimGraphRecord.Layer layer, ref AnimatorLayer s, int to)
+    // Goes to state `to`, cross-fading from the one it is in over the new state's fade — or the
+    // transition's own `fade` and `ease`, when `via` has them (issue #358). A change while already fading
+    // fades from the state it was going to (the older one drops out).
+    public static void Change(AnimGraphRecord.Compiled g, AnimGraphRecord.Layer layer, ref AnimatorLayer s, int to, StateTransition? via = null)
     {
         if (to < 0) return;
         var target = layer.States[to];
-        if (target.Fade > 0f && s.Index >= 0)
+        float fade = via?.Fade is { } own && own >= 0f && float.IsFinite(own) ? own : target.Fade;
+        if (fade > 0f && s.Index >= 0)
         {
             s.FromSnapshot = false;                 // a fade from a snapshot drops out like an older state
             s.From = s.State;
             s.FromIndex = s.Index;
             s.FromPhase = s.Phase;
             s.Fade = 0f;
-            s.FadeDuration = target.Fade;
-            s.FadeEase = target.Ease;
+            s.FadeDuration = fade;
+            s.FadeEase = via?.Ease ?? target.Ease;
         }
         else EndFade(ref s);
         s.State = layer.Names[to];
@@ -743,7 +763,9 @@ internal static class AnimatorStepper
                 continue;
             }
             float weight = layer.Weight * Layer(layer, l, in s, values, instance, scratch.Layer, scratch);
-            if (weight > 0f) PoseSampler.Blend(pose, scratch.Layer, weight, instance.Masks[l], pose);
+            if (!(weight > 0f)) continue;
+            if (layer.Additive) AdditivePose.Add(pose, scratch.Layer, weight, instance.Masks[l]);
+            else PoseSampler.Blend(pose, scratch.Layer, weight, instance.Masks[l], pose);
         }
     }
 
@@ -754,8 +776,9 @@ internal static class AnimatorStepper
                                SkeletonPose into, AnimatorScratch scratch)
     {
         int root = index == 0 ? instance.RootJoint : -1;            // root motion is the base layer's
-        bool current = s.Index >= 0 && State(layer.States[s.Index], s.Phase, values, instance, into, scratch.Clip, root);
-        if (s.FromSnapshot)
+        var reference = layer.Additive ? scratch.Reference : null;   // an additive layer's states are differences (#358)
+        bool current = s.Index >= 0 && State(layer.States[s.Index], s.Phase, values, instance, into, scratch.Clip, root, reference);
+        if (s.FromSnapshot && reference == null)
         {
             if (index >= instance.Snapshots.Length || instance.Snapshots[index] is not { } snapshot || snapshot.JointCount != into.JointCount)
                 return current ? 1f : 0f;
@@ -769,17 +792,19 @@ internal static class AnimatorStepper
         var from = layer.States[s.FromIndex];
         if (current)
         {
-            if (!State(from, s.FromPhase, values, instance, scratch.From, scratch.Clip, root)) return f;
+            if (!State(from, s.FromPhase, values, instance, scratch.From, scratch.Clip, root, reference)) return f;
             PoseSampler.Blend(scratch.From, into, f, null, into);
             return 1f;
         }
-        return State(from, s.FromPhase, values, instance, into, scratch.Clip, root) ? 1f - f : 0f;
+        return State(from, s.FromPhase, values, instance, into, scratch.Clip, root, reference) ? 1f - f : 0f;
     }
 
     // A state at a phase into `into` (a blend's other clips through `clip`). False when it plays nothing.
-    // With root motion (`root`, the joint; -1: none), each clip's root is held where it started.
+    // With root motion (`root`, the joint; -1: none), each clip's root is held where it started. With a
+    // `reference` pose (an additive layer's scratch), each clip is made its difference from its first
+    // frame before the blend's clips are mixed. A synced blend samples each clip where its markers say.
     private static bool State(AnimGraphRecord.State state, float phase, AnimatorParam[] values, AnimatorPoses.Instance instance,
-                              SkeletonPose into, SkeletonPose clip, int root)
+                              SkeletonPose into, SkeletonPose clip, int root, SkeletonPose? reference)
     {
         var clips = instance.Clips;
         if (state.Clip >= 0)
@@ -787,6 +812,7 @@ internal static class AnimatorStepper
             if (state.Clip >= clips.Length || clips[state.Clip] is not { } c) return false;
             PoseSampler.Sample(c, phase * c.Duration, state.Loop, into);
             if (root >= 0) RootMotion.Strip(c, root, state, PoseSampler.ClipTime(c, phase * c.Duration, state.Loop), into);
+            if (reference != null) Difference(c, state, into, reference);
             return true;
         }
         if (!state.IsBlend) return false;
@@ -797,20 +823,30 @@ internal static class AnimatorStepper
         {
             int index = state.PointClips[i];
             if (weights[i] <= 0f || index >= clips.Length || clips[index] is not { } c) continue;
-            float time = phase * c.Duration;
+            float time = SyncMarkers.ClipPhase(state, c, phase) * c.Duration;
             if (total <= 0f)
             {
                 PoseSampler.Sample(c, time, state.Loop, into);
                 if (root >= 0) RootMotion.Strip(c, root, state, PoseSampler.ClipTime(c, time, state.Loop), into);
+                if (reference != null) Difference(c, state, into, reference);
                 total = weights[i];
                 continue;
             }
             PoseSampler.Sample(c, time, state.Loop, clip);
             if (root >= 0) RootMotion.Strip(c, root, state, PoseSampler.ClipTime(c, time, state.Loop), clip);
+            if (reference != null) Difference(c, state, clip, reference);
             total += weights[i];
             PoseSampler.Blend(into, clip, weights[i] / total, null, into);
         }
         return total > 0f;
+    }
+
+    // An additive layer's clip (issue #358): `pose` becomes its difference from the clip's first frame
+    // (its last, played backwards), sampled into `reference`.
+    private static void Difference(AnimationClip c, AnimGraphRecord.State state, SkeletonPose pose, SkeletonPose reference)
+    {
+        PoseSampler.Sample(c, state.Speed >= 0f ? 0f : c.Duration, false, reference);
+        AdditivePose.MakeDelta(pose.Local, reference.Local);
     }
 }
 

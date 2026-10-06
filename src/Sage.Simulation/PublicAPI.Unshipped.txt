@@ -692,3 +692,10 @@ Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void
 *REMOVED*virtual Sage.Simulation.Screen.Hint.get -> string!
 *REMOVED*virtual Sage.Simulation.Screen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
 *REMOVED*virtual Sage.Simulation.Screen.Width.get -> float
+Sage.Simulation.AnimBlendSpace.Sync -> System.Collections.Generic.List<string!>!
+Sage.Simulation.AnimLayer.Blend -> Sage.Simulation.AnimLayerBlend
+Sage.Simulation.AnimLayerBlend
+Sage.Simulation.AnimLayerBlend.Additive = 1 -> Sage.Simulation.AnimLayerBlend
+Sage.Simulation.AnimLayerBlend.Override = 0 -> Sage.Simulation.AnimLayerBlend
+Sage.Simulation.StateTransition.Ease -> Sage.Simulation.Ease?
+Sage.Simulation.StateTransition.Fade -> float?
