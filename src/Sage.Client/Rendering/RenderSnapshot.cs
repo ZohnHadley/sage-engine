@@ -220,7 +220,8 @@ internal sealed class RenderSnapshot
 
     public int Culled;                   // items rejected by frustum culling this frame, every view
     public int FogCulled;                // of those, rejected because fog hides them wholly (issue 4h-5)
-    public LodCounts Lod;                // renderers per view LOD left out or drew coarser (issue 4n-1, MeshLod.Pick)
+    public LodCounts Lod;
+    public int SoftSprites;              // soft particles in screen views (issue 4n-6): the frame draws `sage:depth` for them                // renderers per view LOD left out or drew coarser (issue 4n-1, MeshLod.Pick)
 
     // The view whose LOD choices a renderer remembers for its hysteresis (issue 4n-1): the screen's main
     // view, else the first view that is not the sun's; -1 when there is none. A caster view measures from
@@ -291,6 +292,7 @@ internal sealed class RenderSnapshot
         Culled = 0;
         FogCulled = 0;
         Lod = default;
+        SoftSprites = 0;
         MainView = -1;
         Water.Clear();
     }

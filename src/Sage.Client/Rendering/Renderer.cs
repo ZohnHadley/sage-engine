@@ -181,7 +181,7 @@ public sealed partial class Renderer : IDisposable
                                      $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), lightmapped {LastFrame.Lightmapped}, " +
                                      $"shadow casters {LastFrame.ShadowCasters} in {LastFrame.ShadowMaps} map(s){(settings.Shadows.Value ? "" : " (r_shadows 0)")}, " +
                                       $"fog culled {LastFrame.FogCulled}, lod culled {LastFrame.LodCulled}, lod lowered {LastFrame.LodLowered}, skies {LastFrame.Skies}, " +
-                                      InstancingStats() + "; " +
+                                      InstancingStats() + SoftStats() + "; " +
                                       $"{_meshes.Count} meshes, {_content.Textures.Count} textures, {Materials.Count} materials" + PostStats()));
         cvars.RegisterCommand("r_snapshot_dump", CVarFlags.None,
             "r_snapshot_dump [file]: write the next frame's views, items and passes as text (default logs/snapshot.txt).", a =>
@@ -214,6 +214,15 @@ public sealed partial class Renderer : IDisposable
         !_instancing.Value ? "instanced 0 (r_instancing 0)" :
         !_canInstance ? "instanced 0 (the device cannot instance)" :
         $"instanced {LastFrame.Instanced} in {LastFrame.InstancedDraws} draw(s) (saved {LastFrame.Instanced - LastFrame.InstancedDraws}), instanced sprites {LastFrame.InstancedSprites}";
+
+    // r_stats' soft particles (issue 4n-6): those drawn soft last frame, and those that asked but were drawn
+    // hard (no depth to read: a build without shaders, or a material whose effect has no soft technique).
+    private string SoftStats() => _lastSoft.Asked == 0 ? "" :
+        $", soft particles {_lastSoft.Drawn}" + (_lastSoft.Drawn < _lastSoft.Asked ? $" ({_lastSoft.Asked - _lastSoft.Drawn} drawn hard)" : "");
+
+    private int _softDrawn;                                  // sprites drawn soft this frame
+    private (int Drawn, int Asked) _lastSoft;                // the screen's last frame, for r_stats
+    private bool _depthDrawn;                                // `sage:depth` holds this frame's scene
 
     // The r_stats line's tail: the post chain, when it drew last frame (issue 4h-6).
     private string PostStats() => LastFrame.PostSteps == 0 ? "" :
@@ -609,6 +618,12 @@ public sealed partial class Renderer : IDisposable
         _passBound = false;
         RunFrameStage(ctx, RenderStage.Shadow);
 
+        // The scene's depth (`sage:depth`, issue #316), before the views: the post effects and the water that
+        // read it come after them, and a soft particle (issue 4n-6) reads it while its view draws. It is the
+        // snapshot's opaque and alpha-tested items drawn again, so it does not need the scene drawn first.
+        _softDrawn = 0;
+        _depthDrawn = screen && SoftParticles.FrameNeedsDepth(_toScene && _post.NeedsDepth, s.SoftSprites) && DrawSceneDepth(s);
+
         // Views in plan order: every render target's first, then the screen's (RenderViewPlan.OrderViews).
         for (int k = 0; k < s.Views.Count; k++)
         {
@@ -621,6 +636,7 @@ public sealed partial class Renderer : IDisposable
             _stats.Views++;
             if (view.Target != RenderViewPlan.Screen) _stats.TargetViews++;
         }
+        if (_softDrawn > 0) _device.Textures[2] = null;   // `sage:depth` is drawn into again next frame (issue 4n-6)
 
         // Back to the screen, and the screen's viewport, for the UI and the dev tools. The screen world
         // clears it even with no view to draw (a world without a camera still shows its sky).
@@ -630,7 +646,6 @@ public sealed partial class Renderer : IDisposable
             else if (_bound != NotBound) _device.SetRenderTarget(null);
         }
         var back = TargetSize(RenderViewPlan.Screen);
-        if (_toScene && _post.NeedsDepth) DrawSceneDepth(s);   // for effects that read it (issue #316)
         if (_toScene)
         {
             // The scene is drawn; from here "the screen" is the back buffer again, which the chain binds.
@@ -648,7 +663,7 @@ public sealed partial class Renderer : IDisposable
             if (_bound != RenderViewPlan.Screen || _passBound) Rebind(RenderViewPlan.Screen);
             _device.Viewport = new Viewport(0, 0, back.X, back.Y);
         }
-        if (screen) LastFrame = _stats;
+        if (screen) { LastFrame = _stats; _lastSoft = (_softDrawn, s.SoftSprites); }
         if (screen && _dumpFile != null) DumpSnapshot(s);
     }
 
@@ -1442,11 +1457,12 @@ public sealed partial class Renderer : IDisposable
         {
             ref var first = ref s.Sprites[s.SpriteOrder[run]];
             int material = first.Material, texture = first.Texture;
+            float softness = first.Soft;
             int end = run + 1;
             while (end < to)
             {
                 ref var next = ref s.Sprites[s.SpriteOrder[end]];
-                if (next.Material != material || next.Texture != texture) break;
+                if (next.Material != material || next.Texture != texture || next.Soft != softness) break;
                 end++;
             }
 
@@ -1456,6 +1472,9 @@ public sealed partial class Renderer : IDisposable
                 m.Drawn += end - run;
                 m.Effect.World?.SetValue(Matrix.Identity);   // sprite vertices are already in camera-relative space
                 m.Effect.Tint?.SetValue(Vector4.One);
+                // Soft particles (issue 4n-6): the soft twin reading `sage:depth`, or hard where there is none.
+                var technique = softness > 0f ? Soften(m, view, softness) : null;
+                if (technique != null) _softDrawn += end - run;
                 bool lit = m.Effect.LightCount != null && lights.Count > 0;
                 int start = run;
                 while (start < end)
@@ -1474,10 +1493,11 @@ public sealed partial class Renderer : IDisposable
                     }
                     m.Effect.SetLights(_lights.AsSpan(0, count));
                     if (count > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = count;
-                    bool instanced = InstancingOn && m.Instanced != null && stop - start >= _instancingMin.Value &&
-                                     DrawSpritesInstanced(s, start, stop - start, Texture(texture), m, ref stats);
+                    var instancedTechnique = technique != null ? m.SoftInstanced : m.Instanced;
+                    bool instanced = InstancingOn && instancedTechnique != null && stop - start >= _instancingMin.Value &&
+                                     DrawSpritesInstanced(s, start, stop - start, Texture(texture), m, instancedTechnique, ref stats);
                     if (!instanced)
-                        foreach (var pass in m.Technique.Passes)
+                        foreach (var pass in (technique ?? m.Technique).Passes)
                         {
                             stats.DrawCalls += _sprites.Draw(s.Sprites, s.SpriteOrder, start, stop - start, Texture(texture), pass, m.Albedo);
                             stats.Triangles += (stop - start) * 2;
@@ -1491,11 +1511,11 @@ public sealed partial class Renderer : IDisposable
 
     // A sprite run as instanced quads (issue 4n-5), or, when the device turns out not to instance, the
     // CPU-expanded way.
-    private bool DrawSpritesInstanced(RenderSnapshot s, int start, int count, Texture2D texture, MaterialRuntime m, ref RenderStats stats)
+    private bool DrawSpritesInstanced(RenderSnapshot s, int start, int count, Texture2D texture, MaterialRuntime m, EffectTechnique technique, ref RenderStats stats)
     {
         try
         {
-            foreach (var pass in m.Instanced!.Passes)
+            foreach (var pass in technique.Passes)
             {
                 stats.DrawCalls += _sprites.DrawInstanced(s.Sprites, s.SpriteOrder, start, count, texture, pass, m.Albedo);
                 stats.Triangles += count * 2;
@@ -1508,6 +1528,30 @@ public sealed partial class Renderer : IDisposable
         }
         stats.InstancedSprites += count;
         return true;
+    }
+
+    // A soft run's technique (issue 4n-6, SoftParticles): the material's soft twin with this view's depth,
+    // rectangle and fade set, or null to draw it hard: no depth this frame, a view the depth does not cover,
+    // or an effect without the twin (said once). The next Use puts the material's own technique back.
+    private EffectTechnique? Soften(MaterialRuntime m, in RenderView view, float soft)
+    {
+        if (!_depthDrawn || view.Target != RenderViewPlan.Screen || view.DepthOnly) return null;
+        if (m.Soft == null)
+        {
+            Log.Once(LogCat.Shaders, LogLevel.Warn, "no-soft:" + m.Id,
+                     $"Material {m.Id}: its effect has no {SoftParticles.TechniqueFor(m.Technique.Name)} technique reading SceneDepth; its soft particles are drawn hard");
+            return null;
+        }
+        if (!_targets.TryFind(PostChainPlan.DepthTarget, out int depth) || _targets.Existing(depth) is not { } texture) return null;
+        var rect = ViewRect(view);
+        m.Effect.SceneDepth!.SetValue(texture);
+        Vector4 fade = SoftParticles.Params(soft, view.Near, view.Far, view.Projection.M44 == 1f);   // System.Numerics → MonoGame (implicit)
+        Vector4 where = SoftParticles.Rect(rect.X, rect.Y, rect.Width, rect.Height, texture.Width, texture.Height);
+        m.Effect.SoftParams!.SetValue(fade);
+        m.Effect.SoftRect?.SetValue(where);
+        m.Effect.Effect.CurrentTechnique = m.Soft;
+        _current = -1;   // the material's own technique is put back by the next Use
+        return m.Soft;
     }
 
     // Where a sprite is lit from: half-way up the quad above its pivot, so a lamp at head height lights a
