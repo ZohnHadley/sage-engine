@@ -29,3 +29,12 @@ virtual Sage.Kits.Rpg.ItemGridView.DragStart(in Sage.UI.UiDrag drag, in Sage.UI.
 virtual Sage.Kits.Rpg.ItemGridView.Drop(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> bool
 virtual Sage.Kits.Rpg.ItemGridView.Focused(Sage.UI.Widget? widget, in Sage.UI.UiBindContext context) -> void
 virtual Sage.Kits.Rpg.ItemGridView.Moved(Sage.Simulation.World! world, Sage.Core.RecordId item, int count, Sage.Kits.Rpg.ItemGrid! from, Sage.Kits.Rpg.ItemGrid! to) -> void
+Sage.Kits.Rpg.RpgConventionsRecord.LootScreen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
+Sage.Kits.Rpg.UseScreen
+Sage.Kits.Rpg.UseScreen.Screen -> Sage.Core.RecordId
+Sage.Kits.Rpg.UseScreen.UseScreen() -> void
+Sage.Kits.Rpg.UseScreenPart
+Sage.Kits.Rpg.UseScreenPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Kits.Rpg.UseScreenPart.Screen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
+Sage.Kits.Rpg.UseScreenPart.UseScreenPart() -> void
+static readonly Sage.Kits.Rpg.RpgKitModule.ShopScreen -> Sage.Core.RecordId

@@ -558,6 +558,27 @@
               }
             ]
           },
+          "actions": {
+            "description": "Done when it is pressed, before the view-model hears of it: actions by name, with the screen's subject and other ({ \"open_screen\": \"rpg:shop\" }, { \"close_screen\": {} }) (List<IAction>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "actions+": {
+            "description": "Adds to \"actions\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "actions-": {
+            "description": "Removes these from \"actions\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
           "bind": {
             "description": "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to. (string)",
             "type": "string"

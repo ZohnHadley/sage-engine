@@ -44,6 +44,9 @@ public sealed class RpgConventionsRecord
     [Property(Category = "Rest", Tooltip = "Applied on waking from a sleep, its magnitude the hours slept (\"health +5\" heals five an hour); empty: none")]
     public RecordRef<EffectRecord> RestEffect;
 
+    [Property(Tooltip = "The screen using a body with an inventory opens, and a use_screen part that names none (issue #344); empty: the kit's rpg:loot")]
+    public RecordRef<Sage.UI.ScreenRecord> LootScreen;
+
     // InventoryGrid in whole squares.
     public (int Columns, int Rows) GridSize => (Math.Max((int)MathF.Round(InventoryGrid.X), 1), Math.Max((int)MathF.Round(InventoryGrid.Y), 1));
 
