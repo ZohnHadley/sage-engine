@@ -224,6 +224,20 @@
               "type": "string"
             }
           },
+          "rootMotion": {
+            "description": "Root motion (base layer only): None, Rotation (turns about up), Translation (moves across the ground) or Full; what it takes out of the root joint moves the body instead, so feet do not slide. (RootMotionMode)",
+            "type": "string",
+            "enum": [
+              "None",
+              "Rotation",
+              "Translation",
+              "Full"
+            ]
+          },
+          "rootMotionY": {
+            "description": "With Translation or Full: the root's height moves the body too, instead of gravity (a climb, a vault); off, only across the ground. (bool)",
+            "type": "boolean"
+          },
           "transitions": {
             "description": "Where it can go, tried in order: the first that matches wins. (List<StateTransition>)",
             "type": "array",
@@ -793,6 +807,20 @@
                     "type": "string"
                   }
                 },
+                "rootMotion": {
+                  "description": "Root motion (base layer only): None, Rotation (turns about up), Translation (moves across the ground) or Full; what it takes out of the root joint moves the body instead, so feet do not slide. (RootMotionMode)",
+                  "type": "string",
+                  "enum": [
+                    "None",
+                    "Rotation",
+                    "Translation",
+                    "Full"
+                  ]
+                },
+                "rootMotionY": {
+                  "description": "With Translation or Full: the root's height moves the body too, instead of gravity (a climb, a vault); off, only across the ground. (bool)",
+                  "type": "boolean"
+                },
                 "transitions": {
                   "description": "Where it can go, tried in order: the first that matches wins. (List<StateTransition>)",
                   "type": "array",
@@ -1328,6 +1356,20 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "rootMotion": {
+                  "description": "Root motion (base layer only): None, Rotation (turns about up), Translation (moves across the ground) or Full; what it takes out of the root joint moves the body instead, so feet do not slide. (RootMotionMode)",
+                  "type": "string",
+                  "enum": [
+                    "None",
+                    "Rotation",
+                    "Translation",
+                    "Full"
+                  ]
+                },
+                "rootMotionY": {
+                  "description": "With Translation or Full: the root's height moves the body too, instead of gravity (a climb, a vault); off, only across the ground. (bool)",
+                  "type": "boolean"
                 },
                 "transitions": {
                   "description": "Where it can go, tried in order: the first that matches wins. (List<StateTransition>)",
@@ -1865,6 +1907,20 @@
                     "type": "string"
                   }
                 },
+                "rootMotion": {
+                  "description": "Root motion (base layer only): None, Rotation (turns about up), Translation (moves across the ground) or Full; what it takes out of the root joint moves the body instead, so feet do not slide. (RootMotionMode)",
+                  "type": "string",
+                  "enum": [
+                    "None",
+                    "Rotation",
+                    "Translation",
+                    "Full"
+                  ]
+                },
+                "rootMotionY": {
+                  "description": "With Translation or Full: the root's height moves the body too, instead of gravity (a climb, a vault); off, only across the ground. (bool)",
+                  "type": "boolean"
+                },
                 "transitions": {
                   "description": "Where it can go, tried in order: the first that matches wins. (List<StateTransition>)",
                   "type": "array",
@@ -2227,6 +2283,11 @@
         "SmoothStep",
         "SmootherStep"
       ]
+    },
+    "rootJoint": {
+      "description": "The joint whose motion a state's rootMotion takes out of the pose and gives the body; empty: the skeleton's first joint. (string, default \"\")",
+      "default": "",
+      "type": "string"
     }
   },
   "additionalProperties": false
