@@ -74,6 +74,9 @@ public sealed class UiLayer
     // The screen record this shows, when it was opened from one.
     public UiScreen? Screen { get; }
 
+    // The confirm prompt or message box this shows (UiScreenStack.Confirm, Message), when it is one.
+    public UiDialog? Dialog { get; internal set; }
+
     // Takes the UI's input while it is on top, holds the `ui` input context and dims what is behind it.
     // A HUD layer is not modal: it is drawn, and never takes a key.
     public bool Modal { get; }
@@ -248,6 +251,10 @@ public sealed class UiScreenStack
     // The style id new layers' tooltips are drawn in.
     public string? TooltipStyle { get; set; }
 
+    // The style ids a confirm prompt's or message box's window and buttons are drawn in (Confirm, Message).
+    public string? DialogStyle { get; set; }
+    public string? DialogButtonStyle { get; set; }
+
     // Something in any layer was confirmed or clicked.
     public event Action<UiLayer, Widget>? Activated;
 
@@ -283,7 +290,42 @@ public sealed class UiScreenStack
         return Add(content, null, modal);
     }
 
-    private UiLayer Add(Widget content, UiScreen? screen, bool modal)
+    // Asks the player to confirm something — overwrite a save, delete one, quit without saving (issue
+    // #343) — in a window over everything open that traps focus until it is answered: `answered` hears
+    // true for its confirm button, false for its cancel button or Back. Texts starting with '@' are
+    // localisation keys. Cancel has focus to begin with (the safe answer), unless `focusConfirm`.
+    public UiDialog Confirm(string title, string message, Action<bool>? answered = null, string confirm = "OK", string cancel = "Cancel",
+                            bool focusConfirm = false)
+    {
+        ArgumentNullException.ThrowIfNull(cancel);
+        var dialog = ShowDialog(title, message, answered, confirm, cancel);
+        if (focusConfirm) dialog.Layer.Root.Focus(dialog.ConfirmButton);
+        return dialog;
+    }
+
+    // Tells the player something, with one button (focused) that closes it, as Back does; `closed` hears
+    // when it has been dismissed.
+    public UiDialog Message(string title, string message, Action? closed = null, string ok = "OK") =>
+        ShowDialog(title, message, closed == null ? null : _ => closed(), ok, null);
+
+    private UiDialog ShowDialog(string title, string message, Action<bool>? answered, string confirm, string? cancel)
+    {
+        ArgumentNullException.ThrowIfNull(title);
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(confirm);
+        var text = _screens?.Text;
+        string T(string s) => text?.Text(s) ?? s;
+        var padding = _styles != null && DialogStyle != null ? _styles.Get(DialogStyle).Padding : new Thickness(12f);
+        var dialog = new UiDialog(this, answered, T(title), T(message), T(confirm), cancel == null ? null : T(cancel),
+                                  DialogStyle, DialogButtonStyle, padding);
+        var layer = Add(dialog.Window, null, modal: true, focus: dialog.CancelButton ?? dialog.ConfirmButton);
+        layer.CloseOnClickOutside = false;   // a press beside it is on its backdrop, never an answer
+        layer.Dialog = dialog;
+        dialog.Layer = layer;
+        return dialog;
+    }
+
+    private UiLayer Add(Widget content, UiScreen? screen, bool modal, Widget? focus = null)
     {
         var root = new UiRoot(_text);
         root.SetViewport(_viewport);
@@ -302,7 +344,7 @@ public sealed class UiScreenStack
         var layer = new UiLayer(root, content, screen, modal) { Backdrop = modal ? Backdrop : 0u };
         MarkSolid(content);
         _layers.Add(layer);
-        if (modal) root.Navigate(UiNavigation.Next);
+        if (modal && (focus == null || !root.Focus(focus))) root.Navigate(UiNavigation.Next);
         layer.Opened(this);
         if (modal) UiSounds.Raise(_world, _screens, screen, UiSound.Open);
         return layer;
@@ -400,7 +442,10 @@ public sealed class UiScreenStack
             // The screen's view-model acts on what was activated, and may use Back itself — put down the
             // item it holds — in which case the screen stays (IViewModel.Activate/Back, issue #98).
             bool used = !top.IsClosing && top.Screen != null && top.Screen.Handle(in result);
-            if (result.Back && top.CloseOnBack && !used) Close(top);
+            // A dialog's Back is its cancel; Back while a focus scope shows inside a screen is for whatever
+            // showed it (its view-model, above), never a cue to close the whole layer under it.
+            if (result.Back && top.Dialog is { } dialog) dialog.Cancel();
+            else if (result.Back && top.CloseOnBack && !used && result.Scope == null) Close(top);
             else if (input.PointerPressed && !result.PointerOverUi && top.CloseOnClickOutside && !top.IsClosing) Close(top);
         }
         return result;

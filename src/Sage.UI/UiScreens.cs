@@ -175,10 +175,14 @@ public sealed class UiScreens
 
     internal RecordStore Records => _records;
 
+    // The strings a dialog's '@' keys are read from (UiScreenStack.Confirm, issue #343).
+    internal Localisation Text { get; }
+
     internal UiScreens(RecordStore records, Vocabulary<IViewModel> viewModels, UiStyles styles, Localisation text)
     {
         _records = records;
         _viewModels = viewModels;
+        Text = text;
         _builder = new LayoutBuilder(styles, text);
     }
 

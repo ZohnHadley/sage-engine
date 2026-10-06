@@ -92,6 +92,35 @@ Sage.UI.UiNode.TabStyle -> Sage.Core.RecordRef<Sage.UI.UiStyleRecord!>
 Sage.UI.UiNode.Title -> string!
 Sage.UI.UiResult.Changed -> Sage.UI.Widget?
 Sage.UI.UiRoot.Popup.get -> Sage.UI.Dropdown?
+Sage.UI.UiDialog
+Sage.UI.UiDialog.Cancel() -> void
+Sage.UI.UiDialog.CancelButton.get -> Sage.UI.Button?
+Sage.UI.UiDialog.Confirm() -> void
+Sage.UI.UiDialog.ConfirmButton.get -> Sage.UI.Button!
+Sage.UI.UiDialog.IsOpen.get -> bool
+Sage.UI.UiDialog.Layer.get -> Sage.UI.UiLayer!
+Sage.UI.UiDialog.Message.get -> Sage.UI.Label!
+Sage.UI.UiDialog.Result.get -> Sage.UI.UiDialogResult
+Sage.UI.UiDialog.Title.get -> Sage.UI.Label!
+Sage.UI.UiDialog.Window.get -> Sage.UI.Stack!
+Sage.UI.UiDialogResult
+Sage.UI.UiDialogResult.Cancelled = 2 -> Sage.UI.UiDialogResult
+Sage.UI.UiDialogResult.Confirmed = 1 -> Sage.UI.UiDialogResult
+Sage.UI.UiDialogResult.Open = 0 -> Sage.UI.UiDialogResult
+Sage.UI.UiLayer.Dialog.get -> Sage.UI.UiDialog?
+Sage.UI.UiNode.FocusDown -> string!
+Sage.UI.UiNode.FocusLeft -> string!
+Sage.UI.UiNode.FocusRight -> string!
+Sage.UI.UiNode.FocusScope -> bool
+Sage.UI.UiNode.FocusUp -> string!
+Sage.UI.UiResult.Scope -> Sage.UI.Widget?
+Sage.UI.UiRoot.ActiveScope.get -> Sage.UI.Widget?
+Sage.UI.UiScreenStack.Confirm(string! title, string! message, System.Action<bool>? answered = null, string! confirm = "OK", string! cancel = "Cancel", bool focusConfirm = false) -> Sage.UI.UiDialog!
+Sage.UI.UiScreenStack.DialogButtonStyle.get -> string?
+Sage.UI.UiScreenStack.DialogButtonStyle.set -> void
+Sage.UI.UiScreenStack.DialogStyle.get -> string?
+Sage.UI.UiScreenStack.DialogStyle.set -> void
+Sage.UI.UiScreenStack.Message(string! title, string! message, System.Action? closed = null, string! ok = "OK") -> Sage.UI.UiDialog!
 Sage.UI.UiSoundsRecord
 Sage.UI.UiSoundsRecord.Close -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.Move -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
@@ -102,6 +131,16 @@ Sage.UI.UiState.Selected = 5 -> Sage.UI.UiState
 Sage.UI.UiStyleStates.Selected -> Sage.UI.UiStyleState?
 Sage.UI.Widget.NotifyValueChanged() -> void
 Sage.UI.Widget.ValueChanged -> System.Action<Sage.UI.Widget!>?
+Sage.UI.Widget.FocusDown.get -> string?
+Sage.UI.Widget.FocusDown.set -> void
+Sage.UI.Widget.FocusLeft.get -> string?
+Sage.UI.Widget.FocusLeft.set -> void
+Sage.UI.Widget.FocusRight.get -> string?
+Sage.UI.Widget.FocusRight.set -> void
+Sage.UI.Widget.FocusScope.get -> bool
+Sage.UI.Widget.FocusScope.set -> void
+Sage.UI.Widget.FocusUp.get -> string?
+Sage.UI.Widget.FocusUp.set -> void
 static readonly Sage.UI.UiSoundsRecord.DefaultId -> Sage.Core.RecordId
 const Sage.UI.ControlsView.KeepButton = "keep" -> string!
 const Sage.UI.ControlsView.RebindButton = "rebind" -> string!

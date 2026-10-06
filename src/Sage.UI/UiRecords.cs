@@ -245,6 +245,21 @@ public sealed class UiNode
     [Property(Tooltip = "Tab order: lower first, then tree order")]
     public int TabIndex;
 
+    [Property(Tooltip = "Traps focus while it shows: the D-pad, Tab and the pointer reach nothing outside it, and focus goes back where it was when it hides (a confirm prompt)")]
+    public bool FocusScope;
+
+    [Property(Tooltip = "The node Up goes to from here, by name; empty: the nearest one above")]
+    public string FocusUp = "";
+
+    [Property(Tooltip = "The node Down goes to from here, by name; empty: the nearest one below")]
+    public string FocusDown = "";
+
+    [Property(Tooltip = "The node Left goes to from here, by name; empty: the nearest one to the left")]
+    public string FocusLeft = "";
+
+    [Property(Tooltip = "The node Right goes to from here, by name; empty: the nearest one to the right")]
+    public string FocusRight = "";
+
     [Property(Tooltip = "Shown only while this holds, asked about the screen's subject: { \"var\": \"alarm\", \"eq\": 1 }")]
     public ICondition? VisibleIf;
 
