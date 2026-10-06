@@ -35,6 +35,8 @@ Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
+Sage.Simulation.MapRecord.Lightmap -> float
+Sage.Simulation.PointLight.Baked -> bool
 const Sage.Simulation.MeshLod.Culled = -1 -> int
 const Sage.Simulation.MeshLod.Unknown = -2 -> int
 readonly Sage.Simulation.RenderEnvironment.LayerDrawDistance -> float[]!
