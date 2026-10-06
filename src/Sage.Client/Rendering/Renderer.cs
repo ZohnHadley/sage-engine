@@ -408,7 +408,7 @@ public sealed class Renderer : IDisposable
             }
             else
             {
-                vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration, loaded.Rigid!.Length, BufferUsage.WriteOnly);
+                vb = new VertexBuffer(_device, VertexMesh.VertexDeclaration, loaded.Rigid!.Length, BufferUsage.WriteOnly);
                 vb.SetData(loaded.Rigid);
             }
             var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, loaded.Indices.Length, BufferUsage.WriteOnly);

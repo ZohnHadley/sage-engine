@@ -79,3 +79,12 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+Sage.Simulation.MaterialRecord.Emissive -> System.Numerics.Vector3
+Sage.Simulation.MaterialRecord.EmissiveMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.EnvironmentMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Gloss -> float
+Sage.Simulation.MaterialRecord.NormalMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Reflectivity -> float
+Sage.Simulation.MaterialRecord.Specular -> float
+Sage.Simulation.MaterialRecord.SpecularMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.VertexColors -> bool

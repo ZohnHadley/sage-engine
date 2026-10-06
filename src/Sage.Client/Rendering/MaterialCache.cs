@@ -116,6 +116,7 @@ internal sealed class MaterialRuntime
     public required SamplerAddress Address;
     public required float Fog;
     public EffectParameter? Albedo;   // the material's "Albedo" texture param, overridden per sprite sheet
+    public bool Surface;              // the effect draws surface maps (issue #410), in sampler slots 2 to 5
     public ulong SampledTargets;      // bit n: a param samples render target n (`rt:<name>`); not drawn into it
     public bool IsError;
     public int Drawn;        // items drawn with it in frame DrawnFrame (mat_list)
@@ -304,7 +305,9 @@ internal sealed class MaterialCache : IDisposable
         {
             if (EffectBinding.EngineParams.Contains(p.Name)) continue;
             if (PostChain.EngineParams.Contains(p.Name)) continue;   // a post effect's picture and night (issue 4h-6)
-            if (!record.Params.TryGetValue(p.Name, out var value)) { missing.Add(p.Name); continue; }
+            // A surface parameter (issue #410) comes from the record's surface fields, or a 1x1 stand-in.
+            if (!record.Params.TryGetValue(p.Name, out var value) && !MaterialSurface.TryGet(record, p.Name, out value))
+            { missing.Add(p.Name); continue; }
             string? problem = Check(p, value);
             if (problem != null) { Log.Error(LogCat.Shaders, $"Material {id}: param {p.Name}: {problem}"); return null; }
             Texture2D? texture = null;
@@ -332,6 +335,8 @@ internal sealed class MaterialCache : IDisposable
         foreach (var name in record.Params.Keys)
             if (effect.Parameters[name] == null)
                 Log.Warn(LogCat.Shaders, $"Material {id}: param '{name}' isn't used by {record.Effect} (typo?); ignored");
+        if (effect.Parameters[MaterialSurface.SurfaceParams] == null && MaterialSurface.Asked(record))
+            Log.Warn(LogCat.Shaders, $"Material {id}: {record.Effect} draws no surface maps (normalMap, specular, emissive...); they are ignored");
 
         return new MaterialRuntime
         {
@@ -356,6 +361,7 @@ internal sealed class MaterialCache : IDisposable
             Fog = record.Fog ? 1f : 0f,
             CastShadows = record.CastShadows,
             Albedo = effect.Parameters["Albedo"],
+            Surface = effect.Parameters[MaterialSurface.SurfaceParams] != null,
             SampledTargets = sampled,
         };
     }
@@ -393,7 +399,11 @@ internal sealed class MaterialCache : IDisposable
         device.BlendState = m.Blend;
         device.RasterizerState = wireframe ? m.RasterWire : m.Raster;
         device.DepthStencilState = m.Depth;
-        device.SamplerStates[0] = TextureSampling.For(m.Filter, m.Address);
+        var sampler = TextureSampling.For(m.Filter, m.Address);
+        device.SamplerStates[0] = sampler;
+        // lit.fx's surface maps (issue #410) sample as the albedo does; s1 is the shadow map's (common.fxh).
+        if (m.Surface)
+            for (int slot = 2; slot <= 5; slot++) device.SamplerStates[slot] = sampler;
     }
 
 }
