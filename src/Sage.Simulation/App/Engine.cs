@@ -56,6 +56,8 @@ public sealed class Engine : IDisposable
         Records.AddCheck<AnimEventsRecord>(AnimEvents.Check);
         // First-person arms name a model, and a weapon a socket (issue #121).
         Records.AddCheck<ViewmodelRecord>(ViewmodelRecord.Check);
+        // A decal names a texture and a size, lifetime and fade that make sense (issue #306).
+        Records.AddCheck<DecalRecord>(DecalRecord.Check);
         // A LOD group's levels switch one past another (issue 4n-1).
         Records.AddCheck<MeshLodRecord>(MeshLodRecord.Check);
         // A terrain material's layers, tiles and rules (issue #307).

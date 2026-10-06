@@ -695,6 +695,8 @@ internal sealed class SpriteExtract : ISystem
                     instance.Texture = texture;
                     instance.Mode = sr.Mode;
                     instance.Roll = 0f;                 // sprites stand upright; only particles turn (06 §3.12)
+                    instance.Right = default;           // a billboard, not a mark on a surface (issue #306)
+                    instance.Up = default;
                     instance.SortKey = RenderSortKey.Make(material.Pass, sr.Layer, materialId, texture,
                         Vector3.Dot(center, view.Forward), view.Far);
                     instance.View = v;
