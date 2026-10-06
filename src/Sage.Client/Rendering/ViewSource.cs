@@ -42,6 +42,8 @@ internal sealed class ViewSource
     private readonly Renderer _renderer;
     private readonly CVar<int> _testView;
     private int _testTarget = -1;
+    private readonly Sage.UI.UiScreenStack? _screens;
+    private readonly System.Collections.Generic.List<Sage.UI.UiWorldView> _widgetViews = new();
 
     public ViewSource(World world, Renderer renderer, CVar<int> testView)
     {
@@ -50,9 +52,11 @@ internal sealed class ViewSource
         world.Resources.TryGet(out _views);
         _renderer = renderer;
         _testView = testView;
+        world.Resources.TryGet(out _screens);   // Sage.UI's widget screens, whose view widgets add cameras (#348)
     }
 
-    public void Collect(PooledList<ViewRequest> views)
+    // `time`: the frame's real time, seconds (a view widget's Spin turns with it).
+    public void Collect(PooledList<ViewRequest> views, double time = 0d)
     {
         views.Clear();
         if (_views != null) FromCameraViews(views);
@@ -63,6 +67,61 @@ internal sealed class ViewSource
             case 1: AddSplitScreen(views); break;
             case 2: AddMinimap(views); break;
         }
+        if (_screens != null) AddWidgetViews(views, time);
+    }
+
+    // Render targets inside widgets (issue #348): each view widget on screen with a camera of its own
+    // (Sage.UI's View, WorldViews.TryPose) draws into its target, sized to the pixels it covers (or its
+    // Resolution), before the UI that shows it is drawn. One frame behind the layout, as it is made in
+    // Overlay. Its camera draws the screen's own player, unhidden: a paper doll is the pawn a
+    // first-person view leaves out.
+    private void AddWidgetViews(PooledList<ViewRequest> views, double time)
+    {
+        _screens!.CollectViews(_widgetViews);
+        for (int i = 0; i < _widgetViews.Count; i++)
+        {
+            var item = _widgetViews[i];
+            var view = item.View;
+            if (!Sage.UI.WorldViews.TryPose(_world, view, item.Context, time, out var pose)) continue;
+            var (width, height) = TargetPixels(view.Resolution, item.Pixels.Width, item.Pixels.Height);
+            int target = _renderer.DeclareTargetId(view.Target!, width, height);
+
+            ref var request = ref views.Add();
+            request.Position = pose.Position;      // System.Numerics → MonoGame (implicit)
+            request.Rotation = pose.Rotation;
+            request.Orthographic = pose.Orthographic;
+            request.FovY = pose.FovY;
+            request.OrthoHeight = pose.OrthoHeight;
+            request.Near = pose.Near;
+            request.Far = pose.Far;
+            request.Rect = new Vector4(0f, 0f, 1f, 1f);
+            request.Target = target;
+            request.Order = 0;
+            request.Main = false;
+            request.Hidden = default;
+            request.Source = -1;
+            request.NoShadows = !view.Shadows;
+            request.NoViewmodel = true;
+            request.NoSky = !view.Sky;
+            request.NoDebugLines = true;
+        }
+        _widgetViews.Clear();   // holds widgets: let a closed screen's go
+    }
+
+    // A widget view's target size: its pixels on screen (or `resolution` across the longer side, the
+    // shape kept), rounded up to 8 so a few pixels of layout do not remake it, within 8..2048.
+    internal static (int Width, int Height) TargetPixels(int resolution, float width, float height)
+    {
+        width = MathF.Max(width, 1f);
+        height = MathF.Max(height, 1f);
+        if (resolution > 0)
+        {
+            float k = resolution / MathF.Max(width, height);
+            width *= k;
+            height *= k;
+        }
+        static int Round(float v) => Math.Clamp(((int)MathF.Ceiling(v) + 7) / 8 * 8, 8, 2048);
+        return (Round(width), Round(height));
     }
 
     private void FromCameraViews(PooledList<ViewRequest> views)

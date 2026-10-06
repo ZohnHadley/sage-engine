@@ -524,7 +524,7 @@ public sealed class ClientModule : IModule
         world.AddSystem(new UiRenderSystem(world, _renderer!));
         // After every FrameUpdate system (so it is drawn over the game's HUD) and before the one that
         // renders the queue.
-        world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!));
+        world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!, _renderer));
         if (_console != null) world.AddSystem(new ConsoleSystem(world, _console));
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _shaders!, _assetHotReload!));
     }
