@@ -2,7 +2,9 @@
 // + fog), AlphaTest (Default + clip at AlphaCutoff), Unlit (albedo + fog) and Skinned (Default, with the
 // vertices bent by up to four of the draw's `Bones` each; issue #117). The sun is shadowed by the sun's
 // shadow map in Default, AlphaTest and Skinned; ShadowCaster and ShadowCasterSkinned draw a caster into
-// that map (issue 4h-4). Lightmapped (issue #313) is Default for a brush level with a baked lightmap.
+// that map (issue 4h-4), and ShadowCasterAlphaTest and ShadowCasterAlphaTestSkinned an alpha-tested one,
+// clipped at AlphaCutoff as AlphaTest is (issue 4n-11). Lightmapped (issue #313) is Default for a brush
+// level with a baked lightmap.
 //
 // The surface (issue #410), in every technique that shades: a tangent-space normal map, Blinn-Phong
 // highlights from the sun and the lamps (strength and gloss, times a specular map's red and green), an
@@ -294,6 +296,43 @@ float4 PSShadow(VSShadowOutput input) : COLOR0
     return float4(input.Depth, 0, 0, 1);
 }
 
+// ---- Cut-out shadow casters (issue 4n-11): an alpha-tested material's own texture and cutoff ----
+//
+// The renderer applies the item's material (Albedo, AlbedoColor, AlphaCutoff, its sampler) and sets
+// ViewProj to the cascade's. What AlphaTest would discard casts no shadow: a leaf card's holes let the
+// sun through.
+struct VSShadowCutOutput
+{
+    float4 Position : POSITION0;
+    float Depth     : TEXCOORD0;
+    float2 UV       : TEXCOORD1;
+};
+
+VSShadowCutOutput VSShadowCut(VSInput input)
+{
+    VSShadowCutOutput output;
+    output.Position = mul(mul(input.Position, World), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    output.UV = input.UV;
+    return output;
+}
+
+VSShadowCutOutput VSShadowCutSkinned(VSSkinnedInput input)
+{
+    VSShadowCutOutput output;
+    float4x3 skin = SkinMatrix(input.Indices, input.Weights);
+    output.Position = mul(mul(SkinPosition(input.Position, skin), World), ViewProj);
+    output.Depth = output.Position.z / output.Position.w;
+    output.UV = input.UV;
+    return output;
+}
+
+float4 PSShadowCut(VSShadowCutOutput input) : COLOR0
+{
+    AlphaTest(tex2D(AlbedoSampler, input.UV).a * AlbedoColor.a * Tint.a, AlphaCutoff);
+    return float4(input.Depth, 0, 0, 1);
+}
+
 technique Default
 {
     pass P0 { VertexShader = compile vs_3_0 VS(); PixelShader = compile ps_3_0 PSDefault(); }
@@ -394,4 +433,14 @@ technique UnlitInstanced
 technique ShadowCasterInstanced
 {
     pass P0 { VertexShader = compile vs_3_0 VSShadowInstanced(); PixelShader = compile ps_3_0 PSShadow(); }
+}
+
+technique ShadowCasterAlphaTest
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadowCut(); PixelShader = compile ps_3_0 PSShadowCut(); }
+}
+
+technique ShadowCasterAlphaTestSkinned
+{
+    pass P0 { VertexShader = compile vs_3_0 VSShadowCutSkinned(); PixelShader = compile ps_3_0 PSShadowCut(); }
 }

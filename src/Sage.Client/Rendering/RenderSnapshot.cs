@@ -63,7 +63,7 @@ internal struct RenderView
     public int Order;                // within a target, lower draws first (06 §3.4a)
     public int Hidden;               // id of an entity this view does not draw (0: none; ViewSource.HiddenFor)
     public bool DepthOnly;           // clears only depth, over what the target holds: the viewmodel pass (issue #121)
-    public bool ShadowCaster;        // the sun's view (issue 4h-4): opaque casters only, drawn by `sage:shadow`, not as a view
+    public bool ShadowCaster;        // a cascade of the sun's map (issues 4h-4, 4n-11): casters only, drawn by `sage:shadow`, not as a view
 
     // Written during extract: lights and debug lines are added by one system each, a view at a time,
     // so each view's are contiguous.
@@ -97,17 +97,33 @@ internal struct EnvironmentParams
     public float Stars;
 }
 
-// The frame's shadow map (issue 4h-4), written by `sage:shadow`: which view holds the casters, and what
-// the lit shaders need to read the map. `Drawn` only once the map has been drawn this frame.
+// The frame's shadow map (issue 4h-4), written by `sage:shadow`: which views hold the casters, and what
+// the lit shaders need to read the map. `Drawn` only once the map has been drawn this frame. Cascades
+// (issue 4n-11): `Count` caster views from `View` on, one per cascade, each into its own square of the
+// one target (`ShadowMath.Atlas`).
 internal struct ShadowFrame
 {
-    public int View;                 // the caster view, or -1
+    public int View;                 // the first caster view, or -1
+    public int Count;                // cascades: caster views View .. View + Count - 1
     public int Target;               // the map's render target id
-    public Matrix ViewProj;          // relative to `Camera` → the map's clip space
-    public Vector3 Camera;           // origin space: the caster view's camera (the main view's)
-    public float Bias;               // ShadowFit.DepthBias
-    public int Size;
+    public Vector3 Camera;           // origin space: the caster views' camera (the main view's)
+    public int Size;                 // texels a side of each cascade
+    public ShadowCascades Cascades;
     public bool Drawn;
+}
+
+// One cascade of the frame's shadow map, as the shaders read it (common.fxh `ShadowLit`).
+internal struct ShadowCascade
+{
+    public Matrix ViewProj;          // relative to ShadowFrame.Camera → this cascade's clip space
+    public float Bias;               // ShadowFit.DepthBias
+    public Vector4 Rect;             // where it sits in the target, in uv: x, y, width, height
+}
+
+[System.Runtime.CompilerServices.InlineArray(ShadowMath.MaxCascades)]
+internal struct ShadowCascades
+{
+    private ShadowCascade _first;
 }
 
 // One draw: a mesh part with a material at a camera-relative world matrix (06 §4).
@@ -250,6 +266,7 @@ internal sealed class RenderSnapshot
         Lod = default;
         MainView = -1;
         Shadow.View = -1;
+        Shadow.Count = 0;
         Shadow.Drawn = false;
         Water.Clear();
     }
