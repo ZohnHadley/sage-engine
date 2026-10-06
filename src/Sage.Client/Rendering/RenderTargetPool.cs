@@ -26,6 +26,7 @@ internal sealed class RenderTargetPool : IDisposable
         public int Width = DefaultSize, Height = DefaultSize;
         public SurfaceFormat Format = SurfaceFormat.Color;
         public DepthFormat Depth = DepthFormat.Depth24;
+        public int Samples;   // MSAA samples (issue #316, r_aa): 0 is none
         public bool Declared;
         public RenderTarget2D? Texture;
     }
@@ -59,15 +60,17 @@ internal sealed class RenderTargetPool : IDisposable
     public int Declare(string name, int width, int height) => Declare(name, width, height, SurfaceFormat.Color, DepthFormat.Depth24);
 
     // With its pixel format and depth buffer (issue 4h-1): another size, format or depth remakes it.
-    public int Declare(string name, int width, int height, SurfaceFormat format, DepthFormat depth)
+    // With MSAA (issue #316): `samples` a pixel, resolved when the target is read.
+    public int Declare(string name, int width, int height, SurfaceFormat format, DepthFormat depth, int samples = 0)
     {
         if (width < 1 || height < 1 || width > MaxSize || height > MaxSize)
             throw new ArgumentOutOfRangeException(nameof(width), $"Render target '{name}' is {width}x{height}; each side is 1 to {MaxSize} pixels.");
         int id = Id(name);
         var slot = _slots[id];
         slot.Declared = true;
-        if (slot.Width == width && slot.Height == height && slot.Format == format && slot.Depth == depth) return id;
+        if (slot.Width == width && slot.Height == height && slot.Format == format && slot.Depth == depth && slot.Samples == samples) return id;
 
+        slot.Samples = samples;
         slot.Width = width;
         slot.Height = height;
         slot.Format = format;
@@ -92,6 +95,7 @@ internal sealed class RenderTargetPool : IDisposable
         slot.Width = slot.Height = DefaultSize;
         slot.Format = SurfaceFormat.Color;
         slot.Depth = DepthFormat.Depth24;
+        slot.Samples = 0;
         if (had) Changed?.Invoke();
         return true;
     }
@@ -110,7 +114,7 @@ internal sealed class RenderTargetPool : IDisposable
         if (!slot.Declared)
             Log.Info(LogCat.Render, $"Render target '{slot.Name}' was never declared; made at {slot.Width}x{slot.Height}");
         slot.Texture = new RenderTarget2D(_device, slot.Width, slot.Height, false, slot.Format,
-                                          slot.Depth, 0, RenderTargetUsage.PreserveContents);
+                                          slot.Depth, slot.Samples, RenderTargetUsage.PreserveContents);
         return slot.Texture;
     }
 

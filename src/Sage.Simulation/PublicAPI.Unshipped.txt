@@ -188,3 +188,4 @@ Sage.Simulation.MaterialRecord.Reflectivity -> float
 Sage.Simulation.MaterialRecord.Specular -> float
 Sage.Simulation.MaterialRecord.SpecularMap -> Sage.Core.AssetPath
 Sage.Simulation.MaterialRecord.VertexColors -> bool
+Sage.Simulation.PostEffectRecord.Depth -> bool

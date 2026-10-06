@@ -1,0 +1,7 @@
+[
+  // The depth hook's sample (engine issue #316): a post effect that reads the scene's depth. The engine's
+  // `sage:post_depth_haze` (shaders/depth_haze.fx) thickens a haze with the distance; `"depth": true` is
+  // what makes the engine draw `sage:depth` and hand it over. Before the grade (100), so the night tint
+  // and the vignette fall on the haze too. On with `r_post 1`; `r_post_haze 0` (the Sandbox's) turns it off.
+  { "type": "post_effect", "id": "haze", "material": "sage:post_depth_haze", "order": 50, "depth": true, "cvar": "r_post_haze" }
+]
