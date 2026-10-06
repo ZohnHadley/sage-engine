@@ -1,1 +1,2 @@
 #nullable enable
+Sage.Core.CVarRegistry.Version.get -> int

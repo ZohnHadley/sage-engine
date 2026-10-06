@@ -44,6 +44,10 @@ public sealed class RpgKitModule : IModule
     // The controls screen (issue #328): rebind by pressing the key (Sage.UI's ControlsView).
     public static readonly RecordId ControlsScreen = new(ContentNamespace, "controls");
 
+    // The options screen (issue #339): graphics, audio, controls and gameplay, its settings ui_option
+    // records over cvars (Sage.UI's OptionsView); the controls page opens ControlsScreen.
+    public static readonly RecordId OptionsScreen = new(ContentNamespace, "options");
+
     // The kit's experimental id for what it adds to phase 4g's open world (MAKING_A_GAME §10b): the base's own.
     internal const string OpenWorld = "SAGE0129";
     internal const string ExperimentalUrl = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api";

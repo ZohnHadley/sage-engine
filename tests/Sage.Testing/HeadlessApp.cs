@@ -89,6 +89,7 @@ public sealed class HeadlessAppBuilder
     private string? _modList;
     private string? _modReport;
     private string? _inputFile;
+    private string? _configFile;
 
     internal HeadlessAppBuilder(bool includeSimulation, GameManifest? game)
     {
@@ -172,6 +173,14 @@ public sealed class HeadlessAppBuilder
         return this;
     }
 
+    // The config.cfg the boot reads and the shutdown writes the archived cvars to (`user://config.cfg`
+    // in the host). A test gives its own file, to see a setting survive a restart.
+    public HeadlessAppBuilder WithConfig(string file)
+    {
+        _configFile = file;
+        return this;
+    }
+
     public HeadlessAppBuilder InHost(HostKind host)
     {
         _host = host;
@@ -203,6 +212,7 @@ public sealed class HeadlessAppBuilder
             ModListFile = _modList,
             ModReportFile = _modReport,
             InputFile = _inputFile,
+            ConfigFile = _configFile,
         });
         foreach (var fixture in _fixtures.Append(_files).OfType<MountFixture>())
             foreach (var mount in fixture.Mounts)

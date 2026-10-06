@@ -1,5 +1,10 @@
 #nullable enable
 const Sage.UI.Dropdown.Arrow = "v" -> string!
+const Sage.UI.OptionsView.ApplyButton = "apply" -> string!
+const Sage.UI.OptionsView.ControlsScreen = "controls" -> string!
+const Sage.UI.OptionsView.DefaultsButton = "defaults" -> string!
+const Sage.UI.OptionsView.KeysButton = "keys" -> string!
+const Sage.UI.OptionsView.RevertButton = "revert" -> string!
 override Sage.UI.Checkbox.IsSelected.get -> bool
 override Sage.UI.Checkbox.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
 override Sage.UI.Checkbox.OnActivate() -> void
@@ -46,6 +51,81 @@ Sage.UI.Dropdown.Selected.set -> void
 Sage.UI.Dropdown.SelectedOption.get -> string?
 Sage.UI.Dropdown.SetOptions(System.Collections.Generic.IEnumerable<string!>! options) -> void
 Sage.UI.IViewModel.Changed(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> void
+Sage.UI.OptionChoice
+Sage.UI.OptionChoice.Label -> string!
+Sage.UI.OptionChoice.OptionChoice() -> void
+Sage.UI.OptionChoice.Set -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.UI.OptionChoice.Value -> string!
+Sage.UI.OptionChoicesFrom
+Sage.UI.OptionChoicesFrom.Languages = 1 -> Sage.UI.OptionChoicesFrom
+Sage.UI.OptionChoicesFrom.None = 0 -> Sage.UI.OptionChoicesFrom
+Sage.UI.OptionKind
+Sage.UI.OptionKind.Choice = 2 -> Sage.UI.OptionKind
+Sage.UI.OptionKind.Slider = 0 -> Sage.UI.OptionKind
+Sage.UI.OptionKind.Toggle = 1 -> Sage.UI.OptionKind
+Sage.UI.OptionPage
+Sage.UI.OptionPage.Audio = 1 -> Sage.UI.OptionPage
+Sage.UI.OptionPage.Controls = 2 -> Sage.UI.OptionPage
+Sage.UI.OptionPage.Gameplay = 3 -> Sage.UI.OptionPage
+Sage.UI.OptionPage.Graphics = 0 -> Sage.UI.OptionPage
+Sage.UI.OptionRecord
+Sage.UI.OptionRecord.Choices -> System.Collections.Generic.List<Sage.UI.OptionChoice!>!
+Sage.UI.OptionRecord.ChoicesFrom -> Sage.UI.OptionChoicesFrom
+Sage.UI.OptionRecord.Cvar -> string!
+Sage.UI.OptionRecord.Decimals -> int
+Sage.UI.OptionRecord.DefaultLabel -> string!
+Sage.UI.OptionRecord.Kind -> Sage.UI.OptionKind
+Sage.UI.OptionRecord.Label -> string!
+Sage.UI.OptionRecord.Max -> float
+Sage.UI.OptionRecord.Min -> float
+Sage.UI.OptionRecord.Off -> string!
+Sage.UI.OptionRecord.On -> string!
+Sage.UI.OptionRecord.OptionRecord() -> void
+Sage.UI.OptionRecord.Order -> int
+Sage.UI.OptionRecord.Page -> Sage.UI.OptionPage
+Sage.UI.OptionRecord.Percent -> bool
+Sage.UI.OptionRecord.Step -> float
+Sage.UI.OptionsView
+Sage.UI.OptionsView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.OptionsView.All.get -> System.Collections.Generic.IReadOnlyList<Sage.UI.OptionsView.Row!>!
+Sage.UI.OptionsView.Apply(Sage.Core.CVarRegistry! cvars) -> int
+Sage.UI.OptionsView.Audio.get -> System.Collections.Generic.List<Sage.UI.OptionsView.Row!>!
+Sage.UI.OptionsView.Back(in Sage.UI.UiBindContext context) -> bool
+Sage.UI.OptionsView.Changed(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> void
+Sage.UI.OptionsView.Controls.get -> System.Collections.Generic.List<Sage.UI.OptionsView.Row!>!
+Sage.UI.OptionsView.Defaults(Sage.Core.CVarRegistry! cvars) -> void
+Sage.UI.OptionsView.Find(string! id) -> Sage.UI.OptionsView.Row?
+Sage.UI.OptionsView.Gameplay.get -> System.Collections.Generic.List<Sage.UI.OptionsView.Row!>!
+Sage.UI.OptionsView.Graphics.get -> System.Collections.Generic.List<Sage.UI.OptionsView.Row!>!
+Sage.UI.OptionsView.HasChanges.get -> bool
+Sage.UI.OptionsView.HasControls.get -> bool
+Sage.UI.OptionsView.HasMessage.get -> bool
+Sage.UI.OptionsView.Message.get -> string!
+Sage.UI.OptionsView.MessageDetail.get -> string!
+Sage.UI.OptionsView.OptionsView() -> void
+Sage.UI.OptionsView.Page.get -> int
+Sage.UI.OptionsView.Page.set -> void
+Sage.UI.OptionsView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.UI.OptionsView.Revert() -> void
+Sage.UI.OptionsView.Row
+Sage.UI.OptionsView.Row.Checked.get -> bool
+Sage.UI.OptionsView.Row.Checked.set -> void
+Sage.UI.OptionsView.Row.Choices.get -> System.Collections.Generic.List<string!>!
+Sage.UI.OptionsView.Row.Dirty.get -> bool
+Sage.UI.OptionsView.Row.Id.get -> Sage.Core.RecordId
+Sage.UI.OptionsView.Row.IsChoice.get -> bool
+Sage.UI.OptionsView.Row.IsSlider.get -> bool
+Sage.UI.OptionsView.Row.IsToggle.get -> bool
+Sage.UI.OptionsView.Row.Kind.get -> Sage.UI.OptionKind
+Sage.UI.OptionsView.Row.Label.get -> string!
+Sage.UI.OptionsView.Row.Max.get -> float
+Sage.UI.OptionsView.Row.Min.get -> float
+Sage.UI.OptionsView.Row.Record.get -> Sage.UI.OptionRecord!
+Sage.UI.OptionsView.Row.Selected.get -> int
+Sage.UI.OptionsView.Row.Selected.set -> void
+Sage.UI.OptionsView.Row.Value.get -> float
+Sage.UI.OptionsView.Row.Value.set -> void
+Sage.UI.OptionsView.Row.ValueText.get -> string!
 Sage.UI.ScreenRecord.Sounds -> Sage.Core.RecordRef<Sage.UI.UiSoundsRecord!>
 Sage.UI.Slider
 Sage.UI.Slider.Increment.get -> float
@@ -183,3 +263,4 @@ virtual Sage.UI.Widget.OnPointerDragged(System.Numerics.Vector2 point) -> void
 virtual Sage.UI.Widget.OnPointerPressed(System.Numerics.Vector2 point) -> void
 virtual Sage.UI.Widget.OnText(System.ReadOnlySpan<char> typed) -> void
 virtual Sage.UI.Widget.WantsText.get -> bool
+Sage.UI.Localisation.Languages.get -> System.Collections.Generic.IReadOnlyList<string!>!

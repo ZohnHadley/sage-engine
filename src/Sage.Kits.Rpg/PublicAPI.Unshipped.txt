@@ -1,2 +1,3 @@
 #nullable enable
 static readonly Sage.Kits.Rpg.RpgKitModule.ControlsScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.OptionsScreen -> Sage.Core.RecordId
