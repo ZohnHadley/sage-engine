@@ -1708,6 +1708,17 @@ Nothing changes: a client renders its own world's snapshot. A dedicated server d
 - Should sprites be lit per-vertex with the nearest point lights, or unlit + fog only in v1? Default: **material decides**; Daggerfall-style content uses unlit + fog + ambient tint.
 - ~~Is SM3's constant budget enough for 4 point lights + fog + sun in one pass on DesktopGL/MojoShader?~~ **Yes** (2026-09-24): `lit.fx`'s `Default` technique compiles and runs with all of it, and no fallback to 2 was needed.
 
+### As built (the player's field of view and views inside widgets, 2026-10-06 — #339, #348)
+- **`fov`** (archived, degrees; 0, the default, is the camera's own) is the options screen's field of view: the
+  camera director sets a player camera's vertical field of view from it while it is above 0, over
+  `sage:player_camera`'s `fovY` (test: ApplyingTheLanguageAndTheFieldOfViewChangesTheRunningGame).
+- **A widget's view** (#348, 13 "As built (render targets and world views in widgets)"): `ViewSource` adds, for each
+  `view` widget on screen with a camera of its own, a view into the widget's named render target, sized to the
+  pixels it covers (or its `resolution`) and rounded up to 8, before the UI that shows it is drawn; the widget
+  renderer draws the target where the image goes, and a fog mask over it. Its camera draws the screen's player,
+  unhidden, so a paper doll shows the pawn a first-person view leaves out
+  (test: TheStackHandsTheClientEachViewOnScreenWithItsScreensSubject).
+
 ## 14. Build steps
 1. ~~`RenderSnapshot` + Extract phase + camera extract; port `ModelRendererSystem` to `MeshExtract` + the opaque pass~~ **Done 2026-09-22** (ARCHITECTURE §7 step 6; TODO R9, #25).
 2. ~~Sort keys + material-based drawing (with 07)~~ **Done 2026-09-22** (radix sort since #319, 2026-10-06).

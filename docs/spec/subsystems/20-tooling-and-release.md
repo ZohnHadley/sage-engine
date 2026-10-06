@@ -112,6 +112,9 @@ builds the Linux host without shaders, takes the Windows job's `.mgfxo` files, c
 `r_pixelcheck <spec> shaders` reads the frame back and checks the sky, the sun's shadow, the fog and the post
 grade, and the frames and log are uploaded. Linux cannot compile the shaders itself: `mgfxc`'s OpenGL profile
 needs Direct3D's compiler under Wine, and DXC serves only shader model 6.
+Since #355 the Linux job also runs `tools/kit_screens_check.sh`: every RPG kit screen in
+`tests/games/kit-screens/screens.txt` opened in the real host under Xvfb and its frame compared with a golden by
+`r_framecheck` (design 13 "As built (every kit screen against a golden)"); the frames are uploaded.
 
 Release (RELEASING §4): move Unshipped API to Shipped on a branch (done for 0.1.0, #295), merge, tag `v0.1.0` (the owner's push); the tag runs `release.yml`, which builds all three configurations on Windows, runs the tests, packs the SDK, Player and templates, checks their version and creates the GitHub release with the packages attached. Nothing goes to a feed (#296).
 

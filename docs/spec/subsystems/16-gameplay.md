@@ -52,7 +52,7 @@ Each module is a plugin with a stable id, picked in `game.json`:
 | `Items` (`Give`, `Take`, `Equip`, `Unequip`, `Drop`, `SpawnPickup`), `EquipSlots`, `ItemUses`, `Used` | `Items/` | Inventory and equipment rules, item uses (`consume`, `read`, `cast`), the Use event. |
 | `AbilityCasting`, `CastRefused`, `CueTriggered` | `Abilities/` | Cast, refusal reasons, cues. |
 | `Factions`, `ReputationChanged` | `Factions/Factions.cs` | Stance of a faction to another and to the player. |
-| `Quests`, `QuestChanged`, `DialogueTopics`, `Spoke` | `Narrative/` | Journal rules; topic answering; speech event. |
+| `Quests`, `QuestChanged`, `DialogueTopics`, `Spoke` | `Narrative/` | Journal rules (since #349 `Track` and `IsTracked`, a stage's and an objective's `target`, an entry's `History`); topic answering; speech event. |
 
 Vocabularies a game extends by attribute: `hit_delivery`, `ability_delivery`, `effect_execution`, `item_use`, `quest_objective` (`kill`, `have`, `reach`, `talk`), plus the base condition and action words each plugin owns (`has_tag`, `lacks_tag`, `is_alive`, `has_item`, `standing`, `quest`, `apply_effect`, `set_tag`, `cue`, `give_item`, `change_standing`, `start_quest`, `set_stage`, `add_topic`, `speaker`).
 
@@ -134,7 +134,7 @@ Milestone 10, AI, combat and narrative depth (epic #385).
 - #393 4r-8 Friendly-fire and ability gaps: self-heal, buffs, projectile bounce/stick (P3)
 - #394 4r-9 Tests for the kit screens and combat edge cases (P3)
 
-Related: #359 4p-3 directional attack and block sets (P2), #344 4q-7 loot, topics and shop from gameplay (P1).
+Related: #359 4p-3 directional attack and block sets (P2). #344 (4q-7) is built: the dead say nothing (`DialogueRules.Start` refuses a speaker with the conventions' dead tag) and using a body loots it (17-rpg-kit).
 
 ## 11. References
 

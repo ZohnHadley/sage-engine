@@ -481,7 +481,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Entity input or output | `EntityInputs.Register` / `Register<T>`, `EntityOutputs.Declare` (in `Init`) |
 | Vocabulary word | `[Condition("id")]`, `[Action("id")]`, or a new `[Vocabulary]` with its entry attribute |
 | Render pass | `[RenderPass("ns:id", RenderStage.X)]` on an `IRenderPass`, added to `RenderPasses` in `Init`; an engine pass is replaced or switched off by id with `RenderPasses.Replace` / `Disable` (#322) |
-| UI | a `Widget` subclass in code; screens by id in the client's `ScreenRegistry`; `ui_layout`, `ui_style`, `screen` records (new widget types from data are 4q) |
+| UI | a `Widget` subclass in code; screens by id in the client's `ScreenRegistry`; `ui_layout`, `ui_style`, `screen` records; since 4q a screen's buttons run actions from content and a layout includes another (#347), so a mod's screen needs no C#; a new widget type is still C# |
 | Console command, cvar | `CVarRegistry.RegisterCommand` / `Register` in `Init` |
 | Input action | `Engine.Actions.Register` in `Init`; bindings in `input_map` records |
 | Content | mounts in game.json; data mods with `mod.json` |

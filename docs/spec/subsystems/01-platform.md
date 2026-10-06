@@ -69,7 +69,7 @@ The rule that makes headless work is the split above: every decision (is this a 
 
 **Commands:** `quit [seconds]`, `screenshot [delay]` (PNG into `user://screenshots`), `in_contexts`, and the dev-only automation set `in_type`, `in_cursor`, `in_tap`, `in_hold`, `in_axis`, `in_look`, `in_release`, `in_clear`, `in_scripted`.
 
-**Launch options** (`src/Sage.Host/HostOptions.cs`, read by `Program.cs`; #298): `-game <folder>`, `-dump-registry <file>`, `-mods <dir>[,<dir>]`, `-nomods` (wins over `-mods`), `-edit [document]` (dev builds only); `+cmd args` runs a console statement once the first world exists. Unknown `-options` and options missing their value are warned and ignored (tests: TheHostReadsItsOptionsAndLeavesTheCommandsToTheConsole, ModsAreNamedInOrder_OrNoneWithNomods_WhichWinsOverMods, AMistypedOptionIsAWarningNeverAStop). A game folder that is wrong ends the host with a message naming the file and what to do (test: EachWayAGameFolderIsWrongSaysWhereAndWhat).
+**Launch options** (`src/Sage.Host/HostOptions.cs`, read by `Program.cs`; #298): `-game <folder>`, `-dump-registry <file>`, `-mods <dir>[,<dir>]`, `-nomods` (wins over `-mods`), `-edit [document]` (dev builds only), `-notitle` (start the world at once, past game.json's `"title"` screen; #342); `+cmd args` runs a console statement once the first world exists. Unknown `-options` and options missing their value are warned and ignored (tests: TheHostReadsItsOptionsAndLeavesTheCommandsToTheConsole, ModsAreNamedInOrder_OrNoneWithNomods_WhichWinsOverMods, AMistypedOptionIsAWarningNeverAStop). A game folder that is wrong ends the host with a message naming the file and what to do (test: EachWayAGameFolderIsWrongSaysWhereAndWhat).
 
 ## 5. Data model
 

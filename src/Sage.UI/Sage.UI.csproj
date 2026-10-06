@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Game UI's retained half (issue #95, docs/design/13 "As built (widgets)", decision D8): widgets
-    (Box, Stack, Grid, Label, Image, Button, ItemList, Bar, Scroll, Tooltip), a two-pass layout in
+    (Box, Stack, Grid, Label, Image, Button, ItemList, Bar, Scroll, Tooltip; since #340 the form widgets
+    Slider, Checkbox, Dropdown, TextBox and Tabs; since #348 View), a two-pass layout in
     virtual units, and focus driven by a UiInput struct — all headless. Simulation ← UI ← Client
     (decision D1): it names no font and no texture (ITextMeasure measures text), so a test lays out,
     navigates and hit-tests a screen without a window, and the client only draws what it arranged (#97).
