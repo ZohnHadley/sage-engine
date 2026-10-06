@@ -210,6 +210,7 @@ public sealed class CombatModule : IModule
         _actions = ctx.Engine.Actions;
         _actions.Register("Attack", ActionKind.Button);   // the engine's name; gameplay_conventions picks which one swings
         _actions.Register("Reload", ActionKind.Button);   // plays the first-person arms' reload (issue #121)
+        _actions.Register("Block", ActionKind.Button);    // holds a fighter's guard up (issue #359)
         BridgeIO.RegisterCombat(ctx.Engine);              // OnDamaged (issue #91)
         // An attack's `delivery` names a registered hit_delivery (issue #133), checked when content loads.
         var vocabularies = ctx.Engine.Vocabularies;
@@ -245,6 +246,7 @@ public sealed class CombatModule : IModule
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
         world.AddSystem(new ReloadSystem(world, _records!, _actions!));   // ammunition (issue #135)
         world.AddSystem(new RecoilSystem(world));   // spread and recoil (issue #136)
+        world.AddSystem(new AttackStanceSystem(world, _actions!));   // directional swings and guards (issue #359)
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
         world.AddSystem(new HitboxCleanupSystem(world));    // a hitbox goes with its owner (issue #137)

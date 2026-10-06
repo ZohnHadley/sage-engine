@@ -103,11 +103,13 @@ public sealed class ActionConventions
     public string Crouch = "Crouch";
     [Property(Tooltip = "The button that reloads: plays the first-person arms' reload and refills the magazine of an attack with `ammo` (issue #135)")]
     public string Reload = "Reload";
+    [Property(Tooltip = "The button held to guard: sets the fighter's AttackStance.Blocking, which an anim_graph reads (`from: Blocking`) to pick its block (issue #359)")]
+    public string Block = "Block";
 
     internal (string Field, string Name)[] All() => new[]
     {
         (nameof(Attack), Attack), (nameof(Use), Use), (nameof(Jump), Jump), (nameof(Run), Run), (nameof(Crouch), Crouch),
-        (nameof(Reload), Reload),
+        (nameof(Reload), Reload), (nameof(Block), Block),
     };
 }
 
