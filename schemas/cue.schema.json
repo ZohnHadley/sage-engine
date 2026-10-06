@@ -69,6 +69,14 @@
       "description": "(int, default 0)",
       "default": 0,
       "type": "integer"
+    },
+    "decal": {
+      "description": "The decal it leaves on the surface where it happened; empty = none. Names a decal record. (RecordRef<DecalRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:decal"
+        }
+      ]
     }
   },
   "additionalProperties": false

@@ -66,7 +66,12 @@ internal sealed class ProjectileSystem : ISystem
     // hitbox's hit_location (empty: the body).
     private readonly record struct Arrival(Entity Projectile, Entity Caster, RecordId Ability, RecordId Attack, Vector3 Point,
                                            Vector3 Direction, Entity Struck, bool Final = true,
-                                           Entity Collider = default, RecordId Location = default);
+                                           Entity Collider = default, RecordId Location = default)
+    {
+        // What the sweep met is made of and which way it faced, for its impact cue (issue #306).
+        public RecordId Surface { get; init; }
+        public Vector3 Normal { get; init; }
+    }
 
     public ProjectileSystem(World world, RecordStore records, CVar<bool> debugCasts)
     {
@@ -139,7 +144,8 @@ internal sealed class ProjectileSystem : ISystem
                     // its owner's capsule — and on a creature with no capsule at all. Leaving out `ignore`
                     // leaves out its boxes too (they are its children).
                     Entity struck = solid ? hit.Entity : default, collider = struck;
-                    RecordId location = default;
+                    RecordId location = default, surface = hit.Surface;
+                    Vector3 normal = hit.Normal;
                     float distance = hit.Distance;
                     if (boxes.Bits != 0)
                     {
@@ -150,6 +156,8 @@ internal sealed class ProjectileSystem : ISystem
                             collider = box.Entity;
                             location = landed.Location;
                             distance = box.Distance;
+                            surface = box.Surface;
+                            normal = box.Normal;
                         }
                     }
 
@@ -161,10 +169,12 @@ internal sealed class ProjectileSystem : ISystem
                     {
                         p[n].Pierce--;
                         p[n].Passed = struck;
-                        _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, struck, Final: false, collider, location));
+                        _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, struck, Final: false, collider, location)
+                                      { Surface = surface, Normal = normal });
                         continue;
                     }
-                    _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, struck, Final: true, collider, location));
+                    _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, struck, Final: true, collider, location)
+                                  { Surface = surface, Normal = normal });
                     break;
                 }
 
@@ -184,6 +194,9 @@ internal sealed class ProjectileSystem : ISystem
         // same Combat.ApplyHit a sword's swing and a pistol's ray use. Running out of range hits nothing.
         if (!arrival.Attack.IsEmpty)
         {
+            // Whatever it struck makes its surface's noise and mark (issue #306), a wall or a target.
+            if (!arrival.Struck.IsNull && arrival.Struck != arrival.Caster)
+                Impacts.Raise(world, arrival.Caster, arrival.Point, arrival.Normal, arrival.Surface);
             if (!Hits.CanBeHurt(world, arrival.Struck) || arrival.Struck == arrival.Caster) return;
             if (!_records.TryGet(arrival.Attack, out AttackRecord attack)) return;
             var request = new HitRequest(arrival.Caster, arrival.Point, arrival.Direction, arrival.Attack);

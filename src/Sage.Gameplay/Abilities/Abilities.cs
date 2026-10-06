@@ -104,6 +104,11 @@ public sealed class CueRecord
     // both content, and neither is the spell's business.
     public RecordRef<ParticleRecord> Particles;
     public int ParticleCount;              // 0 = whatever the effect's own `burst` says
+
+    // And the mark it leaves (issue #306): a bullet hole, a scorch, a footprint. Laid on the surface the
+    // cue names with its `Normal` (an impact), or on what is below its point within the decal's `reach`.
+    [Property(Tooltip = "The decal it leaves on the surface where it happened; empty = none")]
+    public RecordRef<DecalRecord> Decal;
 }
 
 // What an entity can cast, and what it is casting. `Known` is a list because a spellbook is a list;
@@ -142,7 +147,12 @@ public readonly record struct CastRefused(Entity Caster, RecordId Ability, CastR
 // happened*, never what it looks like, and a Frame-schedule system turns these into effects on screen
 // — so a headless server sends them into a queue nobody reads (04 §3.2).
 [GameEvent]
-public readonly record struct CueTriggered(RecordId Cue, Entity Source, Vector3 Point);
+public readonly record struct CueTriggered(RecordId Cue, Entity Source, Vector3 Point)
+{
+    // Which way the surface it happened on faces, when it happened on one (an impact: a shot meeting a
+    // wall, issue #306); zero when it did not (a spell's burst in the air). A decal is laid along it.
+    public Vector3 Normal { get; init; }
+}
 
 // ---- reaching them ------------------------------------------------------------------------------
 
