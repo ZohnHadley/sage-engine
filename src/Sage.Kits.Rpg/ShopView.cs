@@ -83,17 +83,13 @@ public sealed class ShopView : ItemGridView
 
     protected override Entity OwnerOf(int grid, in UiBindContext context) => grid == 0 ? context.Other : context.Subject;
 
-    // Putting a held stack down on the other side is a trade: priced, and added to the balance.
-    public override bool Activate(Widget widget, in UiBindContext context)
+    public override bool Activate(Widget widget, in UiBindContext context) => base.Activate(widget, in context);
+
+    // Putting a held stack down on the other side is a trade — by the hand or by the pointer: priced,
+    // and added to the balance.
+    protected override void Moved(World world, RecordId item, int count, ItemGrid from, ItemGrid to)
     {
-        var held = Held;
-        var cell = UiScreen.RowOf(widget) as GridCell;
-        RecordId item = held?.Item ?? default;
-        int count = held?.Count ?? 0;
-        bool buying = held != null && held.Grid == Stock;
-        bool used = base.Activate(widget, in context);
-        if (used && context.World is { } world && held != null && cell != null && cell.Grid != held.Grid && Message.Length == 0)
-            Balance += buying ? Prices.Price(world, item, count, buying: true) : -Prices.Price(world, item, count, buying: false);
-        return used;
+        bool buying = from == Stock;
+        Balance += buying ? Prices.Price(world, item, count, buying: true) : -Prices.Price(world, item, count, buying: false);
     }
 }

@@ -58,6 +58,10 @@
       },
       "minItems": 2,
       "maxItems": 2
+    },
+    "icon": {
+      "description": "Its picture in an inventory grid, drawn across its footprint (turned with it); none: its name only. A texture path. (AssetPath)",
+      "type": "string"
     }
   },
   "additionalProperties": false
