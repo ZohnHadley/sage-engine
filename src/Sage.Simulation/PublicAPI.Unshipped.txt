@@ -203,3 +203,43 @@ Sage.Simulation.CameraViews.IndexOf(string! target, int slot) -> int
 Sage.Simulation.ScriptedCamera.BlendOutTime -> float
 Sage.Simulation.ScriptedCameraPart.BlendOutTime -> float
 static Sage.Simulation.CameraBlends.BeginOut(Sage.Simulation.World! world, Sage.Simulation.Entity camera, in Sage.Simulation.CameraView from, float seconds, Sage.Simulation.Ease ease) -> void
+const Sage.Simulation.SkyRules.CloudBlock = 0.9 -> float
+const Sage.Simulation.SkyRules.MoonGain = 1.4 -> float
+Sage.Simulation.RenderEnvironment.CloudCover -> float
+Sage.Simulation.RenderEnvironment.CloudScale -> float
+Sage.Simulation.RenderEnvironment.CloudScroll -> System.Numerics.Vector2
+Sage.Simulation.RenderEnvironment.CloudTexture -> Sage.Core.AssetPath
+Sage.Simulation.RenderEnvironment.HazeAbove -> float
+Sage.Simulation.RenderEnvironment.HazeBand -> float
+Sage.Simulation.RenderEnvironment.MoonAge -> float
+Sage.Simulation.RenderEnvironment.MoonDirection -> System.Numerics.Vector3
+Sage.Simulation.RenderEnvironment.MoonLevel -> float
+Sage.Simulation.RenderEnvironment.MoonSize -> float
+Sage.Simulation.RenderEnvironment.MoonTexture -> Sage.Core.AssetPath
+Sage.Simulation.RenderEnvironment.StarAxis -> System.Numerics.Vector3
+Sage.Simulation.RenderEnvironment.StarTurn -> float
+Sage.Simulation.SkyRecord.CloudDirection -> float
+Sage.Simulation.SkyRecord.Clouds -> Sage.Core.AssetPath
+Sage.Simulation.SkyRecord.CloudScale -> float
+Sage.Simulation.SkyRecord.CloudSpeed -> float
+Sage.Simulation.SkyRecord.HazeAbove -> float
+Sage.Simulation.SkyRecord.HazeBand -> float
+Sage.Simulation.SkyRecord.Moon -> Sage.Core.AssetPath
+Sage.Simulation.SkyRecord.MoonSize -> float
+Sage.Simulation.SkyRecord.StarTilt -> float
+Sage.Simulation.WeatherRecord.CloudCover -> float
+static Sage.Simulation.SkyRules.Apply(Sage.Simulation.SkyRecord! sky, double hour, int day, Sage.Simulation.CalendarRecord? calendar, Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather, Sage.Simulation.RenderEnvironment! environment) -> void
+static Sage.Simulation.SkyRules.CloudAlpha(float sample, float cover) -> float
+static Sage.Simulation.SkyRules.CloudColor(Sage.Simulation.RenderEnvironment! environment) -> System.Numerics.Vector3
+static Sage.Simulation.SkyRules.CloudCoverOf(Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather) -> float
+static Sage.Simulation.SkyRules.CloudFade(float elevation) -> float
+static Sage.Simulation.SkyRules.CloudScroll(Sage.Simulation.SkyRecord! sky, double elapsedHours) -> System.Numerics.Vector2
+static Sage.Simulation.SkyRules.CloudUv(System.Numerics.Vector3 direction, float scale, System.Numerics.Vector2 scroll) -> System.Numerics.Vector2
+static Sage.Simulation.SkyRules.Haze(float elevation, float band, float above) -> float
+static Sage.Simulation.SkyRules.MoonAgeAt(Sage.Simulation.CalendarRecord? calendar, int day, double hour) -> double
+static Sage.Simulation.SkyRules.MoonDirection(Sage.Simulation.SkyRecord! sky, double hour, double moonAge) -> System.Numerics.Vector3
+static Sage.Simulation.SkyRules.MoonDisc(System.Numerics.Vector3 direction, System.Numerics.Vector3 toMoon, float radius, out System.Numerics.Vector2 local) -> float
+static Sage.Simulation.SkyRules.MoonLit(System.Numerics.Vector2 local, double moonAge) -> float
+static Sage.Simulation.SkyRules.RotateStars(System.Numerics.Vector3 direction, System.Numerics.Vector3 axis, float turn) -> System.Numerics.Vector3
+static Sage.Simulation.SkyRules.StarAxis(float tiltDegrees) -> System.Numerics.Vector3
+static Sage.Simulation.SkyRules.StarTurn(double hour) -> float
