@@ -62,6 +62,8 @@ public sealed class Engine : IDisposable
         Records.AddCheck<MeshLodRecord>(MeshLodRecord.Check);
         // A terrain material's layers, tiles and rules (issue #307).
         Records.AddCheck<TerrainMaterialRecord>(TerrainSplat.Check);
+        // A water surface's colours, waves and fogs make sense (issue #411).
+        Records.AddCheck<WaterSurfaceRecord>(WaterSurfaceRecord.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the

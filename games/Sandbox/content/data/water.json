@@ -1,0 +1,29 @@
+[
+  // The lake (engine issue #411): the basin in the hills east of the clearing holds water, a swim volume
+  // (#262) whose top is drawn as a surface. Walk east over the ridge to see it reflect the sky and the
+  // far shore; dive in and the view goes green-blue.
+  {
+    // A darker, stiller lake than the engine's `sage:water`, under a slow breeze from the east.
+    "type": "water_surface",
+    "id": "lake",
+    "colour": [0.04, 0.12, 0.13],
+    "fogDensity": 0.25,
+    "shoreFade": 0.8,
+    "waveLength": 6,
+    "waveStrength": 0.08,
+    "waveSpeed": 0.6,
+    "waveDirection": 200,
+    "underwaterColour": [0.03, 0.13, 0.15],
+    "underwaterDensity": 0.15
+  },
+  {
+    // The basin's floor is 14.4 m below the clearing and it would spill at -5.7 m; the water stands at
+    // -8 m, so its edge is a shore all the way round. The box covers the basin with room to spare: where
+    // the ground stands above the water there is no water, to see or to swim in.
+    "type": "prefab", "id": "lake", "name": "lake",
+    "parts": {
+      "water": { "size": [106, 7.5, 110], "drag": 2, "buoyancy": 2 },
+      "water_surface": "lake"
+    }
+  }
+]

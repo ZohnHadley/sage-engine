@@ -395,6 +395,7 @@
         "post_grade",
         "post_tonemap",
         "post_vignette",
+        "post_water",
         "roof",
         "sage:decal",
         "sage:error",
@@ -410,6 +411,7 @@
         "sage:post_grade",
         "sage:post_tonemap",
         "sage:post_vignette",
+        "sage:post_water",
         "sage:sprite_default",
         "sage:sprite_lit",
         "sage:sprite_unlit",
@@ -591,6 +593,7 @@
         "hut_path",
         "jogger",
         "keeper",
+        "lake",
         "lamp",
         "lamp_link",
         "lift",
@@ -664,6 +667,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
         "sandbox:pistol_pickup",
@@ -1112,6 +1116,16 @@
         "sword_arms"
       ]
     },
+    "record:water_surface": {
+      "description": "The id of a water_surface record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "lake",
+        "sage:water",
+        "sandbox:lake",
+        "water"
+      ]
+    },
     "record:weather": {
       "description": "The id of a weather record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1511,6 +1525,7 @@
         "post_grade",
         "post_tonemap",
         "post_vignette",
+        "post_water",
         "roof",
         "sage:decal",
         "sage:error",
@@ -1526,6 +1541,7 @@
         "sage:post_grade",
         "sage:post_tonemap",
         "sage:post_vignette",
+        "sage:post_water",
         "sage:sprite_default",
         "sage:sprite_lit",
         "sage:sprite_unlit",
@@ -1708,6 +1724,7 @@
         "hut_path",
         "jogger",
         "keeper",
+        "lake",
         "lamp",
         "lamp_link",
         "lift",
@@ -1782,6 +1799,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
         "sandbox:pistol_pickup",
@@ -2228,6 +2246,16 @@
         "sandbox:pistol_arms",
         "sandbox:sword_arms",
         "sword_arms"
+      ]
+    },
+    "base:water_surface": {
+      "description": "Another water_surface record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "lake",
+        "sage:water",
+        "sandbox:lake",
+        "water"
       ]
     },
     "base:weather": {

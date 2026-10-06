@@ -157,6 +157,7 @@ public sealed partial class Renderer : IDisposable
         _spriteFaceCamera = settings.SpriteFaceCamera;
         _freezeCull = settings.FreezeCull;
         _debugThroughWalls = settings.DebugThroughWalls;
+        _waterOn = settings.Water;
         cvars.RegisterCommand("r_stats", CVarFlags.None, "Print last frame's render stats.", _ =>
             Log.Info(LogCat.Console, $"  views {LastFrame.Views} ({LastFrame.TargetViews} into render targets, {_targets.Count} target(s)), items {LastFrame.Items}, sprites {LastFrame.Sprites}, debug lines {LastFrame.DebugLines}, culled {LastFrame.Culled}, draw calls {LastFrame.DrawCalls}, " +
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
@@ -562,6 +563,7 @@ public sealed partial class Renderer : IDisposable
         // (at the render scale's size) instead of the back buffer; PostProcess draws it out below.
         // Views into other targets (a minimap, an editor viewport) are not redirected, so nothing is
         // post-processed twice.
+        _waterWanted = screen && WantsWater(s);   // water turns the chain on by itself (issue #411)
         _toScene = screen && PreparePost();
 
         // Shadow: once, before any view (`sage:shadow`, issue 4h-4). A pass there binds its own target.
@@ -1165,6 +1167,8 @@ internal sealed class RendererCVars
 
     // Texture filtering (issue #317): the anisotropy smooth-filtered materials sample with.
     public readonly CVar<int> Anisotropy;
+    // Water surfaces and the underwater view (issue #411): on by default, since a lake without them is a hole.
+    public readonly CVar<bool> Water;
     // The per-frame upload budget for streamed content (05 §3.4, issue #308).
     public readonly CVar<float> UploadMs;
 
@@ -1210,6 +1214,9 @@ internal sealed class RendererCVars
             "Anisotropic filtering for materials with a Linear or Anisotropic sampler (issue #317): up to this many taps along a " +
             "surface seen at a slant, so a floor stays sharp into the distance; 1 is plain trilinear. Point-sampled pixel art is not affected.",
             1, TextureSampling.MaxAnisotropy);
+        Water = cvars.Register("r_water", true, CVarFlags.Archive,
+            "Water surfaces (issue #411): the tops of water volumes with a water_surface drawn rippling, reflecting the sky " +
+            "and the shore and showing the bottom, and the view tinted under water; a post step that turns the chain on by itself.");
         UploadMs = cvars.Register("asset_upload_ms", 2f, CVarFlags.Archive,
             "Milliseconds a frame may spend loading a streaming world's meshes and textures (05 §3.4); what does not fit waits " +
             "for the next frame. The first load of a frame always starts; 0 is no budget.", 0f, 100f);

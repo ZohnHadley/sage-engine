@@ -536,6 +536,22 @@
           "$ref": "#/definitions/water"
         }
       ]
+    },
+    "water_surface": {
+      "description": "Prefab part 'water_surface' (WaterSurfacePart). A bare value is its \"look\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/water_surface"
+        },
+        {
+          "description": "How the surface looks (a water_surface record); empty: the engine's sage:water. Names a water_surface record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:water_surface"
+            }
+          ]
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -3291,6 +3307,21 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'water' (WaterPart)."
+    },
+    "water_surface": {
+      "type": "object",
+      "properties": {
+        "look": {
+          "description": "How the surface looks (a water_surface record); empty: the engine's sage:water. Names a water_surface record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:water_surface"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'water_surface' (WaterSurfacePart)."
     }
   }
 }

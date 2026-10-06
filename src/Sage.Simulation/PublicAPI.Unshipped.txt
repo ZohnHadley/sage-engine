@@ -80,3 +80,25 @@ Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
 Sage.Simulation.PostEffectRecord.Depth -> bool
+Sage.Simulation.WaterSurface
+Sage.Simulation.WaterSurface.Look -> Sage.Core.RecordId
+Sage.Simulation.WaterSurface.WaterSurface() -> void
+Sage.Simulation.WaterSurfacePart
+Sage.Simulation.WaterSurfacePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.WaterSurfacePart.Look -> Sage.Core.RecordId
+Sage.Simulation.WaterSurfacePart.WaterSurfacePart() -> void
+Sage.Simulation.WaterSurfaceRecord
+Sage.Simulation.WaterSurfaceRecord.Colour -> System.Numerics.Vector3
+Sage.Simulation.WaterSurfaceRecord.FogDensity -> float
+Sage.Simulation.WaterSurfaceRecord.Reflectivity -> float
+Sage.Simulation.WaterSurfaceRecord.Refraction -> float
+Sage.Simulation.WaterSurfaceRecord.ShoreFade -> float
+Sage.Simulation.WaterSurfaceRecord.Specular -> float
+Sage.Simulation.WaterSurfaceRecord.UnderwaterColour -> System.Numerics.Vector3
+Sage.Simulation.WaterSurfaceRecord.UnderwaterDensity -> float
+Sage.Simulation.WaterSurfaceRecord.UnderwaterTint -> System.Numerics.Vector3
+Sage.Simulation.WaterSurfaceRecord.WaterSurfaceRecord() -> void
+Sage.Simulation.WaterSurfaceRecord.WaveDirection -> float
+Sage.Simulation.WaterSurfaceRecord.WaveLength -> float
+Sage.Simulation.WaterSurfaceRecord.WaveSpeed -> float
+Sage.Simulation.WaterSurfaceRecord.WaveStrength -> float

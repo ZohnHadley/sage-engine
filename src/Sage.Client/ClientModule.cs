@@ -423,6 +423,7 @@ public sealed class ClientModule : IModule
         // Marks that stay (issue #306): the pool is the world's, placed by gameplay's DecalSystem.
         world.Resources.Add(new Decals { Ceiling = _decalCeiling!.Value });
         world.AddSystem(new DecalExtract(world, _renderer!, _decalCeiling!));
+        world.AddSystem(new WaterExtract(world, _records!));   // the main view's water (issue #411)
         world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!));
         // The `Weather` state is the world's (installed with it); this only makes it *look* like it.
         world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!, _soundEnabled!));
