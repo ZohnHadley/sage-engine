@@ -136,10 +136,13 @@ internal readonly record struct SourceStamp(long Length, ulong Hash)
 //   vec3 boundsCentre  float boundsRadius
 //   int32 joints (0 = no skin); per joint: string name, mat4 inverseBind, mat4 rest; then int32 logicalIndex
 //   int32 parts; per part: byte kind (0 rigid, 1 skinned), int32 vertices, int32 indices,
-//                          vertices × 32 or 52 bytes (MeshVertex, SkinnedMeshVertex), indices × int32
+//                          vertices × 52 or 72 bytes (MeshVertex, SkinnedMeshVertex), indices × int32
+// Version 2 (issue #410): each vertex gained a tangent and a colour. A version-1 file is refused like any
+// file this engine does not read, so the client falls back to the loose `.glb` (with a warning) until it is
+// cooked again.
 internal static class CookedMesh
 {
-    public const int Version = 1;
+    public const int Version = 2;
     private static ReadOnlySpan<byte> Magic => "SGMS"u8;
 
     public static void Write(Stream stream, MeshGeometry mesh, in SourceStamp stamp)

@@ -56,6 +56,7 @@ public sealed class SandboxModule : IGameModule
         world.AddSystem(new TriggerLogSystem(world));
         world.AddSystem(new CombatLogSystem(world));
         world.AddSystem(new FaceCameraSystem(world));
+        world.AddSystem(new OrbitSystem(world));
     }
 
     // The Sandbox's rules for each world; the engine starts them once every module has set it up.
@@ -122,6 +123,85 @@ public sealed class HopSystem : ISystem
                 h[n].Velocity += Gravity * dt;
                 t[n].LocalPosition.Y = MathF.Max(h[n].BaseY, t[n].LocalPosition.Y + h[n].Velocity * dt);
                 if (t[n].LocalPosition.Y <= h[n].BaseY) h[n].Velocity = 0;
+            }
+        }
+    }
+}
+
+// Goes round in a circle about where it was placed (engine issue #410: the lamp that circles in front of the
+// normal-mapped brick wall, so its bricks catch the light from every side in turn). It keeps no centre: each
+// tick moves it by the step round the circle, so it goes on circling the same place when the world's origin
+// moves under it (14 §3).
+[Component("sandbox:orbit")]
+public struct Orbit : IComponent
+{
+    [Property(Tooltip = "The circle's axis (unit length); it goes round counter-clockwise looking down it")]
+    public Vector3 Axis;
+    [Property(Unit = "m", Tooltip = "The circle's radius")]
+    public float Radius;
+    [Property(Unit = "s", Tooltip = "Seconds to go round once")]
+    public float Period;
+    [Property(Unit = "rad", Tooltip = "How far round it is")]
+    public float Angle;
+}
+
+// "orbit": { "radius": 0.9, "period": 6, "axis": [0, 0, 1] } — a part, because the circle goes round wherever
+// the scene put it.
+[PrefabPart("orbit")]
+public sealed class OrbitPart : IPrefabPart
+{
+    [Property(Min = 0, Unit = "m", Tooltip = "The circle's radius")]
+    public float Radius = 1f;
+    [Property(Min = 0.1, Unit = "s", Tooltip = "Seconds to go round once")]
+    public float Period = 6f;
+    [Property(Tooltip = "The circle's axis, in the world; it goes round counter-clockwise looking down it")]
+    public Vector3 Axis = Vector3.UnitY;
+
+    public void Apply(in PrefabPartContext ctx)
+    {
+        var orbit = new Orbit
+        {
+            Axis = Axis.LengthSquared() > 1e-12f ? Vector3.Normalize(Axis) : Vector3.UnitY,
+            Radius = Radius,
+            Period = MathF.Max(Period, 0.1f),
+        };
+        ctx.World.Add(ctx.Entity, orbit);
+        ctx.World.Get<Transform>(ctx.Entity).LocalPosition += OrbitSystem.Offset(orbit, 0f);   // onto the circle
+    }
+}
+
+// Gameplay phase (Fixed): moves every orbiting entity round its circle.
+[System("sandbox.orbit", Phase.Gameplay)]
+public sealed class OrbitSystem : ISystem
+{
+    private readonly Query<Transform, Orbit> _orbits;
+
+    public OrbitSystem(World world)
+    {
+        _orbits = world.Query<Transform, Orbit>();
+    }
+
+    // Where on its circle an orbit is at `angle`, from the middle: two directions across the axis, turned.
+    public static Vector3 Offset(in Orbit orbit, float angle)
+    {
+        var across = MathF.Abs(orbit.Axis.Y) < 0.9f ? Vector3.UnitY : Vector3.UnitX;
+        var u = Vector3.Normalize(Vector3.Cross(across, orbit.Axis));
+        var v = Vector3.Cross(orbit.Axis, u);
+        return (u * MathF.Cos(angle) + v * MathF.Sin(angle)) * orbit.Radius;
+    }
+
+    public void Run(in SystemContext ctx)
+    {
+        float dt = ctx.Tick.Dt;
+        foreach (var (transforms, orbits, _) in _orbits.Chunks)
+        {
+            var t = transforms.Span;
+            var o = orbits.Span;
+            for (int n = 0; n < t.Length; n++)
+            {
+                float angle = (o[n].Angle + dt * MathF.Tau / o[n].Period) % MathF.Tau;
+                t[n].LocalPosition += Offset(o[n], angle) - Offset(o[n], o[n].Angle);
+                o[n].Angle = angle;
             }
         }
     }

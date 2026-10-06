@@ -492,6 +492,14 @@
         }
       ]
     },
+    "orbit": {
+      "description": "The component sandbox:orbit (Orbit), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sandbox:orbit"
+        }
+      ]
+    },
     "particle_emitter": {
       "description": "The component sage:particle_emitter (ParticleEmitter), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -1393,6 +1401,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sandbox:hop"
+        }
+      ]
+    },
+    "sandbox:orbit": {
+      "description": "Component sandbox:orbit (Orbit).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sandbox:orbit"
         }
       ]
     },
@@ -6914,6 +6930,42 @@
       },
       "additionalProperties": false,
       "description": "Component sandbox:hop (Hop)."
+    },
+    "sandbox:orbit": {
+      "type": "object",
+      "properties": {
+        "axis": {
+          "description": "The circle's axis (unit length); it goes round counter-clockwise looking down it. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "radius": {
+          "description": "The circle's radius. Unit: m. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "period": {
+          "description": "Seconds to go round once. Unit: s. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "angle": {
+          "description": "How far round it is. Unit: rad. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sandbox:orbit (Orbit)."
     }
   }
 }

@@ -308,7 +308,7 @@ public sealed class Renderer : IDisposable
         return _meshIds[path] = LoadMesh(path.ToString(), stream);
     }
 
-    // A .glb → buffers, one part per primitive: rigid parts as VertexPositionNormalTexture with the
+    // A .glb → buffers, one part per primitive: rigid parts as VertexMesh (issue #410) with the
     // file's hierarchy baked in, skinned ones as VertexSkinned in bind space (issue #117). 0 (the
     // error mesh) when it cannot be read.
     private int LoadMesh(string name, System.IO.Stream stream)
@@ -376,7 +376,7 @@ public sealed class Renderer : IDisposable
             }
             else
             {
-                vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration, loaded.Rigid!.Length, BufferUsage.WriteOnly);
+                vb = new VertexBuffer(_device, VertexMesh.VertexDeclaration, loaded.Rigid!.Length, BufferUsage.WriteOnly);
                 vb.SetData(loaded.Rigid);
             }
             var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, loaded.Indices.Length, BufferUsage.WriteOnly);

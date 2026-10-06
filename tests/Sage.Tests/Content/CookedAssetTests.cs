@@ -29,6 +29,7 @@ public class CookedAssetTests
         Path.Combine("games", "Sandbox", "content", "models", "arms.glb"),
         Path.Combine("games", "Sandbox", "content", "models", "viewmodel_crossbow.glb"),
         Path.Combine("tests", "games", "skeletal", "content", "models", "mannequin.glb"),
+        Path.Combine("games", "Sandbox", "content", "models", "brick_wall.glb"),
     };
 
     [Theory]
@@ -81,11 +82,18 @@ public class CookedAssetTests
     [Fact]
     public void TheVertexStructsHaveTheLayoutTheClientsVertexBuffersTake()
     {
-        // VertexPositionNormalTexture is 32 bytes, VertexSkinned 52 (BLENDINDICES at 32, BLENDWEIGHT at 36).
+        // VertexMesh is 52 bytes (issue #410: TANGENT at 32, COLOR at 48), VertexSkinned 72 (BLENDINDICES at 32,
+        // BLENDWEIGHT at 36, TANGENT at 52, COLOR at 68).
+        Assert.Equal(52, MeshVertex.Size);
+        Assert.Equal(72, SkinnedMeshVertex.Size);
         Assert.Equal(MeshVertex.Size, System.Runtime.InteropServices.Marshal.SizeOf<MeshVertex>());
         Assert.Equal(SkinnedMeshVertex.Size, System.Runtime.InteropServices.Marshal.SizeOf<SkinnedMeshVertex>());
+        Assert.Equal(32, (int)System.Runtime.InteropServices.Marshal.OffsetOf<MeshVertex>(nameof(MeshVertex.Tangent)));
+        Assert.Equal(48, (int)System.Runtime.InteropServices.Marshal.OffsetOf<MeshVertex>(nameof(MeshVertex.Colour)));
         Assert.Equal(32, (int)System.Runtime.InteropServices.Marshal.OffsetOf<SkinnedMeshVertex>(nameof(SkinnedMeshVertex.Joint0)));
         Assert.Equal(36, (int)System.Runtime.InteropServices.Marshal.OffsetOf<SkinnedMeshVertex>(nameof(SkinnedMeshVertex.Weights)));
+        Assert.Equal(52, (int)System.Runtime.InteropServices.Marshal.OffsetOf<SkinnedMeshVertex>(nameof(SkinnedMeshVertex.Tangent)));
+        Assert.Equal(68, (int)System.Runtime.InteropServices.Marshal.OffsetOf<SkinnedMeshVertex>(nameof(SkinnedMeshVertex.Colour)));
     }
 
     [Fact]
@@ -100,6 +108,8 @@ public class CookedAssetTests
         Assert.Throws<InvalidDataException>(() => CookedMesh.Read(new MemoryStream(glb), out _));
         bytes[4] = 99;   // a format version this engine does not read
         Assert.Throws<InvalidDataException>(() => CookedMesh.Read(new MemoryStream(bytes), out _));
+        bytes[4] = 1;    // nor one cooked before vertices had tangents and colours (issue #410): it is cooked again
+        Assert.Contains("cook again", Assert.Throws<InvalidDataException>(() => CookedMesh.Read(new MemoryStream(bytes), out _)).Message);
     }
 
     // ---- Textures ----
