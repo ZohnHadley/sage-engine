@@ -52,6 +52,7 @@ public class Game1 : Game
     private long frame;
     private double screenshotAt = -1;   // >= 0: take a screenshot once RealTime passes it
     private double quitAt = -1;         // >= 0: exit once RealTime passes it (`quit <seconds>`)
+    private PixelCheckCapture pixelCheck = null!;   // `r_pixelcheck` (issue #318)
 
     private readonly string? dumpRegistry;   // -dump-registry: write RegistryDump here once booted, then quit
     // -edit [placements-or-scene] (issue #219): null in a game run; "" opens the game's start scene. Its
@@ -140,6 +141,8 @@ public class Game1 : Game
         });
         cvars.RegisterCommand("screenshot", CVarFlags.None, "screenshot [delay]: save a frame as a PNG in the user folder's screenshots/, now or after `delay` seconds.", a =>
             screenshotAt = a.Count > 0 && float.TryParse(a[0], out float delay) ? loop.RealTime + delay : 0);
+        pixelCheck = new PixelCheckCapture(engine);
+        pixelCheck.Register(cvars);
         CrashReporter.AddSection("GPU", () => $"{GraphicsAdapter.DefaultAdapter.Description}, profile {graphics.GraphicsProfile}");
         app.Configure();   // config.cfg, now that every cvar and command exists
         ApplyVSync();
@@ -414,6 +417,9 @@ public class Game1 : Game
     {
         loop.Frame();
         base.Draw(gameTime);
+        // `r_pixelcheck` (issue #318) reads the frame the game drew, its UI included, before the developer's
+        // ImGui windows are drawn over it.
+        pixelCheck.AfterDraw(graphicsDevice);
 
 #if SAGE_DEV
         using (Profiler.Begin("Frame.ImGui"))

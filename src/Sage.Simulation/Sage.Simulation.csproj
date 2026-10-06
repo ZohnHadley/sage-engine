@@ -45,6 +45,9 @@
     <!-- `sage cook` (src/Sage.Cli, assembly "sage") writes the cooked formats the client reads (issue #302):
          MeshGeometry and CookedAssets stay internal to the engine and its tools. -->
     <InternalsVisibleTo Include="sage" />
+    <!-- The host's `r_pixelcheck` (issue #318) reads the back buffer and runs PixelCheck, which is headless
+         and internal so that it is tested here and is no API a game has to keep. -->
+    <InternalsVisibleTo Include="Sage.Host" />
   </ItemGroup>
 
   <!-- The layers below, for every file (one namespace per assembly, REDESIGN §3.1). -->

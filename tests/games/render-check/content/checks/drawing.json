@@ -1,0 +1,30 @@
+{
+  // What the render check's frame must look like with `r_post 0` (issue #318; PixelCheck in Sage.Simulation,
+  // run by the host's `r_pixelcheck checks/drawing.json`). Regions are fractions of the frame from its top left,
+  // laid out for 640x360 with the scene's camera (45° vertical, two metres up, looking north). What each one
+  // `sees` is proved headlessly by RenderCheckSceneTests, which casts rays through it into the scene.
+  "width": 640, "height": 360,
+  "regions": [
+    // Sky high on the right, clear of the slab, above the fog's haze band.
+    { "name": "sky",    "rect": [0.87, 0.08, 0.10, 0.10], "sees": "sky" },
+    // The ground ten metres ahead: under the slab (its shadow at noon), and four to seven metres to its left, in the sun.
+    { "name": "shadow", "rect": [0.45, 0.70, 0.10, 0.08], "sees": "shadow" },
+    { "name": "lit",    "rect": [0.08, 0.70, 0.10, 0.08], "sees": "lit" },
+    // The ground just under the horizon, 80 to 350 metres away: past the fog's end (50 m).
+    { "name": "fog",    "rect": [0.30, 0.508, 0.40, 0.022], "sees": "fog" }
+  ],
+  "checks": [
+    // Drawn with the engine's shaders (CI's drawing job): the sky pass, sun shadows and fog.
+    { "name": "the sky pass draws the sky's colour", "region": "sky", "when": "shaders", "color": [0.33, 0.49, 0.85], "tolerance": 0.08 },
+    { "name": "the sky is blue", "region": "sky", "when": "shaders", "measure": "b-r", "min": 0.3 },
+    { "name": "the ground in the sun is bright", "region": "lit", "when": "shaders", "min": 0.75 },
+    { "name": "the slab's shadow is dark", "region": "shadow", "when": "shaders", "max": 0.45 },
+    { "name": "the shadow is darker than the sunlit ground beside it", "region": "shadow", "than": "lit", "when": "shaders", "max": -0.35 },
+    { "name": "the far ground is the fog's colour", "region": "fog", "when": "shaders", "color": [0.85, 0.6, 0.35], "tolerance": 0.08 },
+    { "name": "the far ground is fogged, not white", "region": "fog", "when": "shaders", "measure": "r-b", "min": 0.3 },
+    // A host built without shaders (SageSkipShaders, the Linux job) draws no material and no sky: every view
+    // is its clear colour, the sky's horizon. That still proves the frame is read back and measured.
+    { "name": "without shaders the sky region is the clear colour", "region": "sky", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 },
+    { "name": "without shaders the ground is the clear colour too", "region": "shadow", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}

@@ -1,0 +1,38 @@
+[
+  // The render check (issue #318): a fixed scene the real host draws and reads back, so CI fails when shadows,
+  // fog, the sky or the post grade stop drawing. Everything that could move is held: one sky key (the light
+  // never changes with the hour), noon, a placed camera, no player, no weather. CI also sets `time_scale 0`.
+  // What each region of the frame looks at is in content/checks/*.json; RenderCheckSceneTests casts rays
+  // through them to prove it, and checks the colours the specs expect against the sky and fog maths.
+
+  // One key, so it is this sky at any hour. The colours are chosen far apart: a blue sky, an orange fog and
+  // a white ground, lit by a white sun with a dim grey ambient, so a shadow is dark and fog is unmistakable.
+  {
+    "type": "sky", "id": "noon", "sunrise": 6, "sunset": 18, "lean": 0.3, "fogMode": "Linear",
+    "keys": [
+      { "hour": 12, "sun": [1, 1, 1], "ambientSky": [0.2, 0.2, 0.2], "ambientGround": [0.1, 0.1, 0.1],
+        "horizon": [0.55, 0.65, 0.85], "zenith": [0.15, 0.35, 0.85], "fog": [0.85, 0.6, 0.35],
+        "fogStart": 20, "fogEnd": 50, "shadow": 1 }
+    ]
+  },
+
+  // The view: a camera that wins the screen, two metres up, looking north (-Z) level with the ground. It is
+  // the scene's player, which is nothing but this camera: nothing walks, nothing turns.
+  { "type": "prefab", "id": "eye", "name": "eye", "parts": { "camera": { "priority": 10 } } },
+
+  { "type": "map", "id": "yard", "file": "maps/yard.map" },
+
+  // A grey grade for the post check (content/checks/post.json): with `r_post 1` it takes every colour out,
+  // after the engine's own grade (r_post_vignette 0 keeps the corners as they are).
+  { "type": "material", "id": "grey", "base": "sage:post_copy", "technique": "Grade",
+    "params": { "Saturation": 0, "Contrast": 1 } },
+  { "type": "post_effect", "id": "grey", "material": "grey", "order": 150 },
+
+  {
+    "type": "scene",
+    "id": "yard",
+    "maps": ["yard"],
+    "environment": { "sky": "noon", "hour": 12 },
+    "player": { "prefab": "eye", "at": [0, 2, 0], "yaw": 0, "name": "eye" }
+  }
+]

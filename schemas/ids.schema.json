@@ -355,9 +355,11 @@
         "crypt",
         "hut",
         "openworld:crypt",
+        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:hut",
-        "saves:camp"
+        "saves:camp",
+        "yard"
       ]
     },
     "record:material": {
@@ -377,6 +379,7 @@
         "dummy_helmeted",
         "error",
         "floor",
+        "grey",
         "gunmetal",
         "lamp_glow",
         "lit_default",
@@ -391,6 +394,7 @@
         "post_copy",
         "post_grade",
         "post_vignette",
+        "rendercheck:grey",
         "roof",
         "sage:decal",
         "sage:error",
@@ -521,6 +525,8 @@
       "type": "string",
       "enum": [
         "grade",
+        "grey",
+        "rendercheck:grey",
         "sage:grade",
         "sage:vignette",
         "vignette"
@@ -560,6 +566,7 @@
         "editor:light",
         "editor:plate",
         "editor:player",
+        "eye",
         "fan",
         "fence",
         "ferryman",
@@ -615,6 +622,7 @@
         "player",
         "player_camera",
         "rain",
+        "rendercheck:eye",
         "reward_check",
         "ring_on_floor",
         "road_sign",
@@ -807,6 +815,7 @@
         "openworld:crypt",
         "openworld:valley",
         "range",
+        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:main",
         "sandbox:wilds",
@@ -870,6 +879,8 @@
       "type": "string",
       "enum": [
         "day",
+        "noon",
+        "rendercheck:noon",
         "sandbox:day"
       ]
     },
@@ -1465,9 +1476,11 @@
         "crypt",
         "hut",
         "openworld:crypt",
+        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:hut",
-        "saves:camp"
+        "saves:camp",
+        "yard"
       ]
     },
     "base:material": {
@@ -1487,6 +1500,7 @@
         "dummy_helmeted",
         "error",
         "floor",
+        "grey",
         "gunmetal",
         "lamp_glow",
         "lit_default",
@@ -1501,6 +1515,7 @@
         "post_copy",
         "post_grade",
         "post_vignette",
+        "rendercheck:grey",
         "roof",
         "sage:decal",
         "sage:error",
@@ -1631,6 +1646,8 @@
       "type": "string",
       "enum": [
         "grade",
+        "grey",
+        "rendercheck:grey",
         "sage:grade",
         "sage:vignette",
         "vignette"
@@ -1671,6 +1688,7 @@
         "editor:light",
         "editor:plate",
         "editor:player",
+        "eye",
         "fan",
         "fence",
         "ferryman",
@@ -1726,6 +1744,7 @@
         "player",
         "player_camera",
         "rain",
+        "rendercheck:eye",
         "reward_check",
         "ring_on_floor",
         "road_sign",
@@ -1919,6 +1938,7 @@
         "openworld:crypt",
         "openworld:valley",
         "range",
+        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:main",
         "sandbox:wilds",
@@ -1982,6 +2002,8 @@
       "type": "string",
       "enum": [
         "day",
+        "noon",
+        "rendercheck:noon",
         "sandbox:day"
       ]
     },
