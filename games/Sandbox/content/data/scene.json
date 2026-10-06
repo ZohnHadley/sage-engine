@@ -108,7 +108,9 @@
       "attributes": {},
       "faction": "beasts",
       "melee": { "attack": "claws" },
-      "effects": ["tough_hide"]
+      "effects": ["tough_hide"],
+      // What its body gives up (issue #344): Use on a dead watcher opens the RPG kit's loot screen.
+      "inventory": { "items": [ { "item": "pelt" } ] }
     }
   },
   {
@@ -197,6 +199,9 @@
             "refusal": "there is nothing to report",
             "then": { "finishQuest": "sandbox:thin_the_wood", "faction": "sandbox:hermits", "standing": 35 }
           },
+          // Widget screens about the hermit (issue #344): his goods in the RPG kit's shop, his topics.
+          { "text": "Show me what you have.", "end": true, "actions": [ { "open_screen": "rpg:shop" } ] },
+          { "text": "I have questions.", "end": true, "actions": [ { "open_screen": "rpg:topics" } ] },
           { "text": "Nothing. Good day.", "end": true }
         ]
       },
@@ -244,7 +249,9 @@
       "body": { "size": [0.6, 1.8, 0.6] },
       "attributes": {},
       "faction": "hermits",
-      "dialogue": "hermit_talk"
+      "dialogue": "hermit_talk",
+      // What he trades ("Show me what you have.").
+      "inventory": { "items": [ { "item": "bolt", "count": 20 }, { "item": "pistol_rounds", "count": 30 }, { "item": "pelt", "count": 2 } ] }
     }
   },
 
@@ -403,6 +410,7 @@
   { "type": "item", "id": "crossbow", "label": "crossbow", "sound": "pickup", "slot": "MainHand", "attack": "crossbow_shot", "weight": 4, "value": 45 },
   { "type": "item", "id": "pistol_rounds", "label": "pistol rounds", "sound": "pickup", "weight": 0.01, "maxStack": 100, "value": 1 },
   { "type": "item", "id": "bolt", "label": "bolts", "sound": "pickup", "weight": 0.05, "maxStack": 50, "value": 1 },
+  { "type": "item", "id": "pelt", "label": "watcher pelt", "sound": "pickup", "weight": 1.5, "maxStack": 10, "value": 8 },
 
   // Their colours, in hand (viewmodel.json) and on the ground.
   { "type": "material", "id": "gunmetal", "base": "sage:lit_default", "params": { "AlbedoColor": [0.22, 0.23, 0.25, 1] } },

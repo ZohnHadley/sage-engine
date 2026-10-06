@@ -219,6 +219,12 @@ public sealed class UiNode
     [Property(Tooltip = "Enabled only while this holds")]
     public ICondition? EnabledIf;
 
+    // ---- what it does (issue #344)
+
+    [Property(Tooltip = "Done when it is pressed, before the view-model hears of it: actions by name, with the screen's subject and other " +
+                        "({ \"open_screen\": \"rpg:shop\" }, { \"close_screen\": {} })")]
+    public List<IAction> Actions = new();
+
     // ---- bindings
 
     [Property(Tooltip = "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows")]
