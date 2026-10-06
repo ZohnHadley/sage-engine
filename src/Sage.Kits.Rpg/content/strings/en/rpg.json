@@ -95,6 +95,27 @@
     "restart": "Restart to apply: mods are loaded once, at start.",
     "hint": "Later mods win over earlier ones where they conflict.    B: close"
   },
+  "controls": {
+    "title": "Controls",
+    "ctx_Gameplay": "Gameplay",
+    "ctx_UI": "Menus",
+    "ctx_Editor": "Editor",
+    "ctx_Console": "Console",
+    "none": "Nothing to rebind here.",
+    "rebind": "Rebind",
+    "press": "Press a key...",
+    "reset": "Reset",
+    "reset_all": "Reset all",
+    "capturing": "Press a key, mouse button or pad button for {action}.    B or Esc: cancel",
+    "conflict": "{input} is already used by {others}.",
+    "conflict_locked": "{others} uses that input and cannot give it up; pick another.",
+    "replace": "Take it",
+    "keep": "Keep",
+    "saved": "Saved.",
+    "invalid": "Cannot bind that: {others}",
+    "cannot_save": "Could not save your controls; see the log.",
+    "hint": "Changes apply at once.    B: close"
+  },
   "map": {
     "travel": "Travel ({hours} h)"
   }

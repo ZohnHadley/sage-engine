@@ -41,6 +41,65 @@ Sage.Simulation.Decals.Place(Sage.Core.RecordId effect, Sage.Simulation.DecalRec
 Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
+Sage.Simulation.Engine.Rebinds.get -> Sage.Simulation.InputRebinds!
+Sage.Simulation.InputBinding.DisplayName.get -> string!
+Sage.Simulation.InputRebinds
+Sage.Simulation.InputRebinds.ActionsFor(Sage.Simulation.InputContext context, Sage.Simulation.InputBinding! input) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.InputRebinds.ActionsIn(Sage.Simulation.InputContext context) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionInfo!>!
+Sage.Simulation.InputRebinds.BeginCapture(Sage.Simulation.InputContext context, string! action) -> bool
+Sage.Simulation.InputRebinds.Bind(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputBinding! input, bool replaceConflicts = false) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Bindings(Sage.Simulation.InputContext context, string! action) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.InputBinding!>!
+Sage.Simulation.InputRebinds.CancelCapture() -> void
+Sage.Simulation.InputRebinds.CaptureAction.get -> string!
+Sage.Simulation.InputRebinds.CaptureContext.get -> Sage.Simulation.InputContext
+Sage.Simulation.InputRebinds.Capturing.get -> bool
+Sage.Simulation.InputRebinds.ContextsInUse.get -> System.Collections.Generic.IEnumerable<Sage.Simulation.InputContext>!
+Sage.Simulation.InputRebinds.FilePath.get -> string?
+Sage.Simulation.InputRebinds.IsOverridden(Sage.Simulation.InputContext context, string! action) -> bool
+Sage.Simulation.InputRebinds.LastResult.get -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Offer(Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Pending.get -> Sage.Simulation.PendingRebind?
+Sage.Simulation.InputRebinds.Rebind(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputBinding! input, bool replaceConflicts = false) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Reset(Sage.Simulation.InputContext? context = null, string? action = null) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Resolve(bool replace) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.ResultVersion.get -> int
+Sage.Simulation.InputRebinds.TakeFresh() -> bool
+Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string? action, Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
+Sage.Simulation.InputRebinds.Validator.set -> void
+Sage.Simulation.InputRebinds.Version.get -> int
+Sage.Simulation.PendingRebind
+Sage.Simulation.PendingRebind.Action.get -> string!
+Sage.Simulation.PendingRebind.Action.init -> void
+Sage.Simulation.PendingRebind.CanReplace.get -> bool
+Sage.Simulation.PendingRebind.CanReplace.init -> void
+Sage.Simulation.PendingRebind.Conflicts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.PendingRebind.Conflicts.init -> void
+Sage.Simulation.PendingRebind.Context.get -> Sage.Simulation.InputContext
+Sage.Simulation.PendingRebind.Context.init -> void
+Sage.Simulation.PendingRebind.Input.get -> Sage.Simulation.InputBinding!
+Sage.Simulation.PendingRebind.Input.init -> void
+Sage.Simulation.PendingRebind.PendingRebind(Sage.Simulation.InputContext Context, string! Action, Sage.Simulation.InputBinding! Input, System.Collections.Generic.IReadOnlyList<string!>! Conflicts, bool CanReplace) -> void
+Sage.Simulation.RebindResult
+Sage.Simulation.RebindResult.CanReplace.get -> bool
+Sage.Simulation.RebindResult.CanReplace.init -> void
+Sage.Simulation.RebindResult.Conflicts.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Sage.Simulation.RebindResult.Conflicts.init -> void
+Sage.Simulation.RebindResult.Message.get -> string!
+Sage.Simulation.RebindResult.Message.init -> void
+Sage.Simulation.RebindResult.Ok.get -> bool
+Sage.Simulation.RebindResult.RebindResult() -> void
+Sage.Simulation.RebindResult.RebindResult(Sage.Simulation.RebindStatus Status, string! Message = "", System.Collections.Generic.IReadOnlyList<string!>? Conflicts = null, bool CanReplace = false) -> void
+Sage.Simulation.RebindResult.Status.get -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindResult.Status.init -> void
+Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Applied = 0 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.CannotSave = 4 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Conflict = 2 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Invalid = 3 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Unchanged = 1 -> Sage.Simulation.RebindStatus
+Sage.Simulation.SageAppOptions.InputFile.get -> string?
+Sage.Simulation.SageAppOptions.InputFile.init -> void
 Sage.Simulation.ShadowAtlas
 Sage.Simulation.ShadowAtlas.Cascades.get -> int
 Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
@@ -74,6 +133,7 @@ Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Sim
 Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
 static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
 static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
 static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float
@@ -272,4 +332,6 @@ Sage.Simulation.WeatherRecord.Drying -> float
 Sage.Simulation.WeatherRecord.Wetting -> float
 Sage.Simulation.ParticleRecord.Soft -> float
 Sage.Simulation.PointLight.Shadows -> bool
+Sage.Simulation.PhysicsMaterialRecord.Jump -> Sage.Core.RecordId
+Sage.Simulation.PhysicsMaterialRecord.Land -> Sage.Core.RecordId
 Sage.Simulation.SoundRecord.Stream -> bool

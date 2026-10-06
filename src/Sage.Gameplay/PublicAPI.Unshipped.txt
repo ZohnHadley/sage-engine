@@ -19,3 +19,18 @@ Sage.Gameplay.LightPart.Baked -> bool
 Sage.Gameplay.LightPart.Shadows -> bool
 static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
 *REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
+Sage.Gameplay.Footstep.Kind.get -> Sage.Gameplay.FootstepKind
+Sage.Gameplay.Footstep.Kind.init -> void
+Sage.Gameplay.FootstepKind
+Sage.Gameplay.FootstepKind.Jump = 2 -> Sage.Gameplay.FootstepKind
+Sage.Gameplay.FootstepKind.Land = 1 -> Sage.Gameplay.FootstepKind
+Sage.Gameplay.FootstepKind.Step = 0 -> Sage.Gameplay.FootstepKind
+Sage.Gameplay.Footsteps.Event -> string?
+Sage.Gameplay.Footsteps.LandSpeed -> float
+Sage.Gameplay.Footsteps.Left -> string?
+Sage.Gameplay.Footsteps.Right -> string?
+Sage.Gameplay.FootstepsPart.Event -> string!
+Sage.Gameplay.FootstepsPart.LandSpeed -> float
+Sage.Gameplay.FootstepsPart.Left -> string!
+Sage.Gameplay.FootstepsPart.Right -> string!
+Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>

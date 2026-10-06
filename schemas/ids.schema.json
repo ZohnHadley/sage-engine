@@ -54,6 +54,7 @@
         "arms",
         "mannequin",
         "sandbox:arms",
+        "sandbox:mannequin",
         "skeletal:mannequin"
       ]
     },
@@ -67,7 +68,9 @@
         "npc",
         "sandbox:arms",
         "sandbox:creature",
+        "sandbox:walker",
         "skeletal:npc",
+        "walker",
         "weapons:dummy"
       ]
     },
@@ -134,10 +137,20 @@
         "bullet_impact",
         "fireball_boom",
         "fireball_cast",
+        "jump",
+        "land_grass",
+        "land_wood",
         "sandbox:bullet_impact",
         "sandbox:fireball_boom",
         "sandbox:fireball_cast",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:weapon_swing",
+        "step_grass",
+        "step_wood",
         "weapon_swing"
       ]
     },
@@ -435,6 +448,7 @@
         "sandbox:floor",
         "sandbox:gunmetal",
         "sandbox:lamp_glow",
+        "sandbox:mannequin",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:stone",
@@ -513,6 +527,7 @@
         "glass",
         "grass",
         "metal",
+        "planks",
         "plaster",
         "sage:default",
         "sage:dirt",
@@ -522,6 +537,7 @@
         "sage:metal",
         "sage:stone",
         "sage:wood",
+        "sandbox:planks",
         "sandbox:plaster",
         "stone",
         "wood"
@@ -606,6 +622,7 @@
         "hermit",
         "hopper",
         "hut_path",
+        "hut_walker",
         "jogger",
         "keeper",
         "lake",
@@ -684,6 +701,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:hut_walker",
         "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
@@ -861,6 +879,7 @@
       "description": "The id of a screen record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -870,6 +889,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
@@ -913,22 +933,28 @@
         "cast_fire",
         "fire_loop",
         "hit_flesh",
+        "jump",
+        "land_grass",
+        "land_wood",
         "pickup",
         "rain_loop",
         "sandbox:boom_fire",
         "sandbox:cast_fire",
         "sandbox:fire_loop",
         "sandbox:hit_flesh",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
         "sandbox:pickup",
         "sandbox:rain_loop",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:swing",
         "sandbox:thunder",
-        "sandbox:ui_move",
-        "sandbox:ui_select",
+        "step_grass",
+        "step_wood",
         "swing",
-        "thunder",
-        "ui_move",
-        "ui_select"
+        "thunder"
       ]
     },
     "record:spread": {
@@ -963,9 +989,11 @@
       "type": "string",
       "enum": [
         "doomed",
+        "hut_walker",
         "lamp",
         "patrol",
         "patrol_armed",
+        "sandbox:hut_walker",
         "sandbox:lamp",
         "sentry",
         "skeletal:doomed",
@@ -1018,6 +1046,7 @@
       "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -1027,6 +1056,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
@@ -1042,14 +1072,6 @@
         "shop",
         "status",
         "topics"
-      ]
-    },
-    "record:ui_sounds": {
-      "description": "The id of a ui_sounds record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
-      "type": "string",
-      "enum": [
-        "default_ui_sounds",
-        "sage:default_ui_sounds"
       ]
     },
     "record:ui_style": {
@@ -1230,6 +1252,7 @@
         "arms",
         "mannequin",
         "sandbox:arms",
+        "sandbox:mannequin",
         "skeletal:mannequin"
       ]
     },
@@ -1243,7 +1266,9 @@
         "npc",
         "sandbox:arms",
         "sandbox:creature",
+        "sandbox:walker",
         "skeletal:npc",
+        "walker",
         "weapons:dummy"
       ]
     },
@@ -1310,10 +1335,20 @@
         "bullet_impact",
         "fireball_boom",
         "fireball_cast",
+        "jump",
+        "land_grass",
+        "land_wood",
         "sandbox:bullet_impact",
         "sandbox:fireball_boom",
         "sandbox:fireball_cast",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:weapon_swing",
+        "step_grass",
+        "step_wood",
         "weapon_swing"
       ]
     },
@@ -1611,6 +1646,7 @@
         "sandbox:floor",
         "sandbox:gunmetal",
         "sandbox:lamp_glow",
+        "sandbox:mannequin",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:stone",
@@ -1689,6 +1725,7 @@
         "glass",
         "grass",
         "metal",
+        "planks",
         "plaster",
         "sage:default",
         "sage:dirt",
@@ -1698,6 +1735,7 @@
         "sage:metal",
         "sage:stone",
         "sage:wood",
+        "sandbox:planks",
         "sandbox:plaster",
         "stone",
         "wood"
@@ -1783,6 +1821,7 @@
         "hermit",
         "hopper",
         "hut_path",
+        "hut_walker",
         "jogger",
         "keeper",
         "lake",
@@ -1862,6 +1901,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:hut_walker",
         "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
@@ -2039,6 +2079,7 @@
       "description": "Another screen record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -2048,6 +2089,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
@@ -2091,22 +2133,28 @@
         "cast_fire",
         "fire_loop",
         "hit_flesh",
+        "jump",
+        "land_grass",
+        "land_wood",
         "pickup",
         "rain_loop",
         "sandbox:boom_fire",
         "sandbox:cast_fire",
         "sandbox:fire_loop",
         "sandbox:hit_flesh",
+        "sandbox:jump",
+        "sandbox:land_grass",
+        "sandbox:land_wood",
         "sandbox:pickup",
         "sandbox:rain_loop",
+        "sandbox:step_grass",
+        "sandbox:step_wood",
         "sandbox:swing",
         "sandbox:thunder",
-        "sandbox:ui_move",
-        "sandbox:ui_select",
+        "step_grass",
+        "step_wood",
         "swing",
-        "thunder",
-        "ui_move",
-        "ui_select"
+        "thunder"
       ]
     },
     "base:spread": {
@@ -2141,9 +2189,11 @@
       "type": "string",
       "enum": [
         "doomed",
+        "hut_walker",
         "lamp",
         "patrol",
         "patrol_armed",
+        "sandbox:hut_walker",
         "sandbox:lamp",
         "sentry",
         "skeletal:doomed",
@@ -2196,6 +2246,7 @@
       "description": "Another ui_layout record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -2205,6 +2256,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
@@ -2220,14 +2272,6 @@
         "shop",
         "status",
         "topics"
-      ]
-    },
-    "base:ui_sounds": {
-      "description": "Another ui_sounds record to inherit every field from, abstract or not.",
-      "type": "string",
-      "enum": [
-        "default_ui_sounds",
-        "sage:default_ui_sounds"
       ]
     },
     "base:ui_style": {

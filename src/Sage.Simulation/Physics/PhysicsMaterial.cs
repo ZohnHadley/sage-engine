@@ -20,7 +20,7 @@ namespace Sage.Simulation;
 // and every RayHit and SweepHit says which one it hit (`Surface`, empty when none was given).
 //
 //   { "type": "physics_material", "id": "wood", "friction": 0.6, "restitution": 0.1,
-//     "footstep": "step_wood", "impact": "impact_wood", "decal": "textures/decals/hole_wood.png",
+//     "footstep": "step_wood", "land": "land_wood", "jump": "jump_wood", "impact": "impact_wood", "decal": "textures/decals/hole_wood.png",
 //     "penetration": 0.4, "textures": ["wood*", "crate*", "door"] }
 [Record("physics_material", Plugin = "sage.physics3d")]
 public sealed class PhysicsMaterialRecord
@@ -32,6 +32,10 @@ public sealed class PhysicsMaterialRecord
 
     [RecordRef("cue"), Property(Category = "Effects", Tooltip = "The cue a footstep on it raises (its sound, its dust)")]
     public RecordId Footstep;
+    [RecordRef("cue"), Property(Category = "Effects", Tooltip = "The cue landing on it from a fall or a jump raises; empty = its footstep")]
+    public RecordId Land;
+    [RecordRef("cue"), Property(Category = "Effects", Tooltip = "The cue jumping off it raises; empty = its footstep")]
+    public RecordId Jump;
     [RecordRef("cue"), Property(Category = "Effects", Tooltip = "The cue a blow or a shot that lands on it raises")]
     public RecordId Impact;
     [AssetKind("texture"), Property(Category = "Effects", Tooltip = "What a bullet hole in it looks like (a hint for the weapon code)")]

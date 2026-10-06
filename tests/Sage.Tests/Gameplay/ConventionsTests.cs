@@ -64,6 +64,7 @@ public class ConventionsTests
         Assert.Equal(new RecordId("sage", "default_ai"), conventions.AiProfile.Id);
         Assert.Equal(new RecordId("sage", "player"), conventions.PlayerFaction.Id);
         Assert.Equal(new RecordId("sage", "mana"), conventions.CostAttribute.Id);
+        Assert.Equal(new RecordId("sage", "default"), conventions.Surface.Id);
         Assert.Equal(new RecordId("sage", "idle"), conventions.Schedules.Idle.Id);
         Assert.Equal(new RecordId("sage", "hold_ground"), conventions.Schedules.HoldGround.Id);
         Assert.Equal("Attack", conventions.Actions.Attack);

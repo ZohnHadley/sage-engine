@@ -83,6 +83,29 @@ def whoosh(seconds=0.3):
     return out
 
 
+def rustle(seconds, cutoff):
+    """A footfall in grass: a short burst of low-passed noise, quick in and quick out."""
+    n = int(seconds * RATE)
+    out = []
+    last = 0.0
+    for i in range(n):
+        last = last * (1 - cutoff) + (random.random() * 2 - 1) * cutoff
+        out.append(last * 1.6 * envelope(i, n, attack=0.004, release=seconds / 4))
+    return out
+
+
+def knock(seconds, freq):
+    """A heel on a plank: a damped resonance with a click of noise on the front."""
+    n = int(seconds * RATE)
+    out = []
+    for i in range(n):
+        t = i / float(RATE)
+        click = (random.random() * 2 - 1) * math.exp(-t * 160) * 0.5
+        body = math.sin(2 * math.pi * freq * t) * 0.6 + math.sin(2 * math.pi * freq * 2.7 * t) * 0.25
+        out.append((body + click) * envelope(i, n, attack=0.002, release=0.035))
+    return out
+
+
 def main():
     if not os.path.isdir(OUT):
         os.makedirs(OUT)
@@ -140,6 +163,16 @@ def main():
     # random sequence the sounds above were generated from.
     write('ui_move', tone(520, 0.05, release=0.02, harmonics=(1.0, 0.3)))
     write('ui_select', tone(880, 0.1, release=0.04, harmonics=(1.0, 0.5, 0.2)))
+    # Footsteps (engine issue #327): what a foot sounds like on the Sandbox's two grounds, three of each
+    # so a walk is not one sample on repeat (the sound record picks one, with jitter), plus a landing on
+    # each and a push off for a jump. Written after the rest, so the seeded noise above stays as it was.
+    for name, seconds, cutoff in [('step_grass_a', 0.16, 0.30), ('step_grass_b', 0.18, 0.26), ('step_grass_c', 0.15, 0.34)]:
+        write(name, rustle(seconds, cutoff))
+    for name, freq in [('step_wood_a', 210.0), ('step_wood_b', 185.0), ('step_wood_c', 235.0)]:
+        write(name, knock(0.14, freq))
+    write('land_grass', [a + b for a, b in zip(rustle(0.28, 0.22), thud(0.28, 70))])
+    write('land_wood', [a * 0.6 + b for a, b in zip(knock(0.3, 140.0), thud(0.3, 85))])
+    write('jump', rustle(0.12, 0.4))
 
 
 if __name__ == '__main__':
