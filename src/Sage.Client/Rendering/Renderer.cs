@@ -820,7 +820,7 @@ public sealed class Renderer : IDisposable
 
         var starts = s.RangeStarts.AsSpan(0, views);
         var counts = s.RangeCounts.AsSpan(0, views);
-        RenderViewPlan.Bucket(s.ItemViews.AsSpan(0, items), s.ItemKeys.AsSpan(0, items), starts, counts, s.SortKeys, s.Order);   // TODO (06 §3.5): radix sort when counts grow
+        RenderViewPlan.Bucket(s.ItemViews.AsSpan(0, items), s.ItemKeys.AsSpan(0, items), starts, counts, s.SortKeys, s.Order);
         for (int v = 0; v < views; v++) { s.Views[v].ItemStart = starts[v]; s.Views[v].ItemCount = counts[v]; }
         RenderViewPlan.Bucket(s.SpriteInViews.AsSpan(0, sprites), s.SpriteInKeys.AsSpan(0, sprites), starts, counts, s.SpriteKeys, s.SpriteOrder);
         for (int v = 0; v < views; v++) { s.Views[v].SpriteStart = starts[v]; s.Views[v].SpriteCount = counts[v]; }
