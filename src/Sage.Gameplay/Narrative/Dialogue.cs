@@ -161,6 +161,9 @@ public static class DialogueRules
         // No Conversation: a game without the dialogue plugin, where nobody has anything to say.
         if (!world.Resources.TryGet<Conversation>(out var conversation) || conversation == null) return false;
         if (!world.TryGet<Dialogue>(speaker, out var dialogue) || dialogue.Record.IsEmpty) return false;
+        // The dead say nothing: using a body is looting it (the RPG kit, issue #344), not a conversation.
+        var dead = world.Conventions().Dead;
+        if (!dead.IsEmpty && world.Has<GameplayTags>(speaker) && world.HasTag(speaker, dead.Id)) return false;
         var records = world.Resources.Get<RecordStore>();
         if (!records.TryGet(dialogue.Record, out DialogueRecord record))
         {

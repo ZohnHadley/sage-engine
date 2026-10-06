@@ -32,6 +32,8 @@ namespace Sage.UI;
 //   warns about every key content names that no table has (UiModule). A key missing from the current
 //   language falls back to English before it is missing.
 // - `@@` at the start is a literal `@`: "@@home" shows "@home".
+// - `{action:Use}` is what the player presses for an action on the device in use (InputPrompts, issue
+//   #352), in any text, with or without other placeholders; an argument of that name wins.
 //
 // Resolving a key allocates nothing: the tables are keyed by the text as content writes it, '@'
 // included. Filling placeholders makes the string it returns.
@@ -64,8 +66,15 @@ public sealed class Localisation
     // "1.234" in German. The invariant culture when the system knows no such language.
     public CultureInfo Culture { get; private set; } = CultureInfo.InvariantCulture;
 
-    // Moves whenever the tables or the language change: what shows text re-resolves it then.
-    public int Version { get; private set; }
+    // Moves whenever the tables or the language change, or what an `{action:...}` prompt shows (a rebind,
+    // the device in use): what shows text re-resolves it then.
+    public int Version => _tablesVersion + (Prompts?.Version ?? 0);
+
+    // The input glyphs `{action:...}` shows; UiModule sets it. Without one, the placeholder stays as written.
+    public InputPrompts? Prompts { get; internal set; }
+
+    private int _tablesVersion;
+    internal int TablesVersion => _tablesVersion;
 
     // Every key the current language has (its own and English's), with the '@'.
     public IEnumerable<string> Keys => _texts.Keys.Union(_fallback.Keys, StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal);
@@ -82,8 +91,13 @@ public sealed class Localisation
     // `text` itself when it is not a key ("@@" becoming "@"). A missing key is shown as it is, and said.
     public string Text(string text)
     {
-        if (!IsKey(text)) return Literal(text);
-        return Find(text) is { } entry ? entry.Other : Missing(text);
+        string shown = !IsKey(text) ? Literal(text) : Find(text) is { } entry ? entry.Other : Missing(text);
+        if (Prompts == null || shown.IndexOf("{" + InputPrompts.Placeholder, StringComparison.Ordinal) < 0) return shown;
+        var none = new ArrayArgs(Array.Empty<(string, object?)>());
+        var builder = _builder ??= new StringBuilder(128);
+        builder.Clear();
+        Fill(builder, shown, ref none, Culture);
+        return builder.ToString();
     }
 
     // A key's text for `count` things: its plural form, with {count} and the other placeholders filled.
@@ -138,9 +152,9 @@ public sealed class Localisation
     }
 
     // {name} → its value; {name:format} → its value formatted for the language ("n0", "p0", "d" for a
-    // date: .NET's format strings, in Culture); {{ and }} → a brace; an unfilled or unclosed placeholder
-    // stays as written.
-    private static void Fill<TArgs>(StringBuilder builder, string template, ref TArgs args, CultureInfo culture) where TArgs : IPlaceholderValues
+    // date: .NET's format strings, in Culture); {action:Name} → the input glyph (#352); {{ and }} → a
+    // brace; an unfilled or unclosed placeholder stays as written.
+    private void Fill<TArgs>(StringBuilder builder, string template, ref TArgs args, CultureInfo culture) where TArgs : IPlaceholderValues
     {
         for (int i = 0; i < template.Length; i++)
         {
@@ -149,11 +163,15 @@ public sealed class Localisation
             if (c != '{') { builder.Append(c); continue; }
             int close = template.IndexOf('}', i + 1);
             if (close < 0) { builder.Append(template, i, template.Length - i); return; }
-            var name = template.AsSpan(i + 1, close - i - 1);
-            var format = ReadOnlySpan<char>.Empty;
-            int colon = name.IndexOf(':');
-            if (colon >= 0) { format = name[(colon + 1)..]; name = name[..colon]; }
-            if (!args.TryAppend(name, format, culture, builder)) builder.Append(template, i, close - i + 1);
+            // An argument named by the whole text wins ("action:Use" given as one); then an input glyph;
+            // then name:format.
+            var whole = template.AsSpan(i + 1, close - i - 1);
+            int colon = whole.IndexOf(':');
+            if (args.TryAppend(whole, ReadOnlySpan<char>.Empty, culture, builder)) { }
+            else if (Prompts != null && whole.StartsWith(InputPrompts.Placeholder, StringComparison.Ordinal) && whole.Length > InputPrompts.Placeholder.Length)
+                builder.Append(Prompts.Glyph(whole[InputPrompts.Placeholder.Length..].Trim().ToString()));
+            else if (colon < 0 || !args.TryAppend(whole[..colon], whole[(colon + 1)..], culture, builder))
+                builder.Append(template, i, close - i + 1);
             i = close;
         }
     }
@@ -181,7 +199,7 @@ public sealed class Localisation
         _texts = texts;
         _fallback = language == DefaultLanguage ? new Dictionary<string, LocalisedText>(StringComparer.Ordinal) : english;
         _warned.Clear();
-        Version++;
+        _tablesVersion++;
     }
 
     // What the language's `language` record says about it (UiModule, after Load): its direction (Auto:
@@ -190,7 +208,7 @@ public sealed class Localisation
     {
         Direction = DirectionOf(Language, direction);
         Fonts = fonts;
-        Version++;
+        _tablesVersion++;
     }
 
     // Right to left for the languages whose scripts are, by primary subtag; left to right otherwise.

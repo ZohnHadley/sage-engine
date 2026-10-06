@@ -278,6 +278,47 @@ public class SandboxScreensTests
         Assert.Equal("sandbox:map_place", row.Find("dot")!.Style);
         Assert.Contains("within", ((Label)layer.Content.Find("range")!).Text);
     }
+
+    // The acceptance of #352: the HUD's interaction prompt and view hint name the key at the keyboard and
+    // the pad's button once the player picks the pad up — a PlayStation pad's own names — and the key
+    // again when they put it down. Nothing in the HUD's C# changed for it: the text says {action:Use}.
+    [Fact]
+    public void TheInteractionPromptChangesWhenThePlayerPicksUpThePad()
+    {
+        // The input maps are the client's records (sage.client); here, the engine's and the Sandbox's as they ship.
+        using var app = HeadlessApp.ForGame(SandboxGame, new SandboxModule()).WithEngineContent()
+            .OnRegistered(a => a.Records.Register<InputMapRecord>()).Boot();
+        var world = app.World;
+        CameraRigTests.Step(world, 3);
+        var stack = Stack(world);
+        var hud = stack.OpenHud(new RecordId("sandbox", "hud"), new UiBindContext(world));
+        var item = world.Query<Pickup>().Entities.ToEntityList().First();
+        var interactions = world.Resources.Get<InteractionState>();
+        var device = app.Engine.LastDevice;
+
+        string Shown(string node)
+        {
+            interactions.Hovered = item;            // under the crosshair (the use system would say so after a tick)
+            stack.Update(UiInput.Wait(1f / 60f));
+            var label = (Label)hud.Content.Find(node)!;
+            Assert.True(label.Visible);
+            return label.Text;
+        }
+
+        Assert.StartsWith("E   Pick up ", Shown("prompt"));
+        Assert.Equal("V   third person", Shown("viewHint"));
+
+        device.Observe(new DeviceActivity { PadStick = 0.9f });     // the player pushes a stick
+        Assert.StartsWith("X   Pick up ", Shown("prompt"));
+        Assert.Equal("RS   third person", Shown("viewHint"));
+
+        device.SetPad(PadFamily.PlayStation);
+        Assert.StartsWith("Square   Pick up ", Shown("prompt"));
+        Assert.Equal("R3   third person", Shown("viewHint"));
+
+        device.Observe(new DeviceActivity { Key = true });
+        Assert.StartsWith("E   Pick up ", Shown("prompt"));
+    }
 }
 
 // The HUD as a layer (issue #99): drawn, never taking input, and a frame of it — its view-model read,
