@@ -136,7 +136,7 @@ public sealed class StreamingModule : IModule
                 }
                 Log.Info(LogCat.Console, $"  generated: {terrain.GeneratedHere} here, {terrain.GeneratedOnJobs} on jobs (stream_jobs {(terrain.Jobs ? 1 : 0)})");
                 if (world.Resources.TryGet<SectorAssets>(out var assets) && assets != null)
-                    Log.Info(LogCat.Console, $"  assets: {assets.HeldPaths} mesh path(s) held; released {assets.ReleasedPaths} path(s) and {assets.ReleasedHandles} built mesh(es) with their sectors");
+                    Log.Info(LogCat.Console, $"  assets: {assets.HeldPaths} model(s) and texture(s) held; released {assets.ReleasedPaths} and {assets.ReleasedHandles} built mesh(es) with their sectors (asset_list)");
                 foreach (var sector in terrain.Sectors)
                     Log.Info(LogCat.Console, $"  {sector.Coord}  corner {terrain.CornerOf(sector.Coord).X:F0},{terrain.CornerOf(sector.Coord).Z:F0} m");
             }

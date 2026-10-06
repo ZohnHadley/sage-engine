@@ -133,10 +133,12 @@ internal sealed class MeshExtract : ISystem
     private readonly Renderer _renderer;
     private readonly RenderSnapshot _snapshot;
     private readonly Query<GlobalTransform, MeshRenderer> _meshes;
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public MeshExtract(World world, Renderer renderer)
     {
         _renderer = renderer;
+        _scope = Renderer.ScopeOf(world);
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _meshes = world.Query<GlobalTransform, MeshRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());   // the viewmodel pass draws those (#121)
     }
@@ -158,9 +160,10 @@ internal sealed class MeshExtract : ISystem
             {
                 ref readonly var mr = ref r[n];
                 if (mr.Handle.IsEmpty && mr.Mesh.IsEmpty) continue;
-                int meshId = mr.Handle.IsEmpty ? _renderer.ResolveMesh(mr.Mesh) : mr.Handle.Id;
+                int meshId = mr.Handle.Id;
+                if (mr.Handle.IsEmpty && !_renderer.TryResolveMesh(mr.Mesh, _scope, out meshId)) continue;   // over the upload budget: next frame
                 var mesh = _renderer.Mesh(meshId);
-                int materialId = mesh.IsError ? 0 : materials.Resolve(mr.Material);
+                int materialId = mesh.IsError ? 0 : materials.Resolve(mr.Material, _scope);
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
@@ -240,7 +243,10 @@ internal sealed class SkinnedMeshExtract : ISystem
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _poses = world.Resources.GetOrAdd(() => new SkinPoses());
         _meshes = world.Query<GlobalTransform, SkinnedMeshRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());   // the viewmodel pass draws those (#121)
+        _scope = Renderer.ScopeOf(world);
     }
+
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public void Run(in SystemContext ctx)
     {
@@ -258,9 +264,9 @@ internal sealed class SkinnedMeshExtract : ISystem
             {
                 ref readonly var sr = ref r[n];
                 if (sr.Mesh.IsEmpty) continue;
-                int meshId = _renderer.ResolveMesh(sr.Mesh);
+                if (!_renderer.TryResolveMesh(sr.Mesh, _scope, out int meshId)) continue;   // over the upload budget: next frame
                 var mesh = _renderer.Mesh(meshId);
-                int materialId = mesh.IsError ? 0 : materials.Resolve(sr.Material);
+                int materialId = mesh.IsError ? 0 : materials.Resolve(sr.Material, _scope);
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
@@ -534,7 +540,10 @@ internal sealed class SpriteExtract : ISystem
         _records = records;
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _sprites = world.Query<GlobalTransform, SpriteRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());
+        _scope = Renderer.ScopeOf(world);
     }
+
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public void Run(in SystemContext ctx)
     {
@@ -557,7 +566,7 @@ internal sealed class SpriteExtract : ISystem
                     Log.Once(LogCat.Render, LogLevel.Warn, $"sheet:{sr.Sheet}", $"Sprite sheet {sr.Sheet} not found; nothing drawn for it");
                     continue;
                 }
-                int texture = _renderer.ResolveTexture(sheet.Texture);
+                if (!_renderer.TryResolveTexture(sheet.Texture, _scope, out int texture)) continue;   // over the upload budget: next frame
                 var pose = g[n].Interpolated(alpha);
                 Vector3 position = pose.Position;   // System.Numerics → MonoGame (implicit)
                 var entity = entities.EntityAt(n);
@@ -569,8 +578,8 @@ internal sealed class SpriteExtract : ISystem
                 size *= scale;
                 float radius = 0.5f * MathF.Sqrt(size.X * size.X + size.Y * size.Y);
 
-                int materialId = materials.Resolve(!sr.Material.IsEmpty ? sr.Material
-                    : !sheet.Material.IsEmpty ? sheet.Material : SpriteSheetRecord.DefaultMaterial);
+                int materialId = !sr.Material.IsEmpty ? materials.Resolve(sr.Material, _scope)
+                    : !sheet.Material.IsEmpty ? materials.Resolve(sheet.Material, _scope) : materials.Resolve(SpriteSheetRecord.DefaultMaterial);
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 

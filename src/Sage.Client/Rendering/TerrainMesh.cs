@@ -28,8 +28,8 @@ internal sealed class TerrainMeshSystem : ISystem
     private readonly List<VertexPositionNormalTexture> _vertices = new();
     private readonly List<int> _indices = new();
 
-    // What sectors that left released (#277, SectorAssets): freed here, on the frame after, before Extract.
-    private readonly List<AssetPath> _releasedPaths = new();
+    // The chunk meshes of sectors that left (#277, SectorAssets): freed here, on the frame after, before
+    // Extract. The models and textures they released are the renderer's to free (AssetScopeSystem, #308).
     private readonly List<MeshHandle> _releasedHandles = new();
 
     public TerrainMeshSystem(World world, Renderer renderer)
@@ -37,10 +37,7 @@ internal sealed class TerrainMeshSystem : ISystem
         _world = world;
         _renderer = renderer;
         if (world.Resources.TryGet<SectorAssets>(out var assets) && assets != null)
-        {
-            assets.Released += path => _releasedPaths.Add(path);
             assets.HandleReleased += handle => _releasedHandles.Add(handle);
-        }
     }
 
     public void Run(in SystemContext ctx)
@@ -78,18 +75,13 @@ internal sealed class TerrainMeshSystem : ISystem
         }
     }
 
-    // A sector's GPU buffers go with it (#277): the chunk meshes it built, and models nothing else draws.
-    // A path taken up again since it was released (a sector came straight back) is kept.
+    // A sector's chunk meshes go with it (#277).
     private void Release()
     {
-        if (_releasedHandles.Count == 0 && _releasedPaths.Count == 0) return;
+        if (_releasedHandles.Count == 0) return;
         for (int i = 0; i < _releasedHandles.Count; i++) _renderer.DestroyMesh(_releasedHandles[i]);
-        if (_releasedPaths.Count > 0 && _world.Resources.TryGet<SectorAssets>(out var assets) && assets != null)
-            for (int i = 0; i < _releasedPaths.Count; i++)
-                if (!assets.IsHeld(_releasedPaths[i])) _renderer.UnloadMesh(_releasedPaths[i]);
-        Log.Debug(LogCat.Streaming, $"freed {_releasedHandles.Count} built mesh(es) and {_releasedPaths.Count} model(s) with their sectors");
+        Log.Debug(LogCat.Streaming, $"freed {_releasedHandles.Count} built mesh(es) with their sectors");
         _releasedHandles.Clear();
-        _releasedPaths.Clear();
     }
 
     private void Build(TerrainSector sector, int from, int upTo, int chunks)
