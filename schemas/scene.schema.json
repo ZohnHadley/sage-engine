@@ -919,6 +919,14 @@
           "description": "The region the scene is in, for a pattern's regional picks (issue #311); left out, the world's own. (string)",
           "type": "string"
         },
+        "music": {
+          "description": "The music the world fades to when the player arrives (issue #325), over its fadeIn; left out, whatever was playing goes on. Names a music record. (RecordRef<MusicRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:music"
+            }
+          ]
+        },
         "sky": {
           "description": "The sky the scene's world is lit by (issue 4h-2); left out, the world's own (none: the light the game set) Names a sky record. (RecordRef<SkyRecord>)",
           "allOf": [

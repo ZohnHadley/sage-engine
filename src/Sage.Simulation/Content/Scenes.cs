@@ -92,6 +92,9 @@ public sealed class SceneEnvironment
     [Property(Tooltip = "The region the scene is in, for a pattern's regional picks (issue #311); left out, the world's own")]
     public string WeatherRegion = "";
 
+    [Property(Tooltip = "The music the world fades to when the player arrives (issue #325), over its fadeIn; left out, whatever was playing goes on")]
+    public RecordRef<MusicRecord> Music;
+
     [Property(Tooltip = "The sky the scene's world is lit by (issue 4h-2); left out, the world's own (none: the light the game set)")]
     public RecordRef<SkyRecord> Sky;
     [Property(Min = 0, Max = 24, Unit = "h", Tooltip = "The hour the scene starts at, when the world starts there or scene_load places it (travel keeps the clock); left out, the clock's")]
@@ -550,6 +553,8 @@ public sealed partial class Scenes
             if (!scene.Environment.Sky.Id.IsEmpty) clock.Sky = scene.Environment.Sky.Id;
             if (setHour && scene.Environment.Hour is { } hour) clock.Hour = hour;
         }
+        // A region with its own music (issue #325): arriving fades to it, from whatever the last place played.
+        if (!scene.Environment.Music.Id.IsEmpty) MusicRules.Play(world, scene.Environment.Music.Id);
         if (!world.Resources.TryGet<Weather>(out var weather) || weather == null) return;
         if (!scene.Environment.WeatherPattern.Id.IsEmpty) { weather.Pattern = scene.Environment.WeatherPattern.Id; weather.PickedSlot = -1; }
         if (!string.IsNullOrEmpty(scene.Environment.WeatherRegion)) { weather.Region = scene.Environment.WeatherRegion; weather.PickedSlot = -1; }

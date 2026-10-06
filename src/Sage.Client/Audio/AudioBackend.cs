@@ -191,7 +191,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
     // it plays. The streamer loops, so the instance never does.
     private SoundEffectInstance? StartStream(Voice voice)
     {
-        var streamer = _content.OpenSoundStream(voice.Asset, voice.Loop);
+        var streamer = _content.OpenSoundStream(voice.Asset, voice.Loop, voice.LoopStart, voice.LoopEnd);   // music's loop points (#325)
         if (streamer == null) return null;
         var instance = new DynamicSoundEffectInstance(streamer.SampleRate, streamer.Channels == 1 ? AudioChannels.Mono : AudioChannels.Stereo);
         var stream = new Streamed
