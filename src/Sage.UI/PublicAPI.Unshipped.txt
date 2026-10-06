@@ -505,4 +505,8 @@ virtual Sage.UI.Widget.OnPointerDragged(System.Numerics.Vector2 point) -> void
 virtual Sage.UI.Widget.OnPointerPressed(System.Numerics.Vector2 point) -> void
 virtual Sage.UI.Widget.OnText(System.ReadOnlySpan<char> typed) -> void
 virtual Sage.UI.Widget.WantsText.get -> bool
+Sage.UI.UiLayoutRecord.Params -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.UI.UiNode.Include -> Sage.Core.RecordRef<Sage.UI.UiLayoutRecord!>
+Sage.UI.UiNode.Params -> System.Collections.Generic.Dictionary<string!, string!>!
+Sage.UI.UiNode.Scope -> string!
 Sage.UI.Localisation.Languages.get -> System.Collections.Generic.IReadOnlyList<string!>!
