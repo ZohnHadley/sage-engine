@@ -159,7 +159,10 @@ internal sealed class ParticleExtract : ISystem
         _particles = world.Resources.Get<Particles>();
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _renderer = renderer;
+        _scope = Renderer.ScopeOf(world);
     }
+
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public void Run(in SystemContext ctx)
     {
@@ -173,9 +176,9 @@ internal sealed class ParticleExtract : ISystem
             foreach (var group in _particles.Groups)
             {
                 if (group.Count == 0) continue;
-                int texture = _renderer.ResolveTexture(group.Record.Texture);
-                int material = _renderer.Materials.Resolve(group.Record.Material.IsEmpty
-                    ? ParticleRecord.DefaultMaterial : group.Record.Material);
+                if (!_renderer.TryResolveTexture(group.Record.Texture, _scope, out int texture)) continue;   // over the upload budget: next frame
+                int material = group.Record.Material.IsEmpty ? _renderer.Materials.Resolve(ParticleRecord.DefaultMaterial)
+                    : _renderer.Materials.Resolve(group.Record.Material, _scope);
                 var runtime = _renderer.Materials.Get(material);
                 var pass = runtime?.Pass ?? RenderPass.Transparent;
 
@@ -201,6 +204,8 @@ internal sealed class ParticleExtract : ISystem
                     instance.Texture = texture;
                     instance.Mode = BillboardMode.Spherical;      // a spark has no up
                     instance.Roll = group.Rotation[i];            // and it may be turning (`spinDegrees`)
+                    instance.Right = default;                     // a billboard (issue #306)
+                    instance.Up = default;
                     instance.SortKey = RenderSortKey.Make(pass, 0, material, texture,
                                                           Vector3.Dot(centre, view.Forward.ToNumerics()), view.Far);
                     instance.View = v;

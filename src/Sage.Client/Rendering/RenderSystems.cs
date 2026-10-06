@@ -127,17 +127,28 @@ internal sealed class CameraExtract : ISystem
 
 // Extract: one RenderItem per visible mesh part (06 §5): the pose interpolated between the last two
 // ticks, made camera-relative, frustum-culled, with its sort key.
+//
+// LOD (issue 4n-1): a renderer with a LOD group (`MeshRenderer.Lod`) or on a layer with a draw distance
+// (`RenderEnvironment.LayerDrawDistance`) asks `MeshLod.Pick` per view which level to draw, or none. The
+// screen's view (`RenderSnapshot.LodView`) remembers its choice in the renderer for the hysteresis; the
+// sun's caster view draws what that view chose, so a shadow never belongs to a mesh that is not there.
 [System("sage.client.extract.meshes", Phase.Extract, After = new[] { "sage.client.extract.camera" })]
 internal sealed class MeshExtract : ISystem
 {
     private readonly Renderer _renderer;
     private readonly RenderSnapshot _snapshot;
+    private readonly RenderEnvironment _environment;
+    private readonly RecordStore? _records;
     private readonly Query<GlobalTransform, MeshRenderer> _meshes;
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public MeshExtract(World world, Renderer renderer)
     {
         _renderer = renderer;
+        _scope = Renderer.ScopeOf(world);
         _snapshot = world.Resources.Get<RenderSnapshot>();
+        _environment = world.Resources.Get<RenderEnvironment>();
+        _records = world.Engine?.Records;
         _meshes = world.Query<GlobalTransform, MeshRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());   // the viewmodel pass draws those (#121)
     }
 
@@ -149,6 +160,8 @@ internal sealed class MeshExtract : ISystem
         float alpha = ctx.Frame.Alpha;
         var materials = _renderer.Materials;
         bool hiding = AnyHidden(s);
+        int lodView = s.LodView();
+        var layerLimits = _environment.LayerDrawDistance;
 
         foreach (var (globals, renderers, entities) in _meshes.Chunks)
         {
@@ -156,24 +169,52 @@ internal sealed class MeshExtract : ISystem
             var r = renderers.Span;
             for (int n = 0; n < g.Length; n++)
             {
-                ref readonly var mr = ref r[n];
+                ref var mr = ref r[n];   // written only for its LOD memory (MeshRenderer.LodLevel, not saved)
                 if (mr.Handle.IsEmpty && mr.Mesh.IsEmpty) continue;
-                int meshId = mr.Handle.IsEmpty ? _renderer.ResolveMesh(mr.Mesh) : mr.Handle.Id;
-                var mesh = _renderer.Mesh(meshId);
-                int materialId = mesh.IsError ? 0 : materials.Resolve(mr.Material);
-                var material = materials.Get(materialId);
-                if (material == null) continue;
+                int baseMesh = mr.Handle.Id;
+                if (mr.Handle.IsEmpty && !_renderer.TryResolveMesh(mr.Mesh, _scope, out baseMesh)) continue;   // over the upload budget: next frame
+                var baseData = _renderer.Mesh(baseMesh);
+                int baseMaterial = baseData.IsError ? 0 : materials.Resolve(mr.Material, _scope);
+                var baseRuntime = materials.Get(baseMaterial);
+                if (baseRuntime == null) continue;
 
                 // Interpolated once; made camera-relative once per view (issue #77).
                 Matrix pose = g[n].Interpolated(alpha).ToMatrix();   // System.Numerics → MonoGame (implicit)
                 int id = hiding ? entities.EntityAt(n).Id : 0;
-                bool casts = ShadowMath.Casts(material.Pass, material.CastShadows);
+                bool casts = ShadowMath.Casts(baseRuntime.Pass, baseRuntime.CastShadows);
+
+                // LOD (issue 4n-1): the screen's view first, which remembers its choice.
+                MeshLodRecord? lod = null;
+                if (!mr.Lod.IsEmpty && _records != null && _records.TryGet(mr.Lod, out MeshLodRecord found)) lod = found;
+                bool lodded = lod != null || (mr.Layer < layerLimits.Length && layerLimits[mr.Layer] > 0f);
+                int lodLevel = 0;
+                if (lodded && lodView >= 0) lodLevel = Level(ref mr, lod, ref s.Views[lodView], pose, baseData, remember: true, ref s.Lod);
 
                 for (int v = 0; v < views; v++)
                 {
                     ref var view = ref s.Views[v];
                     if (hiding && view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
                     if (view.ShadowCaster && !casts) continue;                        // the sun's view keeps casters only (4h-4)
+
+                    int level = !lodded || v == lodView || view.ShadowCaster ? lodLevel
+                              : Level(ref mr, lod, ref view, pose, baseData, remember: false, ref s.Lod);
+                    if (level == MeshLod.Culled) continue;
+                    int meshId = baseMesh, materialId = baseMaterial;
+                    var mesh = baseData;
+                    var material = baseRuntime;
+                    if (level > 0)
+                    {
+                        var coarse = lod!.Levels[level - 1];
+                        meshId = _renderer.ResolveMesh(coarse.Mesh, _scope);
+                        mesh = _renderer.Mesh(meshId);
+                        if (!coarse.Material.Id.IsEmpty)
+                        {
+                            materialId = mesh.IsError ? 0 : materials.Resolve(coarse.Material.Id, _scope);
+                            material = materials.Get(materialId);
+                            if (material == null) continue;
+                        }
+                    }
+
                     Vector3 cullOffset = view.CameraPosition - s.CullOrigins[v];   // non-zero only while r_freezecull holds an old frustum
                     var frustum = s.Frustum(v);
                     Matrix world = pose;
@@ -208,6 +249,28 @@ internal sealed class MeshExtract : ISystem
         }
     }
 
+    // The LOD level a renderer draws in a view (MeshLod.Pick): measured from the view's camera to the
+    // entity, and for a screen-size group by the whole mesh's reach on that view's projection.
+    private int Level(ref MeshRenderer mr, MeshLodRecord? lod, ref RenderView view, in Matrix pose, MeshData mesh,
+                      bool remember, ref LodCounts counts)
+    {
+        float distance = Vector3.Distance(pose.Translation, view.CameraPosition);
+        float screen = 0f;
+        if (lod != null && lod.Metric == LodMetric.ScreenSize)
+        {
+            float reach = 0f, scale = MaxScale(pose);
+            for (int p = 0; p < mesh.Parts.Length; p++)
+            {
+                var part = mesh.Parts[p];
+                Vector3 center = Vector3.Transform(part.Bounds.Center, part.Bone * pose);
+                reach = MathF.Max(reach, Vector3.Distance(center, pose.Translation) + part.Bounds.Radius * scale);
+            }
+            bool orthographic = view.Projection.M44 == 1f;
+            screen = MeshLod.ScreenSize(reach, distance, view.Projection.M22, orthographic);
+        }
+        return MeshLod.Pick(ref mr, lod, _environment, distance, screen, remember, ref counts);
+    }
+
     // Whether any view leaves an entity out: only then is each entity's id worth looking up.
     internal static bool AnyHidden(RenderSnapshot s)
     {
@@ -230,6 +293,7 @@ internal sealed class SkinnedMeshExtract : ISystem
     private readonly Renderer _renderer;
     private readonly RenderSnapshot _snapshot;
     private readonly SkinPoses _poses;
+    private readonly RenderEnvironment _environment;
     private readonly Query<GlobalTransform, SkinnedMeshRenderer> _meshes;
     private readonly HashSet<int> _mismatched = new();   // entities already warned about
     private System.Numerics.Matrix4x4[] _skinJoints = new System.Numerics.Matrix4x4[SkinMath.MaxBones];   // grown, never shrunk
@@ -239,8 +303,12 @@ internal sealed class SkinnedMeshExtract : ISystem
         _renderer = renderer;
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _poses = world.Resources.GetOrAdd(() => new SkinPoses());
+        _environment = world.Resources.Get<RenderEnvironment>();
         _meshes = world.Query<GlobalTransform, SkinnedMeshRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());   // the viewmodel pass draws those (#121)
+        _scope = Renderer.ScopeOf(world);
     }
+
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public void Run(in SystemContext ctx)
     {
@@ -249,6 +317,7 @@ internal sealed class SkinnedMeshExtract : ISystem
         float alpha = ctx.Frame.Alpha;
         var materials = _renderer.Materials;
         bool hiding = MeshExtract.AnyHidden(s);
+        int lodView = s.LodView();
 
         foreach (var (globals, renderers, entities) in _meshes.Chunks)
         {
@@ -258,9 +327,9 @@ internal sealed class SkinnedMeshExtract : ISystem
             {
                 ref readonly var sr = ref r[n];
                 if (sr.Mesh.IsEmpty) continue;
-                int meshId = _renderer.ResolveMesh(sr.Mesh);
+                if (!_renderer.TryResolveMesh(sr.Mesh, _scope, out int meshId)) continue;   // over the upload budget: next frame
                 var mesh = _renderer.Mesh(meshId);
-                int materialId = mesh.IsError ? 0 : materials.Resolve(sr.Material);
+                int materialId = mesh.IsError ? 0 : materials.Resolve(sr.Material, _scope);
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
@@ -290,6 +359,7 @@ internal sealed class SkinnedMeshExtract : ISystem
                     Pose = g[n].Interpolated(alpha).ToMatrix(),   // System.Numerics → MonoGame (implicit)
                     Hidden = hiding ? id : 0,
                     Casts = ShadowMath.Casts(material.Pass, material.CastShadows),
+                    Environment = _environment, LodView = lodView,
                 };
                 SkinnedExtract.Emit(ref draws, joints, inverseBind, mesh.Name);
             }
@@ -307,6 +377,8 @@ internal sealed class SkinnedMeshExtract : ISystem
         public byte Layer;
         public Matrix Pose;
         public bool Casts;   // drawn into the sun's view too (4h-4)
+        public RenderEnvironment Environment;
+        public int LodView;  // RenderSnapshot.LodView: the camera the sun's view measures draw distance from
 
         public readonly int Views => Snapshot.Views.Count;
 
@@ -317,6 +389,13 @@ internal sealed class SkinnedMeshExtract : ISystem
             ref var view = ref s.Views[v];
             if (Hidden != 0 && view.Hidden == Hidden) return false;   // a camera's own body (ViewSource.HiddenFor)
             if (view.ShadowCaster && !Casts) return false;             // the sun's view keeps casters only (4h-4)
+            // Past its layer's draw distance (issue 4n-1); skinned renderers have no LOD group yet.
+            int from = view.ShadowCaster ? LodView : v;
+            if (from >= 0 && MeshLod.PastLayerDistance(Environment, Layer, Vector3.Distance(Pose.Translation, s.Views[from].CameraPosition)))
+            {
+                s.Lod.Culled++;
+                return false;
+            }
             Matrix world = Pose;
             world.Translation -= view.CameraPosition;
             var bounds = Mesh.Parts[0].Bounds;
@@ -534,7 +613,10 @@ internal sealed class SpriteExtract : ISystem
         _records = records;
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _sprites = world.Query<GlobalTransform, SpriteRenderer>().WithoutAnyTags(Tags.Get<ViewmodelLayer>());
+        _scope = Renderer.ScopeOf(world);
     }
+
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public void Run(in SystemContext ctx)
     {
@@ -557,7 +639,7 @@ internal sealed class SpriteExtract : ISystem
                     Log.Once(LogCat.Render, LogLevel.Warn, $"sheet:{sr.Sheet}", $"Sprite sheet {sr.Sheet} not found; nothing drawn for it");
                     continue;
                 }
-                int texture = _renderer.ResolveTexture(sheet.Texture);
+                if (!_renderer.TryResolveTexture(sheet.Texture, _scope, out int texture)) continue;   // over the upload budget: next frame
                 var pose = g[n].Interpolated(alpha);
                 Vector3 position = pose.Position;   // System.Numerics → MonoGame (implicit)
                 var entity = entities.EntityAt(n);
@@ -569,8 +651,8 @@ internal sealed class SpriteExtract : ISystem
                 size *= scale;
                 float radius = 0.5f * MathF.Sqrt(size.X * size.X + size.Y * size.Y);
 
-                int materialId = materials.Resolve(!sr.Material.IsEmpty ? sr.Material
-                    : !sheet.Material.IsEmpty ? sheet.Material : SpriteSheetRecord.DefaultMaterial);
+                int materialId = !sr.Material.IsEmpty ? materials.Resolve(sr.Material, _scope)
+                    : !sheet.Material.IsEmpty ? materials.Resolve(sheet.Material, _scope) : materials.Resolve(SpriteSheetRecord.DefaultMaterial);
                 var material = materials.Get(materialId);
                 if (material == null) continue;
 
@@ -613,6 +695,8 @@ internal sealed class SpriteExtract : ISystem
                     instance.Texture = texture;
                     instance.Mode = sr.Mode;
                     instance.Roll = 0f;                 // sprites stand upright; only particles turn (06 §3.12)
+                    instance.Right = default;           // a billboard, not a mark on a surface (issue #306)
+                    instance.Up = default;
                     instance.SortKey = RenderSortKey.Make(material.Pass, sr.Layer, materialId, texture,
                         Vector3.Dot(center, view.Forward), view.Far);
                     instance.View = v;

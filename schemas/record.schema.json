@@ -35,6 +35,7 @@
             "calendar_event",
             "cue",
             "damage_type",
+            "decal",
             "dialogue",
             "dialogue_topic",
             "effect",
@@ -47,6 +48,7 @@
             "item",
             "map",
             "material",
+            "mesh_lod",
             "movement_profile",
             "nav_area",
             "particle",
@@ -249,6 +251,21 @@
           "if": {
             "properties": {
               "type": {
+                "const": "decal"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "decal.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "dialogue"
               }
             },
@@ -423,6 +440,21 @@
           },
           "then": {
             "$ref": "material.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "mesh_lod"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "mesh_lod.schema.json"
           }
         },
         {

@@ -33,6 +33,10 @@ public sealed class DamageTypeRecord
 {
     public RecordRef<SoundRecord> Sound;    // what landing this sounds like (11 §3, F4)
     public RecordRef<ParticleRecord> Particles; // and what it throws off: sparks, blood, embers (06 §3.12, F39)
+    // And the mark it leaves behind what it hurt (issue #306): blood on the wall or the floor, found along
+    // the blow within the decal's `reach`, then straight down.
+    [Property(Tooltip = "The decal a hit leaves on the surface behind or below what it hurt; empty = none")]
+    public RecordRef<DecalRecord> Decal;
     [System.Text.Json.Serialization.JsonConverter(typeof(ColourJsonConverter))]
     public uint Colour;                     // the damage number's colour: "#RRGGBB(AA)"; 0 = the engine's default
 

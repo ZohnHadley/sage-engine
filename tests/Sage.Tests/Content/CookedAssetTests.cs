@@ -158,11 +158,11 @@ public class CookedAssetTests
 
         var opaque = CookedTexture.Cook(wall, compress: true);
         Assert.Equal(CookedTextureFormat.Bc1, opaque.Format);
-        Assert.Equal(64 * 64 / 2, opaque.GpuBytes);   // an eighth of RGBA
+        Assert.Equal(64 * 64 / 2, opaque.Data.Length);   // an eighth of RGBA (level 0; the mips are below)
 
         var alpha = CookedTexture.Cook(sprite, compress: true);
         Assert.Equal(CookedTextureFormat.Bc3, alpha.Format);
-        Assert.Equal(512 * 192, alpha.GpuBytes);      // a quarter
+        Assert.Equal(512 * 192, alpha.Data.Length);      // a quarter
 
         // Uncompressed: exactly what the client made of the PNG at load (decode, then premultiply).
         var exact = CookedTexture.Cook(sword, compress: false);
@@ -179,7 +179,7 @@ public class CookedAssetTests
         var read = CookedTexture.Read(file, out var stamp);
         Assert.Equal(SourceStamp.Of(sprite), stamp);
         Assert.Equal((alpha.Width, alpha.Height, alpha.Format), (read.Width, read.Height, read.Format));
-        Assert.Equal(alpha.Data, read.Data);
+        Assert.Equal(alpha.Levels, read.Levels);
 
         // A side that is not a multiple of four is kept as RGBA rather than padded.
         var odd = CookedTexture.FromRgba(new byte[6 * 4 * 4], 6, 4, compress: true);
@@ -198,6 +198,192 @@ public class CookedAssetTests
     public void AFileThatIsNotAnImageIsRefusedWithInvalidData()
     {
         Assert.Throws<InvalidDataException>(() => CookedTexture.DecodeImage("not a png"u8.ToArray(), out _, out _));
+    }
+
+    // ---- Mips and TGA (issue #317) ----
+
+    private static byte[] Pixels(params byte[] rgba) => rgba;
+
+    [Fact]
+    public void AMipChainHalvesEachSideDownToOneTexelAndBoxFiltersPremultipliedPixels()
+    {
+        Assert.Equal(7, TextureMips.LevelCount(64, 16));
+        Assert.Equal(new[] { (64, 16), (32, 8), (16, 4), (8, 2), (4, 1), (2, 1), (1, 1) },
+                     Enumerable.Range(0, 7).Select(l => TextureMips.Size(64, 16, l)));
+        Assert.Equal(1, TextureMips.LevelCount(1, 1));
+        Assert.Equal(3, TextureMips.LevelCount(5, 3));   // 5x3, 2x1, 1x1
+
+        // 4x2: opaque red beside transparent (premultiplied: zero colour), then opaque white beside opaque black.
+        var level0 = Pixels(
+            255, 0, 0, 255,  0, 0, 0, 0,        255, 255, 255, 255,  0, 0, 0, 255,
+            255, 0, 0, 255,  0, 0, 0, 0,        255, 255, 255, 255,  0, 0, 0, 255);
+        var chain = TextureMips.Generate(level0, 4, 2);
+        Assert.Equal(3, chain.Length);
+        Assert.Same(level0, chain[0]);
+        // Level 1 (2x1): half-covered red, which is pure red again once divided by its alpha (no dark fringe),
+        // and mid grey.
+        Assert.Equal(Pixels(128, 0, 0, 128,  128, 128, 128, 255), chain[1]);
+        // Level 2 (1x1): the mean of all eight.
+        Assert.Equal(Pixels(128, 64, 64, 192), chain[2]);
+
+        // An odd side: every source texel counts once, so a flat colour stays exactly that colour.
+        var flat = Enumerable.Repeat(new byte[] { 10, 20, 30, 40 }, 5 * 3).SelectMany(p => p).ToArray();
+        foreach (var level in TextureMips.Generate(flat, 5, 3))
+            for (int i = 0; i < level.Length; i += 4) Assert.Equal(new byte[] { 10, 20, 30, 40 }, level[i..(i + 4)]);
+    }
+
+    [Fact]
+    public void ACookedTextureStoresItsMipsUncompressedOrAsBlocksAndReadsThemBack()
+    {
+        byte[] wall = File.ReadAllBytes(Path.Combine(SandboxContent, "textures", "hut_wall.png"));   // 64x64, opaque
+        var rgba = CookedTexture.DecodeImage(wall, out int width, out int height);
+        CookedTexture.Premultiply(rgba);
+        var expected = TextureMips.Generate((byte[])rgba.Clone(), width, height);
+
+        // Uncompressed: exactly the box-filtered chain, 64x64 down to 1x1.
+        var exact = CookedTexture.Cook(wall, compress: false);
+        Assert.Equal(7, exact.LevelCount);
+        for (int level = 0; level < exact.LevelCount; level++) Assert.Equal(expected[level], exact.ToRgba(level));
+        Assert.Equal(expected.Sum(l => (long)l.Length), exact.GpuBytes);
+
+        // BC1: every level is blocks, the ones under 4x4 a whole block each, and decodes close to the RGBA chain.
+        var bc1 = CookedTexture.Cook(wall, compress: true);
+        Assert.Equal((CookedTextureFormat.Bc1, 7), (bc1.Format, bc1.LevelCount));
+        Assert.Equal(new[] { 2048, 512, 128, 32, 8, 8, 8 }, bc1.Levels.Select(l => l.Length));
+        for (int level = 0; level < bc1.LevelCount; level++)
+        {
+            var decoded = bc1.ToRgba(level);
+            Assert.Equal(expected[level].Length, decoded.Length);
+            double error = 0;
+            for (int i = 0; i < decoded.Length; i++) error += Math.Abs(decoded[i] - expected[level][i]);
+            Assert.True(error / decoded.Length < 8, $"level {level}: mean BC1 error {error / decoded.Length:F2}");
+        }
+
+        // A block texture whose small levels are not multiples of four (12x4: 6x2, 3x1, 1x1) pads them.
+        var alpha = new byte[12 * 4 * 4];
+        for (int i = 0; i < alpha.Length; i += 4) alpha[i] = alpha[i + 3] = (byte)(i % 3 == 0 ? 255 : 128);
+        var bc3 = CookedTexture.FromRgba(alpha, 12, 4, compress: true);
+        Assert.Equal((CookedTextureFormat.Bc3, 4), (bc3.Format, bc3.LevelCount));
+        Assert.Equal(new[] { 48, 32, 16, 16 }, bc3.Levels.Select(l => l.Length));
+        Assert.Equal(6 * 2 * 4, bc3.ToRgba(1).Length);
+
+        // Both round-trip through the file, level for level.
+        foreach (var texture in new[] { exact, bc1, bc3 })
+        {
+            var file = new MemoryStream();
+            CookedTexture.Write(file, texture, SourceStamp.Of(wall));
+            file.Position = 0;
+            var read = CookedTexture.Read(file, out _);
+            Assert.Equal((texture.Width, texture.Height, texture.Format), (read.Width, read.Height, read.Format));
+            Assert.Equal(texture.Levels, read.Levels);
+        }
+
+        // Without mips (a caller that asks for none): one level.
+        Assert.Equal(1, CookedTexture.Cook(wall, compress: true, mips: false).LevelCount);
+    }
+
+    // A `.sgtex` as #302 wrote it (version 1: one level, no mips).
+    private static byte[] Version1Texture(byte[] png)
+    {
+        var data = CookedTexture.Cook(png, compress: false, mips: false);
+        var file = new MemoryStream();
+        using (var writer = new BinaryWriter(file, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            var stamp = SourceStamp.Of(png);
+            writer.Write("SGTX"u8);
+            writer.Write(1);
+            writer.Write(stamp.Length);
+            writer.Write(stamp.Hash);
+            writer.Write((byte)data.Format);
+            writer.Write(data.Width);
+            writer.Write(data.Height);
+            writer.Write(data.Data.Length);
+            writer.Write(data.Data);
+        }
+        return file.ToArray();
+    }
+
+    [Fact]
+    public void ACookedTextureFromBeforeMipsIsStaleAndTheLooseFileLoadsInsteadWithAWarning()
+    {
+        byte[] png = File.ReadAllBytes(Path.Combine(SandboxContent, "textures", "hut_wall.png"));
+        var fixture = new MountFixture();
+        string unique = Guid.NewGuid().ToString("N");
+        WriteBytes(fixture, "game", $"t{unique}/wall.png", png);
+        WriteBytes(fixture, "game", $"t{unique}/wall.png.sgtex", Version1Texture(png));
+        fixture.Mount("game", "game");
+        var path = VirtualPath.Parse($"t{unique}/wall.png");
+
+        using var log = new CaptureSink();
+        Assert.Null(CookedAssets.LoadTexture(fixture.Vfs, path));
+        Log.Flush();
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Warn && e.Message.Contains(unique, StringComparison.Ordinal)
+                                          && e.Message.Contains("version 1", StringComparison.Ordinal) && e.Message.Contains("cook again", StringComparison.Ordinal));
+
+        // The loose file, read as the client reads it, has its mips.
+        var loose = CookedAssets.ReadLooseTexture(fixture.Vfs.Which(path)!, path);
+        Assert.Equal((CookedTextureFormat.Rgba, 7), (loose.Format, loose.LevelCount));
+
+        // And `sage cook` sees the old file as out of date and writes the new one.
+        string game = TestEnv.NewTempDir();
+        File.WriteAllText(Path.Combine(game, "game.json"), """{ "id": "cooktest", "mounts": ["content"] }""");
+        Directory.CreateDirectory(Path.Combine(game, "content"));
+        File.WriteAllBytes(Path.Combine(game, "content", "wall.png"), png);
+        File.WriteAllBytes(Path.Combine(game, "content", "wall.png.sgtex"), Version1Texture(png));
+        var cooked = GameCook.Run(game);
+        Assert.Equal(new[] { "wall.png" }, cooked.Cooked.Select(c => c.Path));
+        using var stream = File.OpenRead(Path.Combine(game, "content", "wall.png.sgtex"));
+        Assert.Equal(7, CookedTexture.Read(stream, out _).LevelCount);
+    }
+
+    // A 32-bit uncompressed TGA (image type 2), rows stored bottom-up as the format's default origin is, BGRA.
+    // `rows` are top-down RGBA.
+    internal static byte[] Tga(int width, int height, byte[] rows)
+    {
+        var file = new MemoryStream();
+        file.Write(new byte[] { 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, (byte)width, (byte)(width >> 8), (byte)height, (byte)(height >> 8), 32, 8 });
+        for (int y = height - 1; y >= 0; y--)
+            for (int x = 0; x < width; x++)
+            {
+                int p = (y * width + x) * 4;
+                file.Write(new[] { rows[p + 2], rows[p + 1], rows[p], rows[p + 3] });
+            }
+        return file.ToArray();
+    }
+
+    [Fact]
+    public void ATgaFromAModFolderLoadsPremultipliedWithItsMipsAndIsCooked()
+    {
+        // 2x2: red and half-transparent green on top, blue and white below.
+        var rows = Pixels(255, 0, 0, 255,  0, 255, 0, 128,
+                          0, 0, 255, 255,  255, 255, 255, 255);
+        byte[] tga = Tga(2, 2, rows);
+
+        var fixture = new MountFixture();
+        WriteBytes(fixture, "game", "textures/sign.png", File.ReadAllBytes(Path.Combine(SandboxContent, "textures", "hut_wall.png")));
+        fixture.Mount("game", "game");
+        WriteBytes(fixture, "mod", "textures/daggerfall/sign.tga", tga);
+        var mod = fixture.Mount("mod", "mymod");
+        var path = VirtualPath.Parse("textures/daggerfall/sign.tga");
+        Assert.Same(mod, fixture.Vfs.Which(path));
+        Assert.Null(CookedAssets.LoadTexture(fixture.Vfs, path));   // nothing cooked: the loose file is read
+
+        var texture = CookedAssets.ReadLooseTexture(fixture.Vfs.Which(path)!, path);
+        Assert.Equal((2, 2, CookedTextureFormat.Rgba, 2), (texture.Width, texture.Height, texture.Format, texture.LevelCount));
+        Assert.Equal(Pixels(255, 0, 0, 255,  0, 128, 0, 128,      // top row first, green premultiplied
+                            0, 0, 255, 255,  255, 255, 255, 255), texture.ToRgba(0));
+        Assert.Equal(Pixels(128, 96, 128, 223), texture.ToRgba(1));    // the 1x1 level: the mean of the four
+
+        // `sage cook` cooks a .tga as it does a .png.
+        Assert.True(CookedAssets.IsCookableTexture("textures/sign.TGA"));
+        string game = TestEnv.NewTempDir();
+        File.WriteAllText(Path.Combine(game, "game.json"), """{ "id": "cooktest", "mounts": ["content"] }""");
+        Directory.CreateDirectory(Path.Combine(game, "content"));
+        File.WriteAllBytes(Path.Combine(game, "content", "sign.tga"), tga);
+        var cooked = GameCook.Run(game);
+        Assert.True(cooked.Ok, string.Join("\n", cooked.Errors));
+        Assert.Equal(new[] { "sign.tga" }, cooked.Cooked.Select(c => c.Path));
+        Assert.True(File.Exists(Path.Combine(game, "content", "sign.tga.sgtex")));
     }
 
     // ---- Which file the client reads ----
@@ -375,7 +561,7 @@ public class CookedAssetTests
 }
 
 // What cooking buys, measured (issue #302's done criterion): the CPU time and allocation of loading the Sandbox's
-// models and textures loose — the glTF parse, the image decode and premultiply the client does — against
+// models and textures loose — the glTF parse, the image decode, premultiply and mips the client does — against
 // reading their cooked files, and the texture memory before and after. Disk reads are left out of both (the
 // bytes are in memory), so this is the decode the cook saves. Alone in the Measurements collection, since it
 // times things.
@@ -408,7 +594,12 @@ public class CookedLoadMeasurementTests
         void LoadLoose()
         {
             foreach (var glb in models) MeshGeometry.ReadGlb(new MemoryStream(glb), "m");
-            foreach (var png in textures) CookedTexture.Premultiply(CookedTexture.DecodeImage(png, out _, out _));
+            foreach (var png in textures)
+            {
+                var rgba = CookedTexture.DecodeImage(png, out int w, out int h);
+                CookedTexture.Premultiply(rgba);
+                TextureMips.Generate(rgba, w, h);   // a loose texture gets its mips at load (issue #317)
+            }
         }
         void LoadCooked()
         {
@@ -419,7 +610,7 @@ public class CookedLoadMeasurementTests
         var (looseMs, looseBytes) = Measure(LoadLoose);
         var (cookedMs, cookedBytes) = Measure(LoadCooked);
 
-        long looseMemory = textures.Sum(png => { CookedTexture.DecodeImage(png, out int w, out int h); return (long)w * h * 4; });
+        long looseMemory = textures.Sum(png => CookedTexture.Cook(png, compress: false).GpuBytes);   // RGBA, mips and all
         long cookedMemory = cookedTextures.Sum(sgtex => CookedTexture.Read(new MemoryStream(sgtex), out _).GpuBytes);
 
         string report = $"Sandbox, {models.Count} models and {textures.Count} textures: load {looseMs:F2} ms loose, {cookedMs:F2} ms cooked; " +

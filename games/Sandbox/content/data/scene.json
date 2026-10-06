@@ -480,9 +480,25 @@
   // A bare id means this file's namespace even inside a patch of an engine record (R11), so
   // `hit_flesh` is sandbox:hit_flesh. The colour is the damage number's.
   { "type": "damage_type", "id": "sage:physical", "patch": true, "sound": "hit_flesh",
-    "particles": "blood", "colour": "#EFE3FF" },
+    "particles": "blood", "colour": "#EFE3FF", "decal": "blood_splat" },
   { "type": "damage_type", "id": "sage:fire", "patch": true, "sound": "boom_fire",
     "particles": "fire_burst", "colour": "#FF9800" },
+
+  // ---- marks that stay (engine issue #306) ----------------------------------------------------------
+  //
+  // The particle dot again, tinted and laid flat: a pistol round leaves a dark hole in the hut's and the
+  // crypt's plaster (the surface's `impact` cue names the decal) and a blow that draws blood leaves a
+  // splash on the wall or the floor behind (the damage type names it). Both fade, and `r_decals` caps
+  // how many there are; the oldest goes first.
+  { "type": "decal", "id": "bullet_hole", "texture": "textures/particle.png", "size": 0.12,
+    "lifetime": 45, "fade": 5, "colour": "#1A1714" },
+  { "type": "decal", "id": "blood_splat", "texture": "textures/particle.png", "size": 0.45,
+    "lifetime": 20, "fade": 4, "colour": "#6E0000D0", "reach": 2.5 },
+  { "type": "cue", "id": "bullet_impact", "description": "A round meeting plaster",
+    "particles": "sparks", "particleCount": 4, "decal": "bullet_hole" },
+  // What the maps' walls, floors and roofs are made of (engine #270): the door is left out, because it
+  // moves and a mark on it would stay where it was.
+  { "type": "physics_material", "id": "plaster", "impact": "bullet_impact", "textures": ["wall", "floor", "roof"] },
 
   // ---- particles (docs/design/06 \u00a73.9, F39) ------------------------------------------------------
   //

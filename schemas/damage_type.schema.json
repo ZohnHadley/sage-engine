@@ -60,6 +60,14 @@
         }
       ]
     },
+    "decal": {
+      "description": "The decal a hit leaves on the surface behind or below what it hurt; empty = none. Names a decal record. (RecordRef<DecalRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:decal"
+        }
+      ]
+    },
     "colour": {
       "description": "(uint, default \"#00000000\")",
       "default": "#00000000",

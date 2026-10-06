@@ -35,7 +35,7 @@ using System.Linq;
 // `validate` would, with the host's Content/ as engine content, unless --no-validate. The package's mounts are
 // cooked (below) unless --no-cook.
 //
-// `cook` (issue #302, GameCook.cs) writes a cooked .sgmesh beside every .glb and a .sgtex beside every .png/.jpg
+// `cook` (issue #302, GameCook.cs) writes a cooked .sgmesh beside every .glb and a .sgtex beside every .png/.jpg/.tga
 // in the game's mounts, in place, which the client then reads instead of the loose files. It is for a packaged
 // game (`package` runs it on its copy); in a source folder a cooked file stands in for the loose one until it is
 // cooked again (or removed with --clean), so an edit to the loose file is not seen until then. Up-to-date files
