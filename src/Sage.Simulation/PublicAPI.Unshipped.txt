@@ -68,6 +68,42 @@ Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string
 Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
 Sage.Simulation.InputRebinds.Validator.set -> void
 Sage.Simulation.InputRebinds.Version.get -> int
+Sage.Simulation.MouseCaptureFrame
+Sage.Simulation.MouseCaptureFrame.Captured.get -> bool
+Sage.Simulation.MouseCaptureFrame.Captured.init -> void
+Sage.Simulation.MouseCaptureFrame.Changed.get -> bool
+Sage.Simulation.MouseCaptureFrame.Changed.init -> void
+Sage.Simulation.MouseCaptureFrame.DeltaX.get -> int
+Sage.Simulation.MouseCaptureFrame.DeltaX.init -> void
+Sage.Simulation.MouseCaptureFrame.DeltaY.get -> int
+Sage.Simulation.MouseCaptureFrame.DeltaY.init -> void
+Sage.Simulation.MouseCaptureFrame.MouseCaptureFrame() -> void
+Sage.Simulation.MouseCaptureFrame.MouseCaptureFrame(bool Captured, bool Changed, bool Warp, int DeltaX, int DeltaY) -> void
+Sage.Simulation.MouseCaptureFrame.Warp.get -> bool
+Sage.Simulation.MouseCaptureFrame.Warp.init -> void
+Sage.Simulation.MouseCaptureInputs
+Sage.Simulation.MouseCaptureInputs.ConsoleOpen.get -> bool
+Sage.Simulation.MouseCaptureInputs.ConsoleOpen.init -> void
+Sage.Simulation.MouseCaptureInputs.ControlsCapturing.get -> bool
+Sage.Simulation.MouseCaptureInputs.ControlsCapturing.init -> void
+Sage.Simulation.MouseCaptureInputs.EditorViewport.get -> bool
+Sage.Simulation.MouseCaptureInputs.EditorViewport.init -> void
+Sage.Simulation.MouseCaptureInputs.Enabled.get -> bool
+Sage.Simulation.MouseCaptureInputs.Enabled.init -> void
+Sage.Simulation.MouseCaptureInputs.MouseCaptureInputs() -> void
+Sage.Simulation.MouseCaptureInputs.PawnPossessed.get -> bool
+Sage.Simulation.MouseCaptureInputs.PawnPossessed.init -> void
+Sage.Simulation.MouseCaptureInputs.ScreenOpen.get -> bool
+Sage.Simulation.MouseCaptureInputs.ScreenOpen.init -> void
+Sage.Simulation.MouseCaptureInputs.UiWantsMouse.get -> bool
+Sage.Simulation.MouseCaptureInputs.UiWantsMouse.init -> void
+Sage.Simulation.MouseCaptureInputs.WindowFocused.get -> bool
+Sage.Simulation.MouseCaptureInputs.WindowFocused.init -> void
+Sage.Simulation.MouseCapturePolicy
+Sage.Simulation.MouseCaptureTracker
+Sage.Simulation.MouseCaptureTracker.Captured.get -> bool
+Sage.Simulation.MouseCaptureTracker.MouseCaptureTracker() -> void
+Sage.Simulation.MouseCaptureTracker.Step(bool want, int x, int y, int centreX, int centreY) -> Sage.Simulation.MouseCaptureFrame
 Sage.Simulation.PendingRebind
 Sage.Simulation.PendingRebind.Action.get -> string!
 Sage.Simulation.PendingRebind.Action.init -> void
@@ -157,6 +193,8 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+static Sage.Simulation.MouseCapturePolicy.ShouldCapture(in Sage.Simulation.MouseCaptureInputs i) -> bool
+static Sage.Simulation.MouseCapturePolicy.Why(in Sage.Simulation.MouseCaptureInputs i) -> string?
 static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
 static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
 static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int

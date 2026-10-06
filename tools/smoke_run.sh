@@ -17,6 +17,9 @@
 # console command per line, runs before the quit (e.g. $'+wait 1\n+in_axis Move 0 1 2', a walk).
 # SAGE_SMOKE_ARGS, launch options separated by spaces, go before them: `-edit yard` runs the editor (#219).
 #
+# SAGE_SMOKE_EXPECT, one extended regular expression per line, must each match a log line, in that order: a
+# check that something happened, not only that nothing went wrong (the mouse capture handoff, #334).
+#
 # --packaged runs a folder `sage package` wrote (issue #293): its ./Sage.Host with no -game, so the host finds
 # the game in the `game` folder beside it, as a player's would.
 #
@@ -97,6 +100,16 @@ problems=$(printf '%s\n' "$problems" | sed '/^$/d')
 if [ -n "$problems" ]; then
     printf '%s\n' "$problems"
     fail "logged problems outside the allowed categories (${allowed[*]:-none})"
+fi
+
+if [ -n "${SAGE_SMOKE_EXPECT:-}" ]; then
+    from=1
+    while IFS= read -r expected; do
+        [ -n "$expected" ] || continue
+        found=$(tail -n +"$from" "$log" | grep -nE -m1 "$expected" | cut -d: -f1 || true)
+        [ -n "$found" ] || fail "expected a log line matching '$expected' (in order, after line $from)"
+        from=$((from + found))
+    done <<< "$SAGE_SMOKE_EXPECT"
 fi
 
 lines=$(wc -l < "$log")

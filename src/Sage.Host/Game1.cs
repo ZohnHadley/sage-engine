@@ -30,6 +30,7 @@ public class Game1 : Game
     private RecordHotReload recordHotReload = null!;
     private IDisposable? modWatch;   // dev: a changed mod.json says "restart to apply" (4j-3)
     private CVar<bool> recHotReload = null!;
+    private CVar<bool> captureMouse = null!;   // m_capture (#334)
 
 
     private readonly GraphicsDeviceManager graphics;
@@ -103,6 +104,7 @@ public class Game1 : Game
         // keyboard layout, dead keys and modifiers (08 §3.1, 13 §3). ImGui subscribes to the same
         // event for its own fields; both get every character, and whoever has focus uses it.
         Window.TextInput += (_, e) => devices.PushTyped(e.Character);
+        captureMouse = cvars.Register("m_capture", true, CVarFlags.Archive, "Hold the mouse cursor (hidden, centred) while the player looks around; it is let go for screens, the console, the editor and when the window loses focus.");
         actions = new InputActions(engine.Actions, engine.Records, devices, cvars, engine.Rebinds);
         moveAction = engine.Actions.Get("Move");
         lookAction = engine.Actions.Get("Look");
@@ -337,6 +339,7 @@ public class Game1 : Game
 #endif
         actions.UiWantsKeyboard = uiWantsKeyboard;
         actions.UiWantsMouse = uiWantsMouse;
+        UpdateMouseCapture(uiWantsMouse, playing);
         actions.Update(realDt);
 
         // Menu closes the console first; otherwise it quits (until there is a menu). Not in the editor,
@@ -394,6 +397,50 @@ public class Game1 : Game
         }
 
         base.Update(gameTime);
+    }
+
+    // Hold the cursor while the player looks around and let it go for anything that wants a pointer: a screen,
+    // the console, the controls screen's capture, the developer UI, the editor's viewport, a window that is
+    // not ours (#334). The decision is `MouseCapturePolicy` and the delta's seams `MouseCaptureTracker`, both
+    // headless-tested; this gathers their inputs and applies the answer.
+    private bool wasCaptured;
+    private string? lastWhy = "";
+    private void UpdateMouseCapture(bool uiWantsMouse, bool playing)
+    {
+        var w = inputWorld;
+        bool pawn = false;
+        foreach (var _ in w.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities) { pawn = true; break; }
+#pragma warning disable SAGE0125   // widget screens (#97): the host asks the stack whether one is open, nothing more
+        bool screenOpen = (w.Resources.TryGet<ScreenStack>(out var screens) && screens != null && screens.IsOpen)
+            || (w.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) && widgets != null && widgets.IsOpen);
+#pragma warning restore SAGE0125
+#if SAGE_DEV
+        bool console = dev.ConsoleIsOpen;
+#else
+        const bool console = false;
+#endif
+        var inputs = new MouseCaptureInputs
+        {
+            PawnPossessed = pawn,
+            ScreenOpen = screenOpen,
+            ConsoleOpen = console,
+            ControlsCapturing = engine.Rebinds.Capturing,
+            UiWantsMouse = uiWantsMouse,
+            EditorViewport = Editing && !playing,
+            WindowFocused = IsActive,
+            Enabled = captureMouse.Value,
+        };
+        string? why = MouseCapturePolicy.Why(inputs);
+        var bounds = Window.ClientBounds;
+        var step = devices.Mouse.ApplyCapture(why == null, new Point(bounds.Width / 2, bounds.Height / 2));
+        IsMouseVisible = !step.Captured;
+        if (step.Captured != wasCaptured || why != lastWhy)
+        {
+            if (step.Captured != wasCaptured)
+                Log.Info(LogCat.Input, step.Captured ? "Mouse captured" : $"Mouse released ({why})");
+            wasCaptured = step.Captured;
+            lastWhy = why;
+        }
     }
 
     // The player's world gets the command for the tick it is about to run; the others tick without one.
