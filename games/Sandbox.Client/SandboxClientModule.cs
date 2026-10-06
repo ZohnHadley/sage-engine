@@ -27,10 +27,15 @@ public sealed class SandboxClientModule : IModule
     // The Sandbox's own settings: sun shadows on (phase 4h's exit, engine issue 4h-7), where the engine
     // leaves them off. A value set here, in Init, is the game's default: config.cfg is read after Init and
     // the command line after that, so `+r_shadows 0` still turns them off.
+    //
+    // `r_post_haze` switches the Sandbox's depth haze (content/data/post.json, engine issue #316), the
+    // sample of a post effect that reads the scene's depth; it needs `r_post 1` like the engine's effects.
     public void Init(ModuleContext ctx)
     {
         if (ctx.Engine.CVars.Find("r_shadows") is { } shadows && !shadows.TrySet("1", out var error))
             Log.Warn(LogCat.Render, $"Sandbox: r_shadows 1 was refused: {error}");
+        ctx.Engine.CVars.Register("r_post_haze", true, CVarFlags.Archive,
+            "The Sandbox's depth haze (sandbox:haze), a post effect that reads the scene's depth; needs r_post 1.");
     }
 
     public void Start(ModuleContext ctx)
