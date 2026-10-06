@@ -119,6 +119,11 @@
       "description": "(int, default 0)",
       "default": 0,
       "type": "integer"
+    },
+    "stream": {
+      "description": "Decode as it plays instead of whole: for music, ambience and dialogue. Ogg Vorbis (.ogg) only. (bool, default false)",
+      "default": false,
+      "type": "boolean"
     }
   },
   "additionalProperties": false

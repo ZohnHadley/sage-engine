@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Xna.Framework.Audio;
 
 namespace Sage.Client;
@@ -47,7 +48,9 @@ internal sealed class NullAudioBackend : IAudioBackend
     public void Dispose() { }
 }
 
-// MonoGame's `SoundEffect`, one `SoundEffectInstance` per voice.
+// MonoGame's `SoundEffect`, one `SoundEffectInstance` per voice; a streamed sound (issue #326) is a
+// `DynamicSoundEffectInstance` fed by a `PcmStreamer`, which does the decoding, the looping and the
+// buffer bound headlessly, so all this does is top the device's queue up once a frame.
 //
 // Pan and volume are applied directly rather than through `Apply3D`: the mixer has already done the
 // distance and direction sums in origin space (R6), and handing MonoGame a second listener would mean
@@ -58,7 +61,16 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
     private readonly ContentService _content;
     private readonly Dictionary<int, SoundEffectInstance> _instances = new();
     private readonly Dictionary<int, AssetPath> _assets = new();   // which file each instance was made from
+    private readonly Dictionary<int, Streamed> _streams = new();     // the streamed voices' decoders
     private readonly List<int> _finished = new();
+
+    // A streamed voice: its decoder, and the instance's SubmitBuffer as made once for it.
+    private sealed class Streamed
+    {
+        public required PcmStreamer Streamer;
+        public required DynamicSoundEffectInstance Instance;
+        public required Action<byte[], int> Submit;
+    }
 
     // Set the first time MonoGame reports there is no audio device (a server, a CI runner, a machine
     // with sound off). From then on this backend behaves as NullAudioBackend: the game runs silent
@@ -74,12 +86,16 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
         _finished.Clear();
         foreach (var (id, from) in _assets)
             if (from == asset) _finished.Add(id);
-        foreach (int id in _finished)
-        {
-            if (_instances.Remove(id, out var instance)) { instance.Stop(immediate: true); instance.Dispose(); }
-            _assets.Remove(id);
-        }
+        foreach (int id in _finished) Drop(id);
         _finished.Clear();
+    }
+
+    // Stops a voice's instance and lets go of it and its decoder.
+    private void Drop(int id)
+    {
+        if (_instances.Remove(id, out var instance)) { instance.Stop(immediate: true); instance.Dispose(); }
+        if (_streams.Remove(id, out var stream)) stream.Streamer.Dispose();
+        _assets.Remove(id);
     }
 
     public void Apply(AudioMixer mixer)
@@ -95,7 +111,9 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
             Log.Warn(LogCat.Audio, $"No audio device ({ex.Message}); sound is off for this run. " +
                                    "`snd_enabled 0` turns it off on purpose.");
             foreach (var instance in _instances.Values) instance.Dispose();
+            foreach (var stream in _streams.Values) stream.Streamer.Dispose();
             _instances.Clear();
+            _streams.Clear();
             _assets.Clear();
             NullAudioBackend.Drain(mixer);
         }
@@ -107,43 +125,50 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
 
         foreach (var voice in mixer.Voices)
         {
+            int id = voice.Handle.Id;
             if (voice.Stopping)
             {
-                if (_instances.Remove(voice.Handle.Id, out var stopping))
-                {
-                    stopping.Stop(immediate: true);
-                    stopping.Dispose();
-                }
-                _assets.Remove(voice.Handle.Id);
-                _finished.Add(voice.Handle.Id);
+                Drop(id);
+                _finished.Add(id);
                 continue;
             }
 
             if (!voice.Started)
             {
                 voice.Started = true;
-                var effect = _content.LoadSound(voice.Asset);
-                if (effect == null) { _finished.Add(voice.Handle.Id); continue; }
-
-                var instance = effect.CreateInstance();
-                instance.IsLooped = voice.Loop;
-                _instances[voice.Handle.Id] = instance;
-                _assets[voice.Handle.Id] = voice.Asset;
+                Drop(id);   // a restart (a reloaded file) begins again from nothing
+                var instance = PcmStreamer.Streams(voice.Record, voice.Asset) ? StartStream(voice) : StartWhole(voice);
+                if (instance == null) { _finished.Add(id); continue; }
+                _instances[id] = instance;
+                _assets[id] = voice.Asset;
                 Push(instance, voice);
                 instance.Play();
                 continue;
             }
 
-            if (!_instances.TryGetValue(voice.Handle.Id, out var live)) { _finished.Add(voice.Handle.Id); continue; }
+            if (!_instances.TryGetValue(id, out var live)) { _finished.Add(id); continue; }
+
+            // A streamed voice is topped up to its few buffers, and has finished when the decoder has
+            // nothing more and the device has played what it was given.
+            if (_streams.TryGetValue(id, out var stream))
+            {
+                if (TryPump(id, voice.Asset, stream) && stream.Streamer.Finished(stream.Instance.PendingBufferCount))
+                {
+                    Drop(id);
+                    _finished.Add(id);
+                    continue;
+                }
+                if (!_instances.ContainsKey(id)) { _finished.Add(id); continue; }
+                Push(live, voice);
+                continue;
+            }
 
             // A one-shot that has run out is the mixer's to forget; it cannot tell on its own, because
             // only the backend knows how long the file was.
             if (live.State == SoundState.Stopped && !voice.Loop)
             {
-                live.Dispose();
-                _instances.Remove(voice.Handle.Id);
-                _assets.Remove(voice.Handle.Id);
-                _finished.Add(voice.Handle.Id);
+                Drop(id);
+                _finished.Add(id);
                 continue;
             }
 
@@ -151,6 +176,49 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
         }
 
         foreach (int id in _finished) mixer.Remove(new VoiceHandle(id));
+    }
+
+    private SoundEffectInstance? StartWhole(Voice voice)
+    {
+        var effect = _content.LoadSound(voice.Asset);
+        if (effect == null) return null;
+        var instance = effect.CreateInstance();
+        instance.IsLooped = voice.Loop;
+        return instance;
+    }
+
+    // A DynamicSoundEffectInstance at the file's rate and channels, with its first buffers queued before
+    // it plays. The streamer loops, so the instance never does.
+    private SoundEffectInstance? StartStream(Voice voice)
+    {
+        var streamer = _content.OpenSoundStream(voice.Asset, voice.Loop);
+        if (streamer == null) return null;
+        var instance = new DynamicSoundEffectInstance(streamer.SampleRate, streamer.Channels == 1 ? AudioChannels.Mono : AudioChannels.Stereo);
+        var stream = new Streamed
+        {
+            Streamer = streamer,
+            Instance = instance,
+            Submit = (buffer, bytes) => instance.SubmitBuffer(buffer, 0, bytes),
+        };
+        _streams[voice.Handle.Id] = stream;
+        if (!TryPump(voice.Handle.Id, voice.Asset, stream)) { instance.Dispose(); return null; }
+        return instance;
+    }
+
+    // Tops the queue up. A file that breaks off part-way costs the voice, not the frame (11 §8).
+    private bool TryPump(int id, AssetPath asset, Streamed stream)
+    {
+        try
+        {
+            stream.Streamer.Pump(stream.Instance.PendingBufferCount, stream.Submit);
+            return true;
+        }
+        catch (InvalidDataException ex)
+        {
+            Log.Once(LogCat.Audio, LogLevel.Error, $"sound-stream-read:{asset}", $"Streamed sound '{asset}' stopped: {ex.Message}");
+            Drop(id);
+            return false;
+        }
     }
 
     private static void Push(SoundEffectInstance instance, Voice voice)
@@ -163,7 +231,9 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
     public void Dispose()
     {
         foreach (var instance in _instances.Values) { instance.Stop(immediate: true); instance.Dispose(); }
+        foreach (var stream in _streams.Values) stream.Streamer.Dispose();
         _instances.Clear();
+        _streams.Clear();
         _assets.Clear();
     }
 }

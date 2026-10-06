@@ -29,13 +29,13 @@ internal sealed class AssetHotReload : IDisposable
     // HDR is tone-mapped to 8-bit.
     //
     // Models and sounds reload too (issue 4h-3): the renderer swaps a `.glb` in its mesh slot, and a
-    // `.wav` stops or restarts the voices playing it. Shader *source* is `ShaderRecompiler`'s.
+    // `.wav` or `.ogg` stops or restarts the voices playing it. Shader *source* is `ShaderRecompiler`'s.
     private static readonly string[] Extensions =
     {
         ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".psd", ".hdr",   // StbImageSharp (CookedTexture.DecodeImage)
         ".mgfxo",                                                          // compiled effects (07 §3.1)
         ".glb",                                                            // models, in place in the renderer's mesh table
-        ".wav",                                                            // sounds; voices on them stop or restart
+        ".wav", ".ogg",                                                    // sounds; voices on them stop or restart
     };
 
     private readonly ContentService _content;
