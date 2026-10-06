@@ -88,6 +88,7 @@ public sealed class HeadlessAppBuilder
     private string? _userMods;
     private string? _modList;
     private string? _modReport;
+    private string? _inputFile;
 
     internal HeadlessAppBuilder(bool includeSimulation, GameManifest? game)
     {
@@ -164,6 +165,13 @@ public sealed class HeadlessAppBuilder
         return this;
     }
 
+    // Where the player's rebinds are kept (`user://input.json` in the host). A test gives its own file.
+    public HeadlessAppBuilder WithUserInput(string file)
+    {
+        _inputFile = file;
+        return this;
+    }
+
     public HeadlessAppBuilder InHost(HostKind host)
     {
         _host = host;
@@ -194,6 +202,7 @@ public sealed class HeadlessAppBuilder
             UserModsDirectory = _userMods,
             ModListFile = _modList,
             ModReportFile = _modReport,
+            InputFile = _inputFile,
         });
         foreach (var fixture in _fixtures.Append(_files).OfType<MountFixture>())
             foreach (var mount in fixture.Mounts)

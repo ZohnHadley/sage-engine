@@ -861,6 +861,7 @@
       "description": "The id of a screen record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -870,6 +871,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
@@ -1014,6 +1016,7 @@
       "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -1023,6 +1026,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
@@ -2027,6 +2031,7 @@
       "description": "Another screen record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -2036,6 +2041,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
@@ -2180,6 +2186,7 @@
       "description": "Another ui_layout record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "controls",
         "equipment",
         "hud",
         "inventory",
@@ -2189,6 +2196,7 @@
         "map",
         "mods",
         "rest",
+        "rpg:controls",
         "rpg:equipment",
         "rpg:inventory",
         "rpg:loot",
