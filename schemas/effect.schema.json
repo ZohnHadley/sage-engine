@@ -235,22 +235,64 @@
         "$ref": "ids.schema.json#/definitions/record:tag"
       }
     },
-    "cues": {
-      "description": "Names a cue record. (List<RecordRef<CueRecord>>)",
+    "appliedCues": {
+      "description": "Cues raised when the effect is applied (and again each time a refresh or stack re-applies it) Names a cue record. Category: Cues. (List<RecordRef<CueRecord>>)",
       "type": "array",
       "items": {
         "$ref": "ids.schema.json#/definitions/record:cue"
       }
     },
-    "cues+": {
-      "description": "Adds to \"cues\": what a base or an earlier definition listed, then these.",
+    "appliedCues+": {
+      "description": "Adds to \"appliedCues\": what a base or an earlier definition listed, then these.",
       "type": "array",
       "items": {
         "$ref": "ids.schema.json#/definitions/record:cue"
       }
     },
-    "cues-": {
-      "description": "Removes these from \"cues\" (as a base or an earlier definition listed it).",
+    "appliedCues-": {
+      "description": "Removes these from \"appliedCues\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:cue"
+      }
+    },
+    "tickCues": {
+      "description": "Cues raised on each period of a periodic effect (a poison's pulse) Names a cue record. Category: Cues. (List<RecordRef<CueRecord>>)",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:cue"
+      }
+    },
+    "tickCues+": {
+      "description": "Adds to \"tickCues\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:cue"
+      }
+    },
+    "tickCues-": {
+      "description": "Removes these from \"tickCues\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:cue"
+      }
+    },
+    "removedCues": {
+      "description": "Cues raised when the effect ends: it ran out, or was removed or dispelled. Names a cue record. Category: Cues. (List<RecordRef<CueRecord>>)",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:cue"
+      }
+    },
+    "removedCues+": {
+      "description": "Adds to \"removedCues\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:cue"
+      }
+    },
+    "removedCues-": {
+      "description": "Removes these from \"removedCues\" (as a base or an earlier definition listed it).",
       "type": "array",
       "items": {
         "$ref": "ids.schema.json#/definitions/record:cue"
