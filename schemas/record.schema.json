@@ -47,6 +47,7 @@
             "item",
             "map",
             "material",
+            "mesh_lod",
             "movement_profile",
             "nav_area",
             "particle",
@@ -422,6 +423,21 @@
           },
           "then": {
             "$ref": "material.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "mesh_lod"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "mesh_lod.schema.json"
           }
         },
         {

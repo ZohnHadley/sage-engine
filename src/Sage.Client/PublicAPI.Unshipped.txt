@@ -1,1 +1,3 @@
 #nullable enable
+Sage.Client.RenderStats.LodCulled -> int
+Sage.Client.RenderStats.LodLowered -> int
