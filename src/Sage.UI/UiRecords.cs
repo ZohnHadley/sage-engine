@@ -118,7 +118,7 @@ public sealed class UiLayoutRecord
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class UiNode
 {
-    [JsonConverter(typeof(WidgetTypeJsonConverter)), Property(Tooltip = "What it is: box, stack, grid, label, image, button, item_list, bar, scroll, slider, checkbox, dropdown, text_field or tabs")]
+    [JsonConverter(typeof(WidgetTypeJsonConverter)), Property(Tooltip = "What it is: box, stack, grid, label, image, button, item_list, bar, scroll, slider, checkbox, dropdown, text_field, tabs or view")]
     public string Widget = "";
 
     [Property(Tooltip = "The node it is inside, by name; empty: the layout's root")]
@@ -149,6 +149,17 @@ public sealed class UiNode
 
     [Property(Tooltip = "An image keeps its proportions (default true)")]
     public bool? KeepAspect;
+
+    // ---- a view's (issue #348)
+
+    [Property(Tooltip = "A view's picture: the render target it shows, by name (a camera's `target`, or its own camera's)")]
+    public string Target = "";
+
+    [Property(Tooltip = "A view's own camera, drawing its target: an orbit round the player (a paper doll) or a top-down map; none: a camera entity draws the target")]
+    public UiViewCameraNode? Camera;
+
+    [JsonConverter(typeof(OptionalColourJsonConverter)), Property(Tooltip = "What an image's or view's bound `fog` covers the unrevealed part of the picture with; empty: near-black")]
+    public uint? FogColour;
 
     [Property(Tooltip = "Text size, 1 = the font's; empty: its style's")]
     public float? TextScale;
@@ -289,8 +300,66 @@ public sealed class UiNode
     [Property(Tooltip = "A path into the view-model for its main value: a label's text, a bar's value, an image's source, a list's rows; a slider's value, a checkbox's checked, a dropdown's or tabs' selected and a text field's text, which the player's changes are written back to")]
     public string Bind = "";
 
-    [Property(Tooltip = "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options")]
+    [Property(Tooltip = "Paths for other properties, by property: text, value, min, max, source, tooltip, style, visible, enabled, rows, checked, selected, options; an image's or view's fog, a view's target and radius")]
     public Dictionary<string, string> Bindings = new();
+}
+
+// A view node's own camera (issue #348): what View's camera properties are set from.
+//
+//   "doll": { "widget": "view", "target": "paper_doll", "minSize": [200, 300],
+//             "camera": { "mode": "Orbit", "distance": 3, "height": 0.9, "rotatable": true } },
+//   "map":  { "widget": "view", "target": "local_map", "bindings": { "fog": "fog", "radius": "range" },
+//             "camera": { "mode": "TopDown", "radius": 40 } }
+[Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
+public sealed class UiViewCameraNode
+{
+    [Property(Tooltip = "Orbit: round its subject, looking at it from in front; TopDown: straight down on it, north up, a map")]
+    public ViewCamera Mode = ViewCamera.Orbit;
+
+    [Property(Tooltip = "What it looks at: 'player' (the screen's subject or the local player), 'other' (the NPC talked to, the corpse looted) or an entity by name; empty: centre")]
+    public string Subject = View.Player;
+
+    [Property(Unit = "m", Tooltip = "Where it looks with no subject (a fixed map)")]
+    public Vector3 Centre;
+
+    [Property(Min = 0.01, Unit = "m", Tooltip = "Orbit: how far from the point it looks at")]
+    public float Distance = 2.5f;
+
+    [Property(Unit = "m", Tooltip = "Orbit: how far above the subject's origin the point it looks at is")]
+    public float Height = 1f;
+
+    [Property(Min = -360, Max = 360, Unit = "deg", Tooltip = "Orbit: degrees round the subject from in front of it; TopDown: the map turned")]
+    public float Yaw;
+
+    [Property(Min = -89, Max = 89, Unit = "deg", Tooltip = "Orbit: degrees above the subject, looking down on it")]
+    public float Pitch = 10f;
+
+    [Property(Unit = "deg/s", Tooltip = "Turns by itself this fast (a turntable); 0: still")]
+    public float Spin;
+
+    [Property(Min = 1, Max = 170, Unit = "deg", Tooltip = "Orbit: the vertical field of view")]
+    public float FieldOfView = 35f;
+
+    [Property(Min = 0.01, Unit = "m", Tooltip = "TopDown: metres from the middle of the map to its edges")]
+    public float Radius = 30f;
+
+    [Property(Min = 1, Unit = "m", Tooltip = "TopDown: how far above the point it looks at")]
+    public float Altitude = 100f;
+
+    [Property(Min = 1, Unit = "m", Tooltip = "The far clip plane")]
+    public float Far = 500f;
+
+    [Property(Min = 0, Max = 4096, Unit = "px", Tooltip = "The target's pixels across its longer side; 0: as many as the view covers on screen")]
+    public int Resolution;
+
+    [Property(Tooltip = "The player turns it, dragging across it or with Left and Right while it has focus")]
+    public bool Rotatable;
+
+    [Property(Tooltip = "Draws the sky behind (default: the clear colour)")]
+    public bool Sky;
+
+    [Property(Tooltip = "Casts shadows in it (default: none, no second shadow map)")]
+    public bool Shadows;
 }
 
 // ---- screen ---------------------------------------------------------------------------------------
@@ -371,7 +440,7 @@ internal static class UiSounds
     {
       "description": "A widget type.",
       "type": "string",
-      "enum": ["box", "stack", "grid", "label", "image", "button", "item_list", "bar", "scroll", "slider", "checkbox", "dropdown", "text_field", "tabs"]
+      "enum": ["box", "stack", "grid", "label", "image", "button", "item_list", "bar", "scroll", "slider", "checkbox", "dropdown", "text_field", "tabs", "view"]
     }
     """)]
 internal sealed class WidgetTypeJsonConverter : JsonConverter<string>

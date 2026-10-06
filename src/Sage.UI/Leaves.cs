@@ -132,6 +132,8 @@ public class Image : Widget
     private string? _source;
     private Vector2 _naturalSize;
     private bool _keepAspect = true;
+    private UiFogMask? _fog;
+    private uint _fogColour = ColourJsonConverter.Pack(8, 10, 16);
 
     public Image() { }
     public Image(string? source, Vector2 naturalSize) { _source = source; _naturalSize = naturalSize; }
@@ -144,6 +146,13 @@ public class Image : Widget
     public Vector2 NaturalSize { get => _naturalSize; set { if (_naturalSize == value) return; _naturalSize = value; InvalidateMeasure(); } }
 
     public bool KeepAspect { get => _keepAspect; set { if (_keepAspect == value) return; _keepAspect = value; InvalidateArrange(); } }
+
+    // Discovery fog drawn over the picture (issue #348): what the mask has not revealed is covered in
+    // FogColour. The mask's cells may change every frame without the screen being laid out or planned again.
+    public UiFogMask? Fog { get => _fog; set { if (_fog == value) return; _fog = value; InvalidateVisual(); } }
+
+    // Packed like a style's colours (ColourJsonConverter); opaque near-black by default.
+    public uint FogColour { get => _fogColour; set { if (_fogColour == value) return; _fogColour = value; InvalidateVisual(); } }
 
     // Where the picture itself is drawn: the content rect, or the largest part of it with the natural aspect.
     public Rect ImageRect { get; private set; }

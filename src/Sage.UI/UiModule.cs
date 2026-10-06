@@ -180,7 +180,7 @@ public sealed class UiModule : IModule
 // paths its layout binds. Errors at the record's line, like every other content check (05 §3.6).
 internal static class UiContentChecks
 {
-    private static readonly string[] Leaves = { "label", "button", "image", "bar", "slider", "checkbox", "dropdown", "text_field" };
+    private static readonly string[] Leaves = { "label", "button", "image", "bar", "slider", "checkbox", "dropdown", "text_field", "view" };
 
     public static void Layout(UiLayoutRecord layout, RecordCheck check)
     {
@@ -222,6 +222,16 @@ internal static class UiContentChecks
                 check.Error($"{at}.Args", $"a {node.Widget} has no text to fill placeholders in");
             if ((node.Wrap || node.Overflow != null || node.MaxWidth > 0f) && node.Widget is not ("label" or "button"))
                 check.Error($"{at}.{(node.Wrap ? "Wrap" : node.Overflow != null ? "Overflow" : "MaxWidth")}", $"a {node.Widget} has no text to wrap or cut");
+            // A view's (issue #348).
+            if (node.Widget != "view")
+            {
+                if (node.Target.Length > 0) check.Error($"{at}.Target", $"a {node.Widget} shows no render target; a view does");
+                if (node.Camera != null) check.Error($"{at}.Camera", $"a {node.Widget} has no camera; a view does");
+            }
+            if (node.FogColour != null && node.Widget is not ("image" or "view"))
+                check.Error($"{at}.FogColour", $"a {node.Widget} has no picture to cover with fog");
+            if (node.Widget == "view" && node.Target.Length == 0 && node.Camera != null && !node.Bindings.Keys.Any(k => k.Equals(UiBindings.Target, StringComparison.OrdinalIgnoreCase)) && node.Bind.Length == 0)
+                check.Error($"{at}.Target", $"view '{name}' has a camera and no `target` to draw into: name one");
             foreach (var (field, neighbour) in new[] { ("FocusUp", node.FocusUp), ("FocusDown", node.FocusDown), ("FocusLeft", node.FocusLeft), ("FocusRight", node.FocusRight) })
                 if (neighbour.Length > 0 && !layout.Nodes.ContainsKey(neighbour))
                     check.Error($"{at}.{field}", $"node '{name}' goes to '{neighbour}', which is not a node of this layout" + Spelling.Suggest(neighbour, layout.Nodes.Keys));

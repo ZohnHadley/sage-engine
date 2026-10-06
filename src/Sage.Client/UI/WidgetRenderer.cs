@@ -14,14 +14,18 @@ namespace Sage.Client;
 // one comparison and a loop over structs, and allocates nothing.
 internal static class WidgetRenderer
 {
-    public static void Draw(UiDraw ui, UiScreenStack stack, UiStyles styles, Localisation text, ContentService content, TrueTypeText fonts)
+    public static void Draw(UiDraw ui, UiScreenStack stack, UiStyles styles, Localisation text, ContentService content, TrueTypeText fonts,
+                            UiPictures? pictures = null)
     {
         fonts.BeginFrame(stack.Fonts);
+        pictures?.BeginFrame();
         var layers = stack.Layers;
-        for (int i = 0; i < layers.Count; i++) DrawLayer(ui, layers[i], styles, text, content, stack.Fonts, fonts);
+        for (int i = 0; i < layers.Count; i++) DrawLayer(ui, layers[i], styles, text, content, stack.Fonts, fonts, pictures);
+        pictures?.EndFrame();
     }
 
-    private static void DrawLayer(UiDraw ui, UiLayer layer, UiStyles styles, Localisation text, ContentService content, UiFonts? fonts, TrueTypeText truetype)
+    private static void DrawLayer(UiDraw ui, UiLayer layer, UiStyles styles, Localisation text, ContentService content, UiFonts? fonts, TrueTypeText truetype,
+                                  UiPictures? pictures)
     {
         var root = layer.Root;
         var plan = layer.Plan;
@@ -52,6 +56,15 @@ internal static class WidgetRenderer
                     break;
                 case UiDrawKind.Text:
                     DrawText(ui, command, r.X, y, Colour(command, blend, opacity), fontPixel, content, fonts, truetype);
+                    break;
+                case UiDrawKind.Image when command.Target != null:
+                    // A render target (a view widget's, issue #348): as drawn this frame, or as last drawn.
+                    if (pictures?.Target(command.Target) is { } picture)
+                        ui.Image(picture, Pixels(r.X, y, r.Width, r.Height), Colour(command, blend, opacity));
+                    break;
+                case UiDrawKind.Fog:
+                    if (pictures?.Fog(command.Fog!) is { } fog)
+                        ui.Image(fog, Pixels(r.X, y, r.Width, r.Height), Colour(command, blend, opacity));
                     break;
                 case UiDrawKind.Image:
                     // Asked every frame, as the font is: a hot reload disposes the texture under a
@@ -97,10 +110,86 @@ internal static class WidgetRenderer
         if (command.Ellipsis) ui.Text(x + command.EllipsisAt, y, TextLayout.Ellipsis, 0, 1, colour, scale, atlas);
     }
 
+    private static Microsoft.Xna.Framework.Rectangle Pixels(float x, float y, float width, float height) =>
+        new((int)MathF.Round(x), (int)MathF.Round(y), (int)MathF.Round(width), (int)MathF.Round(height));
+
     private static Color Colour(in UiDrawCommand command, float blend, float opacity) =>
         Colour(command.Blend ? UiColour.Lerp(command.From, command.Colour, blend) : command.Colour, opacity);
 
     private static Color Colour(uint packed, float opacity) => new(UiColour.Fade(packed, opacity));
+}
+
+// The pictures widgets show that are not texture files (issue #348): render targets, by name, from the
+// renderer; and fog masks, each uploaded to a texture of its own — white, alpha the part not revealed —
+// again only when its Version changes, and freed once no screen has drawn it for a while.
+internal sealed class UiPictures : IDisposable
+{
+    private const int KeepFrames = 120;
+
+    private sealed class FogTexture
+    {
+        public required Microsoft.Xna.Framework.Graphics.Texture2D Texture;
+        public int Version = -1;
+        public int LastFrame;
+        public Color[] Pixels = Array.Empty<Color>();
+    }
+
+    private readonly Renderer _renderer;
+    private readonly System.Collections.Generic.Dictionary<UiFogMask, FogTexture> _fog = new(System.Collections.Generic.ReferenceEqualityComparer.Instance);
+    private readonly System.Collections.Generic.List<UiFogMask> _stale = new();
+    private int _frame;
+
+    public UiPictures(Renderer renderer) { _renderer = renderer; }
+
+    public void BeginFrame() => _frame++;
+
+    public Microsoft.Xna.Framework.Graphics.Texture2D? Target(string name) =>
+#pragma warning disable SAGE0123   // the engine's own use of its experimental render-target API
+        _renderer.FindTarget(name);
+#pragma warning restore SAGE0123
+
+    public Microsoft.Xna.Framework.Graphics.Texture2D Fog(UiFogMask mask)
+    {
+        if (!_fog.TryGetValue(mask, out var fog))
+        {
+            fog = new FogTexture { Texture = new Microsoft.Xna.Framework.Graphics.Texture2D(_renderer.Device, mask.Width, mask.Height) };
+            _fog[mask] = fog;
+        }
+        fog.LastFrame = _frame;
+        if (fog.Version != mask.Version)
+        {
+            var cells = mask.Cells;
+            if (fog.Pixels.Length != cells.Length) fog.Pixels = new Color[cells.Length];
+            for (int i = 0; i < cells.Length; i++)
+            {
+                byte hidden = (byte)(255 - cells[i]);
+                fog.Pixels[i] = new Color((byte)255, (byte)255, (byte)255, hidden);   // UiDraw blends non-premultiplied
+            }
+            fog.Texture.SetData(fog.Pixels);
+            fog.Version = mask.Version;
+        }
+        return fog.Texture;
+    }
+
+    // Frees what no screen has drawn for KeepFrames frames (a map closed a while ago).
+    public void EndFrame()
+    {
+        if (_fog.Count == 0) return;
+        foreach (var (mask, fog) in _fog)
+            if (_frame - fog.LastFrame > KeepFrames) _stale.Add(mask);
+        foreach (var mask in _stale)
+        {
+            _fog[mask].Texture.Dispose();
+            _fog.Remove(mask);
+        }
+        _stale.Clear();
+    }
+
+    public void Dispose()
+    {
+        foreach (var fog in _fog.Values) fog.Texture.Dispose();
+        _fog.Clear();
+    }
 }
 
 // How the engine font measures, for layout (Sage.UI's ITextMeasure, issue #97): in *font* pixels —

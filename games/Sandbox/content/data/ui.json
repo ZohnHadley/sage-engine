@@ -38,6 +38,9 @@
       "window":     { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10, "minSize": [440, 0] },
       "title":      { "widget": "label", "parent": "window", "text": "@sandbox.status.title", "style": "ui_title" },
       "name":       { "widget": "label", "parent": "window", "bind": "name", "style": "ui_dim" },
+      // You, live, from in front (issue #348): drag across it, or Left and Right, to turn round.
+      "doll":       { "widget": "view", "parent": "window", "target": "paper_doll", "style": "ui_inset", "minSize": [0, 220],
+                      "camera": { "mode": "Orbit", "distance": 3.2, "height": 0.9, "pitch": 8, "rotatable": true } },
 
       "healthRow":  { "widget": "stack", "parent": "window", "direction": "Row", "spacing": 10 },
       "healthName": { "widget": "label", "parent": "healthRow", "text": "@sandbox.status.health", "minSize": [80, 0] },
@@ -145,6 +148,9 @@
       "window":   { "widget": "stack", "anchors": "center", "style": "ui_window", "spacing": 10 },
       "title":    { "widget": "label", "parent": "window", "text": "@sandbox.map.title", "style": "ui_title" },
       "area":     { "widget": "box", "parent": "window", "style": "map_area", "minSize": [440, 440], "hAlign": "Center" },
+      // The ground round you from above, north up, as far each way as the markers reach (issue #348).
+      "picture":  { "widget": "view", "parent": "area", "anchors": "fill", "target": "local_map", "bindings": { "radius": "range" },
+                    "camera": { "mode": "TopDown", "sky": false } },
       "you":      { "widget": "stack", "parent": "area", "direction": "Row", "spacing": 4, "anchors": "center" },
       "youDot":   { "widget": "label", "parent": "you", "text": "", "style": "map_you", "minSize": [10, 10], "vAlign": "Center" },
       "youName":  { "widget": "label", "parent": "you", "text": "@sandbox.map.you", "style": "map_label" },

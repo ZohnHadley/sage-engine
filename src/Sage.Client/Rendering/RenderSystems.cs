@@ -41,7 +41,7 @@ internal sealed class CameraExtract : ISystem
         var s = _snapshot;
         s.Clear();
 
-        _source.Collect(_requests);
+        _source.Collect(_requests, ctx.Frame.RealTime);
         bool screen = _renderer.IsScreenWorld(ctx.World);
         s.EnsureViewSlots(_requests.Count);
         for (int r = 0; r < _requests.Count; r++)
