@@ -17,7 +17,8 @@
     "technique": "Unlit"
   },
   {
-    // Heightmap terrain (14 §3). v1 is one tiling texture; splat materials come with LOD (07 §11).
+    // Heightmap terrain (14 §3): one tiling texture. Layers blended by height and slope are a
+    // `terrain_material` record (issue #307), which falls back to this where shaders/terrain.mgfxo is missing.
     "type": "material",
     "id": "terrain_default",
     "base": "lit_default",

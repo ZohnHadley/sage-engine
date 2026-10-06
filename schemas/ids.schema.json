@@ -939,6 +939,14 @@
         "openworld:hills"
       ]
     },
+    "record:terrain_material": {
+      "description": "The id of a terrain_material record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "hills",
+        "sandbox:hills"
+      ]
+    },
     "record:ui_layout": {
       "description": "The id of a ui_layout record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -2012,6 +2020,14 @@
       "enum": [
         "hills",
         "openworld:hills"
+      ]
+    },
+    "base:terrain_material": {
+      "description": "Another terrain_material record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "hills",
+        "sandbox:hills"
       ]
     },
     "base:ui_layout": {

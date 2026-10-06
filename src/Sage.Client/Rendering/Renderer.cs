@@ -431,13 +431,21 @@ public sealed class Renderer : IDisposable
 
     // A mesh built by the engine or a game (terrain chunks, 14 §3): the renderer owns the buffers and
     // hands back a handle (06 §4). Destroy it with DestroyMesh when the chunk goes away.
-    public MeshHandle CreateMesh(ReadOnlySpan<VertexPositionNormalTexture> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name = "(procedural)")
+    public MeshHandle CreateMesh(ReadOnlySpan<VertexPositionNormalTexture> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name = "(procedural)") =>
+        CreateMesh(vertices, VertexPositionNormalTexture.VertexDeclaration, indices, bounds, name);
+
+    // Splat terrain (issue #307): the same, with each vertex's four layer weights.
+    internal MeshHandle CreateMesh(ReadOnlySpan<VertexTerrain> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name) =>
+        CreateMesh(vertices, VertexTerrain.VertexDeclaration, indices, bounds, name);
+
+    private MeshHandle CreateMesh<T>(ReadOnlySpan<T> vertices, VertexDeclaration declaration, ReadOnlySpan<int> indices, BoundingSphere bounds, string name)
+        where T : struct
     {
-        var vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration, vertices.Length, BufferUsage.WriteOnly);
+        var vb = new VertexBuffer(_device, declaration, vertices.Length, BufferUsage.WriteOnly);
         vb.SetData(vertices.ToArray());
         var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, indices.Length, BufferUsage.WriteOnly);
         ib.SetData(indices.ToArray());
-        long bytes = (long)vertices.Length * VertexPositionNormalTexture.VertexDeclaration.VertexStride + indices.Length * 4L;
+        long bytes = (long)vertices.Length * declaration.VertexStride + indices.Length * 4L;
         WorkStats.Uploaded(bytes);   // `stat render` (issue #300)
         var part = new MeshPart
         {

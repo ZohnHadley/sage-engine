@@ -40,17 +40,20 @@ public sealed class MyGameRules : GameRules
     }
 }
 
-// A heightfield generator: rolling hills, big enough to see.
-public sealed class Hills : ITerrainGenerator
+// A heightfield generator: rolling hills, big enough to see. It is also an ITerrainSampler — the height at
+// any point, the same function Generate fills the grid with — so a sector's edge is lit from its
+// neighbour's heights and the ground shows no seam where two sectors meet.
+public sealed class Hills : ITerrainGenerator, ITerrainSampler
 {
     public void Generate(SectorCoord sector, Heightfield heights, int seed)
     {
         Vector3 corner = sector.Origin(Terrain.SectorSize);
+        double spacing = heights.Spacing;
         for (int z = 0; z < heights.Resolution; z++)
             for (int x = 0; x < heights.Resolution; x++)
-            {
-                float worldX = corner.X + x * heights.Spacing, worldZ = corner.Z + z * heights.Spacing;
-                heights[x, z] = MathF.Sin(worldX * 0.012f) * 9f + MathF.Cos(worldZ * 0.009f) * 7f;
-            }
+                heights[x, z] = SampleHeight(corner.X + x * spacing, corner.Z + z * spacing, seed);
     }
+
+    public float SampleHeight(double absoluteX, double absoluteZ, int seed) =>
+        MathF.Sin((float)absoluteX * 0.012f) * 9f + MathF.Cos((float)absoluteZ * 0.009f) * 7f;
 }
