@@ -214,15 +214,21 @@ internal sealed class DispelExecution : IEffectExecution
         {
             if (!world.IsAlive(target) || !world.Has<ActiveEffects>(target)) return;
             var records = world.Records();
-            world.Get<ActiveEffects>(target).Effects?.RemoveAll(running =>
+            var running = world.Get<ActiveEffects>(target).Effects;
+            if (running == null) return;
+            for (int i = running.Count - 1; i >= 0; i--)
             {
-                foreach (var effect in effects) if (running.Record == effect.Id) return true;
-                if (tags.Count == 0 || !records.TryGet(running.Record, out EffectRecord record)) return false;
-                foreach (var granted in record.GrantTags)
-                    foreach (var tag in tags)
-                        if (granted.Id == tag.Id) return true;
-                return false;
-            });
+                bool found = records.TryGet(running[i].Record, out EffectRecord record);
+                bool dispel = false;
+                foreach (var effect in effects) if (running[i].Record == effect.Id) dispel = true;
+                if (!dispel && found && tags.Count > 0)
+                    foreach (var granted in record!.GrantTags)
+                        foreach (var tag in tags)
+                            if (granted.Id == tag.Id) dispel = true;
+                if (!dispel) continue;
+                running.RemoveAt(i);
+                if (found) Sage.Gameplay.Effects.RaiseCues(world, record!.RemovedCues, target, default);   // a dispel is a removal (issue #330)
+            }
         });
     }
 }

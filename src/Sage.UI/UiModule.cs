@@ -111,7 +111,7 @@ public sealed class UiModule : IModule
         world.Resources.Add(Styles);
         world.Resources.Add(Screens);
         // The widget screens this world has open (#97): headless here, drawn and fed by the client.
-        world.Resources.Add(new UiScreenStack(Screens, Styles));
+        world.Resources.Add(new UiScreenStack(Screens, Styles, world));
     }
 
     // The entity a screen opened from the console is about: the first player-controlled one.

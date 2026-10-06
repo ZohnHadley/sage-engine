@@ -983,10 +983,14 @@
         "sandbox:step_wood",
         "sandbox:swing",
         "sandbox:thunder",
+        "sandbox:ui_move",
+        "sandbox:ui_select",
         "step_grass",
         "step_wood",
         "swing",
-        "thunder"
+        "thunder",
+        "ui_move",
+        "ui_select"
       ]
     },
     "record:spread": {
@@ -1104,6 +1108,14 @@
         "shop",
         "status",
         "topics"
+      ]
+    },
+    "record:ui_sounds": {
+      "description": "The id of a ui_sounds record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "default_ui_sounds",
+        "sage:default_ui_sounds"
       ]
     },
     "record:ui_style": {
@@ -2215,10 +2227,14 @@
         "sandbox:step_wood",
         "sandbox:swing",
         "sandbox:thunder",
+        "sandbox:ui_move",
+        "sandbox:ui_select",
         "step_grass",
         "step_wood",
         "swing",
-        "thunder"
+        "thunder",
+        "ui_move",
+        "ui_select"
       ]
     },
     "base:spread": {
@@ -2336,6 +2352,14 @@
         "shop",
         "status",
         "topics"
+      ]
+    },
+    "base:ui_sounds": {
+      "description": "Another ui_sounds record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "default_ui_sounds",
+        "sage:default_ui_sounds"
       ]
     },
     "base:ui_style": {
