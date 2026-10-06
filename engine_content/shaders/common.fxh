@@ -109,8 +109,8 @@ float4 LampShadowUp[MAX_LAMP_SHADOWS];        // a spot's up; w = B
 float4 LampShadowCorner[MAX_LAMP_SHADOWS];    // xy = its block's corner (uv), z = depth margin per metre, w = 1: has a map
 float4 LampShadowAtlas;                       // x, y = one texel (uv), z = texels a side of a face, w = margin (metres)
 texture LampShadowMap;
-// s7: past the sun's map (s1), lit.fx's surface maps (s2..s5) and lightmap (s6), and sprite.fx's SceneDepth (s2).
-sampler LampShadowSampler : register(s7) = sampler_state
+// s8: past the sun's map (s1), lit.fx's surface maps (s2..s5), lightmap (s6) and puddle mask (s7), and sprite.fx's SceneDepth (s2).
+sampler LampShadowSampler : register(s8) = sampler_state
 {
     Texture = <LampShadowMap>;
     MinFilter = Point;
