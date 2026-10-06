@@ -33,6 +33,7 @@ public sealed class ClientModule : IModule
     private ShaderRecompiler? _shaders;
     private InputActions? _actions;
     private CVar<bool>? _particlesOn;
+    private CVar<int>? _decalCeiling;
     private CVar<bool>? _weatherOn;
     private CVar<bool>? _lightsOn;
     private CVar<bool>? _damageNumbers;
@@ -132,6 +133,9 @@ public sealed class ClientModule : IModule
             "Draw particles: sparks, embers, smoke, blood (06 §3.12).");
         _damageNumbers = ctx.Engine.CVars.Register("ui_damagenumbers", true, CVarFlags.Archive,
             "Show what each hit took, over the thing that took it (13 §3).");
+        // Decals (issue #306): how many marks each world keeps before the oldest goes; 0 draws none.
+        _decalCeiling = ctx.Engine.CVars.Register("r_decals", Decals.DefaultCeiling, CVarFlags.Archive,
+            "How many decals (bullet holes, blood, scorch) a world keeps at once; the oldest goes first. 0 = none.", 0, 4096);
 
         _lightsOn = ctx.Engine.CVars.Register("r_lights", true, CVarFlags.Archive,
             "Light the world with point lights as well as the sun (06 §3.9). Off is the old look: a room with a roof is a dark box.");
@@ -171,7 +175,9 @@ public sealed class ClientModule : IModule
                 if (!world.Resources.TryGet<Particles>(out var particles) || particles == null) continue;
                 world.Resources.TryGet<FloatingTexts>(out var texts);
                 Log.Info(LogCat.Console, $"'{world.Name}': {particles.Live} particle(s) of {particles.Budget}, " +
-                                         $"{particles.Refused} refused; {texts?.Count ?? 0} number(s)");
+                                         $"{particles.Refused} refused; {particles.Rays} collision ray(s), " +
+                                         $"{particles.RaysSkipped} over the budget of {particles.CollisionBudget} a frame, " +
+                                         $"{particles.Hits} hit(s); {texts?.Count ?? 0} number(s)");
                 foreach (var group in particles.Groups)
                     if (group.Count > 0)
                         Log.Info(LogCat.Console, $"  {group.Effect,-28} {group.Count,5} live");
@@ -198,6 +204,23 @@ public sealed class ClientModule : IModule
                 var ahead = eye.Forward;
                 int thrown = particles.Emit(id, effect, eye.Position + ahead * 2f, ahead, count);
                 Log.Info(LogCat.Console, $"{thrown} particle(s) of {id}");
+            }
+        });
+
+        ctx.Engine.CVars.RegisterCommand("fx_decal", CVarFlags.Cheat,
+            "fx_decal <decal>: lay a decal on whatever you are looking at (within 50 m), to see what it looks like.", a =>
+        {
+            if (a.Count == 0) { Log.Warn(LogCat.Console, "fx_decal <decal>"); return; }
+            var id = ctx.Engine.Records.Resolve("decal", a[0]);
+            if (id.IsEmpty || !ctx.Engine.Records.TryGet(id, out DecalRecord decal)) return;
+
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Decals>(out var decals) || decals == null) continue;
+                if (!world.TryGetMainView(out var eye) || !world.Resources.TryGet<IPhysicsWorld>(out var space) || space == null) continue;
+                var hit = space.Raycast(eye.Position, eye.Forward, 50f);
+                bool placed = hit.Hit && decals.Place(id, decal, hit.Position, hit.Normal, surface: hit.Entity);
+                Log.Info(LogCat.Console, placed ? $"{id} at {hit.Position}" : $"{id}: nothing within 50 m to put it on");
             }
         });
 
@@ -399,6 +422,9 @@ public sealed class ClientModule : IModule
         world.Resources.Add(new FloatingTexts());
         world.AddSystem(new ParticleSystem(world, _records!, _particlesOn!, _damageNumbers!));
         world.AddSystem(new ParticleExtract(world, _renderer!));
+        // Marks that stay (issue #306): the pool is the world's, placed by gameplay's DecalSystem.
+        world.Resources.Add(new Decals { Ceiling = _decalCeiling!.Value });
+        world.AddSystem(new DecalExtract(world, _renderer!, _decalCeiling!));
         world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!));
         // The `Weather` state is the world's (installed with it); this only makes it *look* like it.
         world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!, _soundEnabled!));

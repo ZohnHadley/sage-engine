@@ -15,7 +15,7 @@ internal sealed class EffectBinding
     public static readonly HashSet<string> EngineParams = new(StringComparer.Ordinal)
     {
         "ViewProj", "SunDir", "SunColor", "AmbientSky", "AmbientGround", "FogColor", "FogParams", "Time",
-        "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount",
+        "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount", "LightSpots",
         "Bones",   // the skinned draw's palette (issue #117), set per draw
         "ShadowViewProj", "ShadowParams", "ShadowMap",   // the sun's shadow map (issue 4h-4), frame tier
     };
@@ -29,6 +29,7 @@ internal sealed class EffectBinding
         FogColor = P("FogColor"); FogParams = P("FogParams"); Time = P("Time");
         World = P("World"); Tint = P("Tint"); FogEnabled = P("FogEnabled");
         LightPositions = P("LightPositions"); LightColors = P("LightColors"); LightCount = P("LightCount");
+        LightSpots = P("LightSpots");   // spot lights' cones (issue #314); an effect without them lights all round
         Bones = P("Bones");
         ShadowViewProj = P("ShadowViewProj"); ShadowParams = P("ShadowParams"); ShadowMap = P("ShadowMap");
         ShadowCaster = effect.Techniques["ShadowCaster"];
@@ -38,7 +39,7 @@ internal sealed class EffectBinding
     public Effect Effect { get; }
     public long FrameStamp = -1;
     public readonly EffectParameter? ViewProj, SunDir, SunColor, AmbientSky, AmbientGround, FogColor, FogParams, Time, World, Tint, FogEnabled;
-    public readonly EffectParameter? LightPositions, LightColors, LightCount;
+    public readonly EffectParameter? LightPositions, LightColors, LightCount, LightSpots;
     public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
     public readonly EffectParameter? ShadowViewProj, ShadowParams, ShadowMap;   // issue 4h-4
     public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
@@ -47,6 +48,7 @@ internal sealed class EffectBinding
     // with a thousand items would otherwise allocate two arrays a thousand times (02 §4.6).
     private readonly Vector3[] _positions = new Vector3[LightRules.PerObject];
     private readonly Vector4[] _colours = new Vector4[LightRules.PerObject];
+    private readonly Vector4[] _spots = new Vector4[LightRules.PerObject];
 
     public void SetLights(ReadOnlySpan<LightSample> chosen)
     {
@@ -56,6 +58,7 @@ internal sealed class EffectBinding
         {
             _positions[i] = new Vector3(chosen[i].Position.X, chosen[i].Position.Y, chosen[i].Position.Z);
             _colours[i] = new Vector4(chosen[i].Colour.X, chosen[i].Colour.Y, chosen[i].Colour.Z, chosen[i].Range);
+            _spots[i] = new Vector4(chosen[i].Spot.X, chosen[i].Spot.Y, chosen[i].Spot.Z, chosen[i].Spot.W);
         }
 
         LightCount.SetValue((float)chosen.Length);
@@ -63,6 +66,7 @@ internal sealed class EffectBinding
 
         LightPositions?.SetValue(_positions);
         LightColors?.SetValue(_colours);
+        LightSpots?.SetValue(_spots);
     }
 
     public void SetFrame(in RenderView view, in EnvironmentParams env, in ShadowFrame shadow, Texture2D? shadowMap, Texture2D none)
@@ -112,9 +116,11 @@ internal sealed class MaterialRuntime
     public required RasterizerState Raster;
     public required RasterizerState RasterWire;
     public required DepthStencilState Depth;
-    public required SamplerState Sampler;
+    public required SamplerFilter Filter;      // the record's sampler; TextureSampling picks the state (issue #317)
+    public required SamplerAddress Address;
     public required float Fog;
     public EffectParameter? Albedo;   // the material's "Albedo" texture param, overridden per sprite sheet
+    public bool Surface;              // the effect draws surface maps (issue #410), in sampler slots 2 to 5
     public ulong SampledTargets;      // bit n: a param samples render target n (`rt:<name>`); not drawn into it
     public bool IsError;
     public int Drawn;        // items drawn with it in frame DrawnFrame (mat_list)
@@ -303,7 +309,9 @@ internal sealed class MaterialCache : IDisposable
         {
             if (EffectBinding.EngineParams.Contains(p.Name)) continue;
             if (PostChain.EngineParams.Contains(p.Name)) continue;   // a post effect's picture and night (issue 4h-6)
-            if (!record.Params.TryGetValue(p.Name, out var value)) { missing.Add(p.Name); continue; }
+            // A surface parameter (issue #410) comes from the record's surface fields, or a 1x1 stand-in.
+            if (!record.Params.TryGetValue(p.Name, out var value) && !MaterialSurface.TryGet(record, p.Name, out value))
+            { missing.Add(p.Name); continue; }
             string? problem = Check(p, value);
             if (problem != null) { Log.Error(LogCat.Shaders, $"Material {id}: param {p.Name}: {problem}"); return null; }
             Texture2D? texture = null;
@@ -331,6 +339,8 @@ internal sealed class MaterialCache : IDisposable
         foreach (var name in record.Params.Keys)
             if (effect.Parameters[name] == null)
                 Log.Warn(LogCat.Shaders, $"Material {id}: param '{name}' isn't used by {record.Effect} (typo?); ignored");
+        if (effect.Parameters[MaterialSurface.SurfaceParams] == null && MaterialSurface.Asked(record))
+            Log.Warn(LogCat.Shaders, $"Material {id}: {record.Effect} draws no surface maps (normalMap, specular, emissive...); they are ignored");
 
         return new MaterialRuntime
         {
@@ -350,18 +360,12 @@ internal sealed class MaterialCache : IDisposable
                 (false, false) => DepthStencilState.None,
                 _ => WriteNoTest,
             },
-            Sampler = (record.Sampler.Filter, record.Sampler.Address) switch
-            {
-                (SamplerFilter.Point, SamplerAddress.Clamp) => SamplerState.PointClamp,
-                (SamplerFilter.Point, _) => SamplerState.PointWrap,
-                (SamplerFilter.Anisotropic, SamplerAddress.Clamp) => SamplerState.AnisotropicClamp,
-                (SamplerFilter.Anisotropic, _) => SamplerState.AnisotropicWrap,
-                (_, SamplerAddress.Clamp) => SamplerState.LinearClamp,
-                _ => SamplerState.LinearWrap,
-            },
+            Filter = record.Sampler.Filter,
+            Address = record.Sampler.Address,
             Fog = record.Fog ? 1f : 0f,
             CastShadows = record.CastShadows,
             Albedo = effect.Parameters["Albedo"],
+            Surface = effect.Parameters[MaterialSurface.SurfaceParams] != null,
             SampledTargets = sampled,
         };
     }
@@ -399,7 +403,11 @@ internal sealed class MaterialCache : IDisposable
         device.BlendState = m.Blend;
         device.RasterizerState = wireframe ? m.RasterWire : m.Raster;
         device.DepthStencilState = m.Depth;
-        device.SamplerStates[0] = m.Sampler;
+        var sampler = TextureSampling.For(m.Filter, m.Address);
+        device.SamplerStates[0] = sampler;
+        // lit.fx's surface maps (issue #410) sample as the albedo does; s1 is the shadow map's (common.fxh).
+        if (m.Surface)
+            for (int slot = 2; slot <= 5; slot++) device.SamplerStates[slot] = sampler;
     }
 
 }

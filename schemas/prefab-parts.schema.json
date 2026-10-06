@@ -369,6 +369,14 @@
         }
       ]
     },
+    "orbit": {
+      "description": "Prefab part 'orbit' (OrbitPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/orbit"
+        }
+      ]
+    },
     "particles": {
       "description": "Prefab part 'particles' (ParticlesPart).",
       "allOf": [
@@ -1466,6 +1474,31 @@
           "description": "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night) (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "pattern": {
+          "description": "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. SetPattern changes it. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "patternRate": {
+          "description": "Letters of the pattern a second; 0 = 10, Quake's. Unit: 1/s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "cone": {
+          "description": "Spot light: the cone's half-angle around the entity's forward; 0 = all round (a point light) Unit: deg. Range: 0 to 179. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
+        },
+        "innerCone": {
+          "description": "Spot light: full strength inside this half-angle, fading to the cone's edge; 0 = three quarters of the cone. Unit: deg. Range: 0 to 179. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
         }
       },
       "additionalProperties": false,
@@ -1998,6 +2031,39 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'offscreen' (OffscreenPart)."
+    },
+    "orbit": {
+      "type": "object",
+      "properties": {
+        "radius": {
+          "description": "The circle's radius. Unit: m. At least 0. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0
+        },
+        "period": {
+          "description": "Seconds to go round once. Unit: s. At least 0.1. (float, default 6)",
+          "default": 6,
+          "type": "number",
+          "minimum": 0.1
+        },
+        "axis": {
+          "description": "The circle's axis, in the world; it goes round counter-clockwise looking down it. (Vector3, default [0,1,0])",
+          "default": [
+            0,
+            1,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'orbit' (OrbitPart)."
     },
     "particles": {
       "type": "object",

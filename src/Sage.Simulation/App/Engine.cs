@@ -56,10 +56,17 @@ public sealed class Engine : IDisposable
         Records.AddCheck<AnimEventsRecord>(AnimEvents.Check);
         // First-person arms name a model, and a weapon a socket (issue #121).
         Records.AddCheck<ViewmodelRecord>(ViewmodelRecord.Check);
+        // A decal names a texture and a size, lifetime and fade that make sense (issue #306).
+        Records.AddCheck<DecalRecord>(DecalRecord.Check);
         // A LOD group's levels switch one past another (issue 4n-1).
         Records.AddCheck<MeshLodRecord>(MeshLodRecord.Check);
         // A terrain material's layers, tiles and rules (issue #307).
         Records.AddCheck<TerrainMaterialRecord>(TerrainSplat.Check);
+        // A particle effect's sheet grid and collision fractions (issue 4n-6).
+        Records.AddCheck<ParticleRecord>(ParticleRecord.Check);
+        // A material's surface maps and factors (issue #410). The record type is the client's; the check
+        // runs wherever it is registered (the client, `sage validate`).
+        Records.AddCheck<MaterialRecord>(MaterialSurface.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the

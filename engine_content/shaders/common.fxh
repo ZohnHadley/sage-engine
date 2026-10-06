@@ -35,7 +35,16 @@ float4 Tint;            // premultiplied colour multiplier
 #define MAX_LIGHTS 4
 float3 LightPositions[MAX_LIGHTS];
 float4 LightColors[MAX_LIGHTS];     // rgb = colour x intensity, a = range in metres
+float4 LightSpots[MAX_LIGHTS];      // a spot light's cone (issue #314): LightSample.Spot; 0 = all round
 float LightCount;
+
+// How much of light i's cone reaches a point `fromLight` (unit, light to point) away: `LightSample.ConeAt`,
+// whose tests are this function's. xyz = cone direction x s, w = cos(inner) x s, s = 1 / (cos inner - cos
+// outer); a point light is all zeros, which is 1 everywhere.
+float SpotCone(int i, float3 fromLight)
+{
+    return 1.0 - saturate(LightSpots[i].w - dot(fromLight, LightSpots[i].xyz));
+}
 
 // ---- Object: a skinned draw's joint palette (issue #117) ----
 //
@@ -84,7 +93,8 @@ float3 SunLight(float3 n)
 
 // What the nearby lamps add. Falloff is (1 - d/range) squared: nothing outside the range, and a curve
 // that looks like light rather than like a cone. Lambert against the surface normal, the same as the
-// sun, so a wall facing away from a lamp stays dark and a room reads as a room.
+// sun, so a wall facing away from a lamp stays dark and a room reads as a room. A spot light is the same
+// light inside its cone (SpotCone). `LightRules.Sum` is this on the CPU, and its tests are this function's.
 float3 PointLights(float3 n, float3 relative)
 {
     float3 sum = float3(0, 0, 0);
@@ -99,8 +109,9 @@ float3 PointLights(float3 n, float3 relative)
         if (distance >= range) continue;
 
         float falloff = 1.0 - distance / max(range, 0.001);
-        float lambert = saturate(dot(n, toLight / max(distance, 0.001)));
-        sum += LightColors[i].rgb * (falloff * falloff * lambert);
+        float3 l = toLight / max(distance, 0.001);
+        float lambert = saturate(dot(n, l));
+        sum += LightColors[i].rgb * (falloff * falloff * lambert * SpotCone(i, -l));
     }
 
     return sum;

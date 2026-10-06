@@ -31,6 +31,11 @@ public readonly record struct HitResult(Entity Target, Vector3 Point, Vector3 No
     // A bare damage request as a landing: where it says, on what it says.
     public static HitResult Of(in DamageInfo damage) =>
         new(damage.Target, damage.Point, -damage.Direction, damage.Target, damage.Location);
+
+    // What the thing it met is made of (a physics_material, issue #270): the collider's, the brush face's
+    // or the terrain layer's, as the query reported it; empty when nobody said, and for a miss. Its
+    // `impact` cue is raised where the strike lands (issue #306).
+    public RecordId Surface { get; init; }
 }
 
 // How an attack gets to what it hits, as an open vocabulary beside `ability_delivery` (issue #133). The
@@ -108,7 +113,7 @@ public static class Hits
             var box = space.Sweep(sphere, from, aim, reach, boxes, ignore: attacker);
             if (box.Hit && Hitboxes.Landed(attacker, box.Entity, box.Distance, solid ? hit.Entity : default, hit.Distance, out var struck))
             {
-                result = new HitResult(struck.Owner, origin + aim * box.Distance, box.Normal, box.Entity, struck.Location);
+                result = new HitResult(struck.Owner, origin + aim * box.Distance, box.Normal, box.Entity, struck.Location) { Surface = box.Surface };
                 return true;
             }
         }
@@ -118,7 +123,7 @@ public static class Hits
             result = new HitResult(default, origin + aim * reach, -aim, default, default);
             return false;
         }
-        result = new HitResult(hit.Entity, origin + aim * hit.Distance, hit.Normal, hit.Entity, default);
+        result = new HitResult(hit.Entity, origin + aim * hit.Distance, hit.Normal, hit.Entity, default) { Surface = hit.Surface };
         return true;
     }
 
@@ -136,7 +141,7 @@ public static class Hits
             var box = space.Raycast(origin, aim, range, boxes, ignore: attacker);
             if (box.Hit && Hitboxes.Landed(attacker, box.Entity, box.Distance, solid ? hit.Entity : default, hit.Distance, out var struck))
             {
-                result = new HitResult(struck.Owner, box.Position, box.Normal, box.Entity, struck.Location);
+                result = new HitResult(struck.Owner, box.Position, box.Normal, box.Entity, struck.Location) { Surface = box.Surface };
                 return true;
             }
         }
@@ -146,7 +151,7 @@ public static class Hits
             result = new HitResult(default, origin + aim * range, -aim, default, default);
             return false;
         }
-        result = new HitResult(hit.Entity, hit.Position, hit.Normal, hit.Entity, default);
+        result = new HitResult(hit.Entity, hit.Position, hit.Normal, hit.Entity, default) { Surface = hit.Surface };
         return true;
     }
 
@@ -270,6 +275,9 @@ internal sealed class SweepDelivery : IHitDelivery
         }
 
         if (connects) hit.Land(result);
+        // Whatever it really struck makes its surface's noise and mark (issue #306): scenery the swing
+        // stopped against, or the target it connected with — not one outside its arc.
+        if (found && (connects || !Hits.CanBeHurt(world, result.Target))) Impacts.Raise(world, request.Attacker, in result);
     }
 
     // Did the sweep find something this swing is allowed to hurt? A target dead ahead is the easy case;
@@ -300,6 +308,7 @@ internal sealed class RayDelivery : IHitDelivery
             bool hurts = found && Hits.CanBeHurt(hit.World, result.Target);
             hit.Debug?.Line(request.Origin, result.Point, hurts ? DebugColour.Green : DebugColour.Red, 0.6f);
             if (hurts) hit.Land(result);
+            if (found) Impacts.Raise(hit.World, request.Attacker, in result);   // a hole in the wall (issue #306)
         }
     }
 }
@@ -314,5 +323,22 @@ internal sealed class ProjectileHitDelivery : IHitDelivery
         int pellets = Math.Max(1, hit.Attack.Pellets);
         for (int p = 0; p < pellets; p++)
             Hits.Launch(hit.World, hit.Request with { Aim = hit.PelletAim(p) }, hit.Attack);
+    }
+}
+
+// A strike meeting a surface raises that surface's `impact` cue (PhysicsMaterialRecord.Impact, issue
+// #270; raised since issue #306) with the surface's normal, so its sound, its dust and its decal — a
+// bullet hole in plaster, a dent in wood — are the surface's content, not the weapon's.
+internal static class Impacts
+{
+    public static void Raise(World world, Entity source, in HitResult result) =>
+        Raise(world, source, result.Point, result.Normal, result.Surface);
+
+    public static void Raise(World world, Entity source, Vector3 point, Vector3 normal, RecordId surface)
+    {
+        if (surface.IsEmpty || !world.Resources.TryGet<RecordStore>(out var records) || records == null) return;
+        if (records.TypeNameOf(typeof(PhysicsMaterialRecord)) == null) return;
+        if (!records.TryGet(surface, out PhysicsMaterialRecord material) || material.Impact.IsEmpty) return;
+        world.Events.Send(new CueTriggered(material.Impact, source, point) { Normal = normal });
     }
 }

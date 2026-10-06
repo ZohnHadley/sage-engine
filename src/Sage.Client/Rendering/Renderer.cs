@@ -91,6 +91,7 @@ public sealed class Renderer : IDisposable
     private readonly CVar<bool> _fog;
     private readonly CVar<bool> _spriteFaceCamera;
     private readonly CVar<bool> _wireframe;
+    private readonly CVar<int> _anisotropy;
     private readonly CVar<bool> _freezeCull;
     private readonly CVar<bool> _debugThroughWalls;
     private readonly Engine _engine;
@@ -152,6 +153,7 @@ public sealed class Renderer : IDisposable
         var cvars = engine.CVars;
         _fog = settings.Fog;
         _wireframe = settings.Wireframe;
+        _anisotropy = settings.Anisotropy;
         _spriteFaceCamera = settings.SpriteFaceCamera;
         _freezeCull = settings.FreezeCull;
         _debugThroughWalls = settings.DebugThroughWalls;
@@ -406,7 +408,7 @@ public sealed class Renderer : IDisposable
             }
             else
             {
-                vb = new VertexBuffer(_device, VertexPositionNormalTexture.VertexDeclaration, loaded.Rigid!.Length, BufferUsage.WriteOnly);
+                vb = new VertexBuffer(_device, VertexMesh.VertexDeclaration, loaded.Rigid!.Length, BufferUsage.WriteOnly);
                 vb.SetData(loaded.Rigid);
             }
             var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, loaded.Indices.Length, BufferUsage.WriteOnly);
@@ -550,6 +552,7 @@ public sealed class Renderer : IDisposable
         Plan(s);
         _sprites.FaceCameraPosition = _spriteFaceCamera.Value;
         _wire = _wireframe.Value;
+        TextureSampling.Anisotropy = _anisotropy.Value;   // the samplers materials pick from (issue #317)
         var clear = new Color(s.Environment.ClearColor);   // the horizon's colour; `sage:sky` draws over it when the world has a sky (4h-5)
         var ctx = Begin(world, s, screen, extracting: false);
         _shadow.Drawn = false;   // until `sage:shadow` draws this world's map
@@ -897,9 +900,10 @@ public sealed class Renderer : IDisposable
     {
         var s = ctx.Snapshot;
         ref var view = ref s.Views[ctx.View];
-        var lights = s.Lights.AsSpan().Slice(view.LightStart, view.LightCount);
-        DrawItems(s, view, lights, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
-        DrawSprites(s, view, lights, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
+        // The view's lights, bucketed by cell (issue #314): each draw looks at the lamps that reach it.
+        _lightGrid.Build(s.Lights.AsSpan().Slice(view.LightStart, view.LightCount));
+        DrawItems(s, view, _lightGrid, ctx.ItemFrom, ctx.ItemTo, _wire, ref _stats);
+        DrawSprites(s, view, _lightGrid, ctx.SpriteFrom, ctx.SpriteTo, _wire, ref _stats);
     }
 
     // `sage:debug` (06 §3.4, pass 5): debug geometry, over everything the world drew and under the UI.
@@ -1044,7 +1048,9 @@ public sealed class Renderer : IDisposable
         return m;
     }
 
-    private void DrawItems(RenderSnapshot s, in RenderView view, ReadOnlySpan<LightSample> lights, int from, int to, bool wire, ref RenderStats stats)
+    private readonly LightGrid _lightGrid = new();
+
+    private void DrawItems(RenderSnapshot s, in RenderView view, LightGrid lights, int from, int to, bool wire, ref RenderStats stats)
     {
         for (int k = from; k < to; k++)
         {
@@ -1060,7 +1066,7 @@ public sealed class Renderer : IDisposable
             // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
             // translation is where it is relative to the camera — the same frame the view's lights are in.
             var at = new System.Numerics.Vector3(item.World.M41, item.World.M42, item.World.M43);
-            int lit = LightRules.Nearest(lights, at, _lights);
+            int lit = lights.Nearest(at, _lights);
             m.Effect.SetLights(_lights.AsSpan(0, lit));
             if (lit > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = lit;
             var part = Mesh(item.Mesh).Parts[item.Part];
@@ -1106,7 +1112,7 @@ public sealed class Renderer : IDisposable
     // A run of sprites sharing a material and a texture is one draw, split where the lamps lighting them
     // change (06 §3.9): a draw carries one set of four, so sprites far from any lamp still batch, and
     // only the ones in a lamp's reach pay for their own lights.
-    private void DrawSprites(RenderSnapshot s, in RenderView view, ReadOnlySpan<LightSample> lights, int from, int to, bool wire, ref RenderStats stats)
+    private void DrawSprites(RenderSnapshot s, in RenderView view, LightGrid lights, int from, int to, bool wire, ref RenderStats stats)
     {
         int run = from;
         while (run < to)
@@ -1127,18 +1133,18 @@ public sealed class Renderer : IDisposable
                 m.Drawn += end - run;
                 m.Effect.World?.SetValue(Matrix.Identity);   // sprite vertices are already in camera-relative space
                 m.Effect.Tint?.SetValue(Vector4.One);
-                bool lit = m.Effect.LightCount != null && lights.Length > 0;
+                bool lit = m.Effect.LightCount != null && lights.Count > 0;
                 int start = run;
                 while (start < end)
                 {
                     int stop = end, count = 0;
                     if (lit)
                     {
-                        count = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[start]]), _lights);
+                        count = lights.Nearest(LitAt(s.Sprites[s.SpriteOrder[start]]), _lights);
                         stop = start + 1;
                         while (stop < end)
                         {
-                            int c = LightRules.Nearest(lights, LitAt(s.Sprites[s.SpriteOrder[stop]]), _nextLights);
+                            int c = lights.Nearest(LitAt(s.Sprites[s.SpriteOrder[stop]]), _nextLights);
                             if (!LightRules.SameSet(_lights.AsSpan(0, count), _nextLights.AsSpan(0, c))) break;
                             stop++;
                         }
@@ -1223,6 +1229,8 @@ internal sealed class RendererCVars
     public readonly CVar<bool> PostGrade;
     public readonly CVar<bool> PostVignette;
 
+    // Texture filtering (issue #317): the anisotropy smooth-filtered materials sample with.
+    public readonly CVar<int> Anisotropy;
     // The per-frame upload budget for streamed content (05 §3.4, issue #308).
     public readonly CVar<float> UploadMs;
 
@@ -1255,6 +1263,10 @@ internal sealed class RendererCVars
             "The colour grade and exposure post effect (sage:grade), with the sky's night tint; needs r_post 1.");
         PostVignette = cvars.Register("r_post_vignette", true, CVarFlags.Archive,
             "The vignette post effect (sage:vignette); needs r_post 1.");
+        Anisotropy = cvars.Register("r_anisotropy", 4, CVarFlags.Archive,
+            "Anisotropic filtering for materials with a Linear or Anisotropic sampler (issue #317): up to this many taps along a " +
+            "surface seen at a slant, so a floor stays sharp into the distance; 1 is plain trilinear. Point-sampled pixel art is not affected.",
+            1, TextureSampling.MaxAnisotropy);
         UploadMs = cvars.Register("asset_upload_ms", 2f, CVarFlags.Archive,
             "Milliseconds a frame may spend loading a streaming world's meshes and textures (05 §3.4); what does not fit waits " +
             "for the next frame. The first load of a frame always starts; 0 is no budget.", 0f, 100f);

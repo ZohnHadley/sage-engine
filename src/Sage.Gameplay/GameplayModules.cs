@@ -159,6 +159,7 @@ public sealed class LightsModule : IModule
     internal const string TurnOn = "TurnOn";
     internal const string TurnOff = "TurnOff";
     internal const string Toggle = "Toggle";
+    internal const string SetPattern = "SetPattern";
 
     // LightPart is declared ([PrefabPart], issue #17). The switch is entity I/O (issue 4h-7), routed to
     // lights so a branch's or a door's `Toggle` is untouched: a lamp lit at night is a state machine whose
@@ -172,6 +173,18 @@ public sealed class LightsModule : IModule
         {
             ref var light = ref world.Get<PointLight>(io.Self);
             light.Off = !light.Off;
+        });
+        // A flicker (issue #314): the parameter is a pattern or a preset (LightStyles), empty for steady.
+        // One that is neither is refused with a warning, and the light keeps what it had.
+        inputs.Register<PointLight>(SetPattern, static (World world, in IOContext io) =>
+        {
+            string pattern = io.Parameter ?? "";
+            if (!LightStyles.TryResolve(pattern, out _))
+            {
+                Log.Warn(LogCat.Gameplay, $"{World.Describe(io.Self)}: SetPattern \"{pattern}\" is neither letters a..z nor a preset ({string.Join(", ", LightStyles.PresetNames)})");
+                return;
+            }
+            world.Get<PointLight>(io.Self).Pattern = pattern.Length == 0 ? null : pattern;
         });
     }
 }
@@ -235,6 +248,7 @@ public sealed class CombatModule : IModule
         world.AddSystem(new DamageOutputSystem(world));     // OnDamaged (issue #91)
         world.AddSystem(new HitboxCleanupSystem(world));    // a hitbox goes with its owner (issue #137)
         world.AddSystem(new HitboxBudgetSystem(world, _records!));   // far creatures' hitboxes off (issue #273)
+        world.AddSystem(new DecalSystem(world, _records!));   // marks that stay, in a world with a Decals pool (issue #306)
         // The first-person arms follow the attack in hand and hear the swing and Reload (issue #121);
         // their clip events are the animator's, like everyone's (issue #119).
         world.AddSystem(new ViewmodelCombatSystem(world, _records!, _actions!));
