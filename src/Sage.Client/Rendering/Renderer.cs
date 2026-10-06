@@ -80,13 +80,11 @@ public sealed class Renderer : IDisposable
 {
     private readonly GraphicsDevice _device;
     private readonly ContentService _content;
-    private readonly List<MeshData> _meshes = new();
-    private readonly Dictionary<AssetPath, int> _meshIds = new();
+    // Meshes by stable id (issue #308): 0 is the error mesh, a freed slot is reused, ids never shift.
+    private readonly AssetTable<MeshData> _meshes;
 
     // Scratch for the per-draw light selection, so a frame of a thousand items allocates nothing.
     private readonly LightSample[] _lights = new LightSample[LightRules.PerObject];
-    private readonly List<Texture2D> _textures = new();
-    private readonly Dictionary<AssetPath, int> _textureIds = new();
     private readonly SpriteBatcher _sprites;
     private readonly DebugLineBatch _debugLines;
     private readonly SkyDome _sky;
@@ -137,17 +135,16 @@ public sealed class Renderer : IDisposable
         engine.Records.Reloaded += Materials.Invalidate;
         _post = new PostChain(engine.Records, engine.CVars, settings, Materials);
 
-        // An asset changed on disk (05 §3.6, F32). The renderer holds textures by index and a built
-        // material holds them by reference, so both have to let go: the table is repointed at the new
-        // object and every material is rebuilt lazily, which also picks up a reloaded effect.
-        content.Reloaded += path =>
-        {
-            if (_textureIds.TryGetValue(path, out int id) && _content.LoadTexture(path) is { } texture)
-                _textures[id] = texture;
-            Materials.Invalidate();
-        };
-        _meshes.Add(CreateErrorMesh(_device));    // id 0
-        _textures.Add(Materials.MissingTexture);  // id 0: the checker placeholder
+        // An asset changed on disk (05 §3.6, F32). Textures are held by id in the content service's table,
+        // which swaps the new one into the same slot; a built material holds them by reference, so every
+        // material is rebuilt lazily, which also picks up a reloaded effect. An evicted texture (#308) the
+        // same.
+        content.Reloaded += _ => Materials.Invalidate();
+        content.Evicted += _ => Materials.Invalidate();
+        _meshes = new AssetTable<MeshData>(CreateErrorMesh(_device));   // id 0
+        _loadMesh = LoadMesh;
+        Budget.MillisecondsPerFrame = settings.UploadMs.Value;
+        settings.UploadMs.Changed += _ => Budget.MillisecondsPerFrame = settings.UploadMs.Value;
         _sprites = new SpriteBatcher(_device);
         _debugLines = new DebugLineBatch(_device);
         _sky = new SkyDome(_device);
@@ -163,8 +160,8 @@ public sealed class Renderer : IDisposable
                                      $"triangles {LastFrame.Triangles}, material switches {LastFrame.MaterialSwitches}, " +
                                      $"lights {LastFrame.Lights} (max {LastFrame.MaxLightsOnADraw} on a draw), skinned {LastFrame.Skinned} ({LastFrame.Bones} bones), " +
                                      $"shadow casters {LastFrame.ShadowCasters}{(settings.Shadows.Value ? "" : " (r_shadows 0)")}, " +
-                                     $"fog culled {LastFrame.FogCulled}, lod culled {LastFrame.LodCulled}, lod lowered {LastFrame.LodLowered}, skies {LastFrame.Skies}; " +
-                                     $"{_meshes.Count - 1} meshes, {_textures.Count - 1} textures, {Materials.Count} materials" + PostStats()));
+                                      $"fog culled {LastFrame.FogCulled}, lod culled {LastFrame.LodCulled}, lod lowered {LastFrame.LodLowered}, skies {LastFrame.Skies}; " +
+                                      $"{_meshes.Count} meshes, {_content.Textures.Count} textures, {Materials.Count} materials" + PostStats()));
         cvars.RegisterCommand("mat_list", CVarFlags.None, "List materials: id, effect, technique, pass, items drawn last frame.", _ =>
         {
             foreach (var (id, record, m) in Materials.Entries)
@@ -253,78 +250,111 @@ public sealed class Renderer : IDisposable
     internal bool FogEnabled => _fog.Value;
     internal bool FreezeCull => _freezeCull.Value;
 
+    // ---- Asset scopes (issue #308) ----
+
+    // The upload budget streamed content loads within (`asset_upload_ms`), and what the sectors of every
+    // world released, collected at the safe point below.
+    internal UploadBudget Budget { get; } = new();
+    internal AssetReleases Releases { get; } = new();
+    internal AssetTable<MeshData> Meshes => _meshes;
+    private long _assetFrame = -1;
+    private readonly Func<AssetPath, (MeshData?, long)> _loadMesh;   // made once: resolving is per item per frame
+
+    // The frame's safe point for assets: FrameUpdate, before any world extracts, so no snapshot holds an
+    // id or a buffer freed here (AssetScopeSystem; once a frame however many worlds run it). Frees what the
+    // sectors released that no world holds now, and the UI's pictures no screen has drawn for a while, and
+    // starts the frame's upload budget.
+    internal void BeginAssetFrame(long frame)
+    {
+        if (frame == _assetFrame) return;
+        _assetFrame = frame;
+        _content.Frame = frame;
+        Budget.BeginFrame(frame);
+        int freed = Releases.Collect(_engine.Worlds, Evict);
+        freed += _content.EvictUnusedUi();
+        if (freed > 0) Log.Debug(LogCat.Assets, $"{freed} asset(s) evicted; {_meshes.Count} meshes and {_content.Textures.Count} textures loaded");
+    }
+
+    // Frees one released asset when it is loaded at a scope a sector lets go of.
+    private bool Evict(AssetKey key) => key.Type == AssetType.Mesh ? EvictMesh(key.Path) : _content.EvictTexture(key.Path);
+
+    // The scope a world's content loads at: a streaming world's is the sectors' (released with them, and
+    // within the upload budget), any other world's is the game's.
+    internal static AssetScope ScopeOf(World world) =>
+        world.Resources.TryGet<SectorAssets>(out var assets) && assets != null ? AssetScope.Sector : AssetScope.Game;
+
     // ---- Meshes ----
 
-    // The mesh id for an asset path, loading it on first use. Missing → 0, the error mesh (06 §8).
+    // The mesh id for an asset path, loading it on first use, at the game's scope (never budgeted).
+    // Missing → 0, the error mesh (06 §8).
     //
     // **Read at runtime** (R12): the file comes off a VFS mount as bytes and becomes buffers here, so a
     // model can come from a mod, a downloaded asset or a folder somebody dropped a file into — none of
     // which a build-time content pipeline can see.
-    internal int ResolveMesh(AssetPath path)
+    internal int ResolveMesh(AssetPath path) => ResolveMesh(path, AssetScope.Game);
+
+    internal int ResolveMesh(AssetPath path, AssetScope scope)
     {
-        if (_meshIds.TryGetValue(path, out int id)) return id;
-        id = 0;
-
-        // The cooked .sgmesh when the package has one (issue #302), else the .glb.
-        var geometry = _content.LoadModel(path);
-        if (geometry == null)
-            Log.Warn(LogCat.Render, $"Mesh '{path}' unavailable or unreadable; drawing the error mesh");
-        else
-        {
-            var mesh = BuildMesh(path.ToString(), geometry);
-            _meshes.Add(mesh);
-            id = _meshes.Count - 1;
-        }
-
-                _meshIds[path] = id;
+        TryResolveMesh(path, scope, budgeted: false, out int id);
         return id;
     }
 
-    internal MeshData Mesh(int id) => _meshes[id];
+    // As ResolveMesh, but a Sector-scoped load waits for a frame with upload budget left (05 §3.4): false
+    // means "not loaded yet, draw nothing for it this frame".
+    internal bool TryResolveMesh(AssetPath path, AssetScope scope, out int id) => TryResolveMesh(path, scope, budgeted: true, out id);
 
-    // Frees a model's buffers (#277: the sector that used it left, SectorAssets). Its slot draws the error
-    // mesh from now on, and the path loads afresh the next time something resolves it. A mesh registered
-    // from a stream (RegisterMesh) is not on a mount to load again, so it is kept.
-    internal bool UnloadMesh(AssetPath path)
+    private bool TryResolveMesh(AssetPath path, AssetScope scope, bool budgeted, out int id) =>
+        _meshes.TryResolve(path, scope, _assetFrame, budgeted ? Budget : null, _loadMesh, out id);
+
+    // The cooked .sgmesh when the package has one (issue #302), else the .glb; the error mesh when neither.
+    private (MeshData?, long) LoadMesh(AssetPath path)
     {
-        if (_registered.Contains(path) || !_meshIds.Remove(path, out int id)) return false;
-        if (id == 0) return true;
-        var mesh = _meshes[id];
-        if (mesh.Owned)
-            foreach (var part in mesh.Parts)
-            {
-                part.VertexBuffer.Dispose();
-                part.IndexBuffer.Dispose();
-            }
-        _meshes[id] = _meshes[0];
-        Log.Debug(LogCat.Render, $"Mesh '{path}' unloaded: nothing draws it now");
+        var geometry = _content.LoadModel(path);
+        if (geometry == null)
+        {
+            Log.Warn(LogCat.Render, $"Mesh '{path}' unavailable or unreadable; drawing the error mesh");
+            return (null, 0);
+        }
+        return (BuildMesh(path.ToString(), geometry, out long bytes), bytes);
+    }
+
+    internal MeshData Mesh(int id) => _meshes[id]!;
+
+    // Frees a model's buffers when it is loaded at a scope a sector lets go of (#277, #308). Its slot is
+    // reused by a later load, and the path loads afresh the next time something resolves it. A mesh
+    // registered from a stream (RegisterMesh) is the engine's: it is not on a mount to load again.
+    internal bool EvictMesh(AssetPath path)
+    {
+        if (!_meshes.TryEvict(path, out var mesh) || mesh == null) return false;
+        Dispose(mesh);
+        Log.Debug(LogCat.Render, $"Mesh '{path}' evicted: nothing draws it now");
         return true;
     }
 
-    private readonly HashSet<AssetPath> _registered = new();
-
-    // A .glb that is not on a mount (the generated `r_testskin` model), under a name nothing else uses:
-    // afterwards `path` resolves to it like any other mesh.
-    internal int RegisterMesh(AssetPath path, System.IO.Stream stream)
+    private static void Dispose(MeshData mesh)
     {
-        if (_meshIds.TryGetValue(path, out int id) && id != 0) return id;
-        _registered.Add(path);
-        return _meshIds[path] = LoadMesh(path.ToString(), stream);
+        if (!mesh.Owned) return;
+        foreach (var part in mesh.Parts)
+        {
+            part.VertexBuffer.Dispose();
+            part.IndexBuffer.Dispose();
+        }
     }
 
-    // A .glb → buffers, one part per primitive: rigid parts as VertexPositionNormalTexture with the
-    // file's hierarchy baked in, skinned ones as VertexSkinned in bind space (issue #117). 0 (the
-    // error mesh) when it cannot be read.
-    private int LoadMesh(string name, System.IO.Stream stream)
+    // A .glb that is not on a mount (the generated `r_testskin` model), under a name nothing else uses:
+    // afterwards `path` resolves to it like any other mesh. The engine's scope: never evicted.
+    internal int RegisterMesh(AssetPath path, System.IO.Stream stream)
     {
-        var geometry = MeshGeometry.ReadGlb(stream, name);
+        if (_meshes.TryFind(path, out int id) && id != 0) return id;
+        _meshes.Forget(path);
+        var geometry = MeshGeometry.ReadGlb(stream, path.ToString());
         if (geometry == null)
         {
-            Log.Warn(LogCat.Render, $"Mesh '{name}' could not be read; drawing the error mesh");
+            Log.Warn(LogCat.Render, $"Mesh '{path}' could not be read; drawing the error mesh");
+            _meshes.AddFailed(path);
             return 0;
         }
-        _meshes.Add(BuildMesh(name, geometry));
-        return _meshes.Count - 1;
+        return _meshes.Add(path, BuildMesh(path.ToString(), geometry, out long bytes), AssetScope.Engine, bytes, _assetFrame);
     }
 
     // Hot reload of a `.glb` (issue 4h-3): the file is read again and the mesh replaces the old one *in
@@ -334,10 +364,11 @@ public sealed class Renderer : IDisposable
     // Runs in FrameUpdate, before Extract and Render, so no snapshot holds an index into the old parts.
     internal bool ReloadMesh(AssetPath path)
     {
-        if (!_meshIds.TryGetValue(path, out int id)) return false;
+        if (!_meshes.TryFind(path, out int id)) return false;
 
         var geometry = _content.LoadModel(path);
-        var fresh = geometry == null ? null : BuildMesh(path.ToString(), geometry);
+        long bytes = 0;
+        var fresh = geometry == null ? null : BuildMesh(path.ToString(), geometry, out bytes);
         if (fresh == null)
         {
             Log.Warn(LogCat.Render, $"Mesh '{path}' did not reload; keeping the copy already loaded");
@@ -346,26 +377,21 @@ public sealed class Renderer : IDisposable
 
         if (id == 0)
         {
-            _meshes.Add(fresh);
-            _meshIds[path] = _meshes.Count - 1;
+            _meshes.Forget(path);
+            _meshes.Add(path, fresh, AssetScope.Game, bytes, _assetFrame);
             return true;
         }
 
-        var old = _meshes[id];
-        _meshes[id] = fresh;
-        if (old.Owned)
-            foreach (var part in old.Parts)
-            {
-                part.VertexBuffer.Dispose();
-                part.IndexBuffer.Dispose();
-            }
+        var old = _meshes.Replace(id, fresh, bytes);
+        if (old != null) Dispose(old);
         return true;
     }
 
     // The buffers for a model's geometry (a .glb read, or its cooked .sgmesh), not yet in the table. The
     // headless vertex structs are laid out as MonoGame's, so the arrays go to the buffers as they are.
-    private MeshData BuildMesh(string name, MeshGeometry model)
+    private MeshData BuildMesh(string name, MeshGeometry model, out long bytes)
     {
+        bytes = 0;
         var bounds = new BoundingSphere(model.BoundsCentre, model.BoundsRadius);   // System.Numerics → MonoGame (implicit)
         var parts = new List<MeshPart>(model.Parts.Count);
         bool skinned = false;
@@ -385,7 +411,9 @@ public sealed class Renderer : IDisposable
             }
             var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, loaded.Indices.Length, BufferUsage.WriteOnly);
             ib.SetData(loaded.Indices);
-            WorkStats.Uploaded((long)vb.VertexCount * vb.VertexDeclaration.VertexStride + loaded.Indices.Length * 4L);
+            long size = (long)vb.VertexCount * vb.VertexDeclaration.VertexStride + loaded.Indices.Length * 4L;
+            WorkStats.Uploaded(size);
+            bytes += size;
 
             parts.Add(new MeshPart
             {
@@ -421,7 +449,8 @@ public sealed class Renderer : IDisposable
         vb.SetData(vertices.ToArray());
         var ib = new IndexBuffer(_device, IndexElementSize.ThirtyTwoBits, indices.Length, BufferUsage.WriteOnly);
         ib.SetData(indices.ToArray());
-        WorkStats.Uploaded((long)vertices.Length * declaration.VertexStride + indices.Length * 4L);   // `stat render` (issue #300)
+        long bytes = (long)vertices.Length * declaration.VertexStride + indices.Length * 4L;
+        WorkStats.Uploaded(bytes);   // `stat render` (issue #300)
         var part = new MeshPart
         {
             VertexBuffer = vb,
@@ -429,8 +458,8 @@ public sealed class Renderer : IDisposable
             PrimitiveCount = indices.Length / 3,
             Bounds = bounds,
         };
-        _meshes.Add(new MeshData { Name = name, Parts = new[] { part }, Owned = true });
-        return new MeshHandle(_meshes.Count - 1);
+        // The game's scope: the code that made it destroys it (a sector's chunks with the sector, #277).
+        return new MeshHandle(_meshes.Add(default, new MeshData { Name = name, Parts = new[] { part }, Owned = true }, AssetScope.Game, bytes, _assetFrame));
     }
 
     // A box mesh, for props and debug geometry.
@@ -462,45 +491,31 @@ public sealed class Renderer : IDisposable
         }
     }
 
+    // Frees a built mesh. Its slot is reused by a later mesh (#308), so a handle must not be drawn after
+    // it is destroyed: the entity holding it goes with it (a sector's chunks, a level's brushes).
     public void DestroyMesh(MeshHandle handle)
     {
-        if (handle.IsEmpty || handle.Id >= _meshes.Count) return;
-        var mesh = _meshes[handle.Id];
-        if (mesh.IsError) return;
-        foreach (var part in mesh.Parts)
-        {
-            part.VertexBuffer.Dispose();
-            part.IndexBuffer.Dispose();
-        }
-        _meshes[handle.Id] = _meshes[0];   // the slot keeps its id; anything still drawing it gets the error mesh
+        if (handle.IsEmpty || !_meshes.IsLive(handle.Id) || !_meshes.EntryAt(handle.Id).Path.IsEmpty) return;
+        if (_meshes.Remove(handle.Id) is { } mesh) Dispose(mesh);
     }
 
-    // The texture id for an asset path, loading it on first use. Missing → 0, the checker (05 §8).
-    internal int ResolveTexture(AssetPath path)
-    {
-        if (_textureIds.TryGetValue(path, out int id)) return id;
-        var texture = _content.LoadTexture(path);
-        if (texture == null)
-        {
-            id = 0;
-        }
-        else
-        {
-            id = _textures.Count;
-            _textures.Add(texture);
-        }
-        _textureIds[path] = id;
-        return id;
-    }
+    // The texture id for an asset path (the content service's table), loading it on first use at the
+    // game's scope. Missing → 0, the checker (05 §8).
+    internal int ResolveTexture(AssetPath path) => _content.ResolveTexture(path, AssetScope.Game);
 
-    internal Texture2D Texture(int id) => _textures[id];
+    // As ResolveTexture at a scope, a Sector-scoped load waiting for a frame with upload budget left
+    // (05 §3.4): false means "not loaded yet, draw nothing for it this frame".
+    internal bool TryResolveTexture(AssetPath path, AssetScope scope, out int id) =>
+        _content.TryResolveTexture(path, scope, Budget, out id);
+
+    internal Texture2D Texture(int id) => _content.Textures[id]!;
 
     // The frame's atlas rect as UVs in its texture (flipped horizontally for mirrored directions),
     // and its pivot as a 0..1 position inside the quad. Both need the texture size, which only the
     // client knows, so extract asks for them here.
     internal Vector4 Uv(int texture, SpriteFrame frame, bool flipU)
     {
-        var t = _textures[texture];
+        var t = Texture(texture);
         var (x, y, w, h) = RectOf(frame, t);
         // Half-texel inset: without it the quad's edge pixels sample the neighbouring frame in the
         // atlas (the classic sprite-sheet bleed).
@@ -512,7 +527,7 @@ public sealed class Renderer : IDisposable
 
     internal Vector2 Pivot(int texture, SpriteFrame frame)
     {
-        var (_, _, w, h) = RectOf(frame, _textures[texture]);
+        var (_, _, w, h) = RectOf(frame, Texture(texture));
         if (frame.Pivot.Length < 2) return new Vector2(0.5f, 1f);   // default: bottom centre (the feet)
         return new Vector2(frame.Pivot[0] / (float)w, frame.Pivot[1] / (float)h);
     }
@@ -530,7 +545,7 @@ public sealed class Renderer : IDisposable
             Items = s.Items.Count, Sprites = s.Sprites.Count, Culled = s.Culled, FogCulled = s.FogCulled, Lights = s.Lights.Count,
             LodCulled = s.Lod.Culled, LodLowered = s.Lod.Lowered,
             Bones = s.Bones.Count,
-            Meshes = _meshes.Count - 1, Textures = _textures.Count - 1, Materials = Materials.Count,
+            Meshes = _meshes.Count, Textures = _content.Textures.Count, Materials = Materials.Count,
         };
         Plan(s);
         _sprites.FaceCameraPosition = _spriteFaceCamera.Value;
@@ -969,7 +984,7 @@ public sealed class Renderer : IDisposable
             }
             caster.World?.SetValue(item.World);
             effect.CurrentTechnique = technique;
-            var part = _meshes[item.Mesh].Parts[item.Part];
+            var part = Mesh(item.Mesh).Parts[item.Part];
             _device.SetVertexBuffer(part.VertexBuffer);
             _device.Indices = part.IndexBuffer;
             foreach (var pass in technique.Passes)
@@ -1048,7 +1063,7 @@ public sealed class Renderer : IDisposable
             int lit = LightRules.Nearest(lights, at, _lights);
             m.Effect.SetLights(_lights.AsSpan(0, lit));
             if (lit > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = lit;
-            var part = _meshes[item.Mesh].Parts[item.Part];
+            var part = Mesh(item.Mesh).Parts[item.Part];
             _device.SetVertexBuffer(part.VertexBuffer);
             _device.Indices = part.IndexBuffer;
             foreach (var pass in technique.Passes)
@@ -1132,7 +1147,7 @@ public sealed class Renderer : IDisposable
                     if (count > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = count;
                     foreach (var pass in m.Technique.Passes)
                     {
-                        int draws = _sprites.Draw(s.Sprites, s.SpriteOrder, start, stop - start, _textures[texture], pass, m.Albedo);
+                        int draws = _sprites.Draw(s.Sprites, s.SpriteOrder, start, stop - start, Texture(texture), pass, m.Albedo);
                         stats.DrawCalls += draws;
                         stats.Triangles += (stop - start) * 2;
                     }
@@ -1172,19 +1187,9 @@ public sealed class Renderer : IDisposable
 
     public void Dispose()
     {
-        // Buffers the renderer made (the error mesh, terrain chunks). Model buffers, effects and
-        // textures belong to the ContentService.
-        var disposed = new HashSet<VertexBuffer>();
-        foreach (var mesh in _meshes)
-        {
-            if (!mesh.Owned) continue;
-            foreach (var part in mesh.Parts)
-            {
-                if (!disposed.Add(part.VertexBuffer)) continue;   // DestroyMesh leaves aliased slots
-                part.VertexBuffer.Dispose();
-                part.IndexBuffer.Dispose();
-            }
-        }
+        // Every mesh in the table and the error mesh. Effects and textures belong to the ContentService.
+        foreach (var (_, entry) in _meshes.Entries) Dispose(entry.Value!);
+        if (_meshes.Placeholder is { } error) Dispose(error);
         _sprites.Dispose();
         _debugLines.Dispose();
         _sky.Dispose();
@@ -1218,6 +1223,9 @@ internal sealed class RendererCVars
     public readonly CVar<bool> PostGrade;
     public readonly CVar<bool> PostVignette;
 
+    // The per-frame upload budget for streamed content (05 §3.4, issue #308).
+    public readonly CVar<float> UploadMs;
+
     public RendererCVars(CVarRegistry cvars)
     {
         Fog = cvars.Register("r_fog", true, CVarFlags.None, "Distance fog (the environment's fog settings).");
@@ -1247,5 +1255,8 @@ internal sealed class RendererCVars
             "The colour grade and exposure post effect (sage:grade), with the sky's night tint; needs r_post 1.");
         PostVignette = cvars.Register("r_post_vignette", true, CVarFlags.Archive,
             "The vignette post effect (sage:vignette); needs r_post 1.");
+        UploadMs = cvars.Register("asset_upload_ms", 2f, CVarFlags.Archive,
+            "Milliseconds a frame may spend loading a streaming world's meshes and textures (05 §3.4); what does not fit waits " +
+            "for the next frame. The first load of a frame always starts; 0 is no budget.", 0f, 100f);
     }
 }
