@@ -34,6 +34,7 @@ public sealed class RpgKitModule : IModule
     public static readonly RecordId EquipmentScreen = new(ContentNamespace, "equipment");
     public static readonly RecordId LootScreen = new(ContentNamespace, "loot");
     public static readonly RecordId TopicsScreen = new(ContentNamespace, "topics");
+    public static readonly RecordId ShopScreen = new(ContentNamespace, "shop");
 
     // The rest and wait screen (issue 4g-7): hours, then sleep or wait (RestView, the Rest rule).
     public static readonly RecordId RestScreen = new(ContentNamespace, "rest");
@@ -122,6 +123,8 @@ public sealed class RpgKitModule : IModule
     public void OnWorldCreated(World world)
     {
         world.AddSystem(new ReadiedSpellSystem(world, _actions!));
+        // Using a chest or a body opens its screen (issue #344).
+        world.AddSystem(new UseScreenSystem(world));
         // The equipment screen lists the slots there are.
         if (!world.Resources.TryGet<EquipSlots>(out _)) world.Resources.Add(_slots!);
     }

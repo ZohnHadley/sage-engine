@@ -305,6 +305,9 @@ Sage.UI.ControlsView.Row.RebindLabel.get -> string!
 Sage.UI.ControlsView.Row.Row() -> void
 Sage.UI.ControlsView.RowCount.get -> int
 Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!
+Sage.UI.UiNode.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.UI.UiScreenActions
+static Sage.UI.UiScreenActions.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen, Sage.Simulation.Entity subject, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> Sage.UI.UiLayer?
 static Sage.UI.TrueTypeFont.Load(byte[]! data, string! name) -> Sage.UI.TrueTypeFont!
 static Sage.UI.UiFonts.IsAtlas(Sage.Core.AssetPath path) -> bool
 static Sage.UI.UiFonts.IsTrueType(Sage.Core.AssetPath path) -> bool

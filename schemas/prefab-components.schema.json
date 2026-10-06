@@ -1404,6 +1404,14 @@
         }
       ]
     },
+    "sage:use_screen": {
+      "description": "Component sage:use_screen (UseScreen).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:use_screen"
+        }
+      ]
+    },
     "sage:viewmodel": {
       "description": "Component sage:viewmodel (Viewmodel).",
       "allOf": [
@@ -1601,6 +1609,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:unknown_saved_data"
+        }
+      ]
+    },
+    "use_screen": {
+      "description": "The component sage:use_screen (UseScreen), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:use_screen"
         }
       ]
     },
@@ -6984,6 +7000,21 @@
       },
       "additionalProperties": false,
       "description": "Component sage:unknown_saved_data (UnknownSavedData)."
+    },
+    "sage:use_screen": {
+      "type": "object",
+      "properties": {
+        "screen": {
+          "description": "The screen using it opens, with it as the screen's other (the chest, the body) Names a screen record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:screen"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:use_screen (UseScreen)."
     },
     "sage:viewmodel": {
       "type": "object",
