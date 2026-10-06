@@ -80,6 +80,7 @@ internal sealed class DecalExtract : ISystem
                 instance.Roll = 0f;
                 instance.Right = decal.Right;
                 instance.Up = decal.Up;
+                instance.Soft = 0f;                        // a mark lies on its surface: soft would fade it all
                 instance.SortKey = RenderSortKey.Make(pass, 0, material, texture, Vector3.Dot(centre, forward), view.Far);
                 instance.View = v;
             }

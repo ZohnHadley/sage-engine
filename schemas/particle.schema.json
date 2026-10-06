@@ -269,6 +269,12 @@
       "description": "Each particle starts on a frame of its own, so a cloud of them does not flicker in step. Category: Sheet. (bool, default false)",
       "default": false,
       "type": "boolean"
+    },
+    "soft": {
+      "description": "Fades the particle over this distance in front of the geometry behind it, so it shows no hard edge where it cuts a surface; 0 = hard. Unit: m. At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
     }
   },
   "additionalProperties": false

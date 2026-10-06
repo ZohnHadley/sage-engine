@@ -20,6 +20,7 @@ internal sealed class EffectBinding
         "ShadowViewProj", "ShadowParams", "ShadowMap",   // the sun's shadow map (issue 4h-4), frame tier
         "ShadowCascadeRects", "ShadowCascadeBias",       // its cascades (issue 4n-11), frame tier
         "Lightmap",   // a lightmapped draw's baked light (issue #313), set per draw
+        "SceneDepth", "SoftParams", "SoftRect",   // a soft particle run's depth and fade (issue 4n-6), set per run
     };
 
     public EffectBinding(Effect effect)
@@ -41,6 +42,7 @@ internal sealed class EffectBinding
         ShadowCasterAlphaTest = effect.Techniques[ShadowMath.CasterTechnique(RenderPass.AlphaTested, skinned: false)];
         ShadowCasterAlphaTestSkinned = effect.Techniques[ShadowMath.CasterTechnique(RenderPass.AlphaTested, skinned: true)];
         ShadowCasterInstanced = effect.Techniques[Instancing.TechniqueFor("ShadowCaster")];
+        SceneDepth = P("SceneDepth"); SoftParams = P("SoftParams"); SoftRect = P("SoftRect");
     }
 
     public Effect Effect { get; }
@@ -53,6 +55,7 @@ internal sealed class EffectBinding
     public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
     public readonly EffectParameter? ShadowCascadeRects, ShadowCascadeBias;      // issue 4n-11
     public readonly EffectTechnique? ShadowCasterAlphaTest, ShadowCasterAlphaTestSkinned;   // a cut-out caster (4n-11)
+    public readonly EffectParameter? SceneDepth, SoftParams, SoftRect;          // soft particles (issue 4n-6)
 
     // The cascades' matrices and rectangles, reused (set once a view).
     private readonly Matrix[] _cascadeViewProj = new Matrix[ShadowMath.MaxCascades];
@@ -130,6 +133,9 @@ internal sealed class MaterialRuntime
     public required EffectTechnique Technique;
     public EffectTechnique? Skinned;   // the effect's `Skinned` technique, for skinned meshes (issue #117)
     public EffectTechnique? Instanced; // the technique's instanced twin (Instancing.TechniqueFor, issue 4n-5), if the effect has one
+    // The technique's soft twin and its instanced twin (SoftParticles.TechniqueFor, issue 4n-6), for a
+    // Transparent material whose effect has them and reads SceneDepth; null draws soft particles hard.
+    public EffectTechnique? Soft, SoftInstanced;
     // The effect's `Lightmapped` technique, for a mesh with a baked lightmap (issue #313): only for a material
     // drawn with `Default`, since it is Default's lighting with the lightmap in it. Any other technique
     // (AlphaTest, Unlit, a game's) draws such a mesh as it would any other.
@@ -371,6 +377,9 @@ internal sealed class MaterialCache : IDisposable
         if (effect.Parameters[MaterialSurface.SurfaceParams] == null && MaterialSurface.Asked(record))
             Log.Warn(LogCat.Shaders, $"Material {id}: {record.Effect} draws no surface maps (normalMap, specular, emissive...); they are ignored");
 
+        // Soft particles (issue 4n-6): only a transparent material, which is not in the depth it would read.
+        var soft = record.Pass == RenderPass.Transparent && binding.SceneDepth != null && binding.SoftParams != null
+            ? effect.Techniques[SoftParticles.TechniqueFor(record.Technique)] : null;
         return new MaterialRuntime
         {
             Id = id,
@@ -378,6 +387,8 @@ internal sealed class MaterialCache : IDisposable
             Technique = technique,
             Skinned = effect.Techniques["Skinned"],
             Instanced = effect.Techniques[Instancing.TechniqueFor(record.Technique)],
+            Soft = soft,
+            SoftInstanced = soft == null ? null : effect.Techniques[Instancing.TechniqueFor(SoftParticles.TechniqueFor(record.Technique))],
             Lightmapped = technique.Name == "Default" ? effect.Techniques["Lightmapped"] : null,
             Params = values.ToArray(),
             Pass = record.Pass,
