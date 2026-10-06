@@ -65,6 +65,18 @@ internal struct RenderView
     public bool DepthOnly;           // clears only depth, over what the target holds: the viewmodel pass (issue #121)
     public bool ShadowCaster;        // a cascade of the sun's map (issues 4h-4, 4n-11): casters only, drawn by `sage:shadow`, not as a view
 
+    // Every view's own pass set (issue 4n-19). Where it came from: its index in the world's CameraViews
+    // (-1: none, ActiveCamera with no CameraViews, or a pass's own view), and the passes its camera leaves
+    // out (Camera.NoShadows and the rest).
+    public int Source;
+    public bool NoShadows, NoViewmodel, NoSky, NoDebugLines;
+    // The shadow map this view's lit draws read: an index into RenderSnapshot.Shadows, or -1 (none: the sun
+    // is unshadowed). Each receiver has its own (ShadowViews); the viewmodel's view shares its main view's.
+    public int Shadow;
+    // A caster view's receiver: the view whose map it is a cascade of (its LOD and draw distances are
+    // that view's). -1 for every other view.
+    public int Receiver;
+
     // Written during extract: lights and debug lines are added by one system each, a view at a time,
     // so each view's are contiguous.
     public int LightStart, LightCount;
@@ -107,12 +119,13 @@ internal struct EnvironmentParams
     public Vector3 CloudColor;
 }
 
-// The frame's shadow map (issue 4h-4), written by `sage:shadow`: which views hold the casters, and what
-// the lit shaders need to read the map. `Drawn` only once the map has been drawn this frame. Cascades
+// One of the frame's shadow maps (issue 4h-4), written by `sage:shadow`: which views hold the casters, and
+// what the lit shaders need to read the map. `Drawn` only once the map has been drawn this frame. Cascades
 // (issue 4n-11): `Count` caster views from `View` on, one per cascade, each into its own square of the
-// one target (`ShadowMath.Atlas`).
+// one target (`ShadowMath.Atlas`). One per receiving view (issue 4n-19; ShadowViews), each in its own target.
 internal struct ShadowFrame
 {
+    public int Receiver;             // the view it was fitted to
     public int View;                 // the first caster view, or -1
     public int Count;                // cascades: caster views View .. View + Count - 1
     public int Target;               // the map's render target id
@@ -160,7 +173,8 @@ internal sealed class RenderSnapshot
     public readonly PooledList<RenderView> Views;
     public int MainView = -1;
     public EnvironmentParams Environment;
-    public ShadowFrame Shadow = new() { View = -1 };
+    // The frame's shadow maps (issue 4n-19): one per receiving view (RenderView.Shadow), the main view's first.
+    public readonly PooledList<ShadowFrame> Shadows;
     // Every list here is made by `Pool<T>`, which is also what puts it in `_pools` for `Clear()`.
     // Point lights were added as a plain `new(32)` and left out of `Clear()`, and the picture stayed
     // right: the extras were duplicates of the same lamps, so the room looked lit while the list grew
@@ -196,15 +210,16 @@ internal sealed class RenderSnapshot
         DebugLines = Pool<VertexPositionColor>(512);
         Lights = Pool<LightSample>(32);
         Bones = Pool<System.Numerics.Matrix4x4>(256);
+        Shadows = Pool<ShadowFrame>(ShadowViews.MaxViews);
     }
 
     public int Culled;                   // items rejected by frustum culling this frame, every view
     public int FogCulled;                // of those, rejected because fog hides them wholly (issue 4h-5)
     public LodCounts Lod;                // renderers per view LOD left out or drew coarser (issue 4n-1, MeshLod.Pick)
 
-    // The view whose LOD choices a renderer remembers for its hysteresis, and whose camera the sun's
-    // caster view measures from (issue 4n-1): the screen's main view, else the first view that is not the
-    // sun's; -1 when there is none.
+    // The view whose LOD choices a renderer remembers for its hysteresis (issue 4n-1): the screen's main
+    // view, else the first view that is not the sun's; -1 when there is none. A caster view measures from
+    // its receiver (RenderView.Receiver; issue 4n-19).
     internal int LodView()
     {
         if (MainView >= 0) return MainView;
@@ -272,9 +287,6 @@ internal sealed class RenderSnapshot
         FogCulled = 0;
         Lod = default;
         MainView = -1;
-        Shadow.View = -1;
-        Shadow.Count = 0;
-        Shadow.Drawn = false;
     }
 }
 

@@ -109,6 +109,13 @@ internal sealed class CameraExtract : ISystem
         view.Hidden = request.Hidden.IsNull ? 0 : request.Hidden.Id;
         view.DepthOnly = false;          // pooled: the slot may have been last frame's viewmodel view
         view.ShadowCaster = false;       // or its shadow casters
+        view.Source = request.Source;    // its own pass set (issue 4n-19)
+        view.NoShadows = request.NoShadows;
+        view.NoViewmodel = request.NoViewmodel;
+        view.NoSky = request.NoSky;
+        view.NoDebugLines = request.NoDebugLines;
+        view.Shadow = -1;                // until `sage:shadow` fits it a map
+        view.Receiver = -1;
 
         Vector3 forward = Vector3.Transform(Vector3.Forward, request.Rotation);
         Vector3 up = Vector3.Transform(Vector3.Up, request.Rotation);
@@ -201,8 +208,10 @@ internal sealed class MeshExtract : ISystem
                     if (hiding && view.Hidden != 0 && view.Hidden == id) continue;   // a camera's own body (ViewSource.HiddenFor)
                     if (view.ShadowCaster && !casts) continue;                        // the sun's view keeps casters only (4h-4)
 
-                    int level = !lodded || v == lodView || view.ShadowCaster ? lodLevel
-                              : Level(ref mr, lod, ref view, pose, baseData, remember: false, ref s.Lod);
+                    // A caster view draws what its receiver chose (issue 4n-19: the main view's, or another's).
+                    int chooser = view.ShadowCaster && view.Receiver >= 0 ? view.Receiver : view.ShadowCaster ? lodView : v;
+                    int level = !lodded || chooser == lodView ? lodLevel
+                              : Level(ref mr, lod, ref s.Views[chooser], pose, baseData, remember: false, ref s.Lod);
                     if (level == MeshLod.Culled) continue;
                     int meshId = baseMesh, materialId = baseMaterial;
                     var mesh = baseData;
@@ -395,7 +404,7 @@ internal sealed class SkinnedMeshExtract : ISystem
             if (Hidden != 0 && view.Hidden == Hidden) return false;   // a camera's own body (ViewSource.HiddenFor)
             if (view.ShadowCaster && !Casts) return false;             // the sun's view keeps casters only (4h-4)
             // Past its layer's draw distance (issue 4n-1); skinned renderers have no LOD group yet.
-            int from = view.ShadowCaster ? LodView : v;
+            int from = view.ShadowCaster ? (view.Receiver >= 0 ? view.Receiver : LodView) : v;   // a caster: its receiver's (4n-19)
             if (from >= 0 && MeshLod.PastLayerDistance(Environment, Layer, Vector3.Distance(Pose.Translation, s.Views[from].CameraPosition)))
             {
                 s.Lod.Culled++;
