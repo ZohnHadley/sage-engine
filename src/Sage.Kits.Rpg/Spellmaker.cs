@@ -242,7 +242,7 @@ public static class Spellmaker
     // ---- the console spellmaker ---------------------------------------------------------------------
 
     // A console is a perfectly good spellmaker: the composition rules are what needed building, and
-    // they are the same ones SpellmakerScreen calls.
+    // they are the same ones the spellmaker screen calls (SpellmakerView).
     //
     //   spell_make "cold snap" sage:burning target=projectile damage=20 type=sage:fire mag=2
     //

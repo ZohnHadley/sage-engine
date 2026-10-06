@@ -1,9 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    The RPG kit's client half (issue #27): the input actions that open its screens (Spellbook,
-    Spellmaker, Journal) and the screens themselves under the ids the client resolves them by
-    (ScreenRegistry: "dialogue", "journal", "spellmaker"). Plugin
-    `sage.kits.rpg.client`, loaded with `sage.kits.rpg` by a host with a window.
+    The RPG kit's client half (issue #27). Its panel screens moved to the kit's widget screens with
+    issue #350, so it holds nothing now but the plugin. Plugin `sage.kits.rpg.client`, loaded with
+    `sage.kits.rpg` by a host with a window.
   -->
   <PropertyGroup>
     <OutputType>Library</OutputType>

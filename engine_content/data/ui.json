@@ -9,5 +9,17 @@
   // Subtitles and captions (issue #351): what UiScreenStack draws a world's Subtitles in, over every
   // layer. Light text on a near-opaque black plate, readable over any scene; a game patches them.
   { "type": "ui_style", "id": "subtitles", "textScale": 2, "textColour": "#FFFFFF", "background": "#000000D0", "padding": [8, 3] },
-  { "type": "ui_style", "id": "captions", "base": "subtitles", "textColour": "#E8E8B0" }
+  { "type": "ui_style", "id": "captions", "base": "subtitles", "textColour": "#E8E8B0" },
+
+  // The crosshair (issue #350): a HUD layer the client opens in every world, over Sage.UI's `ui_crosshair`
+  // view-model (shown while a player's rig aims, `ui_crosshair` is on and no window is up). Two bars across
+  // the centre of the screen; a game restyles `sage:crosshair` or patches the layout for another shape.
+  { "type": "ui_style", "id": "crosshair", "background": "#FFFFFF96" },
+  { "type": "ui_layout", "id": "crosshair",
+    "nodes": {
+      "cross":  { "widget": "box", "anchors": "center", "bindings": { "visible": "shown" } },
+      "across": { "widget": "box", "parent": "cross", "style": "crosshair", "anchors": "center", "minSize": [12, 2] },
+      "down":   { "widget": "box", "parent": "cross", "style": "crosshair", "anchors": "center", "minSize": [2, 12] }
+    } },
+  { "type": "screen", "id": "crosshair", "layout": "crosshair", "viewModel": "ui_crosshair" }
 ]

@@ -76,8 +76,15 @@ internal static class WidgetRenderer
                         ui.ImageTurned(texture, new Microsoft.Xna.Framework.Rectangle((int)MathF.Round(r.X), (int)MathF.Round(y),
                                        (int)MathF.Round(r.Width), (int)MathF.Round(r.Height)), colour);
                     else if (slice == Thickness.Zero)
+                    {
+                        // A part of the texture (a sprite sheet's frame, `#x,y,w,h`, issue #350), or all of it.
+                        var region = command.Region;
+                        Microsoft.Xna.Framework.Rectangle? part = region.Width > 0f && region.Height > 0f
+                            ? new Microsoft.Xna.Framework.Rectangle((int)region.X, (int)region.Y, (int)region.Width, (int)region.Height)
+                            : null;
                         ui.Image(texture, new Microsoft.Xna.Framework.Rectangle((int)MathF.Round(r.X), (int)MathF.Round(y),
-                                 (int)MathF.Round(r.Width), (int)MathF.Round(r.Height)), colour);
+                                 (int)MathF.Round(r.Width), (int)MathF.Round(r.Height)), colour, part);
+                    }
                     else
                         ui.NineSlice(texture, r.X, y, r.Width, r.Height, slice.Left, slice.Top, slice.Right, slice.Bottom, colour, command.Size);
                     break;

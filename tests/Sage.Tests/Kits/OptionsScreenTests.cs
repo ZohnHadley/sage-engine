@@ -112,7 +112,7 @@ public class OptionsScreenTests
         Assert.Equal(new[] { "resolution", "vsync" }, view.Graphics.Select(r => r.Id.Name));
         Assert.Equal(new[] { "master_volume", "music_volume" }, view.Audio.Select(r => r.Id.Name));
         Assert.Equal(new[] { "sensitivity" }, view.Controls.Select(r => r.Id.Name));
-        Assert.Equal(new[] { "fov", "language", "autosave" }, view.Gameplay.Select(r => r.Id.Name));
+        Assert.Equal(new[] { "fov", "language", "crosshair", "autosave" }, view.Gameplay.Select(r => r.Id.Name));   // ui_crosshair is sage.ui's (#350)
         Assert.False(view.HasChanges);
 
         // What the cvars say: a window of 800 x 410 is none of the resolutions, so "Custom".

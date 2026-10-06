@@ -72,22 +72,26 @@ public class SandboxInteractScreensTests
         Assert.Equal(1, world.CountOf(player, Pelt));
         stack.CloseAll();
 
-        // The hermit: Use reaches him and opens no widget screen — the client's DialogueSystem starts the
-        // conversation on that `Used`, as here — and his option opens the shop over his goods.
+        // The hermit: Use reaches him and opens the RPG kit's conversation about him (issue #350), and his
+        // option, chosen on it, opens the shop over his goods and ends the conversation, closing its screen.
         var hermit = Named(world, "hermit");
         Assert.False(hermit.IsNull);
         StandBefore(world, player, hermit);
         var used = new EventProbe<Used>(world);
         Use(app);
         Assert.Contains(used.All, u => u.User == player && u.Target == hermit);
-        Assert.False(stack.IsOpen, "talking is the conversation's screen, not a widget screen");
-        Assert.True(DialogueRules.Start(world, hermit, player));
+        var talk = Assert.Single(stack.Layers, l => l.Modal);
+        Assert.Equal(RpgKitModule.DialogueScreen, talk.Screen!.Id);
+        Assert.Equal(hermit, talk.Screen.Context.Other);
         var conversation = world.Resources.Get<Conversation>();
-
-        var trade = DialogueRules.Current(world)!.Options.Single(o => o.Text == "Show me what you have.");
-        Assert.True(DialogueRules.Pick(world, trade));
+        Assert.True(conversation.Running);
+        for (int i = 0; i < 20 && UiScreen.RowOf(talk.Root.Focused) is not ListRow { Text: "Show me what you have." }; i++)
+            stack.Update(UiInput.Nav(UiNavigation.Down));
+        stack.Update(UiInput.Press);
         Assert.False(conversation.Running);
-        var shop = Assert.Single(stack.Layers, l => l.Modal);
+        Assert.True(talk.IsClosing || !stack.Layers.Contains(talk));
+        stack.Update(UiInput.Wait(0f));
+        var shop = Assert.Single(stack.Layers, l => l.Modal && !l.IsClosing);
         Assert.Equal(RpgKitModule.ShopScreen, shop.Screen!.Id);
         Assert.Equal(player, shop.Screen.Context.Subject);
         Assert.Equal(hermit, shop.Screen.Context.Other);

@@ -281,6 +281,37 @@ public class SandboxScreensTests
         Assert.Contains("within", ((Label)layer.Content.Find("range")!).Text);
     }
 
+    // The first-person hands (issue #350): what SandboxHud drew by hand is the HUD layout's `hand` image, a
+    // frame of the attack's viewmodel sprite sheet — at rest, then the swing — anchored to the bottom right and
+    // sized against the screen's height; hidden while a window is up.
+    [Fact]
+    public void TheHudDrawsTheHandsAsAFrameOfTheirSpriteSheet()
+    {
+        // Sprite sheets and materials are the client's records (sage.client); here, the Sandbox's as they ship.
+        using var app = HeadlessApp.ForGame(SandboxGame, new SandboxModule()).WithEngineContent()
+            .OnRegistered(a => { a.Records.Register<SpriteSheetRecord>(); a.Records.Register<MaterialRecord>(); }).Boot();
+        var world = app.World;
+        CameraRigTests.Step(world, 3);
+        Assert.Equal(CameraRigKind.FirstPerson, world.MainViewRig());
+        var stack = Stack(world);
+        var hud = stack.OpenHud(new RecordId("sandbox", "hud"), new UiBindContext(world));
+        stack.Update(UiInput.Wait(1f / 60f));
+
+        var view = Assert.IsType<HudView>(hud.Screen!.ViewModel);
+        Assert.True(view.HasHand);
+        Assert.Matches(@"^textures/.+\.png#\d+,\d+,\d+,\d+$", view.HandSource);
+        var hand = (Image)hud.Content.Find("hand")!;
+        Assert.True(hand.Visible);
+        Assert.Same(view.HandSource, hand.Source);
+        Assert.Equal(0.62f * 720f, hand.Rect.Height, 1);                        // sized against the screen's height
+        Assert.True(hand.Rect.Right > 1280f - 1f, "it overhangs the right edge, as Daggerfall held its weapons");
+
+        stack.Push(new Box { MinSize = new Vector2(40f, 40f) });               // a window up: the hands are aiming's
+        stack.Update(UiInput.Wait(1f / 60f));
+        Assert.False(view.HasHand);
+        Assert.False(hand.Visible);
+    }
+
     // The acceptance of #352: the HUD's interaction prompt and view hint name the key at the keyboard and
     // the pad's button once the player picks the pad up — a PlayStation pad's own names — and the key
     // again when they put it down. Nothing in the HUD's C# changed for it: the text says {action:Use}.

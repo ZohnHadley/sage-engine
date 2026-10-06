@@ -54,6 +54,10 @@ internal struct UiDrawCommand
     // Image: drawn a quarter turn clockwise into Rect (a button's IconTurned, issue #346).
     public bool Turned;
 
+    // Image: the part of Texture drawn, in texture pixels — a sprite sheet's frame, named by the source's
+    // `#x,y,w,h` (issue #350); empty (zero size) draws the whole texture.
+    public Rect Region;
+
     // Whose command this is (tests, and a debugger).
     public Widget? Widget;
 }
@@ -200,21 +204,56 @@ internal sealed class UiRenderPlan
 
     // An image widget's Source as an asset path, parsed once per string: a rebuild (focus moving across
     // a grid of icons) then looks paths up rather than parsing them again. A path that is not one
-    // (`..`, a colon) draws nothing and says so once.
-    private readonly System.Collections.Generic.Dictionary<string, AssetPath> _paths = new(StringComparer.Ordinal);
+    // (`..`, a colon) draws nothing and says so once. A source may end in `#x,y,w,h`, a part of the
+    // texture in its pixels (a sprite sheet's frame: the HUD's hands, issue #350).
+    private readonly System.Collections.Generic.Dictionary<string, (AssetPath Path, Rect Region)> _paths = new(StringComparer.Ordinal);
 
-    private AssetPath TexturePath(string source)
+    private AssetPath TexturePath(string source) => Picture(source).Path;
+
+    internal (AssetPath Path, Rect Region) Picture(string source)
     {
-        if (_paths.TryGetValue(source, out var path)) return path;
-        try { path = AssetPath.Intern(source); }
+        if (_paths.TryGetValue(source, out var picture)) return picture;
+        var region = default(Rect);
+        string file = source;
+        int hash = source.LastIndexOf('#');
+        if (hash >= 0)
+        {
+            file = source[..hash];
+            if (!TryRegion(source.AsSpan(hash + 1), out region))
+                Log.Warn(LogCat.UI, $"image '{source}': '#' is followed by x,y,w,h in texture pixels; drawn whole");
+        }
+        AssetPath path;
+        try { path = AssetPath.Intern(file); }
         catch (ArgumentException ex)
         {
             Log.Warn(LogCat.UI, $"image '{source}': {ex.Message}; drawn as nothing");
             path = AssetPath.None;
         }
         if (_paths.Count > 1024) _paths.Clear();   // bound what a view-model inventing paths can grow it to
-        _paths[source] = path;
-        return path;
+        picture = (path, region);
+        _paths[source] = picture;
+        return picture;
+    }
+
+    // "x,y,w,h", whole numbers or not, w and h above zero.
+    internal static bool TryRegion(ReadOnlySpan<char> text, out Rect region)
+    {
+        region = default;
+        Span<float> parts = stackalloc float[4];
+        int count = 0;
+        while (true)
+        {
+            int comma = text.IndexOf(',');
+            var part = comma < 0 ? text : text[..comma];
+            if (count == 4 || !float.TryParse(part.Trim(), System.Globalization.NumberStyles.Float,
+                                              System.Globalization.CultureInfo.InvariantCulture, out parts[count])) return false;
+            count++;
+            if (comma < 0) break;
+            text = text[(comma + 1)..];
+        }
+        if (count != 4 || parts[2] <= 0f || parts[3] <= 0f) return false;
+        region = new Rect(parts[0], parts[1], parts[2], parts[3]);
+        return true;
     }
 
     private ref UiDrawCommand Add(UiDrawKind kind, Widget widget, Rect rect)
@@ -353,7 +392,7 @@ internal sealed class UiRenderPlan
                         bool sliced = style.Slice != Thickness.Zero;
                         ref var drawn = ref _plan.Add(UiDrawKind.Image, widget, _root.ToPixels(sliced ? widget.ContentRect : picture.ImageRect));
                         Colour(ref drawn, to.Tint, from.Tint, blend);
-                        drawn.Texture = _plan.TexturePath(picture.Source);
+                        (drawn.Texture, drawn.Region) = _plan.Picture(picture.Source);
                         drawn.Slice = style.Slice;
                         drawn.Size = scale;
                     }

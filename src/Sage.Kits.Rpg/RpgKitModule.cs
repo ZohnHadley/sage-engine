@@ -10,7 +10,8 @@ namespace Sage.Kits.Rpg;
 // The RPG kit (REDESIGN §0.5, issue #27): the rules the action-RPG family shares, on top of the base's
 // generic models. The base has abilities, items, quests and dialogue; this adds what makes them a
 // Daggerfall — a readied spell the Cast button fires, a spellmaker and the book it writes, two hands to
-// hold things in, and the bag, spellbook, journal and conversation as panels and screens.
+// hold things in, and the bag, spellbook, journal and conversation as panels (printed at the console) and
+// screens (widget screens, the only kind since issue #350).
 //
 // Loaded only for a game that names it (game.json `"kits": ["sage.kits.rpg"]`); never part of
 // BasePlugins.All(). Its client half, Sage.Kits.Rpg.Client (`sage.kits.rpg.client`), comes with it in
@@ -40,6 +41,14 @@ public sealed class RpgKitModule : IModule
     // under its fog with the markers on it (JournalView, MapView). Every game with the kit has them.
     public static readonly RecordId JournalScreen = new(ContentNamespace, "journal");
     public static readonly RecordId MapScreen = new(ContentNamespace, "map");
+
+    // The screens that were panels until issue #350 (ListViews.cs): the spellbook (B), the bag as a list with
+    // what is in your hands (a game binds its key: the Sandbox's I), a conversation (opened by using somebody
+    // with a `dialogue`) and the spellmaker (M).
+    public static readonly RecordId SpellbookScreen = new(ContentNamespace, "spellbook");
+    public static readonly RecordId BagScreen = new(ContentNamespace, "bag");
+    public static readonly RecordId DialogueScreen = new(ContentNamespace, "dialogue");
+    public static readonly RecordId SpellmakerScreen = new(ContentNamespace, "spellmaker");
 
     // The rest and wait screen (issue 4g-7): hours, then sleep or wait (RestView, the Rest rule).
     public static readonly RecordId RestScreen = new(ContentNamespace, "rest");
@@ -145,13 +154,22 @@ public sealed class RpgKitModule : IModule
     public void OnWorldCreated(World world)
     {
         world.AddSystem(new ReadiedSpellSystem(world, _actions!));
-        // Using a chest or a body opens its screen (issue #344).
+        // Using a chest or a body opens its screen (issue #344), and somebody with something to say a
+        // conversation (issue #350).
         world.AddSystem(new UseScreenSystem(world));
         // Walking lifts the map's fog (issue #349).
         world.AddSystem(new MapDiscoverySystem());
-        // The rest screen opens with its button (the key is the kit's default map's, issue #354).
+        // The kit's screens open with its buttons (the keys are the kit's default maps', issue #354): the
+        // spellbook, the spellmaker, the journal and the rest screen. A game that binds one of these actions
+        // to a screen of its own after this replaces it.
 #pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
-        if (world.Resources.TryGet<UiScreenStack>(out var widgets) && widgets != null) widgets.Bind(_actions!.Get("Rest"), RestScreen);
+        if (world.Resources.TryGet<UiScreenStack>(out var widgets) && widgets != null)
+        {
+            widgets.Bind(_actions!.Get("Spellbook"), SpellbookScreen);
+            widgets.Bind(_actions!.Get("Spellmaker"), SpellmakerScreen);
+            widgets.Bind(_actions!.Get("Journal"), JournalScreen);
+            widgets.Bind(_actions!.Get("Rest"), RestScreen);
+        }
 #pragma warning restore SAGE0125
         // The equipment screen lists the slots there are.
         if (!world.Resources.TryGet<EquipSlots>(out _)) world.Resources.Add(_slots!);

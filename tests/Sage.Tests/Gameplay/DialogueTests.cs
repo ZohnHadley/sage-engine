@@ -175,13 +175,16 @@ public class DialogueTests
             DialogueRules.Start(world, guard, player);
             DialogueRules.Pick(world, DialogueRules.Current(world)!.Options[0]);
 
-            var screen = new DialogueScreen();
-            screen.Build(world, player);
-            Assert.Equal("Go on, then.", screen.Panel.Title);
-            Assert.Equal(1, screen.Panel.Count);          // the way out
+#pragma warning disable SAGE0125   // the kit's screens are Phase 4c's experimental UI
+            var screen = new DialogueView();
+            var context = new Sage.UI.UiBindContext(world, player);
+            screen.Refresh(in context);
+            Assert.Equal("Go on, then.", screen.Title);
+            Assert.Single(screen.Rows);                   // the way out
 
-            screen.Activate(world, player, screen.Panel[0]);
+            screen.Activate(new Sage.UI.Label { Data = screen.Rows[0] }, in context);
             Assert.False(world.Resources.Get<Conversation>().Running);
+#pragma warning restore SAGE0125
         }
     }
 
@@ -197,18 +200,20 @@ public class DialogueTests
             var player = Player(world);
             DialogueRules.Start(world, innkeeper, player);
 
-            var screen = new DialogueScreen();
-            screen.Build(world, player);
+#pragma warning disable SAGE0125   // the kit's screens are Phase 4c's experimental UI
+            var screen = new DialogueView();
+            screen.Refresh(new Sage.UI.UiBindContext(world, player));
 
             var node = DialogueRules.Current(world)!;
-            Assert.Equal(node.Options.Count, screen.Panel.Count);
+            Assert.Equal(node.Options.Count, screen.Rows.Count);
             for (int i = 0; i < node.Options.Count; i++)
             {
                 bool allowed = DialogueRules.CanPick(world, player, node.Options[i], out string why);
-                Assert.Equal(allowed, screen.Panel[i].Enabled);
-                Assert.Equal(node.Options[i].Text, screen.Panel[i].Name);
-                if (!allowed) Assert.Equal(why, screen.Panel[i].Reason);
+                Assert.Equal(allowed, screen.Rows[i].Enabled);
+                Assert.Equal(node.Options[i].Text, screen.Rows[i].Text);
+                if (!allowed) Assert.Equal(why, screen.Rows[i].Reason);
             }
+#pragma warning restore SAGE0125
         }
     }
 

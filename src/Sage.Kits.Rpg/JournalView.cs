@@ -5,7 +5,7 @@ using Sage.UI;
 namespace Sage.Kits.Rpg;
 
 // The journal as a widget screen's view-model (docs/design/13 "As built (the HUD, journal, map and
-// menus)", issue #99): what JournalScreen's panel lists, as data a `ui_layout` binds — one line per
+// menus)", issue #99): what the old journal panel listed, as data a `ui_layout` binds — one line per
 // quest, its stage's text under it, and each objective with its progress. A game's `screen` record names
 // it (`"viewModel": "rpg_journal"`) and its layout says what each kind of line looks like; the Sandbox's
 // is `sandbox:journal` (games/Sandbox/content/data/ui.json).

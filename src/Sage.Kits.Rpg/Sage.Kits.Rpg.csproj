@@ -6,9 +6,8 @@
     conversation and spellmaker screens. Built on the base with its public API only; the base never
     references it (SAGE0025). Plugin `sage.kits.rpg`; a game opts in with game.json's "kits".
 
-    Not a base assembly (no SageBaseAssembly), and not in BasePlugins.All(). No MonoGame: the screens
-    here are the simulation's (Screen, Panel); drawing them is the client's, and the client half
-    (Sage.Kits.Rpg.Client) says which screen is which.
+    Not a base assembly (no SageBaseAssembly), and not in BasePlugins.All(). No MonoGame: its screens are
+    widget screens in its content over view-models here (Sage.UI); drawing them is the client's.
   -->
   <PropertyGroup>
     <OutputType>Library</OutputType>

@@ -1,6 +1,7 @@
 #nullable enable
 const Sage.UI.InputPrompts.GlyphTablePrefix = "@input." -> string!
 const Sage.UI.InputPrompts.Placeholder = "action:" -> string!
+const Sage.UI.UiModule.CrosshairCVar = "ui_crosshair" -> string!
 override Sage.UI.Box.ChildClip.get -> Sage.Simulation.Rect
 Sage.UI.Box.ClipChildren.get -> bool
 Sage.UI.Box.ClipChildren.set -> void
@@ -11,6 +12,10 @@ override Sage.UI.View.OnNavigate(Sage.UI.UiNavigation direction) -> bool
 override Sage.UI.View.OnPointerDragged(System.Numerics.Vector2 point) -> void
 override Sage.UI.View.OnPointerPressed(System.Numerics.Vector2 point) -> void
 override Sage.UI.View.TypeName.get -> string!
+Sage.UI.CrosshairView
+Sage.UI.CrosshairView.CrosshairView() -> void
+Sage.UI.CrosshairView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.UI.CrosshairView.Shown.get -> bool
 Sage.UI.Image.Fog.get -> Sage.UI.UiFogMask?
 Sage.UI.Image.Fog.set -> void
 Sage.UI.Image.FogColour.get -> uint
@@ -437,6 +442,7 @@ Sage.UI.UiScreenStack.SubtitleStyle.get -> string?
 Sage.UI.UiScreenStack.SubtitleStyle.set -> void
 Sage.UI.UiScreenStack.TextScale.get -> float
 Sage.UI.UiScreenStack.TextScale.set -> void
+Sage.UI.UiScreenStack.Typing.get -> bool
 Sage.UI.UiScreenStack.UiScale.get -> float
 Sage.UI.UiScreenStack.UiScale.set -> void
 Sage.UI.UiSoundsRecord
@@ -552,6 +558,7 @@ Sage.UI.Widget.FocusScope.set -> void
 Sage.UI.Widget.FocusUp.get -> string?
 Sage.UI.Widget.FocusUp.set -> void
 Sage.UI.WorldViews
+static readonly Sage.UI.CrosshairView.Screen -> Sage.Core.RecordId
 static readonly Sage.UI.UiFonts.EngineFont -> Sage.Core.AssetPath
 static readonly Sage.UI.UiSoundsRecord.DefaultId -> Sage.Core.RecordId
 const Sage.UI.ControlsView.KeepButton = "keep" -> string!

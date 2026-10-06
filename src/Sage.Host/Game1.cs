@@ -475,8 +475,7 @@ public class Game1 : Game
         bool pawn = false;
         foreach (var _ in w.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities) { pawn = true; break; }
 #pragma warning disable SAGE0125   // widget screens (#97): the host asks the stack whether one is open, nothing more
-        bool screenOpen = (w.Resources.TryGet<ScreenStack>(out var screens) && screens != null && screens.IsOpen)
-            || (w.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) && widgets != null && widgets.IsOpen);
+        bool screenOpen = w.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) && widgets != null && widgets.IsOpen;
 #pragma warning restore SAGE0125
 #if SAGE_DEV
         bool console = dev.ConsoleIsOpen;

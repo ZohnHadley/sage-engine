@@ -5,7 +5,8 @@ namespace Sandbox;
 
 // The Sandbox's HUD as a view-model (docs/design/13 "As built (the HUD, journal, map and menus)", issue
 // #99): what the hand-placed SandboxHud used to draw — the health bar and its numbers, what is in your
-// hands, the message log fading out, what Use would do and what V does — as plain fields the
+// hands, the message log fading out, what Use would do and what V does, and since issue #350 the
+// first-person hands themselves — as plain fields the
 // `sandbox:hud` layout (content/data/ui.json) binds. Where each goes, its colours and sizes are that
 // layout's; SandboxClientModule opens it as a HUD layer (UiScreenStack.OpenHud), drawn under every
 // window and never taking a key.
@@ -58,6 +59,15 @@ public sealed class HudView : IViewModel
 
     public List<Line> Messages { get; } = new();
 
+    // The first-person hands as sprites (13 §3; SandboxHud drew them by hand until issue #350): when the attack
+    // in hand has no 3D arms (engine issue #121), a frame of its `viewmodel` sprite sheet, chosen by where the
+    // swing is — `HandSource` is "texture#x,y,w,h", an image source naming that frame — sized against the
+    // screen's height and anchored to the bottom right the way Daggerfall held its weapons. HandX/Y/W/H are
+    // where it goes, in fractions of the screen (the layout's x, y, w and h bindings).
+    public bool HasHand;
+    public string HandSource = "";
+    public float HandX, HandY, HandW, HandH;
+
     private readonly Line[] _lines = new Line[MessageLines];
     private World? _world;
     private Query<Transform> _players;
@@ -66,6 +76,8 @@ public sealed class HudView : IViewModel
     private bool _handsShown;
     private Entity _lastHovered;
     private readonly AmmoReadout _ammo = new();
+    private RecordId _handSheet;
+    private string[] _handFrames = Array.Empty<string>();
 
     public HudView()
     {
@@ -93,14 +105,14 @@ public sealed class HudView : IViewModel
         // With a window open the bars and the log stay — you want to read them while deciding what to
         // equip — but what belongs to aiming does not (13 §3, F38); nor during a scripted cut or with the
         // editor's free camera (engine issue #81).
-        bool screenOpen = world.Resources.TryGet<ScreenStack>(out var panels) && panels!.IsOpen
-                       || world.Resources.TryGet<UiScreenStack>(out var widgets) && widgets!.IsOpen;
+        bool screenOpen = world.Resources.TryGet<UiScreenStack>(out var widgets) && widgets!.IsOpen;
         var rig = world.MainViewRig();
         Aiming = !screenOpen && rig != CameraRigKind.None;
 
         Messages.Clear();
         ReadMessages(world);
-        if (!HasPlayer) { HasPrompt = HasViewHint = HasAmmo = false; return; }
+        if (!HasPlayer) { HasPrompt = HasViewHint = HasAmmo = HasHand = false; return; }
+        ReadHand(world, player, screenOpen, rig);
 
         ReadHealth(world, player);
         ReadHands(world, player);
@@ -162,6 +174,61 @@ public sealed class HudView : IViewModel
             Prompt = "@sandbox.hud.use";
             PromptItem = "";
         }
+    }
+
+    // Your own hands, bottom right, drawn from the frames the attack record points at: at rest, drawn back
+    // during the wind-up, and extended on the strike. Daggerfall drew the same three moments. Only looking out
+    // of the player's eyes with no window up — not from the editor's free camera or another rig (engine issue
+    // #78) — and not when the attack has 3D arms (Viewmodels.IsDrawn).
+    private void ReadHand(World world, Entity player, bool screenOpen, CameraRigKind rig)
+    {
+        HasHand = false;
+        if (screenOpen || rig != CameraRigKind.FirstPerson) return;
+#pragma warning disable SAGE0126   // skeletal animation, and the viewmodel with it, is experimental
+        if (Viewmodels.IsDrawn(world)) return;
+#pragma warning restore SAGE0126
+        if (!world.TryGet<Melee>(player, out var melee)) return;
+        var records = world.Records();
+        if (records.TypeNameOf(typeof(SpriteSheetRecord)) == null) return;   // a host without the client's records
+        var attackId = melee.Attack.IsEmpty ? world.Conventions().Attack.Id : melee.Attack;
+        if (attackId.IsEmpty || !records.TryGet(attackId, out AttackRecord attack) || attack.Viewmodel.IsEmpty) return;
+        if (!records.TryGet(attack.Viewmodel, out SpriteSheetRecord sheet) || sheet.Frames.Count == 0 || sheet.Texture.IsEmpty) return;
+        var viewport = world.Resources.TryGet<UiScreenStack>(out var stack) ? stack!.Viewport : default;
+        if (viewport.X < 1f || viewport.Y < 1f) return;
+
+        int index = FrameFor(melee, attack, sheet.Frames.Count);
+        var rect = sheet.Frames[index].Rect;
+        if (rect.Length < 4 || rect[2] <= 0 || rect[3] <= 0) return;
+
+        // The frames' sources, made once per sheet: a frame of the swing allocates nothing.
+        if (_handSheet != attack.Viewmodel.Id || _handFrames.Length != sheet.Frames.Count)
+        {
+            _handSheet = attack.Viewmodel.Id;
+            _handFrames = new string[sheet.Frames.Count];
+        }
+        HandSource = _handFrames[index] ??= $"{sheet.Texture}#{rect[0]},{rect[1]},{rect[2]},{rect[3]}";
+
+        // Sized against the screen's height, so it sits the same at any resolution, and overhanging the
+        // bottom right corner a little.
+        const float Height = 0.62f;
+        HandH = Height;
+        HandW = rect[2] * (viewport.Y * Height / rect[3]) / viewport.X;
+        HandX = 1f - HandW * 0.92f;
+        HandY = 1f - Height * 0.94f;
+        HasHand = true;
+    }
+
+    // Frame 0 is at rest and everything after it is the swing, played across the wind-up and the recovery.
+    // That way a three-frame placeholder and Daggerfall's six-frame weapon both work, and what you see is the
+    // simulation's own phases (16 §3.2) rather than an animation beside them.
+    private static int FrameFor(in Melee melee, AttackRecord attack, int frameCount)
+    {
+        int swing = frameCount - 1;
+        if (swing < 1 || melee.Phase == MeleePhase.Ready) return 0;
+        float total = MathF.Max(attack.WindupTime + attack.RecoverTime, 0.01f);
+        float elapsed = melee.Phase == MeleePhase.Windup ? melee.Timer : attack.WindupTime + melee.Timer;
+        int index = (int)(elapsed / total * swing);
+        return 1 + Math.Clamp(index, 0, swing - 1);
     }
 
     // The last few things said, oldest first so the newest is at the bottom of the column; each in its

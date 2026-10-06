@@ -25,6 +25,9 @@ public sealed class UiModule : IModule
 {
     public const string Id = "sage.ui";
 
+    // Whether the crosshair is drawn (CrosshairView); the client's until issue #350 moved the crosshair onto widgets.
+    public const string CrosshairCVar = "ui_crosshair";
+
     private Engine? _engine;
     private CVar<string>? _lang, _styleSet;
     private CVar<float>? _uiScale, _textScale;
@@ -112,6 +115,7 @@ public sealed class UiModule : IModule
             "How big the UI's text is, 1 = as designed (0.5 to 3), on top of ui_scale.", UiRoot.MinUiScale, UiRoot.MaxUiScale);
         _styleSet = ctx.Engine.CVars.Register("ui_style_set", "", CVarFlags.Archive,
             "The ui_style_set the UI is drawn with (high contrast, a colour-blind palette), by id; empty: the styles as written.");
+        ctx.Engine.CVars.Register(CrosshairCVar, true, CVarFlags.Archive, "Draw the crosshair while a camera rig has the view (13 §3).");
         _subtitles = ctx.Engine.CVars.Register("subtitles", true, CVarFlags.Archive, "Show lines of dialogue that are heard as subtitles.");
         _captions = ctx.Engine.CVars.Register("captions", false, CVarFlags.Archive, "Show captions of sounds (\"[door creaks]\") that have one.");
         _uiScale.Changed += _ => EachStack(stack => stack.UiScale = _uiScale.Value);

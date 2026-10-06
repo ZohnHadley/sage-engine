@@ -45,4 +45,17 @@
   { "type": "ui_style", "id": "map_dot", "background": "#F0D890" },
   { "type": "ui_style", "id": "map_you", "background": "#60C0FF" },
   { "type": "ui_style", "id": "map_quest", "background": "#F0B020", "border": "#FFFFFF", "borderWidth": 1 }
+  ,
+
+  // The lists that were panels (issue #350): a row (highlighted while focused), its name and detail, greyed
+  // (`_off`) while it cannot be used, the tick on what is readied, equipped or chosen, and the spellmaker's
+  // name field.
+  { "type": "ui_style", "id": "list_row", "base": "button", "background": "#00000000", "borderWidth": 0, "padding": [4, 1] },
+  { "type": "ui_style", "id": "list_text", "base": "text" },
+  { "type": "ui_style", "id": "list_text_off", "base": "text", "textColour": "#787882" },
+  { "type": "ui_style", "id": "list_detail", "base": "text", "textColour": "#A0AFC8" },
+  { "type": "ui_style", "id": "list_detail_off", "base": "text", "textColour": "#787882" },
+  { "type": "ui_style", "id": "list_tick", "base": "text", "textColour": "#EBD778" },
+  { "type": "ui_style", "id": "field", "base": "button", "background": "#1C1A16", "border": "#3A3428", "borderWidth": 1,
+    "states": { "focused": { "background": "#24201A", "border": "#F0E0B0" } } }
 ]

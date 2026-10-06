@@ -28,7 +28,6 @@ public sealed class ClientModule : IModule
     private RendererCVars? _rendererCVars;
     private RecordStore? _records;
     private CVar<bool>? _debugDraw;
-    private CVar<bool>? _crosshair;
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
     private ShaderRecompiler? _shaders;
@@ -43,9 +42,6 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _soundEnabled;
     private InputDevices? _devices;
     private ActionRegistry? _actionIds;
-
-    // Screens by id, for the client to ask for and a kit or a game to fill (issue #27).
-    public ScreenRegistry Screens { get; } = new();
 
     // The renderer, from Start on (null before): for the host's own tools — the editor's viewport draws a
     // render target it declares here (issue #81). A module asks for it with `ctx.Get<Renderer>()` instead.
@@ -75,10 +71,10 @@ public sealed class ClientModule : IModule
         // Move and the camera's never share a key in one run.
         actions.Register("EditorMove", ActionKind.Axis2D);
 
-        // Screens (13 §3, F38). Navigation is the client's business because screens are: a headless
-        // server has no use for "the highlighted row moved down". The bag opens with Inventory; the
-        // actions that open a kit's screens are the kit's (Sage.Kits.Rpg.Client: Spellbook,
-        // Spellmaker, Journal), so a game only says which screen a key opens.
+        // Screens (13 §3, F38; widget screens only since issue #350). Navigation is the client's business
+        // because reading devices is: a headless test fills a UiInput by hand. A game binds Inventory to its
+        // bag; the actions that open a kit's screens are the kit's (Spellbook, Spellmaker, Journal, Rest), so
+        // a game only says which screen a key opens.
         actions.Register("MenuUp", ActionKind.Button);
         actions.Register("MenuDown", ActionKind.Button);
         // Widget screens walk grids and tab order too (issue #97): D-pad left/right and a tab button.
@@ -92,28 +88,11 @@ public sealed class ClientModule : IModule
         actions.Register("MenuSplit", ActionKind.Button);
         actions.Register("MenuBack", ActionKind.Button);
         actions.Register("Inventory", ActionKind.Button);
-        // Which screen is which, by id (issue #27). In Init, so a module that depends on this one can
-        // register its screens in its own Init.
-        ctx.Provide(Screens);
-        // The registry dump lists them with the plugin that registered each (issue #354), so check_docs and
-        // tooling see which screen ids a game can ask for.
-        Screens.Ledger = ctx.Engine.Registrations;
-        var ledger = ctx.Engine.Registrations;
-        ctx.Engine.DumpSections.Add("screens", () =>
-        {
-            var array = new System.Text.Json.Nodes.JsonArray();
-            foreach (string id in Screens.Ids)
-                array.Add(new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["owner"] = ledger.OwnerOf("screen", id) });
-            return array;
-        });
-
         // In Init, not Start: config.cfg is executed between the two (01 §5.1), so an Archive cvar
         // registered in Start does not exist yet when the saved value is read — the line is dropped
         // with an "unknown cvar" warning and the setting silently never applies (review #58).
         _debugDraw = ctx.Engine.CVars.Register("r_debugdraw", false, CVarFlags.DevOnly,
             "Draw debug geometry from the simulation: sweeps, sight cones, colliders (06 §3.2).");
-        _crosshair = ctx.Engine.CVars.Register("ui_crosshair", true, CVarFlags.Archive,
-            "Draw the crosshair while a camera rig has the view (13 §3).");
         // The engine's render passes, on the registry like anyone's (issue 4h-1): a game orders its own
         // against these ids. Provided here, in Init, so a module that depends on this one adds its
         // passes in its own Init.
@@ -124,7 +103,7 @@ public sealed class ClientModule : IModule
         Passes.Add(new TransparentPass());
         Passes.Add(new DebugLinesPass());
         Passes.Add(new PostProcessPass());
-        Passes.Add(_uiPass = new UiPass(_crosshair, _rendererCVars.TestView));
+        Passes.Add(_uiPass = new UiPass(_rendererCVars.TestView));
         ctx.Provide(Passes);
         ctx.Engine.CVars.RegisterCommand("r_passes", CVarFlags.None, "The render passes in draw order: stage, id, and what each draws after or before.", _ =>
         {
@@ -412,7 +391,6 @@ public sealed class ClientModule : IModule
 
     public void Start(ModuleContext ctx)
     {
-        Screens.Seal.Seal("the client started");
         var host = _host = ctx.Get<ClientHost>();
         _records = ctx.Engine.Records;
         _content = new ContentService(host, ctx.Engine.Vfs);
@@ -463,9 +441,6 @@ public sealed class ClientModule : IModule
         world.Resources.GetOrAdd(() => new ActiveCamera());   // what the world is drawn from (issue #13)
         world.Resources.Add(new RenderSnapshot());
         world.Resources.Add(new UiDraw());       // screen-space drawing for the game's HUD (13 §3)
-        // Screens (F38): the stack is a world resource because a screen acts on entities in a world.
-        // A game says which screen a key opens (`stack.Bind`); the drawing and the navigation are here.
-        world.Resources.Add(new ScreenStack());
         // Sprite animation is simulation, not rendering (12 §3), so AnimationModule installs it: a
         // headless server runs it, and combat listens to the "hit" events it raises (16 §3.2).
         // The frame's safe point for assets: what sectors released is freed before anything extracts (#308).
@@ -515,10 +490,6 @@ public sealed class ClientModule : IModule
         world.AddSystem(new AudioSystem(world, _records!, _soundEnabled!));
         // The `Weather` state is the world's (installed with it); this only makes it *look* like it.
         world.AddSystem(new WeatherSystem(world, _records!, _weatherOn!, _soundEnabled!));
-        // Talking to somebody opens a window, which is the client's business (16 §3.5, F24) — in a game
-        // with the dialogue plugin.
-        if (world.Resources.TryGet<Conversation>(out _))
-            world.AddSystem(new DialogueSystem(world, Screens));
         // Before the HUD is drawn, so a number never sits on top of the health bar.
         world.AddSystem(new FloatingTextSystem(world));
         world.AddSystem(new UiRenderSystem(world, _renderer!));
@@ -527,6 +498,14 @@ public sealed class ClientModule : IModule
         world.AddSystem(new ScreenSystem(world, _actions!, _devices!, _actionIds!, _content!, _renderer));
         if (_console != null) world.AddSystem(new ConsoleSystem(world, _console));
         if (_watcher != null) world.AddSystem(new AssetReloadSystem(_watcher, _shaders!, _assetHotReload!));
+
+        // The crosshair (13 §3, issue #350): the engine's one piece of HUD, on a widget layer like a game's own
+        // HUD — `sage:crosshair` (engine_content/data/ui.json) over Sage.UI's `ui_crosshair` view-model, drawn
+        // while a player's rig aims and no window is up, and under whatever HUD the game opens after this.
+#pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
+        if (world.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) && widgets != null && _records!.Exists(Sage.UI.CrosshairView.Screen))
+            widgets.OpenHud(Sage.UI.CrosshairView.Screen, new Sage.UI.UiBindContext(world));
+#pragma warning restore SAGE0125
     }
 
     // `snd_play` is an audition, so it belongs to whichever world is listening — the first one with
