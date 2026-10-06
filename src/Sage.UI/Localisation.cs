@@ -32,6 +32,8 @@ namespace Sage.UI;
 //   warns about every key content names that no table has (UiModule). A key missing from the current
 //   language falls back to English before it is missing.
 // - `@@` at the start is a literal `@`: "@@home" shows "@home".
+// - `{action:Use}` is what the player presses for an action on the device in use (InputPrompts, issue
+//   #352), in any text, with or without other placeholders; an argument of that name wins.
 //
 // Resolving a key allocates nothing: the tables are keyed by the text as content writes it, '@'
 // included. Filling placeholders makes the string it returns.
@@ -49,8 +51,15 @@ public sealed class Localisation
     // The language shown: what `lang` says, as long as it has tables (English otherwise).
     public string Language { get; private set; } = DefaultLanguage;
 
-    // Moves whenever the tables or the language change: what shows text re-resolves it then.
-    public int Version { get; private set; }
+    // Moves whenever the tables or the language change, or what an `{action:...}` prompt shows (a rebind,
+    // the device in use): what shows text re-resolves it then.
+    public int Version => _tablesVersion + (Prompts?.Version ?? 0);
+
+    // The input glyphs `{action:...}` shows; UiModule sets it. Without one, the placeholder stays as written.
+    public InputPrompts? Prompts { get; internal set; }
+
+    private int _tablesVersion;
+    internal int TablesVersion => _tablesVersion;
 
     // Every key the current language has (its own and English's), with the '@'.
     public IEnumerable<string> Keys => _texts.Keys.Union(_fallback.Keys, StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal);
@@ -67,8 +76,13 @@ public sealed class Localisation
     // `text` itself when it is not a key ("@@" becoming "@"). A missing key is shown as it is, and said.
     public string Text(string text)
     {
-        if (!IsKey(text)) return Literal(text);
-        return Find(text) is { } entry ? entry.Other : Missing(text);
+        string shown = !IsKey(text) ? Literal(text) : Find(text) is { } entry ? entry.Other : Missing(text);
+        if (Prompts == null || shown.IndexOf("{" + InputPrompts.Placeholder, StringComparison.Ordinal) < 0) return shown;
+        var none = new ArrayArgs(Array.Empty<(string, object?)>());
+        var builder = _builder ??= new StringBuilder(128);
+        builder.Clear();
+        Fill(builder, shown, ref none);
+        return builder.ToString();
     }
 
     // A key's text for `count` things: its plural form, with {count} and the other placeholders filled.
@@ -123,7 +137,7 @@ public sealed class Localisation
     }
 
     // {name} → its value; {{ and }} → a brace; an unfilled or unclosed placeholder stays as written.
-    private static void Fill<TArgs>(StringBuilder builder, string template, ref TArgs args) where TArgs : IPlaceholderValues
+    private void Fill<TArgs>(StringBuilder builder, string template, ref TArgs args) where TArgs : IPlaceholderValues
     {
         for (int i = 0; i < template.Length; i++)
         {
@@ -133,7 +147,10 @@ public sealed class Localisation
             int close = template.IndexOf('}', i + 1);
             if (close < 0) { builder.Append(template, i, template.Length - i); return; }
             var name = template.AsSpan(i + 1, close - i - 1);
-            if (!args.TryAppend(name, builder)) builder.Append(template, i, close - i + 1);
+            if (args.TryAppend(name, builder)) { }
+            else if (Prompts != null && name.StartsWith(InputPrompts.Placeholder, StringComparison.Ordinal) && name.Length > InputPrompts.Placeholder.Length)
+                builder.Append(Prompts.Glyph(name[InputPrompts.Placeholder.Length..].Trim().ToString()));
+            else builder.Append(template, i, close - i + 1);
             i = close;
         }
     }
@@ -159,7 +176,7 @@ public sealed class Localisation
         _texts = texts;
         _fallback = language == DefaultLanguage ? new Dictionary<string, LocalisedText>(StringComparer.Ordinal) : english;
         _warned.Clear();
-        Version++;
+        _tablesVersion++;
     }
 
     // The languages some mount has strings for (`strings/<lang>/`), English always among them, in order:
