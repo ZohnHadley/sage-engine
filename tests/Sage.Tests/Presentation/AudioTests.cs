@@ -276,4 +276,80 @@ public class AudioTests
         Assert.True(mixer.Find(other)!.Started);
         Assert.Equal(0, mixer.Invalidate(AssetPath.Intern("audio/none.wav")));
     }
+
+    // Issue 4o-12: a preview voice restarts even as a one-shot when its file is replaced, and a preview
+    // that already ended is played again, so editing a WAV plays the new sound.
+    [Xunit.Fact]
+    public void ReplacingAPreviewedFileRestartsItsVoiceOrPlaysItAgainWhenItHasEnded()
+    {
+        var mixer = new AudioMixer();
+        var record = Sound("audio/p.wav");
+        var handle = mixer.Preview(Id("p"), record);
+        mixer.Find(handle)!.Started = true;
+
+        Assert.Equal(1, mixer.Invalidate(AssetPath.Intern("audio/p.wav")));
+        Assert.False(mixer.Find(handle)!.Stopping);
+        Assert.False(mixer.Find(handle)!.Started);   // the backend begins it again from the new file
+
+        mixer.Remove(handle);                          // it played out
+        Assert.Equal(1, mixer.Invalidate(AssetPath.Intern("audio/p.wav")));
+        Assert.Equal(1, mixer.Playing);                // a new voice, not started yet
+        Assert.False(mixer.Voices[0].Started);
+
+        Assert.Equal(0, mixer.Invalidate(AssetPath.Intern("audio/other.wav")));
+    }
+
+    // Issue 4o-12: a preview ignores the cooldown, and is 2D.
+    [Xunit.Fact]
+    public void APreviewIsTwoDimensionalAndIgnoresCooldown()
+    {
+        var mixer = new AudioMixer();
+        var record = Sound("audio/p.wav", cooldown: 5f);
+        Assert.True(mixer.Preview(Id("p"), record).IsValid);
+        Assert.True(mixer.Preview(Id("p"), record).IsValid);
+        Assert.All(mixer.Voices, v => Assert.False(v.Positional));
+    }
+
+    // Issue 4o-12: bus meters come from the voices' effective gains.
+    [Xunit.Fact]
+    public void BusMetersAddUpTheirVoicesGainsAndMasterMetersEverything()
+    {
+        var mixer = new AudioMixer();
+        mixer.SetBusVolume(AudioBus.Sfx, 0.5f);
+        mixer.Play(Id("a"), Sound("audio/a.wav", volume: 0.8f), Vector3.Zero, false);
+        mixer.Play(Id("b"), Sound("audio/b.wav", volume: 0.4f), Vector3.Zero, false);
+        var monitor = new AudioMonitor();
+
+        monitor.Refresh(mixer);
+
+        var sfx = monitor.Bus(AudioBus.Sfx);
+        Assert.Equal(2, sfx.Voices);
+        Assert.Equal(0.4f, sfx.Peak, 3);
+        Assert.Equal(0.6f, sfx.Level, 3);
+        Assert.Equal(0.5f, sfx.Setting, 3);
+        Assert.Equal(2, monitor.Bus(AudioBus.Master).Voices);
+        Assert.Equal(0, monitor.Bus(AudioBus.Music).Voices);
+        Assert.Equal(0f, monitor.Bus(AudioBus.Music).Level);
+    }
+
+    // Issue 4o-12: the overlay's rows are loudest first, carry the distance, and leave out stopping voices.
+    [Xunit.Fact]
+    public void VoiceRowsAreLoudestFirstWithDistancesAndSkipStoppingVoices()
+    {
+        var mixer = new AudioMixer();
+        var near = mixer.Play(Id("near"), Sound("audio/a.wav"), new Vector3(2, 0, 0), true);
+        mixer.Play(Id("far"), Sound("audio/b.wav"), new Vector3(10, 0, 0), true);
+        var gone = mixer.Play(Id("gone"), Sound("audio/c.wav"), Vector3.Zero, false);
+        mixer.Stop(gone);
+        var monitor = new AudioMonitor();
+
+        monitor.Refresh(mixer);
+
+        Assert.Equal(2, monitor.Voices.Count);
+        Assert.Equal(Id("near"), monitor.Voices[0].Sound);
+        Assert.Equal(2f, monitor.Voices[0].Distance, 3);
+        Assert.Equal(10f, monitor.Voices[1].Distance, 3);
+        Assert.True(monitor.Voices[0].Gain >= monitor.Voices[1].Gain);
+        Assert.NotEqual(0, near.Id);
+    }
 }
