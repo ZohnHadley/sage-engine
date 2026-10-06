@@ -1,9 +1,5 @@
 #nullable enable
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
-const Sage.Simulation.MusicRules.DefaultFade = 2 -> float
-const Sage.Simulation.MusicRules.IntensityInput = "SetMusicIntensity" -> string!
-const Sage.Simulation.MusicRules.PlayInput = "PlayMusic" -> string!
-const Sage.Simulation.MusicRules.StopInput = "StopMusic" -> string!
 const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
 const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
 *REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
@@ -45,41 +41,101 @@ Sage.Simulation.Decals.Place(Sage.Core.RecordId effect, Sage.Simulation.DecalRec
 Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
-Sage.Simulation.Music
-Sage.Simulation.Music.Advance(float dt) -> void
-Sage.Simulation.Music.Blend.get -> float
-Sage.Simulation.Music.Blend.set -> void
-Sage.Simulation.Music.BlendRate.get -> float
-Sage.Simulation.Music.BlendRate.set -> void
-Sage.Simulation.Music.GainOf(Sage.Core.RecordId track) -> float
-Sage.Simulation.Music.Intensity.get -> float
-Sage.Simulation.Music.Intensity.set -> void
-Sage.Simulation.Music.Music() -> void
-Sage.Simulation.Music.Play(Sage.Core.RecordId track, float seconds) -> void
-Sage.Simulation.Music.Previous.get -> Sage.Core.RecordId
-Sage.Simulation.Music.Previous.set -> void
-Sage.Simulation.Music.Settled.get -> bool
-Sage.Simulation.Music.Stop(float seconds) -> void
-Sage.Simulation.Music.Track.get -> Sage.Core.RecordId
-Sage.Simulation.Music.Track.set -> void
-Sage.Simulation.MusicLayer
-Sage.Simulation.MusicLayer.Asset -> Sage.Core.AssetPath
-Sage.Simulation.MusicLayer.Fade -> float
-Sage.Simulation.MusicLayer.Intensity -> float
-Sage.Simulation.MusicLayer.MusicLayer() -> void
-Sage.Simulation.MusicLayer.Volume -> float
-Sage.Simulation.MusicRecord
-Sage.Simulation.MusicRecord.FadeIn -> float
-Sage.Simulation.MusicRecord.FadeOut -> float
-Sage.Simulation.MusicRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.MusicLayer!>!
-Sage.Simulation.MusicRecord.Loop -> bool
-Sage.Simulation.MusicRecord.LoopEnd -> long
-Sage.Simulation.MusicRecord.LoopStart -> long
-Sage.Simulation.MusicRecord.MusicRecord() -> void
-Sage.Simulation.MusicRecord.Track -> Sage.Core.AssetPath
-Sage.Simulation.MusicRecord.Volume -> float
-Sage.Simulation.MusicRules
-Sage.Simulation.SceneEnvironment.Music -> Sage.Core.RecordRef<Sage.Simulation.MusicRecord!>
+Sage.Simulation.Engine.Rebinds.get -> Sage.Simulation.InputRebinds!
+Sage.Simulation.InputBinding.DisplayName.get -> string!
+Sage.Simulation.InputRebinds
+Sage.Simulation.InputRebinds.ActionsFor(Sage.Simulation.InputContext context, Sage.Simulation.InputBinding! input) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.InputRebinds.ActionsIn(Sage.Simulation.InputContext context) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionInfo!>!
+Sage.Simulation.InputRebinds.BeginCapture(Sage.Simulation.InputContext context, string! action) -> bool
+Sage.Simulation.InputRebinds.Bind(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputBinding! input, bool replaceConflicts = false) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Bindings(Sage.Simulation.InputContext context, string! action) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.InputBinding!>!
+Sage.Simulation.InputRebinds.CancelCapture() -> void
+Sage.Simulation.InputRebinds.CaptureAction.get -> string!
+Sage.Simulation.InputRebinds.CaptureContext.get -> Sage.Simulation.InputContext
+Sage.Simulation.InputRebinds.Capturing.get -> bool
+Sage.Simulation.InputRebinds.ContextsInUse.get -> System.Collections.Generic.IEnumerable<Sage.Simulation.InputContext>!
+Sage.Simulation.InputRebinds.FilePath.get -> string?
+Sage.Simulation.InputRebinds.IsOverridden(Sage.Simulation.InputContext context, string! action) -> bool
+Sage.Simulation.InputRebinds.LastResult.get -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Offer(Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Pending.get -> Sage.Simulation.PendingRebind?
+Sage.Simulation.InputRebinds.Rebind(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputBinding! input, bool replaceConflicts = false) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Reset(Sage.Simulation.InputContext? context = null, string? action = null) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Resolve(bool replace) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.ResultVersion.get -> int
+Sage.Simulation.InputRebinds.TakeFresh() -> bool
+Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string? action, Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
+Sage.Simulation.InputRebinds.Validator.set -> void
+Sage.Simulation.InputRebinds.Version.get -> int
+Sage.Simulation.MouseCaptureFrame
+Sage.Simulation.MouseCaptureFrame.Captured.get -> bool
+Sage.Simulation.MouseCaptureFrame.Captured.init -> void
+Sage.Simulation.MouseCaptureFrame.Changed.get -> bool
+Sage.Simulation.MouseCaptureFrame.Changed.init -> void
+Sage.Simulation.MouseCaptureFrame.DeltaX.get -> int
+Sage.Simulation.MouseCaptureFrame.DeltaX.init -> void
+Sage.Simulation.MouseCaptureFrame.DeltaY.get -> int
+Sage.Simulation.MouseCaptureFrame.DeltaY.init -> void
+Sage.Simulation.MouseCaptureFrame.MouseCaptureFrame() -> void
+Sage.Simulation.MouseCaptureFrame.MouseCaptureFrame(bool Captured, bool Changed, bool Warp, int DeltaX, int DeltaY) -> void
+Sage.Simulation.MouseCaptureFrame.Warp.get -> bool
+Sage.Simulation.MouseCaptureFrame.Warp.init -> void
+Sage.Simulation.MouseCaptureInputs
+Sage.Simulation.MouseCaptureInputs.ConsoleOpen.get -> bool
+Sage.Simulation.MouseCaptureInputs.ConsoleOpen.init -> void
+Sage.Simulation.MouseCaptureInputs.ControlsCapturing.get -> bool
+Sage.Simulation.MouseCaptureInputs.ControlsCapturing.init -> void
+Sage.Simulation.MouseCaptureInputs.EditorViewport.get -> bool
+Sage.Simulation.MouseCaptureInputs.EditorViewport.init -> void
+Sage.Simulation.MouseCaptureInputs.Enabled.get -> bool
+Sage.Simulation.MouseCaptureInputs.Enabled.init -> void
+Sage.Simulation.MouseCaptureInputs.MouseCaptureInputs() -> void
+Sage.Simulation.MouseCaptureInputs.PawnPossessed.get -> bool
+Sage.Simulation.MouseCaptureInputs.PawnPossessed.init -> void
+Sage.Simulation.MouseCaptureInputs.ScreenOpen.get -> bool
+Sage.Simulation.MouseCaptureInputs.ScreenOpen.init -> void
+Sage.Simulation.MouseCaptureInputs.UiWantsMouse.get -> bool
+Sage.Simulation.MouseCaptureInputs.UiWantsMouse.init -> void
+Sage.Simulation.MouseCaptureInputs.WindowFocused.get -> bool
+Sage.Simulation.MouseCaptureInputs.WindowFocused.init -> void
+Sage.Simulation.MouseCapturePolicy
+Sage.Simulation.MouseCaptureTracker
+Sage.Simulation.MouseCaptureTracker.Captured.get -> bool
+Sage.Simulation.MouseCaptureTracker.MouseCaptureTracker() -> void
+Sage.Simulation.MouseCaptureTracker.Step(bool want, int x, int y, int centreX, int centreY) -> Sage.Simulation.MouseCaptureFrame
+Sage.Simulation.PendingRebind
+Sage.Simulation.PendingRebind.Action.get -> string!
+Sage.Simulation.PendingRebind.Action.init -> void
+Sage.Simulation.PendingRebind.CanReplace.get -> bool
+Sage.Simulation.PendingRebind.CanReplace.init -> void
+Sage.Simulation.PendingRebind.Conflicts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Simulation.PendingRebind.Conflicts.init -> void
+Sage.Simulation.PendingRebind.Context.get -> Sage.Simulation.InputContext
+Sage.Simulation.PendingRebind.Context.init -> void
+Sage.Simulation.PendingRebind.Input.get -> Sage.Simulation.InputBinding!
+Sage.Simulation.PendingRebind.Input.init -> void
+Sage.Simulation.PendingRebind.PendingRebind(Sage.Simulation.InputContext Context, string! Action, Sage.Simulation.InputBinding! Input, System.Collections.Generic.IReadOnlyList<string!>! Conflicts, bool CanReplace) -> void
+Sage.Simulation.RebindResult
+Sage.Simulation.RebindResult.CanReplace.get -> bool
+Sage.Simulation.RebindResult.CanReplace.init -> void
+Sage.Simulation.RebindResult.Conflicts.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Sage.Simulation.RebindResult.Conflicts.init -> void
+Sage.Simulation.RebindResult.Message.get -> string!
+Sage.Simulation.RebindResult.Message.init -> void
+Sage.Simulation.RebindResult.Ok.get -> bool
+Sage.Simulation.RebindResult.RebindResult() -> void
+Sage.Simulation.RebindResult.RebindResult(Sage.Simulation.RebindStatus Status, string! Message = "", System.Collections.Generic.IReadOnlyList<string!>? Conflicts = null, bool CanReplace = false) -> void
+Sage.Simulation.RebindResult.Status.get -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindResult.Status.init -> void
+Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Applied = 0 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.CannotSave = 4 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Conflict = 2 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Invalid = 3 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RebindStatus.Unchanged = 1 -> Sage.Simulation.RebindStatus
+Sage.Simulation.SageAppOptions.InputFile.get -> string?
+Sage.Simulation.SageAppOptions.InputFile.init -> void
 Sage.Simulation.ShadowAtlas
 Sage.Simulation.ShadowAtlas.Cascades.get -> int
 Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
@@ -113,6 +169,7 @@ Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Sim
 Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
 static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
 static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
 static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float
@@ -136,10 +193,8 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
-static Sage.Simulation.MusicRules.Of(Sage.Simulation.World! world) -> Sage.Simulation.Music!
-static Sage.Simulation.MusicRules.Play(Sage.Simulation.World! world, Sage.Core.RecordId track, float? seconds = null) -> void
-static Sage.Simulation.MusicRules.SetIntensity(Sage.Simulation.World! world, float intensity) -> void
-static Sage.Simulation.MusicRules.Stop(Sage.Simulation.World! world, float? seconds = null) -> void
+static Sage.Simulation.MouseCapturePolicy.ShouldCapture(in Sage.Simulation.MouseCaptureInputs i) -> bool
+static Sage.Simulation.MouseCapturePolicy.Why(in Sage.Simulation.MouseCaptureInputs i) -> string?
 static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
 static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
 static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int
@@ -318,63 +373,46 @@ Sage.Simulation.PointLight.Shadows -> bool
 Sage.Simulation.PhysicsMaterialRecord.Jump -> Sage.Core.RecordId
 Sage.Simulation.PhysicsMaterialRecord.Land -> Sage.Core.RecordId
 Sage.Simulation.SoundRecord.Stream -> bool
-Sage.Simulation.Engine.Rebinds.get -> Sage.Simulation.InputRebinds!
-Sage.Simulation.InputBinding.DisplayName.get -> string!
-Sage.Simulation.InputRebinds
-Sage.Simulation.InputRebinds.ActionsFor(Sage.Simulation.InputContext context, Sage.Simulation.InputBinding! input) -> System.Collections.Generic.IReadOnlyList<string!>!
-Sage.Simulation.InputRebinds.ActionsIn(Sage.Simulation.InputContext context) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionInfo!>!
-Sage.Simulation.InputRebinds.BeginCapture(Sage.Simulation.InputContext context, string! action) -> bool
-Sage.Simulation.InputRebinds.Bind(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputBinding! input, bool replaceConflicts = false) -> Sage.Simulation.RebindResult
-Sage.Simulation.InputRebinds.Bindings(Sage.Simulation.InputContext context, string! action) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.InputBinding!>!
-Sage.Simulation.InputRebinds.CancelCapture() -> void
-Sage.Simulation.InputRebinds.CaptureAction.get -> string!
-Sage.Simulation.InputRebinds.CaptureContext.get -> Sage.Simulation.InputContext
-Sage.Simulation.InputRebinds.Capturing.get -> bool
-Sage.Simulation.InputRebinds.ContextsInUse.get -> System.Collections.Generic.IEnumerable<Sage.Simulation.InputContext>!
-Sage.Simulation.InputRebinds.FilePath.get -> string?
-Sage.Simulation.InputRebinds.IsOverridden(Sage.Simulation.InputContext context, string! action) -> bool
-Sage.Simulation.InputRebinds.LastResult.get -> Sage.Simulation.RebindResult
-Sage.Simulation.InputRebinds.Offer(Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
-Sage.Simulation.InputRebinds.Pending.get -> Sage.Simulation.PendingRebind?
-Sage.Simulation.InputRebinds.Rebind(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputBinding! input, bool replaceConflicts = false) -> Sage.Simulation.RebindResult
-Sage.Simulation.InputRebinds.Reset(Sage.Simulation.InputContext? context = null, string? action = null) -> Sage.Simulation.RebindResult
-Sage.Simulation.InputRebinds.Resolve(bool replace) -> Sage.Simulation.RebindResult
-Sage.Simulation.InputRebinds.ResultVersion.get -> int
-Sage.Simulation.InputRebinds.TakeFresh() -> bool
-Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string? action, Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
-Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
-Sage.Simulation.InputRebinds.Validator.set -> void
-Sage.Simulation.InputRebinds.Version.get -> int
-Sage.Simulation.PendingRebind
-Sage.Simulation.PendingRebind.Action.get -> string!
-Sage.Simulation.PendingRebind.Action.init -> void
-Sage.Simulation.PendingRebind.CanReplace.get -> bool
-Sage.Simulation.PendingRebind.CanReplace.init -> void
-Sage.Simulation.PendingRebind.Conflicts.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Sage.Simulation.PendingRebind.Conflicts.init -> void
-Sage.Simulation.PendingRebind.Context.get -> Sage.Simulation.InputContext
-Sage.Simulation.PendingRebind.Context.init -> void
-Sage.Simulation.PendingRebind.Input.get -> Sage.Simulation.InputBinding!
-Sage.Simulation.PendingRebind.Input.init -> void
-Sage.Simulation.PendingRebind.PendingRebind(Sage.Simulation.InputContext Context, string! Action, Sage.Simulation.InputBinding! Input, System.Collections.Generic.IReadOnlyList<string!>! Conflicts, bool CanReplace) -> void
-Sage.Simulation.RebindResult
-Sage.Simulation.RebindResult.CanReplace.get -> bool
-Sage.Simulation.RebindResult.CanReplace.init -> void
-Sage.Simulation.RebindResult.Conflicts.get -> System.Collections.Generic.IReadOnlyList<string!>?
-Sage.Simulation.RebindResult.Conflicts.init -> void
-Sage.Simulation.RebindResult.Message.get -> string!
-Sage.Simulation.RebindResult.Message.init -> void
-Sage.Simulation.RebindResult.Ok.get -> bool
-Sage.Simulation.RebindResult.RebindResult() -> void
-Sage.Simulation.RebindResult.RebindResult(Sage.Simulation.RebindStatus Status, string! Message = "", System.Collections.Generic.IReadOnlyList<string!>? Conflicts = null, bool CanReplace = false) -> void
-Sage.Simulation.RebindResult.Status.get -> Sage.Simulation.RebindStatus
-Sage.Simulation.RebindResult.Status.init -> void
-Sage.Simulation.RebindStatus
-Sage.Simulation.RebindStatus.Applied = 0 -> Sage.Simulation.RebindStatus
-Sage.Simulation.RebindStatus.CannotSave = 4 -> Sage.Simulation.RebindStatus
-Sage.Simulation.RebindStatus.Conflict = 2 -> Sage.Simulation.RebindStatus
-Sage.Simulation.RebindStatus.Invalid = 3 -> Sage.Simulation.RebindStatus
-Sage.Simulation.RebindStatus.Unchanged = 1 -> Sage.Simulation.RebindStatus
-Sage.Simulation.SageAppOptions.InputFile.get -> string?
-Sage.Simulation.SageAppOptions.InputFile.init -> void
-static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
+const Sage.Simulation.MusicRules.DefaultFade = 2 -> float
+const Sage.Simulation.MusicRules.IntensityInput = "SetMusicIntensity" -> string!
+const Sage.Simulation.MusicRules.PlayInput = "PlayMusic" -> string!
+const Sage.Simulation.MusicRules.StopInput = "StopMusic" -> string!
+Sage.Simulation.Music
+Sage.Simulation.Music.Advance(float dt) -> void
+Sage.Simulation.Music.Blend.get -> float
+Sage.Simulation.Music.Blend.set -> void
+Sage.Simulation.Music.BlendRate.get -> float
+Sage.Simulation.Music.BlendRate.set -> void
+Sage.Simulation.Music.GainOf(Sage.Core.RecordId track) -> float
+Sage.Simulation.Music.Intensity.get -> float
+Sage.Simulation.Music.Intensity.set -> void
+Sage.Simulation.Music.Music() -> void
+Sage.Simulation.Music.Play(Sage.Core.RecordId track, float seconds) -> void
+Sage.Simulation.Music.Previous.get -> Sage.Core.RecordId
+Sage.Simulation.Music.Previous.set -> void
+Sage.Simulation.Music.Settled.get -> bool
+Sage.Simulation.Music.Stop(float seconds) -> void
+Sage.Simulation.Music.Track.get -> Sage.Core.RecordId
+Sage.Simulation.Music.Track.set -> void
+Sage.Simulation.MusicLayer
+Sage.Simulation.MusicLayer.Asset -> Sage.Core.AssetPath
+Sage.Simulation.MusicLayer.Fade -> float
+Sage.Simulation.MusicLayer.Intensity -> float
+Sage.Simulation.MusicLayer.MusicLayer() -> void
+Sage.Simulation.MusicLayer.Volume -> float
+Sage.Simulation.MusicRecord
+Sage.Simulation.MusicRecord.FadeIn -> float
+Sage.Simulation.MusicRecord.FadeOut -> float
+Sage.Simulation.MusicRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.MusicLayer!>!
+Sage.Simulation.MusicRecord.Loop -> bool
+Sage.Simulation.MusicRecord.LoopEnd -> long
+Sage.Simulation.MusicRecord.LoopStart -> long
+Sage.Simulation.MusicRecord.MusicRecord() -> void
+Sage.Simulation.MusicRecord.Track -> Sage.Core.AssetPath
+Sage.Simulation.MusicRecord.Volume -> float
+Sage.Simulation.MusicRules
+Sage.Simulation.SceneEnvironment.Music -> Sage.Core.RecordRef<Sage.Simulation.MusicRecord!>
+static Sage.Simulation.MusicRules.Of(Sage.Simulation.World! world) -> Sage.Simulation.Music!
+static Sage.Simulation.MusicRules.Play(Sage.Simulation.World! world, Sage.Core.RecordId track, float? seconds = null) -> void
+static Sage.Simulation.MusicRules.SetIntensity(Sage.Simulation.World! world, float intensity) -> void
+static Sage.Simulation.MusicRules.Stop(Sage.Simulation.World! world, float? seconds = null) -> void
