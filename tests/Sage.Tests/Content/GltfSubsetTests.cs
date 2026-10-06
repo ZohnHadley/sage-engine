@@ -95,7 +95,6 @@ public class GltfSubsetTests
 
     public static TheoryData<string, string, string> Rejections() => new()
     {
-        { GltfSubset.MorphTargets, "morph targets", "m" },
         { GltfSubset.SparseAccessors, "sparse", "s" },
         { GltfSubset.Draco, "Draco", "d" },
         { GltfSubset.Meshopt, "meshopt", "o" },
@@ -111,7 +110,6 @@ public class GltfSubsetTests
 
     private static byte[] Broken(string code) => code switch
     {
-        "m" => Patch(Triangle(), j => Primitive(j)["targets"] = new JsonArray(new JsonObject { ["POSITION"] = 0 })),
         "s" => Patch(Triangle(), j => j["accessors"]!.AsArray()[0]!["sparse"] = new JsonObject { ["count"] = 1 }),
         "d" => Patch(Triangle(), j =>
         {
@@ -157,12 +155,12 @@ public class GltfSubsetTests
         var glb = Patch(Triangle(), j =>
         {
             Primitive(j)["mode"] = 0;
-            Primitive(j)["targets"] = new JsonArray(new JsonObject { ["POSITION"] = 0 });
+            j["accessors"]!.AsArray()[0]!["sparse"] = new JsonObject { ["count"] = 1 };
             j["extensionsRequired"] = new JsonArray("KHR_draco_mesh_compression", "FAKE_extension");
         });
         var errors = Errors(glb);
         Assert.Equal(4, errors.Count);
-        foreach (string feature in new[] { GltfSubset.PrimitiveMode, GltfSubset.MorphTargets, GltfSubset.Draco, GltfSubset.RequiredExtension })
+        foreach (string feature in new[] { GltfSubset.PrimitiveMode, GltfSubset.SparseAccessors, GltfSubset.Draco, GltfSubset.RequiredExtension })
             Assert.Single(errors, e => e.Contains($"'{feature}'"));
     }
 
@@ -257,9 +255,9 @@ public class GltfSubsetTests
         Assert.Null(first.Parts[0].Uv1);
         Assert.NotNull(second.Parts[0].Uv1);
 
-        var broken = Patch(Triangle(), j => Primitive(j)["targets"] = new JsonArray(new JsonObject { ["POSITION"] = 0 }));
+        var broken = Patch(Triangle(), j => j["accessors"]!.AsArray()[0]!["sparse"] = new JsonObject { ["count"] = 1 });
         Assert.Null(MeshGeometry.ReadGlb(new MemoryStream(broken), "m.glb", out var errors));
-        Assert.Contains("morph-targets", Assert.Single(errors));
+        Assert.Contains("sparse-accessors", Assert.Single(errors));
         Assert.Equal(1f, first.Parts[0].Rigid![1].Position.X);
     }
 }

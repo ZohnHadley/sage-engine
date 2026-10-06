@@ -75,6 +75,7 @@ internal sealed class MeshData
     public bool IsError;
     public bool Owned;   // buffers the renderer created (error mesh, terrain chunks): it disposes them
     public MeshSkin? Skin;              // the file's skin, if any of its parts is skinned
+    public MeshGeometry? Morphs;        // the geometry, when a skinned part has morph targets (issue #363): the CPU morph pass reads it
 }
 
 // The client renderer (docs/design/06): owns GPU-side meshes by id, the material cache and the named
@@ -157,6 +158,7 @@ public sealed partial class Renderer : IDisposable
         content.Reloaded += _ => Materials.Invalidate();
         content.Evicted += _ => Materials.Invalidate();
         _meshes = new AssetTable<MeshData>(CreateErrorMesh(_device));   // id 0
+        Morphed = new MorphedMeshes(_device);
         _loadMesh = LoadMesh;
         Budget.MillisecondsPerFrame = settings.UploadMs.Value;
         settings.UploadMs.Changed += _ => Budget.MillisecondsPerFrame = settings.UploadMs.Value;
@@ -362,6 +364,13 @@ public sealed partial class Renderer : IDisposable
 
     internal MeshData Mesh(int id) => _meshes[id]!;
 
+    // Skinned renderers moved by their pose's morph weights (issue #363): SkinnedMeshExtract fills them,
+    // and a draw binds `VertexBufferOf` its item.
+    internal MorphedMeshes Morphed { get; }
+
+    internal VertexBuffer VertexBufferOf(in RenderItem item, MeshPart part) =>
+        item.Morph > 0 ? Morphed.BufferOf(item.Morph, item.Part, part.VertexBuffer) : part.VertexBuffer;
+
     // Frees a model's buffers when it is loaded at a scope a sector lets go of (#277, #308). Its slot is
     // reused by a later load, and the path loads afresh the next time something resolves it. A mesh
     // registered from a stream (RegisterMesh) is the engine's: it is not on a mount to load again.
@@ -472,7 +481,8 @@ public sealed partial class Renderer : IDisposable
 
         // Owned: these buffers are the renderer's, so they are disposed with it. An `.xnb` model
         // belonged to the ContentManager, which is the thing that has gone away.
-        return new MeshData { Name = name, Parts = parts.ToArray(), Owned = true, Skin = skinned ? model.Skin : null };
+        bool morphs = model.Parts.Exists(p => p.Morphs != null);
+        return new MeshData { Name = name, Parts = parts.ToArray(), Owned = true, Skin = skinned ? model.Skin : null, Morphs = morphs ? model : null };
     }
 
     // A mesh built by the engine or a game (terrain chunks, 14 §3): the renderer owns the buffers and
@@ -1100,7 +1110,7 @@ public sealed partial class Renderer : IDisposable
             caster.World?.SetValue(item.World);
             effect.CurrentTechnique = technique;
             var part = Mesh(item.Mesh).Parts[item.Part];
-            _device.SetVertexBuffer(part.VertexBuffer);
+            _device.SetVertexBuffer(VertexBufferOf(item, part));
             _device.Indices = part.IndexBuffer;
             foreach (var pass in technique.Passes)
             {
@@ -1134,7 +1144,7 @@ public sealed partial class Renderer : IDisposable
         m.Effect.Tint?.SetValue(item.Tint);
         m.Effect.Effect.CurrentTechnique = technique;
         var part = Mesh(item.Mesh).Parts[item.Part];
-        _device.SetVertexBuffer(part.VertexBuffer);
+        _device.SetVertexBuffer(VertexBufferOf(item, part));
         _device.Indices = part.IndexBuffer;
         foreach (var pass in technique.Passes)
         {
@@ -1342,7 +1352,7 @@ public sealed partial class Renderer : IDisposable
 
         m.Effect.SetLights(chosen);
         if (chosen.Length > stats.MaxLightsOnADraw) stats.MaxLightsOnADraw = chosen.Length;
-        _device.SetVertexBuffer(part.VertexBuffer);
+        _device.SetVertexBuffer(VertexBufferOf(item, part));
         _device.Indices = part.IndexBuffer;
         foreach (var pass in technique.Passes)
         {
@@ -1610,6 +1620,7 @@ public sealed partial class Renderer : IDisposable
         _puddleMask?.Dispose();
         Materials.Dispose();
         _targets.Dispose();
+        Morphed.Dispose();
     }
 }
 

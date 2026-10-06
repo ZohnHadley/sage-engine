@@ -33,14 +33,22 @@ public sealed class Skeleton
     private readonly Pose[] _rest;
     private readonly Matrix4x4[] _inverseBind;
     private readonly int[] _jointOfSkinIndex;
+    private readonly string[] _morphTargets;
+    private readonly float[] _restMorphWeights;
 
     // `parents[i]` is -1 for a root, or a joint before i. Throws ArgumentException when the arrays
     // disagree in length or a parent does not come first: a skeleton that breaks the order would
     // silently read a parent's model-space matrix before it was written. The arrays are copied.
     public Skeleton(string[] names, int[] parents, Pose[] restPose, Matrix4x4[] inverseBind)
-        : this(names, parents, restPose, inverseBind, null) { }
+        : this(names, parents, restPose, inverseBind, null, null, null) { }
 
-    internal Skeleton(string[] names, int[] parents, Pose[] restPose, Matrix4x4[] inverseBind, int[]? jointOfSkinIndex)
+    // The same, with the model's morph targets (issue #363): a pose then carries one weight per target,
+    // starting at `restMorphWeights` (null: every target at 0). The arrays are copied.
+    public Skeleton(string[] names, int[] parents, Pose[] restPose, Matrix4x4[] inverseBind, string[] morphTargets, float[]? restMorphWeights)
+        : this(names, parents, restPose, inverseBind, null, morphTargets ?? throw new ArgumentNullException(nameof(morphTargets)), restMorphWeights) { }
+
+    internal Skeleton(string[] names, int[] parents, Pose[] restPose, Matrix4x4[] inverseBind, int[]? jointOfSkinIndex,
+                      string[]? morphTargets = null, float[]? restMorphWeights = null)
     {
         ArgumentNullException.ThrowIfNull(names);
         ArgumentNullException.ThrowIfNull(parents);
@@ -69,6 +77,14 @@ public sealed class Skeleton
             if (jointOfSkinIndex.Length != count) throw new ArgumentException("jointOfSkinIndex must have one entry per joint");
             _jointOfSkinIndex = (int[])jointOfSkinIndex.Clone();
         }
+        _morphTargets = morphTargets == null ? Array.Empty<string>() : (string[])morphTargets.Clone();
+        _restMorphWeights = new float[_morphTargets.Length];
+        if (restMorphWeights != null)
+        {
+            if (restMorphWeights.Length != _morphTargets.Length)
+                throw new ArgumentException($"{restMorphWeights.Length} rest morph weights for {_morphTargets.Length} morph targets");
+            restMorphWeights.CopyTo(_restMorphWeights, 0);
+        }
     }
 
     public int JointCount => _names.Length;
@@ -93,6 +109,23 @@ public sealed class Skeleton
     {
         for (int i = 0; i < _names.Length; i++)
             if (string.Equals(_names[i], name, StringComparison.Ordinal)) return i;
+        return -1;
+    }
+
+    // The model's morph targets (blend shapes, issue #363), by name: what a pose's MorphWeights holds a
+    // weight for, in this order. Empty for a model without them.
+    public int MorphTargetCount => _morphTargets.Length;
+
+    public string MorphTargetName(int target) => _morphTargets[target];
+
+    // Each target's weight when nothing animates it (glTF: the node's or the mesh's `weights`, else 0).
+    public ReadOnlySpan<float> RestMorphWeights => _restMorphWeights;
+
+    // -1 when there is no morph target of that name. Ordinal.
+    public int MorphIndexOf(string name)
+    {
+        for (int i = 0; i < _morphTargets.Length; i++)
+            if (string.Equals(_morphTargets[i], name, StringComparison.Ordinal)) return i;
         return -1;
     }
 

@@ -7,6 +7,11 @@ const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
 const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
 const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
 const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
+Sage.Simulation.AnimationClip.AnimatesMorph(int target) -> bool
+Sage.Simulation.AnimationClip.AnimationClip(string! name, int jointCount, int morphTargetCount, float duration) -> void
+Sage.Simulation.AnimationClip.MorphTargetCount.get -> int
+Sage.Simulation.AnimationClip.SetMorphWeights(int target, Sage.Simulation.AnimationInterpolation interpolation, float[]! times, float[]! values) -> void
+Sage.Simulation.AnimGraphRecord.Morphs -> System.Collections.Generic.Dictionary<string!, string!>!
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
 Sage.Simulation.Decal.Alpha.get -> float
@@ -68,6 +73,8 @@ Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string
 Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
 Sage.Simulation.InputRebinds.Validator.set -> void
 Sage.Simulation.InputRebinds.Version.get -> int
+Sage.Simulation.JointMask.MorphWeights.get -> System.ReadOnlySpan<float>
+Sage.Simulation.JointMask.SetMorph(string! target, float weight) -> bool
 Sage.Simulation.LastUsedDevice.Pad.get -> Sage.Simulation.PadFamily
 Sage.Simulation.LastUsedDevice.SetPad(Sage.Simulation.PadFamily pad) -> void
 Sage.Simulation.LastUsedDevice.Version.get -> int
@@ -179,6 +186,13 @@ Sage.Simulation.ShadowAtlas.Height.get -> int
 Sage.Simulation.ShadowAtlas.Rows.get -> int
 Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
 Sage.Simulation.ShadowAtlas.Width.get -> int
+Sage.Simulation.Skeleton.MorphIndexOf(string! name) -> int
+Sage.Simulation.Skeleton.MorphTargetCount.get -> int
+Sage.Simulation.Skeleton.MorphTargetName(int target) -> string!
+Sage.Simulation.Skeleton.RestMorphWeights.get -> System.ReadOnlySpan<float>
+Sage.Simulation.Skeleton.Skeleton(string![]! names, int[]! parents, Sage.Simulation.Pose[]! restPose, System.Numerics.Matrix4x4[]! inverseBind, string![]! morphTargets, float[]? restMorphWeights) -> void
+Sage.Simulation.SkeletonPose.MorphCount.get -> int
+Sage.Simulation.SkeletonPose.MorphWeights.get -> System.Span<float>
 Sage.Simulation.SoundRecord.Caption -> string!
 Sage.Simulation.SoundRecord.Speaker -> string!
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
@@ -205,6 +219,7 @@ Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Sim
 Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+static Sage.Simulation.Animators.GetMorphWeight(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! target) -> float?
 static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
 static Sage.Simulation.InputGlyphs.DefaultName(Sage.Simulation.InputBinding! binding, Sage.Simulation.PadFamily pad) -> string!
 static Sage.Simulation.InputGlyphs.FamilyOf(string? padName) -> Sage.Simulation.PadFamily

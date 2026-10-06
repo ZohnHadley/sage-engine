@@ -2227,6 +2227,13 @@
         "SmoothStep",
         "SmootherStep"
       ]
+    },
+    "morphs": {
+      "description": "Morph targets set from a Float or Bool param every tick, over what the clips give: { \"jaw_open\": \"mouth\" } (lip-sync) (Dictionary<string, string>)",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false
