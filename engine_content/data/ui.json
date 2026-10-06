@@ -4,5 +4,10 @@
   //   { "type": "ui_sounds", "id": "sage:default_ui_sounds", "patch": true, "move": "ui_move", "select": "ui_select" }
   // (a `sound` record on the `Ui` bus; an id in a patch resolves in the patch's namespace). A `screen`
   // names a set of its own with `sounds`, field by field over this one.
-  { "type": "ui_sounds", "id": "default_ui_sounds" }
+  { "type": "ui_sounds", "id": "default_ui_sounds" },
+
+  // Subtitles and captions (issue #351): what UiScreenStack draws a world's Subtitles in, over every
+  // layer. Light text on a near-opaque black plate, readable over any scene; a game patches them.
+  { "type": "ui_style", "id": "subtitles", "textScale": 2, "textColour": "#FFFFFF", "background": "#000000D0", "padding": [8, 3] },
+  { "type": "ui_style", "id": "captions", "base": "subtitles", "textColour": "#E8E8B0" }
 ]

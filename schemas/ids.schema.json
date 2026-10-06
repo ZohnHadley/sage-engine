@@ -1198,6 +1198,7 @@
       "type": "string",
       "enum": [
         "button",
+        "captions",
         "cell",
         "cell_blocked",
         "cell_held",
@@ -1242,6 +1243,8 @@
         "rpg:topic_asked",
         "rpg:warning",
         "rpg:weight_bar",
+        "sage:captions",
+        "sage:subtitles",
         "sandbox:hud_ammo",
         "sandbox:hud_bad",
         "sandbox:hud_bar",
@@ -1271,6 +1274,7 @@
         "sandbox:ui_tooltip",
         "sandbox:ui_window",
         "slider",
+        "subtitles",
         "tab",
         "text",
         "title",
@@ -1288,6 +1292,11 @@
         "warning",
         "weight_bar"
       ]
+    },
+    "record:ui_style_set": {
+      "description": "The id of a ui_style_set record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "record:viewmodel": {
       "description": "The id of a viewmodel record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -2525,6 +2534,7 @@
       "type": "string",
       "enum": [
         "button",
+        "captions",
         "cell",
         "cell_blocked",
         "cell_held",
@@ -2569,6 +2579,8 @@
         "rpg:topic_asked",
         "rpg:warning",
         "rpg:weight_bar",
+        "sage:captions",
+        "sage:subtitles",
         "sandbox:hud_ammo",
         "sandbox:hud_bad",
         "sandbox:hud_bar",
@@ -2598,6 +2610,7 @@
         "sandbox:ui_tooltip",
         "sandbox:ui_window",
         "slider",
+        "subtitles",
         "tab",
         "text",
         "title",
@@ -2615,6 +2628,11 @@
         "warning",
         "weight_bar"
       ]
+    },
+    "base:ui_style_set": {
+      "description": "The id of a ui_style_set record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:viewmodel": {
       "description": "Another viewmodel record to inherit every field from, abstract or not.",

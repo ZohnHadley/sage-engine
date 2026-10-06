@@ -110,6 +110,10 @@ const Sage.UI.OptionsView.ControlsScreen = "controls" -> string!
 const Sage.UI.OptionsView.DefaultsButton = "defaults" -> string!
 const Sage.UI.OptionsView.KeysButton = "keys" -> string!
 const Sage.UI.OptionsView.RevertButton = "revert" -> string!
+const Sage.UI.UiContrast.HighContrast = 7 -> double
+const Sage.UI.UiContrast.Minimum = 4.5 -> double
+const Sage.UI.UiRoot.MaxUiScale = 3 -> float
+const Sage.UI.UiRoot.MinUiScale = 0.5 -> float
 override Sage.UI.Checkbox.IsSelected.get -> bool
 override Sage.UI.Checkbox.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
 override Sage.UI.Checkbox.OnActivate() -> void
@@ -123,6 +127,7 @@ override Sage.UI.Slider.OnNavigate(Sage.UI.UiNavigation direction) -> bool
 override Sage.UI.Slider.OnPointerDragged(System.Numerics.Vector2 point) -> void
 override Sage.UI.Slider.OnPointerPressed(System.Numerics.Vector2 point) -> void
 override Sage.UI.Slider.TypeName.get -> string!
+override Sage.UI.SubtitleBox.TypeName.get -> string!
 override Sage.UI.Tabs.ArrangeContent(Sage.Simulation.Rect content) -> void
 override Sage.UI.Tabs.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
 override Sage.UI.Tabs.OnDescendantFocused(Sage.UI.Widget! widget) -> void
@@ -231,6 +236,7 @@ Sage.UI.OptionsView.Row.Selected.set -> void
 Sage.UI.OptionsView.Row.Value.get -> float
 Sage.UI.OptionsView.Row.Value.set -> void
 Sage.UI.OptionsView.Row.ValueText.get -> string!
+Sage.UI.Label.EffectiveTextScale.get -> float
 Sage.UI.Slider
 Sage.UI.Slider.Increment.get -> float
 Sage.UI.Slider.KnobRect.get -> Sage.Simulation.Rect
@@ -238,6 +244,54 @@ Sage.UI.Slider.SetValue(float value) -> bool
 Sage.UI.Slider.Slider() -> void
 Sage.UI.Slider.Step.get -> float
 Sage.UI.Slider.Step.set -> void
+Sage.UI.SubtitleBox
+Sage.UI.SubtitleBox.CaptionPadding.get -> Sage.UI.Thickness
+Sage.UI.SubtitleBox.CaptionPadding.set -> void
+Sage.UI.SubtitleBox.CaptionStyle.get -> string?
+Sage.UI.SubtitleBox.CaptionStyle.set -> void
+Sage.UI.SubtitleBox.CaptionTextScale.get -> float
+Sage.UI.SubtitleBox.CaptionTextScale.set -> void
+Sage.UI.SubtitleBox.Feed.get -> Sage.UI.Subtitles!
+Sage.UI.SubtitleBox.LinePadding.get -> Sage.UI.Thickness
+Sage.UI.SubtitleBox.LinePadding.set -> void
+Sage.UI.SubtitleBox.LineStyle.get -> string?
+Sage.UI.SubtitleBox.LineStyle.set -> void
+Sage.UI.SubtitleBox.LineTextScale.get -> float
+Sage.UI.SubtitleBox.LineTextScale.set -> void
+Sage.UI.SubtitleBox.SubtitleBox(Sage.UI.Subtitles! feed) -> void
+Sage.UI.SubtitleBox.Sync() -> bool
+Sage.UI.SubtitleKind
+Sage.UI.SubtitleKind.Caption = 1 -> Sage.UI.SubtitleKind
+Sage.UI.SubtitleKind.Dialogue = 0 -> Sage.UI.SubtitleKind
+Sage.UI.SubtitleLine
+Sage.UI.SubtitleLine.Kind.get -> Sage.UI.SubtitleKind
+Sage.UI.SubtitleLine.Kind.init -> void
+Sage.UI.SubtitleLine.Remaining.get -> float
+Sage.UI.SubtitleLine.Remaining.init -> void
+Sage.UI.SubtitleLine.Speaker.get -> string!
+Sage.UI.SubtitleLine.Speaker.init -> void
+Sage.UI.SubtitleLine.SubtitleLine() -> void
+Sage.UI.SubtitleLine.SubtitleLine(Sage.UI.SubtitleKind Kind, string! Speaker, string! Text, float Remaining) -> void
+Sage.UI.SubtitleLine.Text.get -> string!
+Sage.UI.SubtitleLine.Text.init -> void
+Sage.UI.Subtitles
+Sage.UI.Subtitles.Advance(float seconds) -> void
+Sage.UI.Subtitles.Caption(string! text, float seconds = 0) -> bool
+Sage.UI.Subtitles.Clear() -> void
+Sage.UI.Subtitles.Lines.get -> System.Collections.Generic.IReadOnlyList<Sage.UI.SubtitleLine>!
+Sage.UI.Subtitles.MaxLines.get -> int
+Sage.UI.Subtitles.MaxLines.set -> void
+Sage.UI.Subtitles.MinSeconds.get -> float
+Sage.UI.Subtitles.MinSeconds.set -> void
+Sage.UI.Subtitles.Say(string! speaker, string! text, float seconds = 0) -> bool
+Sage.UI.Subtitles.SecondsPerCharacter.get -> float
+Sage.UI.Subtitles.SecondsPerCharacter.set -> void
+Sage.UI.Subtitles.ShowCaptions.get -> bool
+Sage.UI.Subtitles.ShowCaptions.set -> void
+Sage.UI.Subtitles.ShowDialogue.get -> bool
+Sage.UI.Subtitles.ShowDialogue.set -> void
+Sage.UI.Subtitles.Subtitles(Sage.UI.Localisation? text = null) -> void
+Sage.UI.Subtitles.Version.get -> int
 Sage.UI.Tabs
 Sage.UI.Tabs.AddPage<T>(string! title, T! page) -> T!
 Sage.UI.Tabs.Choose(int index) -> bool
@@ -264,6 +318,7 @@ Sage.UI.TextBox.Multiline.set -> void
 Sage.UI.TextBox.Placeholder.get -> string!
 Sage.UI.TextBox.Placeholder.set -> void
 Sage.UI.TextBox.TextBox() -> void
+Sage.UI.UiContrast
 Sage.UI.UiInput.Typed -> string?
 Sage.UI.UiNode.Checked -> bool?
 Sage.UI.UiNode.MaxLength -> int
@@ -300,12 +355,27 @@ Sage.UI.UiNode.FocusScope -> bool
 Sage.UI.UiNode.FocusUp -> string!
 Sage.UI.UiResult.Scope -> Sage.UI.Widget?
 Sage.UI.UiRoot.ActiveScope.get -> Sage.UI.Widget?
+Sage.UI.UiRoot.TextScale.get -> float
+Sage.UI.UiRoot.TextScale.set -> void
+Sage.UI.UiRoot.UiScale.get -> float
+Sage.UI.UiRoot.UiScale.set -> void
+Sage.UI.UiScreenStack.CaptionStyle.get -> string?
+Sage.UI.UiScreenStack.CaptionStyle.set -> void
 Sage.UI.UiScreenStack.Confirm(string! title, string! message, System.Action<bool>? answered = null, string! confirm = "OK", string! cancel = "Cancel", bool focusConfirm = false) -> Sage.UI.UiDialog!
 Sage.UI.UiScreenStack.DialogButtonStyle.get -> string?
 Sage.UI.UiScreenStack.DialogButtonStyle.set -> void
 Sage.UI.UiScreenStack.DialogStyle.get -> string?
 Sage.UI.UiScreenStack.DialogStyle.set -> void
 Sage.UI.UiScreenStack.Message(string! title, string! message, System.Action? closed = null, string! ok = "OK") -> Sage.UI.UiDialog!
+Sage.UI.UiScreenStack.SubtitleLayer.get -> Sage.UI.UiLayer?
+Sage.UI.UiScreenStack.Subtitles.get -> Sage.UI.Subtitles?
+Sage.UI.UiScreenStack.Subtitles.set -> void
+Sage.UI.UiScreenStack.SubtitleStyle.get -> string?
+Sage.UI.UiScreenStack.SubtitleStyle.set -> void
+Sage.UI.UiScreenStack.TextScale.get -> float
+Sage.UI.UiScreenStack.TextScale.set -> void
+Sage.UI.UiScreenStack.UiScale.get -> float
+Sage.UI.UiScreenStack.UiScale.set -> void
 Sage.UI.UiSoundsRecord
 Sage.UI.UiSoundsRecord.Close -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.Move -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
@@ -315,7 +385,19 @@ Sage.UI.UiSoundsRecord.UiSoundsRecord() -> void
 Sage.UI.UiStyle.FontSize.get -> float
 Sage.UI.UiStyleRecord.FontSize -> float
 Sage.UI.UiState.Selected = 5 -> Sage.UI.UiState
+Sage.UI.UiStyles.ActiveSet.get -> Sage.Core.RecordId
+Sage.UI.UiStyles.Sets.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.RecordId>!
+Sage.UI.UiStyles.UseSet(Sage.Core.RecordId set) -> void
+Sage.UI.UiStyleSetRecord
+Sage.UI.UiStyleSetRecord.HighContrast -> bool
+Sage.UI.UiStyleSetRecord.Label -> string!
+Sage.UI.UiStyleSetRecord.Swaps -> System.Collections.Generic.List<Sage.UI.UiStyleSwap!>!
+Sage.UI.UiStyleSetRecord.UiStyleSetRecord() -> void
 Sage.UI.UiStyleStates.Selected -> Sage.UI.UiStyleState?
+Sage.UI.UiStyleSwap
+Sage.UI.UiStyleSwap.From -> Sage.Core.RecordRef<Sage.UI.UiStyleRecord!>
+Sage.UI.UiStyleSwap.To -> Sage.Core.RecordRef<Sage.UI.UiStyleRecord!>
+Sage.UI.UiStyleSwap.UiStyleSwap() -> void
 Sage.UI.Widget.ColumnSpan.get -> int
 Sage.UI.Widget.ColumnSpan.set -> void
 Sage.UI.Widget.Draggable.get -> bool
@@ -367,6 +449,10 @@ Sage.UI.ControlsView.Row.RebindLabel.get -> string!
 Sage.UI.ControlsView.Row.Row() -> void
 Sage.UI.ControlsView.RowCount.get -> int
 Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!
+static Sage.UI.Subtitles.Format(in Sage.UI.SubtitleLine line) -> string!
+static Sage.UI.UiContrast.Luminance(uint colour) -> double
+static Sage.UI.UiContrast.Over(uint top, uint bottom) -> uint
+static Sage.UI.UiContrast.Ratio(uint a, uint b) -> double
 Sage.UI.ScreenRecord.Pauses -> bool
 Sage.UI.UiScreenStack.HoldsPause.get -> bool
 Sage.UI.UiScreenStack.PausesWorld.get -> bool
