@@ -693,3 +693,5 @@ Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void
 *REMOVED*virtual Sage.Simulation.Screen.Hint.get -> string!
 *REMOVED*virtual Sage.Simulation.Screen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
 *REMOVED*virtual Sage.Simulation.Screen.Width.get -> float
+Sage.Simulation.IAnimDebugSource
+Sage.Simulation.IAnimDebugSource.Describe(Sage.Simulation.World! world, string! filter, System.Collections.Generic.List<string!>! lines) -> void
