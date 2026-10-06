@@ -143,6 +143,26 @@ public class ProfilerTraceTests
         Assert.NotEmpty(ValidateChromeTrace(doc));
     }
 
+    // A scope that was open when the capture started (another test's world, a job on the pool) is cut at
+    // the capture's start, not written with a negative time Perfetto would refuse.
+    [Fact]
+    public void AScopeOpenWhenTheCaptureStartsBeginsAtTheCapture()
+    {
+        var early = Profiler.Begin("Test.Early");
+        Thread.Sleep(2);
+        Assert.True(Profiler.StartCapture(1000));
+        Thread.Sleep(2);
+        early.Dispose();
+        Profiler.StopCapture();
+
+        using var stream = new MemoryStream();
+        Assert.True(Profiler.WriteTrace(stream) >= 1);   // tests running alongside may add their own scopes
+        using var doc = JsonDocument.Parse(stream.ToArray());
+        var slice = Assert.Single(ValidateChromeTrace(doc), e => e.GetProperty("name").GetString() == "Test.Early");
+        Assert.Equal(0, slice.GetProperty("ts").GetDouble());
+        Assert.True(slice.GetProperty("dur").GetDouble() >= 1000, "it lasts from the capture's start to its end");
+    }
+
     [Fact]
     public void AFullBufferDropsTheRestAndSaysHowMany()
     {

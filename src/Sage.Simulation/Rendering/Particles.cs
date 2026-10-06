@@ -26,6 +26,15 @@ public enum EmitShape
     Box,          // anywhere in a volume, falling: rain, snow, dust in a shaft of light
 }
 
+// What a particle does when it meets the world (issue 4n-6). Off by default: a ray per spark is not free,
+// and smoke, embers and rain have nothing to say to the floor.
+public enum ParticleCollision
+{
+    None,         // passes through everything, as every particle did before
+    Bounce,       // reflects off what it hits, losing `restitution` and `friction`: sparks on stone
+    Die,          // ends where it hits: rain, blood
+}
+
 // What a puff of something looks like, as data (05 §3.5). One record covers a burst and a steady
 // stream, because the difference is `burst` against `rate` and nothing else.
 [Record("particle", Plugin = "sage.client")]
@@ -64,7 +73,54 @@ public sealed class ParticleRecord
     // World, or carried: a spark stays where it was thrown, a magic aura moves with its owner.
     public bool Local;
 
+    // ---- Meeting the world (issue 4n-6) ----
+    //
+    // A free particle that collides casts one ray a frame along the way it is moving, through the world's
+    // physics (`IPhysicsWorld.Raycast`, triggers left out), within `Particles.CollisionBudget` rays a frame
+    // for everything at once. A carried (`local`) effect never collides: it is wherever its owner is.
+    [Property(Tooltip = "What a particle does when it meets the world: None (passes through), Bounce, or Die")]
+    public ParticleCollision Collision;
+    [Property(Min = 0, Max = 1, Tooltip = "Bounce: the share of speed into the surface kept after a bounce; 0 = stops dead on it")]
+    public float Restitution = 0.4f;
+    [Property(Min = 0, Max = 1, Tooltip = "Bounce: the share of speed along the surface lost at each bounce")]
+    public float Friction = 0.2f;
+
+    // ---- A sprite sheet over a life (issue 4n-6) ----
+    //
+    // The texture as a grid of `sheetColumns` x `sheetRows` frames, read left to right and top to bottom;
+    // each particle runs through `sheetFrames` of them (0: all) `sheetCycles` times between birth and
+    // death. 1 x 1, the default, is the whole texture, as before.
+    [Property(Min = 1, Max = 64, Category = "Sheet", Tooltip = "Frames across the texture")]
+    public int SheetColumns = 1;
+    [Property(Min = 1, Max = 64, Category = "Sheet", Tooltip = "Frames down the texture")]
+    public int SheetRows = 1;
+    [Property(Min = 0, Category = "Sheet", Tooltip = "How many of the grid's frames are used, in order; 0 = all of them")]
+    public int SheetFrames;
+    [Property(Min = 0, Category = "Sheet", Tooltip = "How many times a particle runs through its frames over its life; 0 = holds one frame")]
+    public float SheetCycles = 1f;
+    [Property(Category = "Sheet", Tooltip = "Each particle starts on a frame of its own, so a cloud of them does not flicker in step")]
+    public bool SheetRandomStart;
+
     public static readonly RecordId DefaultMaterial = new("sage", "particle_additive");
+
+    // The frames a particle runs through: the grid's, or fewer when `sheetFrames` says.
+    internal int FrameCount => SheetFrames > 0 ? SheetFrames : Math.Max(1, SheetColumns) * Math.Max(1, SheetRows);
+
+    // Load: a sheet's numbers fit its grid, and collision's are fractions. A mistake is a load error at its
+    // line (issue 4n-6), not a particle drawn from the wrong corner of its texture.
+    internal static void Check(ParticleRecord record, RecordCheck check)
+    {
+        if (record.SheetColumns < 1 || record.SheetColumns > 64) check.Error("sheetColumns", "\"sheetColumns\" is a whole number from 1 to 64");
+        if (record.SheetRows < 1 || record.SheetRows > 64) check.Error("sheetRows", "\"sheetRows\" is a whole number from 1 to 64");
+        if (record.SheetFrames < 0) check.Error("sheetFrames", "\"sheetFrames\" cannot be negative (0 = every frame of the grid)");
+        else if (record.SheetColumns >= 1 && record.SheetRows >= 1 && record.SheetFrames > record.SheetColumns * record.SheetRows)
+            check.Error("sheetFrames", $"\"sheetFrames\" is more than the {record.SheetColumns} x {record.SheetRows} grid holds ({record.SheetColumns * record.SheetRows})");
+        if (!(record.SheetCycles >= 0f) || float.IsInfinity(record.SheetCycles)) check.Error("sheetCycles", "\"sheetCycles\" is a number of 0 or more");
+        if (!(record.Restitution >= 0f && record.Restitution <= 1f)) check.Error("restitution", "\"restitution\" is a fraction from 0 to 1");
+        if (!(record.Friction >= 0f && record.Friction <= 1f)) check.Error("friction", "\"friction\" is a fraction from 0 to 1");
+        if (record.Collision != ParticleCollision.None && record.Local)
+            check.Warn("collision", "is not read on a local (carried) effect: its particles are wherever their owner is");
+    }
 }
 
 // An entity that emits while it exists: a torch's embers, rain over the player, an aura. The component
@@ -92,6 +148,15 @@ public sealed class Particles
 
     public int Refused { get; private set; }     // asked for beyond the budget, for `fx_stats`
 
+    // Rays a frame for every colliding particle at once (issue 4n-6). Past it, the rest move unchecked
+    // that frame — and may pass through a thin floor — and are counted in `RaysSkipped`, so a scene that
+    // needs more says so in `fx_stats` instead of quietly losing its sparks through the ground.
+    public int CollisionBudget { get; set; } = 512;
+
+    public int Rays { get; private set; }         // cast since ResetStats, for `fx_stats`
+    public int RaysSkipped { get; private set; }  // wanted beyond the budget since ResetStats
+    public int Hits { get; private set; }         // particles that met the world since ResetStats
+
     public bool Enabled { get; set; } = true;
 
     // What the weather is doing to everything at once (06 §3.13). On top of each record's own wind, so
@@ -100,7 +165,7 @@ public sealed class Particles
 
     public IReadOnlyList<Group> Groups => _order;
 
-    public void ResetStats() => Refused = 0;
+    public void ResetStats() => Refused = Rays = RaysSkipped = Hits = 0;
 
     // A batch of particles that share a record, and so a texture and a material.
     public sealed class Group
@@ -115,6 +180,7 @@ public sealed class Particles
         public float[] Spin = Array.Empty<float>();
         public Entity[] Follows = Array.Empty<Entity>();     // for `local` effects
         public Vector3[] Offset = Array.Empty<Vector3>();    // ...and where they sit on it
+        public int[] FirstFrame = Array.Empty<int>();       // `sheetRandomStart`: where on the sheet it began
         public int Count;
 
         // Where a particle is now and what it looks like: the two questions the renderer asks and the
@@ -125,6 +191,13 @@ public sealed class Particles
 
         public uint ColourOf(int i) => LerpColour(Record.ColourStart, Record.ColourEnd, Fraction(i));
 
+        // Which frame of its sheet it shows (issue 4n-6): its share of life, times the cycles, across the
+        // frames — the last frame at death rather than wrapping to the first — then moved on by where it
+        // began. 0 for a 1 x 1 sheet.
+        public int FrameOf(int i) => Frame(Record, Fraction(i), FirstFrame[i]);
+
+        // That frame as UVs in the texture: u0, v0, u1, v1, as the sprite batcher takes them.
+        public Vector4 UvOf(int i) => FrameUv(Record, FrameOf(i));
         internal void Grow(int wanted)
         {
             if (Position.Length >= wanted) return;
@@ -137,6 +210,7 @@ public sealed class Particles
             Array.Resize(ref Spin, size);
             Array.Resize(ref Follows, size);
             Array.Resize(ref Offset, size);
+            Array.Resize(ref FirstFrame, size);
         }
 
         // Dropping one is a swap with the last: order does not matter to a puff of smoke, and this keeps
@@ -153,6 +227,7 @@ public sealed class Particles
             Spin[i] = Spin[last];
             Follows[i] = Follows[last];
             Offset[i] = Offset[last];
+            FirstFrame[i] = FirstFrame[last];
         }
     }
 
@@ -194,6 +269,7 @@ public sealed class Particles
             group.Spin[i] = record.SpinDegrees * MathF.PI / 180f * (_random.NextDouble() < 0.5 ? -1f : 1f);
             group.Follows[i] = record.Local ? follows : default;
             group.Offset[i] = record.Local ? offset : Vector3.Zero;
+            group.FirstFrame[i] = record.SheetRandomStart ? _random.Next(record.FrameCount) : 0;
             Live++;
         }
         return room;
@@ -204,6 +280,8 @@ public sealed class Particles
     public void Update(World world, float dt)
     {
         if (dt <= 0f) return;
+        world.Resources.TryGet<IPhysicsWorld>(out var physics);
+        int rays = 0;
 
         for (int g = 0; g < _order.Count; g++)
         {
@@ -211,6 +289,7 @@ public sealed class Particles
             var record = group.Record;
             float drag = MathF.Max(0f, 1f - record.Drag * dt);
             var push = (new Vector3(0, record.Gravity, 0) + record.Wind + Wind) * dt;
+            bool collides = record.Collision != ParticleCollision.None && physics != null;
 
             for (int i = group.Count - 1; i >= 0; i--)
             {
@@ -233,12 +312,85 @@ public sealed class Particles
                 else
                 {
                     group.Velocity[i] = group.Velocity[i] * drag + push;
-                    group.Position[i] += group.Velocity[i] * dt;
+                    var step = group.Velocity[i] * dt;
+                    if (collides && step.LengthSquared() > 1e-12f)
+                    {
+                        if (rays >= CollisionBudget) RaysSkipped++;
+                        else
+                        {
+                            rays++;
+                            Rays++;
+                            if (Collide(physics!, record, ref group.Position[i], ref group.Velocity[i], step))
+                            {
+                                Hits++;
+                                if (record.Collision == ParticleCollision.Die) { group.RemoveAt(i); Live--; continue; }
+                                group.Rotation[i] += group.Spin[i] * dt;
+                                continue;
+                            }
+                        }
+                    }
+                    group.Position[i] += step;
                 }
                 group.Rotation[i] += group.Spin[i] * dt;
             }
         }
     }
+
+    // One particle's move against the world: a ray along this frame's `step`, and on a hit it stops on the
+    // surface (a hair off it, so the next ray does not start inside) and, for Bounce, turns its velocity —
+    // the part into the surface reflected and scaled by `restitution`, the part along it scaled by
+    // `1 - friction`. A surface it is leaving (normal along the step) is not a hit. True when it hit.
+    internal static bool Collide(IPhysicsWorld physics, ParticleRecord record, ref Vector3 position, ref Vector3 velocity, Vector3 step)
+    {
+        float length = step.Length();
+        var direction = step / length;
+        var hit = physics.Raycast(position, direction, length);
+        if (!hit.Hit || Vector3.Dot(hit.Normal, direction) >= 0f) return false;
+
+        position = hit.Position + hit.Normal * SurfaceGap;
+        if (record.Collision == ParticleCollision.Bounce) velocity = Bounce(velocity, hit.Normal, record.Restitution, record.Friction);
+        return true;
+    }
+
+    // How far off a surface a particle is left when it meets one.
+    internal const float SurfaceGap = 0.005f;
+
+    // A velocity after a bounce off a surface with `normal` (see Collide).
+    internal static Vector3 Bounce(Vector3 velocity, Vector3 normal, float restitution, float friction)
+    {
+        float into = Vector3.Dot(velocity, normal);
+        if (into >= 0f) return velocity;                       // already leaving it
+        var across = velocity - normal * into;
+        return across * (1f - Math.Clamp(friction, 0f, 1f)) - normal * (into * Math.Clamp(restitution, 0f, 1f));
+    }
+
+    // The frame of `record`'s sheet at `fraction` of a life, for a particle that began on `first` (see
+    // Group.FrameOf).
+    internal static int Frame(ParticleRecord record, float fraction, int first = 0)
+    {
+        int frames = record.FrameCount;
+        if (frames <= 1) return 0;
+        float span = MathF.Max(0f, record.SheetCycles) * frames;
+        int step = (int)(Math.Clamp(fraction, 0f, 1f) * span);
+        int last = Math.Max(0, (int)MathF.Ceiling(span) - 1);
+        if (step > last) step = last;
+        return (int)((uint)(step + first) % (uint)frames);
+    }
+
+    // Frame `frame` of `record`'s grid as UVs (u0, v0, u1, v1): left to right, then top to bottom.
+    internal static Vector4 FrameUv(ParticleRecord record, int frame)
+    {
+        int columns = Math.Max(1, record.SheetColumns), rows = Math.Max(1, record.SheetRows);
+        if (columns == 1 && rows == 1) return new Vector4(0f, 0f, 1f, 1f);
+        int column = frame % columns, row = frame / columns % rows;
+        float w = 1f / columns, h = 1f / rows;
+        return new Vector4(column * w, row * h, (column + 1) * w, (row + 1) * h);
+    }
+
+    // Whether fog hides a particle wholly (issue 4n-6): a camera-relative centre and its size, against
+    // the fog's cull distance (`FogMath.Hides`). The client asks it only for a material with fog on.
+    internal static bool FogHides(float cullDistance, Vector3 relative, float size) =>
+        FogMath.Hides(cullDistance, relative, size * 0.71f);   // the quad's corner: half its diagonal
 
     // Everything moves with the world (R6): a puff of smoke a kilometre behind where it was blown is
     // the same bug the audio mixer had, and the same one-line answer.

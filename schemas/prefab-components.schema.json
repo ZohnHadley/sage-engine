@@ -492,6 +492,14 @@
         }
       ]
     },
+    "orbit": {
+      "description": "The component sandbox:orbit (Orbit), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sandbox:orbit"
+        }
+      ]
+    },
     "particle_emitter": {
       "description": "The component sage:particle_emitter (ParticleEmitter), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -1401,6 +1409,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sandbox:hop"
+        }
+      ]
+    },
+    "sandbox:orbit": {
+      "description": "Component sandbox:orbit (Orbit).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sandbox:orbit"
         }
       ]
     },
@@ -4931,6 +4947,30 @@
           "description": "Switched off: no light until TurnOn or Toggle (entity I/O) reaches it. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "pattern": {
+          "description": "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. (string)",
+          "type": "string"
+        },
+        "patternRate": {
+          "description": "Letters of the pattern a second; 0 = 10, Quake's. Unit: 1/s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "cone": {
+          "description": "Spot light: the cone's half-angle around the entity's forward; 0 = all round (a point light) Unit: deg. Range: 0 to 179. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
+        },
+        "innerCone": {
+          "description": "Spot light: full strength inside this half-angle, fading to the cone's edge; 0 = three quarters of the cone. Unit: deg. Range: 0 to 179. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 179
         }
       },
       "additionalProperties": false,
@@ -6953,6 +6993,42 @@
       },
       "additionalProperties": false,
       "description": "Component sandbox:hop (Hop)."
+    },
+    "sandbox:orbit": {
+      "type": "object",
+      "properties": {
+        "axis": {
+          "description": "The circle's axis (unit length); it goes round counter-clockwise looking down it. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "radius": {
+          "description": "The circle's radius. Unit: m. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "period": {
+          "description": "Seconds to go round once. Unit: s. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "angle": {
+          "description": "How far round it is. Unit: rad. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sandbox:orbit (Orbit)."
     }
   }
 }

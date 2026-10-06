@@ -366,6 +366,7 @@
       "enum": [
         "arms_skin",
         "brass",
+        "brick_wall",
         "bunny",
         "crate",
         "crypt_floor",
@@ -377,6 +378,7 @@
         "error",
         "floor",
         "gunmetal",
+        "lamp_glow",
         "lit_default",
         "mannequin",
         "mannequin_blue",
@@ -419,11 +421,13 @@
         "sage:unlit_default",
         "sandbox:arms_skin",
         "sandbox:brass",
+        "sandbox:brick_wall",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
         "sandbox:floor",
         "sandbox:gunmetal",
+        "sandbox:lamp_glow",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:stone",
@@ -548,6 +552,7 @@
         "beacon",
         "bolt_flight",
         "bolts_pickup",
+        "brick_wall",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -648,6 +653,7 @@
         "sandbox:anvil",
         "sandbox:bolt_flight",
         "sandbox:bolts_pickup",
+        "sandbox:brick_wall",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
@@ -678,6 +684,7 @@
         "sandbox:spot",
         "sandbox:sword_pickup",
         "sandbox:tree",
+        "sandbox:wall_lamp",
         "sandbox:watcher",
         "sandbox:waystone",
         "saves:floor",
@@ -741,6 +748,7 @@
         "village:player",
         "village:trader",
         "walker",
+        "wall_lamp",
         "watcher",
         "way_out",
         "waystone",
@@ -900,7 +908,9 @@
         "sandbox:pickup",
         "sandbox:rain_loop",
         "sandbox:swing",
-        "swing"
+        "sandbox:thunder",
+        "swing",
+        "thunder"
       ]
     },
     "record:spread": {
@@ -1135,7 +1145,17 @@
         "sandbox:clear",
         "sandbox:rain",
         "sandbox:snow",
-        "snow"
+        "sandbox:storm",
+        "snow",
+        "storm"
+      ]
+    },
+    "record:weather_pattern": {
+      "description": "The id of a weather_pattern record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "changeable",
+        "sandbox:changeable"
       ]
     },
     "base:ability": {
@@ -1496,6 +1516,7 @@
       "enum": [
         "arms_skin",
         "brass",
+        "brick_wall",
         "bunny",
         "crate",
         "crypt_floor",
@@ -1507,6 +1528,7 @@
         "error",
         "floor",
         "gunmetal",
+        "lamp_glow",
         "lit_default",
         "mannequin",
         "mannequin_blue",
@@ -1549,11 +1571,13 @@
         "sage:unlit_default",
         "sandbox:arms_skin",
         "sandbox:brass",
+        "sandbox:brick_wall",
         "sandbox:bunny",
         "sandbox:crate",
         "sandbox:door",
         "sandbox:floor",
         "sandbox:gunmetal",
+        "sandbox:lamp_glow",
         "sandbox:roof",
         "sandbox:steel",
         "sandbox:stone",
@@ -1678,6 +1702,7 @@
         "beacon",
         "bolt_flight",
         "bolts_pickup",
+        "brick_wall",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -1779,6 +1804,7 @@
         "sandbox:anvil",
         "sandbox:bolt_flight",
         "sandbox:bolts_pickup",
+        "sandbox:brick_wall",
         "sandbox:bunny",
         "sandbox:campfire",
         "sandbox:crate",
@@ -1810,6 +1836,7 @@
         "sandbox:spot",
         "sandbox:sword_pickup",
         "sandbox:tree",
+        "sandbox:wall_lamp",
         "sandbox:watcher",
         "sandbox:waystone",
         "saves:floor",
@@ -1873,6 +1900,7 @@
         "village:player",
         "village:trader",
         "walker",
+        "wall_lamp",
         "watcher",
         "way_out",
         "waystone",
@@ -2032,7 +2060,9 @@
         "sandbox:pickup",
         "sandbox:rain_loop",
         "sandbox:swing",
-        "swing"
+        "sandbox:thunder",
+        "swing",
+        "thunder"
       ]
     },
     "base:spread": {
@@ -2267,7 +2297,17 @@
         "sandbox:clear",
         "sandbox:rain",
         "sandbox:snow",
-        "snow"
+        "sandbox:storm",
+        "snow",
+        "storm"
+      ]
+    },
+    "base:weather_pattern": {
+      "description": "Another weather_pattern record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "changeable",
+        "sandbox:changeable"
       ]
     },
     "ecs_tag": {

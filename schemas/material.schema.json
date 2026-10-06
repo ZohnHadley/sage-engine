@@ -148,6 +148,63 @@
           }
         ]
       }
+    },
+    "normalMap": {
+      "description": "Tangent-space normal map (glTF convention: green is up the image). Empty: the mesh's own normals. A texture path. Category: Surface. (AssetPath)",
+      "type": "string"
+    },
+    "specularMap": {
+      "description": "Red: how shiny (times specular); green: how glossy (times gloss). Empty: white, the factors alone. A texture path. Category: Surface. (AssetPath)",
+      "type": "string"
+    },
+    "specular": {
+      "description": "Strength of the sun's and lamps' highlights; 0 (the default) is a matt surface. Range: 0 to 4. Category: Surface. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "gloss": {
+      "description": "How tight the highlights are: 0 broad and dull, 1 a pin-point like polished metal. Range: 0 to 1. Category: Surface. (float, default 0.5)",
+      "default": 0.5,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "emissiveMap": {
+      "description": "What glows in the dark, times emissive. Empty: emissive alone, everywhere. A texture path. Category: Surface. (AssetPath)",
+      "type": "string"
+    },
+    "emissive": {
+      "description": "Linear RGB light the surface gives off, unlit and unshadowed; 0 0 0 (the default) is none. At least 0. Category: Surface. (Vector3, default [0,0,0])",
+      "default": [
+        0,
+        0,
+        0
+      ],
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 0
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "vertexColors": {
+      "description": "Multiply the albedo by the mesh's vertex colours: glTF COLOR_0, white where a model has none. Category: Surface. (bool, default false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "environmentMap": {
+      "description": "A panorama (longitude across, sky at the top) reflected in the surface; needs reflectivity. A texture path. Category: Surface. (AssetPath)",
+      "type": "string"
+    },
+    "reflectivity": {
+      "description": "How much of environmentMap the surface reflects (times the specular map's red); 0 is none. Range: 0 to 1. Category: Surface. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     }
   },
   "additionalProperties": false

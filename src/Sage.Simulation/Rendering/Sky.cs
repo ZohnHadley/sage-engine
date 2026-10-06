@@ -294,6 +294,7 @@ internal sealed class SkySystem : ISystem
             && resources.TryGet<Weather>(out var weather) && weather != null)
         {
             SkyRules.Apply(sky, clock.Hour, records, weather, environment);
+            if (resources.TryGet<WeatherSky>(out var overhead) && overhead != null) LightningRules.Apply(overhead, environment);
             _drew = true;
         }
         else if (_drew)
