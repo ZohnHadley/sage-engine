@@ -1,0 +1,32 @@
+[
+  // Reverb presets (issue #329), namespace "sage": what a `reverb_zone` names. A prefab puts a zone in a
+  // place, or a map brush entity with `"trigger" "1"` draws one:
+  //   { "type": "prefab", "id": "hut_room", "parts": { "reverb_zone": { "reverb": "sage:room" } } }
+  // A game adds its own `reverb` records, or tunes these with "patch". The values are OpenAL EFX's
+  // standard reverb (the efx-presets table's ROOM, CONCERTHALL, CAVE and PLAIN); `mix` is how much of it
+  // is heard.
+  {
+    "type": "reverb", "id": "room",
+    "mix": 0.5, "decayTime": 0.4, "decayHFRatio": 0.83, "density": 0.4287, "diffusion": 1,
+    "gain": 0.3162, "gainHF": 0.5929, "reflectionsGain": 0.1503, "reflectionsDelay": 0.002,
+    "lateGain": 1.0629, "lateDelay": 0.003
+  },
+  {
+    "type": "reverb", "id": "hall",
+    "mix": 0.6, "decayTime": 3.92, "decayHFRatio": 0.7, "density": 1, "diffusion": 1,
+    "gain": 0.3162, "gainHF": 0.5623, "reflectionsGain": 0.2427, "reflectionsDelay": 0.02,
+    "lateGain": 0.9977, "lateDelay": 0.029
+  },
+  {
+    "type": "reverb", "id": "cave",
+    "mix": 0.7, "decayTime": 2.91, "decayHFRatio": 1.3, "density": 1, "diffusion": 1,
+    "gain": 0.3162, "gainHF": 1, "reflectionsGain": 0.5, "reflectionsDelay": 0.015,
+    "lateGain": 0.7063, "lateDelay": 0.022
+  },
+  {
+    "type": "reverb", "id": "outdoors",
+    "mix": 0.3, "decayTime": 1.49, "decayHFRatio": 0.5, "density": 1, "diffusion": 0.21,
+    "gain": 0.3162, "gainHF": 0.1, "reflectionsGain": 0.0585, "reflectionsDelay": 0.179,
+    "lateGain": 0.1089, "lateDelay": 0.1
+  }
+]
