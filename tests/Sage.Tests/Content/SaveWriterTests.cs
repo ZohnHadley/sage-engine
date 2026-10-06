@@ -477,6 +477,14 @@ public class SaveWriterMeasurements
         var ask = new AskOnce(() => saves.QuickSave());
         world.AddSystem(ask, Phase.Gameplay);
 
+        // A full collection first, so the tick measured does not pay for the garbage earlier tests left
+        // (on a CI runner the snapshot once came to a third of the write; a collection mid-snapshot is the
+        // likely cause, and the message below says whether one ran).
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        int gen2 = GC.CollectionCount(2);
+
         var gate = new ManualResetEventSlim(false);
         saves.WriterGate = gate;
         var tick = Stopwatch.StartNew();
@@ -503,7 +511,8 @@ public class SaveWriterMeasurements
         // what the save cost (about a thirtieth when measured; a fifth leaves a slow runner its headroom).
         Assert.Equal(0, timing.SerialisedOnTick);
         Assert.True(timing.Snapshot * 5 < timing.Write,
-                    $"snapshot {timing.Snapshot.TotalMilliseconds:F1} ms, write {timing.Write.TotalMilliseconds:F1} ms");
+                    $"snapshot {timing.Snapshot.TotalMilliseconds:F1} ms, write {timing.Write.TotalMilliseconds:F1} ms; " +
+                    $"gen-2 collections since the measured tick began: {GC.CollectionCount(2) - gen2}");
         var slot = saves.Slots.Single(s => s.Name == SaveSystem.QuickSlot);
         Assert.True(slot.Compressed);
         Assert.True(saves.List().Single(s => s.Slot == SaveSystem.QuickSlot).Entities > Entities);

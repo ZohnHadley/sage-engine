@@ -173,6 +173,10 @@ void ShadowCascade(float3 relative, float4x4 viewProj, float4 rect, float bias, 
                    inout float3 chosen, inout float4 chosenRect, inout float chosenBias, inout float found)
 {
     float4 clip = mul(float4(relative, 1), viewProj);
+    // The sun's projection is orthographic, so w is 1, but reading it keeps the matrix's last column in use:
+    // the OpenGL build packs the constants it uses and drops the gaps, and a gap inside this array shifted
+    // every constant after it (the ground drew black on Mesa, #481). tools/check_glsl_constants.py guards it.
+    clip.xyz /= clip.w;
     float2 uv = float2(clip.x * 0.5 + 0.5, 0.5 - clip.y * 0.5);
     float2 inside2 = step(ShadowParams.w, uv) * step(uv, 1 - ShadowParams.w);
     float take = inside2.x * inside2.y * step(0, clip.z) * step(clip.z, 1) * exists * (1 - found);

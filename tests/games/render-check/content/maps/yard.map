@@ -1,0 +1,26 @@
+// The render check's yard (issue #318, tests/games/render-check): two brushes in TrenchBroom's Standard
+// format, 32 units to the metre, z up, map north is engine -Z. Written by hand from engine metres:
+//   ground  x -600..600, z -600..20, its top at y 0: flat, white (no material: sage:lit_default), and long
+//           enough that the view's rays just under the horizon meet it hundreds of metres away, in full fog
+//   slab    x -2.5..2.5, y 4..4.5, z -14..-6: a floating roof that shades the ground under it at noon
+{
+"classname" "worldspawn"
+"message" "The render check's yard"
+
+{
+( -19200 -640 -32 ) ( -19200 -639 -32 ) ( -19200 -640 -31 ) ground 0 0 0 1 1
+( -19200 -640 -32 ) ( -19200 -640 -31 ) ( -19199 -640 -32 ) ground 0 0 0 1 1
+( -19200 -640 -32 ) ( -19199 -640 -32 ) ( -19200 -639 -32 ) ground 0 0 0 1 1
+( 19200 19200 0 ) ( 19200 19201 0 ) ( 19201 19200 0 ) ground 0 0 0 1 1
+( 19200 19200 0 ) ( 19201 19200 0 ) ( 19200 19200 1 ) ground 0 0 0 1 1
+( 19200 19200 0 ) ( 19200 19200 1 ) ( 19200 19201 0 ) ground 0 0 0 1 1
+}
+{
+( -80 192 128 ) ( -80 193 128 ) ( -80 192 129 ) slab 0 0 0 1 1
+( -80 192 128 ) ( -80 192 129 ) ( -79 192 128 ) slab 0 0 0 1 1
+( -80 192 128 ) ( -79 192 128 ) ( -80 193 128 ) slab 0 0 0 1 1
+( 80 448 144 ) ( 80 449 144 ) ( 81 448 144 ) slab 0 0 0 1 1
+( 80 448 144 ) ( 81 448 144 ) ( 80 448 145 ) slab 0 0 0 1 1
+( 80 448 144 ) ( 80 448 145 ) ( 80 449 144 ) slab 0 0 0 1 1
+}
+}

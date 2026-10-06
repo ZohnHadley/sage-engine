@@ -1,0 +1,20 @@
+{
+  // The render check's frame with `r_post 1` and `r_post_vignette 0` (issue #318): the scene's own post effect,
+  // `rendercheck:grey`, grades every colour to grey after the engine's grade, so a chain that stopped drawing
+  // leaves a blue sky and an orange fog behind. The regions are drawing.json's.
+  "width": 640, "height": 360,
+  "regions": [
+    { "name": "sky",    "rect": [0.87, 0.08, 0.10, 0.10], "sees": "sky" },
+    { "name": "shadow", "rect": [0.45, 0.70, 0.10, 0.08], "sees": "shadow" },
+    { "name": "lit",    "rect": [0.08, 0.70, 0.10, 0.08], "sees": "lit" },
+    { "name": "fog",    "rect": [0.30, 0.508, 0.40, 0.022], "sees": "fog" }
+  ],
+  "checks": [
+    { "name": "the grade takes the blue out of the sky", "region": "sky", "when": "shaders", "measure": "chroma", "max": 0.04 },
+    { "name": "the grade takes the orange out of the fog", "region": "fog", "when": "shaders", "measure": "chroma", "max": 0.04 },
+    { "name": "the sunlit ground is still bright", "region": "lit", "when": "shaders", "min": 0.75 },
+    { "name": "the shadow still draws under the chain", "region": "shadow", "than": "lit", "when": "shaders", "max": -0.35 },
+    // Without shaders each post step is a plain copy of a frame that is all clear colour.
+    { "name": "without shaders the chain copies the clear colour", "region": "sky", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}

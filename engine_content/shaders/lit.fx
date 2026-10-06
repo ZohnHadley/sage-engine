@@ -97,7 +97,9 @@ float3 SurfaceNormal(VSOutput input)
 {
     float3 n = normalize(input.Normal);
     float3 t = input.Tangent.xyz - n * dot(n, input.Tangent.xyz);
-    t *= rsqrt(max(dot(t, t), 1e-8));
+    // 1e-4, not smaller: the OpenGL build prints the shader's constants to six decimals, so 1e-8 came out
+    // as 0 and a mesh without tangents (t = 0) divided by zero, drawing black on Mesa (#481).
+    t *= rsqrt(max(dot(t, t), 1e-4));
     float3 b = cross(n, t) * (input.Tangent.w < 0 ? -1 : 1);
     float3 m = tex2D(NormalSampler, input.UV).xyz * 2 - 1;
     return normalize(t * m.x + b * m.y + n * max(m.z, 0.001));

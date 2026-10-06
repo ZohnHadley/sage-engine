@@ -10,9 +10,17 @@
 #            Shipping (`sage package`, issue #293) and run from the package's folder
 #            Both jobs' builds check each engine assembly's declared public API (PublicAPI.*.txt, issue #31).
 #   windows  the whole solution in all three configurations, shaders included, and the tests; then the
-#            packed templates build a game with a shader of its own, which is where mgfxc runs, and package it
+#            packed templates build a game with a shader of its own, which is where mgfxc runs, and package it;
+#            the engine's compiled shaders are handed to the next job
+#   drawing  the drawing checked (issue #318): the Linux host, given the shaders the Windows job compiled, draws
+#            the render-check scene under Xvfb (Mesa's llvmpipe) and reads the frame back: the sky's colour, the
+#            sun's shadow, the fog and the post grade are pixel checks (r_pixelcheck), so CI fails when one of
+#            them stops drawing
 #
-# Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001).
+# Only Windows compiles shaders, because mgfxc needs Wine on Linux (MGFXC0001): its OpenGL profile compiles HLSL
+# with Direct3D's d3dcompiler_47 before translating it to GLSL, and DXC (which it runs natively) only serves the
+# Vulkan and DirectX 12 profiles, whose shader model 6 the engine's SM3 effects are not. A Windows runner has no
+# OpenGL beyond 1.1, so the host runs on Linux, with the .mgfxo files (GLSL, the same on every platform).
 # The .NET 10 SDK builds; the .NET 8 runtime runs. Both matter: the 8.0.1xx SDK's compiler produced
 # code the runtime rejected (InvalidProgramException in Assert.Fail), and only the .NET 8 runtime
 # showed that every save was failing (SaveSystem's JsonSerializerOptions had no TypeInfoResolver).
@@ -154,6 +162,8 @@ jobs:
           "$sage" mods tests/games/mods
           # Phase 10a's exit (issue #228): the editor's test game, an empty level and four prefabs.
           "$sage" validate tests/games/editor
+          # The render check's scene (issue #318): a `.map` yard, a sky and a placed camera, no C#.
+          "$sage" validate tests/games/render-check
 
       # The JSON Schemas VS Code checks record files with (issue #21), regenerated from the code and the
       # loaded content (ids included) and compared with the committed schemas/: a new field, component,
@@ -161,11 +171,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check --out schemas' and commit the result"
             exit 1
           fi
 
@@ -298,6 +308,11 @@ jobs:
           # stays as it was; EditorExitTests saves, and boots what it saved. Same allowances as above.
           SAGE_SMOKE_ARGS='-edit level' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ed_palette\n+ed_place plate 0 0.5 2 0 plate\n+ed_place door 0 1.5 -4 180 door\n+ed_set door mover.seconds 0.5\n+ed_wire plate OnStartTouch door Open\n+ed_undo 2\n+ed_redo 2\n+ed_history\n+wait 1\n+ed_play\n+wait 2\n+ed_stop\n+wait 1\n+ed_problems\n+doc_status' \
             tools/smoke_run.sh "$host" tests/games/editor 5 Shaders Audio Records Input
+          # The render check (issue #318): its fixed scene drawn, read back and checked by r_pixelcheck. Without
+          # shaders every view is its clear colour, so only the checks of that run here; the drawing job runs the
+          # rest with the Windows job's shaders. This proves the readback, the regions and the specs in the host.
+          SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+r_shadows 1\n+wait 2\n+r_pixelcheck checks/drawing.json\n+wait\n+r_post 1\n+r_post_vignette 0\n+wait 1\n+r_pixelcheck checks/post.json\n+wait 1' \
+            tools/smoke_run.sh "$host" tests/games/render-check 5 Shaders Audio Records Input
 
       # Sage.Sdk (issue #32): the SDK, the Player (this job's host builds, so without shaders) and the
       # templates, packed into a local feed. Nothing is published: a public feed is REDESIGN §6 decision 7.
@@ -409,6 +424,16 @@ jobs:
       - name: Build the solution (Development)
         run: dotnet build Sage.sln -c Development
 
+      # The engine's effects as mgfxc compiled them for OpenGL (GLSL inside, the same on every platform): the
+      # drawing job runs the Linux host on them, since this runner cannot run the host (issue #318).
+      - name: Hand the compiled shaders to the drawing job
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-shaders
+          path: src/Sage.Host/bin/Development/net8.0/Content/shaders/*.mgfxo
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Build the solution (Shipping)
         run: dotnet build Sage.sln -c Shipping
 
@@ -459,4 +484,69 @@ jobs:
         with:
           name: test-results-windows
           path: TestResults/*.trx
+          if-no-files-found: ignore
+
+  # The drawing checked (issue #318). The Windows job compiles the shaders and cannot run the host; this job builds
+  # the host on Linux (without shaders, as the Linux job does), puts the Windows job's .mgfxo files where the
+  # build would have, and runs the render-check scene under Xvfb on Mesa's llvmpipe: noon under a blue sky,
+  # a floating slab shading a white ground, orange fog in the distance. `r_pixelcheck <spec> shaders` reads the
+  # frame back and checks named regions against tests/games/render-check/content/checks/*.json (PixelCheck,
+  # headless; RenderCheckSceneTests proves what each region looks at): the sky pass's colour, the shadow darker
+  # than the sunlit ground beside it, the far ground the fog's colour, and with `r_post 1` the scene's grey grade.
+  # A failed check is an ERROR, so the smoke run fails; `shaders` makes missing shaders an error rather than a
+  # skip, and Shaders is not an allowed category here: every effect must load. The frames are uploaded.
+  drawing:
+    name: Linux · drawing checks (Windows-compiled shaders)
+    needs: windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Build the host (Development, without shaders)
+        run: dotnet build src/Sage.Host/Sage.Host.csproj -c Development -p:SageSkipShaders=true
+
+      - name: Take the shaders the Windows job compiled
+        uses: actions/download-artifact@v4
+        with:
+          name: engine-shaders
+          path: src/Sage.Host/bin/Development/net8.0/Content/shaders
+
+      - name: Install Xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
+
+      # A gap in a shader's packed constants shifts every one after it on OpenGL (#481).
+      - name: Check the OpenGL shaders' constants
+        run: python3 tools/check_glsl_constants.py src/Sage.Host/bin/Development/net8.0/Content/shaders
+
+      - name: Draw the render check and check its pixels (Development host, Xvfb)
+        run: |
+          set -euo pipefail
+          ls -l src/Sage.Host/bin/Development/net8.0/Content/shaders
+          test -s src/Sage.Host/bin/Development/net8.0/Content/shaders/lit.mgfxo
+          # 640x360, the specs' frame; the clock stopped at the scene's noon; sun shadows on (off by default).
+          # Then post-processing on with the vignette off, so the scene's grey grade is the visible step.
+          SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+r_shadows 1\n+wait 3\n+r_pixelcheck checks/drawing.json shaders\n+wait\n+r_post 1\n+r_post_vignette 0\n+wait 2\n+r_pixelcheck checks/post.json shaders\n+wait 1' \
+            tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 tests/games/render-check 8 Audio Records Input
+          log=$(ls -t user/rendercheck/logs/sage-*.log | head -1)
+          grep "Pixel check" "$log" | sed 's/^.*Render    //'
+          # Both specs ran, with shaders: a run that never reached them must not pass.
+          test "$(grep -c 'Pixel check checks/.* with shaders: .* 0 failed' "$log")" -eq 2
+
+      - name: Upload the frames and the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drawing-checks
+          path: |
+            user/rendercheck/screenshots/*.png
+            user/rendercheck/logs/*.log
           if-no-files-found: ignore

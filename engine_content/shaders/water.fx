@@ -166,7 +166,9 @@ float3 Reflection(float3 from, float3 r, float3 sky)
         float along = ReflectionDistance * (i * i) / 256.0;     // denser near the surface
         float3 p = from + r * along;
         float4 c = mul(float4(p, 1), WaterViewProj);
-        if (c.w <= 0.0001) break;
+        // Past the far plane is off the screen too. Reading z also keeps every column of the matrix in use:
+        // a gap in the OpenGL build's packed constants shifts the ones after it (tools/check_glsl_constants.py).
+        if (c.w <= 0.0001 || c.z > c.w) break;
         float2 viewUv = float2(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5);
         if (viewUv.x < 0 || viewUv.x > 1 || viewUv.y < 0 || viewUv.y > 1) break;
         float2 uv = ToScreen(viewUv);

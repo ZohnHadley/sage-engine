@@ -1,0 +1,16 @@
+{
+  // The render check (issue #318): a fixed scene for the real host to draw and read back. A white ground and a
+  // floating slab from a `.map`, a blue noon sky with orange fog and full sun shadows, and a placed camera, all
+  // held still; no C# and no player. CI runs it with `r_pixelcheck checks/drawing.json` and
+  // `checks/post.json` (src/Sage.Host/PixelCheckCapture.cs), which read the frame back and check named regions:
+  // the sky's colour, the shadow's darkness against the lit ground beside it, the far ground in full fog, and
+  // the grey post grade. Where the engine's shaders are compiled (CI's drawing job) every check runs; a host
+  // built without them draws only the clear colour, and the checks say so.
+  // tests/Sage.Tests/Presentation/RenderCheckSceneTests.cs boots it headlessly and proves each region sees
+  // what its spec says.
+  "name": "Render check",
+  "id": "rendercheck",
+  "plugins": ["sage.physics3d", "sage.maps"],
+  "mounts": ["content"],
+  "scene": "yard"
+}
