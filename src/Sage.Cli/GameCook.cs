@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 namespace Sage.Cli;
 
 // `sage cook <game>` (issue #302, docs/design/05 §7): every `.glb` in the game's mounts gets a `.sgmesh` beside
-// it and every `.png`/`.jpg` a `.sgtex` (CookedAssets says what they hold and when the client reads them).
+// it and every `.png`/`.jpg`/`.tga` a `.sgtex` (with its mip chain, issue #317) (CookedAssets says what they hold and when the client reads them).
 // `sage package` runs it on the package it writes, so a shipped game loads cooked files; the loose ones stay
 // beside them (the simulation reads skeletons and clips from the `.glb`, validation checks the paths, and a
 // cooked file that cannot be read falls back to its loose one).
@@ -180,9 +180,18 @@ internal static class GameCook
     {
         var rgba = CookedTexture.DecodeImage(bytes, out int width, out int height);
         CookedTexture.Premultiply(rgba);
-        double looseMs = Time(() => CookedTexture.Premultiply(CookedTexture.DecodeImage(bytes, out _, out _)));
+        // The client's loose load: decode, premultiply and the mip chain (issue #317), all uncompressed.
+        long looseMemory = 0;
+        for (int level = 0; level < TextureMips.LevelCount(width, height); level++)
+            looseMemory += CookedTexture.LevelBytes(CookedTextureFormat.Rgba, width, height, level);
 
         var texture = CookedTexture.FromRgba(rgba, width, height, compress);
+        double looseMs = Time(() =>
+        {
+            var decoded = CookedTexture.DecodeImage(bytes, out int w, out int h);
+            CookedTexture.Premultiply(decoded);
+            TextureMips.Generate(decoded, w, h);
+        });
         var cooked = new MemoryStream();
         CookedTexture.Write(cooked, texture, stamp);
         File.WriteAllBytes(target, cooked.ToArray());
@@ -192,7 +201,7 @@ internal static class GameCook
         return new CookedFile
         {
             Path = relative, Kind = "texture", Format = read.Format.ToString(),
-            LooseMemory = (long)width * height * 4, CookedMemory = read.GpuBytes, LooseMs = looseMs, CookedMs = cookedMs,
+            LooseMemory = looseMemory, CookedMemory = read.GpuBytes, LooseMs = looseMs, CookedMs = cookedMs,
         };
     }
 

@@ -214,6 +214,61 @@
       "description": "(bool, default false)",
       "default": false,
       "type": "boolean"
+    },
+    "collision": {
+      "description": "What a particle does when it meets the world: None (passes through), Bounce, or Die. (ParticleCollision, default \"None\")",
+      "default": "None",
+      "type": "string",
+      "enum": [
+        "None",
+        "Bounce",
+        "Die"
+      ]
+    },
+    "restitution": {
+      "description": "Bounce: the share of speed into the surface kept after a bounce; 0 = stops dead on it. Range: 0 to 1. (float, default 0.4)",
+      "default": 0.4,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "friction": {
+      "description": "Bounce: the share of speed along the surface lost at each bounce. Range: 0 to 1. (float, default 0.2)",
+      "default": 0.2,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "sheetColumns": {
+      "description": "Frames across the texture. Range: 1 to 64. Category: Sheet. (int, default 1)",
+      "default": 1,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "sheetRows": {
+      "description": "Frames down the texture. Range: 1 to 64. Category: Sheet. (int, default 1)",
+      "default": 1,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "sheetFrames": {
+      "description": "How many of the grid's frames are used, in order; 0 = all of them. At least 0. Category: Sheet. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "sheetCycles": {
+      "description": "How many times a particle runs through its frames over its life; 0 = holds one frame. At least 0. Category: Sheet. (float, default 1)",
+      "default": 1,
+      "type": "number",
+      "minimum": 0
+    },
+    "sheetRandomStart": {
+      "description": "Each particle starts on a frame of its own, so a cloud of them does not flicker in step. Category: Sheet. (bool, default false)",
+      "default": false,
+      "type": "boolean"
     }
   },
   "additionalProperties": false

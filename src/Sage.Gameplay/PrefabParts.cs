@@ -16,7 +16,8 @@ namespace Sage.Gameplay;
 
 // ---- looks ---------------------------------------------------------------------------------------
 
-// "light": { "colour": [1, 0.85, 0.6], "range": 8, "intensity": 1.4, "off": false }
+// "light": { "colour": [1, 0.85, 0.6], "range": 8, "intensity": 1.4, "off": false,
+//            "pattern": "torch", "patternRate": 10, "cone": 30, "innerCone": 20 }
 //
 // A lamp. The engine carries it because a light is a fact about the world rather than about the
 // screen — a headless server has lamps and never draws one — and because a map places them by
@@ -34,15 +35,39 @@ public sealed class LightPart : IPrefabPart
     public bool Off;
     [Property(Tooltip = "Static: baked into the lightmap of the level that places it, with shadows (a map record's \"lightmap\"); it should not switch")]
     public bool Baked;
+    [Property(Tooltip = "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. SetPattern changes it")]
+    public string Pattern = "";
+    [Property(Min = 0, Unit = "1/s", Tooltip = "Letters of the pattern a second; 0 = 10, Quake's")]
+    public float PatternRate;
+    [Property(Min = 0, Max = 179, Unit = "deg", Tooltip = "Spot light: the cone's half-angle around the entity's forward; 0 = all round (a point light)")]
+    public float Cone;
+    [Property(Min = 0, Max = 179, Unit = "deg", Tooltip = "Spot light: full strength inside this half-angle, fading to the cone's edge; 0 = three quarters of the cone")]
+    public float InnerCone;
 
-    public void Apply(in PrefabPartContext ctx) => ctx.World.Add(ctx.Entity, new PointLight
+    public void Apply(in PrefabPartContext ctx)
     {
-        Colour = Colour == Vector3.Zero ? Vector3.One : Colour,
-        Range = Range <= 0f ? 8f : Range,
-        Intensity = Intensity <= 0f ? 1f : Intensity,
-        Off = Off,
-        Baked = Baked,
-    });
+        if (!LightStyles.TryResolve(Pattern, out _))
+            ctx.Error($"\"pattern\": \"{Pattern}\" is neither letters a..z nor a preset ({string.Join(", ", LightStyles.PresetNames)})");
+
+        // A lightmap holds a baked lamp as it is when the level loads: steady, and all round (issue #313).
+        if (Baked && !string.IsNullOrEmpty(Pattern))
+            ctx.Warn($"\"baked\" with \"pattern\": \"{Pattern}\": the lightmap holds it steady, so its flicker shows only on what is not lightmapped");
+        if (Baked && Cone > 0f)
+            ctx.Warn("\"baked\" with a \"cone\": the lightmap bakes it as a point light, lighting all round");
+
+        ctx.World.Add(ctx.Entity, new PointLight
+        {
+            Colour = Colour == Vector3.Zero ? Vector3.One : Colour,
+            Range = Range <= 0f ? 8f : Range,
+            Intensity = Intensity <= 0f ? 1f : Intensity,
+            Off = Off,
+            Baked = Baked,
+            Pattern = string.IsNullOrEmpty(Pattern) ? null : Pattern,
+            PatternRate = PatternRate,
+            Cone = Cone,
+            InnerCone = InnerCone,
+        });
+    }
 }
 
 // "sprite": { "sheet": "goblin", "size": [1.6, 1.9], "animation": "idle" }

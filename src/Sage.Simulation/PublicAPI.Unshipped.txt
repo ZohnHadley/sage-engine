@@ -1,4 +1,108 @@
 #nullable enable
+const Sage.Simulation.MeshLod.Culled = -1 -> int
+const Sage.Simulation.MeshLod.Unknown = -2 -> int
+readonly Sage.Simulation.RenderEnvironment.LayerDrawDistance -> float[]!
+Sage.Simulation.LodMetric
+Sage.Simulation.LodMetric.Distance = 0 -> Sage.Simulation.LodMetric
+Sage.Simulation.LodMetric.ScreenSize = 1 -> Sage.Simulation.LodMetric
+Sage.Simulation.MeshLod
+Sage.Simulation.MeshLodLevel
+Sage.Simulation.MeshLodLevel.Distance -> float
+Sage.Simulation.MeshLodLevel.Material -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
+Sage.Simulation.MeshLodLevel.Mesh -> Sage.Core.AssetPath
+Sage.Simulation.MeshLodLevel.MeshLodLevel() -> void
+Sage.Simulation.MeshLodLevel.ScreenSize -> float
+Sage.Simulation.MeshLodRecord
+Sage.Simulation.MeshLodRecord.CullDistance -> float
+Sage.Simulation.MeshLodRecord.CullScreenSize -> float
+Sage.Simulation.MeshLodRecord.Hysteresis -> float
+Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Simulation.MeshLodLevel!>!
+Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
+Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
+Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
+Sage.Simulation.SceneEnvironment.WeatherPattern -> Sage.Core.RecordRef<Sage.Simulation.WeatherPatternRecord!>
+Sage.Simulation.SceneEnvironment.WeatherRegion -> string!
+Sage.Simulation.Weather.Pattern.get -> Sage.Core.RecordId
+Sage.Simulation.Weather.Pattern.set -> void
+Sage.Simulation.Weather.PickedSlot.get -> long
+Sage.Simulation.Weather.PickedSlot.set -> void
+Sage.Simulation.Weather.Region.get -> string!
+Sage.Simulation.Weather.Region.set -> void
+Sage.Simulation.WeatherPatternRecord
+Sage.Simulation.WeatherPatternRecord.Label -> string!
+Sage.Simulation.WeatherPatternRecord.Picks -> System.Collections.Generic.List<Sage.Simulation.WeatherPick!>!
+Sage.Simulation.WeatherPatternRecord.Seed -> int
+Sage.Simulation.WeatherPatternRecord.SlotHours -> float
+Sage.Simulation.WeatherPatternRecord.Transition -> float
+Sage.Simulation.WeatherPatternRecord.WeatherPatternRecord() -> void
+Sage.Simulation.WeatherPick
+Sage.Simulation.WeatherPick.From -> float
+Sage.Simulation.WeatherPick.Region -> string!
+Sage.Simulation.WeatherPick.To -> float
+Sage.Simulation.WeatherPick.Weather -> Sage.Core.RecordRef<Sage.Simulation.WeatherRecord!>
+Sage.Simulation.WeatherPick.WeatherPick() -> void
+Sage.Simulation.WeatherPick.Weight -> float
+Sage.Simulation.WeatherRecord.LightningFlash -> float
+Sage.Simulation.WeatherRecord.LightningRate -> float
+Sage.Simulation.WeatherRecord.ShelteredVolume -> float
+Sage.Simulation.WeatherRecord.Thunder -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Simulation.WeatherRecord.ThunderVolume -> float
+static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
+static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
+static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float
+Sage.Simulation.Terrain.Material.get -> Sage.Core.RecordId
+Sage.Simulation.Terrain.Material.set -> void
+Sage.Simulation.TerrainLayer
+Sage.Simulation.TerrainLayer.HeightBlend -> float
+Sage.Simulation.TerrainLayer.MaxHeight -> float
+Sage.Simulation.TerrainLayer.MaxSlope -> float
+Sage.Simulation.TerrainLayer.MinHeight -> float
+Sage.Simulation.TerrainLayer.MinSlope -> float
+Sage.Simulation.TerrainLayer.SlopeBlend -> float
+Sage.Simulation.TerrainLayer.TerrainLayer() -> void
+Sage.Simulation.TerrainLayer.Texture -> Sage.Core.AssetPath
+Sage.Simulation.TerrainLayer.Tile -> float
+Sage.Simulation.TerrainMaterialRecord
+Sage.Simulation.TerrainMaterialRecord.Detail -> Sage.Core.AssetPath
+Sage.Simulation.TerrainMaterialRecord.DetailStrength -> float
+Sage.Simulation.TerrainMaterialRecord.DetailTile -> float
+Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
+Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
+Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
+Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+static Sage.Simulation.WeatherRules.LightningRateNow(Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather) -> float
+const Sage.Simulation.LightStyles.DefaultRate = 10 -> float
+Sage.Simulation.LightSample.ConeAt(System.Numerics.Vector3 at) -> float
+Sage.Simulation.LightSample.Spot.get -> System.Numerics.Vector4
+Sage.Simulation.LightSample.Spot.init -> void
+Sage.Simulation.LightStyles
+Sage.Simulation.PointLight.Cone -> float
+Sage.Simulation.PointLight.InnerCone -> float
+Sage.Simulation.PointLight.Pattern -> string?
+Sage.Simulation.PointLight.PatternRate -> float
+static Sage.Simulation.LightStyles.Brightness(string? pattern, float rate, double seconds) -> float
+static Sage.Simulation.LightStyles.PresetNames.get -> System.Collections.Generic.IEnumerable<string!>!
+static Sage.Simulation.LightStyles.TryResolve(string? pattern, out string! letters) -> bool
+Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Bounce = 1 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Die = 2 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.None = 0 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Collision -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Friction -> float
+Sage.Simulation.ParticleRecord.Restitution -> float
+Sage.Simulation.ParticleRecord.SheetColumns -> int
+Sage.Simulation.ParticleRecord.SheetCycles -> float
+Sage.Simulation.ParticleRecord.SheetFrames -> int
+Sage.Simulation.ParticleRecord.SheetRandomStart -> bool
+Sage.Simulation.ParticleRecord.SheetRows -> int
+Sage.Simulation.Particles.CollisionBudget.get -> int
+Sage.Simulation.Particles.CollisionBudget.set -> void
+Sage.Simulation.Particles.Group.FirstFrame -> int[]!
+Sage.Simulation.Particles.Group.FrameOf(int i) -> int
+Sage.Simulation.Particles.Group.UvOf(int i) -> System.Numerics.Vector4
+Sage.Simulation.Particles.Hits.get -> int
+Sage.Simulation.Particles.Rays.get -> int
+Sage.Simulation.Particles.RaysSkipped.get -> int
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
@@ -35,49 +139,14 @@ Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
-const Sage.Simulation.MeshLod.Culled = -1 -> int
-const Sage.Simulation.MeshLod.Unknown = -2 -> int
-readonly Sage.Simulation.RenderEnvironment.LayerDrawDistance -> float[]!
-Sage.Simulation.LodMetric
-Sage.Simulation.LodMetric.Distance = 0 -> Sage.Simulation.LodMetric
-Sage.Simulation.LodMetric.ScreenSize = 1 -> Sage.Simulation.LodMetric
-Sage.Simulation.MeshLod
-Sage.Simulation.MeshLodLevel
-Sage.Simulation.MeshLodLevel.Distance -> float
-Sage.Simulation.MeshLodLevel.Material -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
-Sage.Simulation.MeshLodLevel.Mesh -> Sage.Core.AssetPath
-Sage.Simulation.MeshLodLevel.MeshLodLevel() -> void
-Sage.Simulation.MeshLodLevel.ScreenSize -> float
-Sage.Simulation.MeshLodRecord
-Sage.Simulation.MeshLodRecord.CullDistance -> float
-Sage.Simulation.MeshLodRecord.CullScreenSize -> float
-Sage.Simulation.MeshLodRecord.Hysteresis -> float
-Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Simulation.MeshLodLevel!>!
-Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
-Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
-Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
-static Sage.Simulation.MeshLod.Choose(Sage.Simulation.MeshLodRecord! lod, float distance, float screenSize, int previous = -2) -> int
-static Sage.Simulation.MeshLod.PastLayerDistance(Sage.Simulation.RenderEnvironment! environment, byte layer, float distance) -> bool
-static Sage.Simulation.MeshLod.ScreenSize(float radius, float distance, float projectionScaleY, bool orthographic) -> float
-Sage.Simulation.Terrain.Material.get -> Sage.Core.RecordId
-Sage.Simulation.Terrain.Material.set -> void
-Sage.Simulation.TerrainLayer
-Sage.Simulation.TerrainLayer.HeightBlend -> float
-Sage.Simulation.TerrainLayer.MaxHeight -> float
-Sage.Simulation.TerrainLayer.MaxSlope -> float
-Sage.Simulation.TerrainLayer.MinHeight -> float
-Sage.Simulation.TerrainLayer.MinSlope -> float
-Sage.Simulation.TerrainLayer.SlopeBlend -> float
-Sage.Simulation.TerrainLayer.TerrainLayer() -> void
-Sage.Simulation.TerrainLayer.Texture -> Sage.Core.AssetPath
-Sage.Simulation.TerrainLayer.Tile -> float
-Sage.Simulation.TerrainMaterialRecord
-Sage.Simulation.TerrainMaterialRecord.Detail -> Sage.Core.AssetPath
-Sage.Simulation.TerrainMaterialRecord.DetailStrength -> float
-Sage.Simulation.TerrainMaterialRecord.DetailTile -> float
-Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
-Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
-Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
-Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
+Sage.Simulation.MaterialRecord.Emissive -> System.Numerics.Vector3
+Sage.Simulation.MaterialRecord.EmissiveMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.EnvironmentMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Gloss -> float
+Sage.Simulation.MaterialRecord.NormalMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Reflectivity -> float
+Sage.Simulation.MaterialRecord.Specular -> float
+Sage.Simulation.MaterialRecord.SpecularMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.VertexColors -> bool

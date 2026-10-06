@@ -195,6 +195,41 @@
       "description": "(float, default 1)",
       "default": 1,
       "type": "number"
+    },
+    "shelteredVolume": {
+      "description": "Under a roof or inside: the share of the sound's volume left (1 = not muffled) Range: 0 to 1. Category: Cover. (float, default 0.25)",
+      "default": 0.25,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "lightningRate": {
+      "description": "Average lightning strikes a minute; 0 is none. Unit: /min. At least 0. Category: Lightning. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "lightningFlash": {
+      "description": "How bright the flash is at its peak: added to the sky and the ambient light. Range: 0 to 2. Category: Lightning. (float, default 0.8)",
+      "default": 0.8,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "thunder": {
+      "description": "The sound a strike is heard as, once the thunder has travelled. Names a sound record. Category: Lightning. (RecordRef<SoundRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:sound"
+        }
+      ]
+    },
+    "thunderVolume": {
+      "description": "The thunder's volume (a strike heard from under a roof is muffled by ShelteredVolume too) Range: 0 to 1. Category: Lightning. (float, default 1)",
+      "default": 1,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     }
   },
   "additionalProperties": false

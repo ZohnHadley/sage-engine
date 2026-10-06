@@ -907,6 +907,18 @@
             }
           ]
         },
+        "weatherPattern": {
+          "description": "The weather pattern the scene draws its weather from by the clock (issue #311); left out, the world's own. Names a weather_pattern record. (RecordRef<WeatherPatternRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:weather_pattern"
+            }
+          ]
+        },
+        "weatherRegion": {
+          "description": "The region the scene is in, for a pattern's regional picks (issue #311); left out, the world's own. (string)",
+          "type": "string"
+        },
         "sky": {
           "description": "The sky the scene's world is lit by (issue 4h-2); left out, the world's own (none: the light the game set) Names a sky record. (RecordRef<SkyRecord>)",
           "allOf": [

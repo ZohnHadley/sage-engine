@@ -300,4 +300,30 @@ public class LightmapTests
         Assert.False(plain.LightmapPending);
         Assert.Null(plain.Lightmap);
     }
+
+    // A baked lamp is in the texture steady and all round, so a flicker or a cone on one is said when it is
+    // placed: they show only on what is not lightmapped.
+    [Fact]
+    public void ABakedLampWithAFlickerOrAConeIsWarnedAbout()
+    {
+        var fixture = new MountFixture();
+        fixture.Write("game", "data/lamps.json", """
+            [
+              { "type": "prefab", "id": "flicker_lamp", "parts": { "light": { "baked": true, "pattern": "torch" } } },
+              { "type": "prefab", "id": "spot_lamp", "parts": { "light": { "baked": true, "cone": 30 } } },
+              { "type": "prefab", "id": "steady_lamp", "parts": { "light": { "baked": true } } }
+            ]
+            """);
+        fixture.Mount("game", "test");
+        using var capture = new CaptureSink();
+        using var app = HeadlessApp.Gameplay().Mount(fixture).Build();
+        var world = app.CreateWorld("lamps");
+        foreach (var name in new[] { "flicker_lamp", "spot_lamp", "steady_lamp" })
+            world.Spawn(new RecordId("test", name), Vector3.Zero);
+
+        var warnings = capture.Entries.Where(e => e.Level == LogLevel.Warn).Select(e => e.Message).ToList();
+        Assert.Contains(warnings, w => w.Contains("flicker_lamp") && w.Contains("\"pattern\": \"torch\""));
+        Assert.Contains(warnings, w => w.Contains("spot_lamp") && w.Contains("\"cone\""));
+        Assert.DoesNotContain(warnings, w => w.Contains("steady_lamp"));
+    }
 }

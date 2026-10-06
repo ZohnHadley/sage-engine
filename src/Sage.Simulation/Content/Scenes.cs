@@ -87,6 +87,11 @@ public sealed class SceneEnvironment
     [Property(Tooltip = "The weather the scene starts in; left out, the world's own (clear)")]
     public RecordRef<WeatherRecord> Weather;
 
+    [Property(Tooltip = "The weather pattern the scene draws its weather from by the clock (issue #311); left out, the world's own")]
+    public RecordRef<WeatherPatternRecord> WeatherPattern;
+    [Property(Tooltip = "The region the scene is in, for a pattern's regional picks (issue #311); left out, the world's own")]
+    public string WeatherRegion = "";
+
     [Property(Tooltip = "The sky the scene's world is lit by (issue 4h-2); left out, the world's own (none: the light the game set)")]
     public RecordRef<SkyRecord> Sky;
     [Property(Min = 0, Max = 24, Unit = "h", Tooltip = "The hour the scene starts at, when the world starts there or scene_load places it (travel keeps the clock); left out, the clock's")]
@@ -545,7 +550,10 @@ public sealed partial class Scenes
             if (!scene.Environment.Sky.Id.IsEmpty) clock.Sky = scene.Environment.Sky.Id;
             if (setHour && scene.Environment.Hour is { } hour) clock.Hour = hour;
         }
-        if (scene.Environment.Weather.Id.IsEmpty || !world.Resources.TryGet<Weather>(out var weather) || weather == null) return;
+        if (!world.Resources.TryGet<Weather>(out var weather) || weather == null) return;
+        if (!scene.Environment.WeatherPattern.Id.IsEmpty) { weather.Pattern = scene.Environment.WeatherPattern.Id; weather.PickedSlot = -1; }
+        if (!string.IsNullOrEmpty(scene.Environment.WeatherRegion)) { weather.Region = scene.Environment.WeatherRegion; weather.PickedSlot = -1; }
+        if (scene.Environment.Weather.Id.IsEmpty) return;
         // Settled at once: a scene starts in its weather rather than watching it roll in.
         weather.Current = weather.Target = scene.Environment.Weather.Id;
         weather.Blend = 1f;
