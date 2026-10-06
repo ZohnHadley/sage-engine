@@ -486,6 +486,18 @@
         "sage:default_movement"
       ]
     },
+    "record:music": {
+      "description": "The id of a music record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "crypt",
+        "hearth",
+        "sandbox:crypt",
+        "sandbox:hearth",
+        "sandbox:wander",
+        "wander"
+      ]
+    },
     "record:nav_area": {
       "description": "The id of a nav_area record (none is loaded).",
       "type": "string",
@@ -625,6 +637,7 @@
         "hut_path",
         "hut_room",
         "hut_walker",
+        "hut_yard",
         "jogger",
         "keeper",
         "lake",
@@ -706,6 +719,7 @@
         "sandbox:hut_path",
         "sandbox:hut_room",
         "sandbox:hut_walker",
+        "sandbox:hut_yard",
         "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
@@ -1702,6 +1716,18 @@
         "sage:default_movement"
       ]
     },
+    "base:music": {
+      "description": "Another music record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "crypt",
+        "hearth",
+        "sandbox:crypt",
+        "sandbox:hearth",
+        "sandbox:wander",
+        "wander"
+      ]
+    },
     "base:nav_area": {
       "description": "The id of a nav_area record (none is loaded).",
       "type": "string",
@@ -1842,6 +1868,7 @@
         "hut_path",
         "hut_room",
         "hut_walker",
+        "hut_yard",
         "jogger",
         "keeper",
         "lake",
@@ -1924,6 +1951,7 @@
         "sandbox:hut_path",
         "sandbox:hut_room",
         "sandbox:hut_walker",
+        "sandbox:hut_yard",
         "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",

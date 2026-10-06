@@ -48,6 +48,12 @@ public sealed class Voice
     internal float LowPass = 1f;
     internal bool OcclusionProbed;
     internal int OcclusionUpdate;
+    // Music's (issue #325, MusicPlayer): never stolen and not counted against the voice cap, because the
+    // score dropping out for a footstep is the one thing worse than no score. Streamed, from LoopStart to
+    // LoopEnd (frames; 0 is the end of the file) once it loops.
+    internal bool Music;
+    internal long LoopStart;
+    internal long LoopEnd;
 }
 
 // What the player set, as opposed to what a world is doing: bus volumes and the voice cap.
@@ -140,7 +146,7 @@ public sealed class AudioMixer
 
         if (CountOf(sound) >= Math.Max(record.MaxInstances, 1) && !StealOldest(sound))
             return Refuse(sound, "too many of it already");
-        if (_voices.Count >= MaxVoices && !StealQuietest(record))
+        if (Capped() >= MaxVoices && !StealQuietest(record))
             return Refuse(sound, "every voice is busy with something louder");
 
         var voice = new Voice
@@ -167,6 +173,52 @@ public sealed class AudioMixer
                                 $"{(voice.Positional && Environment != null ? $" occl {voice.Occlusion:F2}" : "")}" +
                                 $"{(voice.Loop ? " loop" : "")} ({_voices.Count}/{MaxVoices} voices)");
         return voice.Handle;
+    }
+
+    // The record a music voice is computed with: 2D, on the Music bus, streamed. One for every music voice,
+    // and never handed to anybody who could change it.
+    private static readonly SoundRecord MusicSound = new() { Bus = AudioBus.Music, Stream = true, MaxDistance = 0f, MaxInstances = int.MaxValue };
+
+    // A stem of a music track (issue #325, MusicPlayer): 2D, streamed, on the Music bus, and outside the
+    // voice cap — never refused for being one too many and never stolen, so the music does not drop out
+    // because a fight got loud. Its volume is the player's to move (SetVolume) as it fades.
+    internal VoiceHandle PlayMusic(RecordId music, AssetPath asset, float volume, bool loop, long loopStart, long loopEnd)
+    {
+        var voice = new Voice
+        {
+            Handle = new VoiceHandle(_nextId++),
+            Sound = music,
+            Record = MusicSound,
+            Asset = asset,
+            Loop = loop,
+            Volume = volume,
+            StartedAt = _now,
+            Music = true,
+            LoopStart = loopStart,
+            LoopEnd = loopEnd,
+        };
+        Compute(voice);
+        _voices.Add(voice);
+        Log.Trace(LogCat.Audio, $"music {music} {asset} gain {voice.Gain:F2}{(loop ? " loop" : "")}");
+        return voice.Handle;
+    }
+
+    // A voice's own scale, moved while it plays: a fade.
+    internal void SetVolume(VoiceHandle handle, float volume)
+    {
+        var voice = Find(handle);
+        if (voice == null) return;
+        voice.Volume = volume;
+        Compute(voice);
+    }
+
+    // Voices that count against MaxVoices: all but the music's.
+    private int Capped()
+    {
+        int n = 0;
+        foreach (var voice in _voices)
+            if (!voice.Music) n++;
+        return n;
     }
 
     private VoiceHandle Refuse(RecordId sound, string why)
@@ -281,7 +333,7 @@ public sealed class AudioMixer
     {
         int n = 0;
         foreach (var voice in _voices)
-            if (voice.Sound == sound && !voice.Stopping) n++;
+            if (voice.Sound == sound && !voice.Stopping && !voice.Music) n++;
         return n;
     }
 
@@ -291,7 +343,7 @@ public sealed class AudioMixer
     {
         Voice? oldest = null;
         foreach (var voice in _voices)
-            if (voice.Sound == sound && !voice.Stopping && (oldest == null || voice.StartedAt < oldest.StartedAt))
+            if (voice.Sound == sound && !voice.Stopping && !voice.Music && (oldest == null || voice.StartedAt < oldest.StartedAt))
                 oldest = voice;
         if (oldest == null) return false;
         oldest.Stopping = true;
@@ -307,7 +359,7 @@ public sealed class AudioMixer
         Voice? quietest = null;
         foreach (var voice in _voices)
         {
-            if (voice.Stopping) continue;
+            if (voice.Stopping || voice.Music) continue;   // music is never stolen (issue #325)
             if (voice.Record!.Priority > incoming.Priority) continue;
             if (quietest == null || voice.Gain < quietest.Gain) quietest = voice;
         }

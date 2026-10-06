@@ -231,7 +231,7 @@ public class AudioStreamingTests
             return n;
         }
 
-        public void Rewind() => _at = 0;
+        public void Seek(long frame) => _at = frame;
         public void Dispose() { }
     }
 

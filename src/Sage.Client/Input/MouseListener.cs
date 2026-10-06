@@ -17,6 +17,14 @@ public class MouseListener
     private MouseState _previousMouseState;
     private FocusPolicy _focus;
 
+    // Mouse capture (#334): the decisions are `MouseCapturePolicy` / `MouseCaptureTracker` (Sage.Simulation,
+    // tested headlessly); this only reads the cursor, warps it and reports the delta they give.
+    private MouseCaptureTracker _capture;
+    private Point? _captureDelta;   // set while held, and on the frame the cursor is let go (then zero)
+
+    // The cursor is held: hidden by the host, warped to the window's middle every frame.
+    public bool Captured => _capture.Captured;
+
     // Per-button drag state: where the button was pressed (anchor), and whether the
     // threshold has been crossed (i.e. an active drag gesture is in progress).
     private readonly Dictionary<MouseButton, Point> _pressAnchor = new Dictionary<MouseButton, Point>();
@@ -40,7 +48,7 @@ public class MouseListener
     // ---- Queryable state (polling API) ----
     public Point Position => new Point(_currentMouseState.X, _currentMouseState.Y);
     public Point PreviousPosition => new Point(_previousMouseState.X, _previousMouseState.Y);
-    public Point PositionDelta => new Point(
+    public Point PositionDelta => _captureDelta ?? new Point(
         _currentMouseState.X - _previousMouseState.X,
         _currentMouseState.Y - _previousMouseState.Y);
     public bool IsMoving => PositionDelta != Point.Zero;
@@ -166,6 +174,26 @@ public class MouseListener
         int scrollDelta = ScrollWheelDelta;
         if (scrollDelta != 0)
             OnScroll?.Invoke(scrollDelta);
+    }
+
+    // Called once a frame, after `update` and before anything reads `PositionDelta`: holds or frees the cursor.
+    // Held, the delta is the cursor's distance from the middle (and the cursor goes back there); the frame it
+    // is taken or let go the delta is zero, so the view does not jump. `centre` is in window pixels.
+    // Returns the step so the host can log the change and show or hide the cursor.
+    public MouseCaptureFrame ApplyCapture(bool want, Point centre)
+    {
+        var frame = _capture.Step(want, _currentMouseState.X, _currentMouseState.Y, centre.X, centre.Y);
+        _captureDelta = frame.Captured || frame.Changed ? new Point(frame.DeltaX, frame.DeltaY) : null;
+        if (frame.Warp)
+        {
+            Mouse.SetPosition(centre.X, centre.Y);
+            // The next read is the middle; the tracker measures the next delta from there.
+            _currentMouseState = new MouseState(
+                centre.X, centre.Y, _currentMouseState.ScrollWheelValue,
+                _currentMouseState.LeftButton, _currentMouseState.MiddleButton, _currentMouseState.RightButton,
+                _currentMouseState.XButton1, _currentMouseState.XButton2);
+        }
+        return frame;
     }
 
     // ---- State helpers ----

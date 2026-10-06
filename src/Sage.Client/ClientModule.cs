@@ -170,6 +170,49 @@ public sealed class ClientModule : IModule
             }
         });
 
+        ctx.Engine.CVars.RegisterCommand("music", CVarFlags.Cheat,
+            "music [id|stop] [seconds]: what the music is doing, or fade to a track (or to silence) over that many seconds.", a =>
+        {
+            foreach (var world in ctx.Engine.Worlds)
+            {
+                if (!world.Resources.TryGet<Music>(out var music) || music == null) continue;
+                if (a.Count == 0)
+                {
+                    string now = music.Track.IsEmpty ? "silence" : music.Track.ToString();
+                    Log.Info(LogCat.Console, (music.Settled || music.Previous.IsEmpty && music.Track.IsEmpty
+                        ? $"'{world.Name}': {now}"
+                        : $"'{world.Name}': {(music.Previous.IsEmpty ? "silence" : music.Previous.ToString())} → {now} ({music.Blend * 100f:F0}%)")
+                        + $", intensity {music.Intensity:0.##}");
+                    continue;
+                }
+                float? seconds = a.Count > 1 && float.TryParse(a[1], System.Globalization.NumberStyles.Float,
+                                                               System.Globalization.CultureInfo.InvariantCulture,
+                                                               out float asked) && asked >= 0f ? asked : null;
+                if (string.Equals(a[0], "stop", StringComparison.OrdinalIgnoreCase))
+                {
+                    MusicRules.Stop(world, seconds);
+                    Log.Info(LogCat.Console, $"'{world.Name}': music stops");
+                    continue;
+                }
+                var id = ctx.Engine.Records.Resolve("music", a[0]);
+                if (id.IsEmpty) continue;
+                MusicRules.Play(world, id, seconds);
+                Log.Info(LogCat.Console, $"'{world.Name}': music to {id}");
+            }
+        });
+
+        ctx.Engine.CVars.RegisterCommand("music_intensity", CVarFlags.Cheat,
+            "music_intensity <0..1>: how intense things are, which decides the layers of the music that are heard.", a =>
+        {
+            if (a.Count == 0 || !float.TryParse(a[0], System.Globalization.NumberStyles.Float,
+                                                System.Globalization.CultureInfo.InvariantCulture, out float intensity))
+            {
+                Log.Warn(LogCat.Console, "music_intensity <0..1>");
+                return;
+            }
+            foreach (var world in ctx.Engine.Worlds) MusicRules.SetIntensity(world, intensity);
+        });
+
         ctx.Engine.CVars.RegisterCommand("fx_stats", CVarFlags.None,
             "How many particles are alive, and what has been refused.", _ =>
         {
