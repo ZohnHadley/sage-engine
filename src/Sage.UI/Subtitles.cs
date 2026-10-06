@@ -173,7 +173,9 @@ public sealed class SubtitleBox : Stack
 // Captions from sounds (issue #351): a `sound` record with a `caption` puts it on the world's Subtitles
 // when it is asked to play (SoundRequested), and the lines' time runs on with the simulation's, so a
 // paused game keeps its subtitles up.
-[System(Id, Phase.Late)]
+// Runs in every pass (RunCondition.Always), paused or at the title too: menus play sounds there, and a
+// reader that stood still would fall behind them; lines count real time, so they still go while paused.
+[System(Id, Phase.Late, Condition = RunCondition.Always)]
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 internal sealed class SubtitleSystem : ISystem
 {
@@ -206,6 +208,6 @@ internal sealed class SubtitleSystem : ISystem
                 else subtitles.Caption(record.Caption);
             }
         }
-        subtitles.Advance(ctx.Tick.Dt);
+        subtitles.Advance(WorldTime.Of(world).RealDt);
     }
 }

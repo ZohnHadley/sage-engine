@@ -30,11 +30,19 @@ public sealed class RpgItemRecord
     [Property(Min = 1, Max = 16, Tooltip = "The squares it takes in an inventory grid, [columns, rows]; 1×1 when there is no rpg_item for it")]
     public Vector2 Grid = Vector2.One;
 
+    [AssetKind("texture"), Property(Tooltip = "Its picture in an inventory grid, drawn across its footprint (turned with it); none: its name only")]
+    public AssetPath Icon;
+
     // Whole squares, at least one each way.
     public (int Width, int Height) Footprint => (Math.Max((int)MathF.Round(Grid.X), 1), Math.Max((int)MathF.Round(Grid.Y), 1));
 
     public static (int Width, int Height) Of(RecordStore records, RecordId item) =>
         records.TypeNameOf(typeof(RpgItemRecord)) != null && records.TryGet(item, out RpgItemRecord record) ? record.Footprint : (1, 1);
+
+    // Its picture's path, or null (interned, so the same string every time: a binding compares by reference).
+    public static string? IconOf(RecordStore records, RecordId item) =>
+        records.TypeNameOf(typeof(RpgItemRecord)) != null && records.TryGet(item, out RpgItemRecord record) && !record.Icon.IsEmpty
+            ? record.Icon.ToString() : null;
 
     internal static void Check(RpgItemRecord record, RecordCheck check)
     {
@@ -59,6 +67,9 @@ public struct GridPlacement
     public RecordId Item;
     public int X;
     public int Y;
+
+    // Turned on its side (issue #346): its footprint's width and height swapped.
+    public bool Rotated;
 }
 
 // One stack on the grid.
@@ -69,8 +80,18 @@ public sealed class GridItem
     public int Count { get; internal set; }
     public int X { get; internal set; }
     public int Y { get; internal set; }
+    // Its footprint as it lies: the rpg_item's, or that turned on its side when Rotated.
     public int Width { get; internal set; } = 1;
     public int Height { get; internal set; } = 1;
+
+    // Turned on its side (issue #346).
+    public bool Rotated { get; internal set; }
+
+    // Its picture (rpg_item `icon`), or null.
+    public string? Icon { get; internal set; }
+
+    // Its footprint lying the other way from how it lies now, or the same way: what a turn would make it.
+    public (int Width, int Height) FootprintIf(bool rotated) => rotated == Rotated ? (Width, Height) : (Height, Width);
 
     // What it is called (localised), and "×12" for a stack.
     public string Label { get; internal set; } = "";
@@ -92,6 +113,9 @@ public sealed class GridCell
 {
     public const string EmptyStyle = "rpg:cell", ItemStyle = "rpg:cell_item", HeldStyle = "rpg:cell_held";
 
+    // Where the stack in the hand would go (issue #346): squares it would take, green where it fits, red where not.
+    public const string TargetStyle = "rpg:cell_target", BlockedStyle = "rpg:cell_blocked";
+
     public int X { get; internal set; }
     public int Y { get; internal set; }
 
@@ -104,6 +128,16 @@ public sealed class GridCell
 
     // rpg:cell, rpg:cell_item or rpg:cell_held (the item being moved): ui_style ids.
     public string Style { get; internal set; } = EmptyStyle;
+
+    // One picture across an item's squares (issue #346): the square at its top left spans its footprint
+    // (a `grid` widget's columnSpan and rowSpan) and shows its Icon, and the others are not shown — so
+    // the D-pad and the pointer land on the item as one thing. A stack picked up into the hand comes
+    // apart into its squares again, so it can be put down a square along.
+    public bool Shown { get; internal set; } = true;
+    public int ColumnSpan { get; internal set; } = 1;
+    public int RowSpan { get; internal set; } = 1;
+    public string? Icon { get; internal set; }
+    public bool IconTurned { get; internal set; }
 
     public ItemGrid Grid { get; internal set; } = null!;
 
@@ -207,7 +241,7 @@ public sealed class ItemGrid
         int p = placed?.Count ?? 0;
         if (p != _placed.Count) return false;
         for (int i = 0; i < p; i++)
-            if (placed![i].Item != _placed[i].Item || placed[i].X != _placed[i].X || placed[i].Y != _placed[i].Y) return false;
+            if (placed![i].Item != _placed[i].Item || placed[i].X != _placed[i].X || placed[i].Y != _placed[i].Y || placed[i].Rotated != _placed[i].Rotated) return false;
         return true;
     }
 
@@ -234,14 +268,91 @@ public sealed class ItemGrid
 
     // Moves a stack of this grid to (x, y), and saves where everything lies. False, with nothing
     // changed, when it would not fit there.
-    public bool Move(World world, GridItem item, int x, int y)
+    public bool Move(World world, GridItem item, int x, int y) => Move(world, item, x, y, item.Rotated);
+
+    // The same, turned on its side or not (issue #346).
+    public bool Move(World world, GridItem item, int x, int y, bool rotated)
     {
-        if (item.Grid != this || !Items.Contains(item) || !Fits(item.Width, item.Height, x, y, item)) return false;
-        if (item.X == x && item.Y == y) return true;
+        var (w, h) = item.FootprintIf(rotated);
+        if (item.Grid != this || !Items.Contains(item) || !Fits(w, h, x, y, item)) return false;
+        if (item.X == x && item.Y == y && item.Rotated == rotated) return true;
         item.X = x;
         item.Y = y;
+        item.Rotated = rotated;
         Save(world);
         Refresh(world, Owner);
+        return true;
+    }
+
+    // Turns a stack on its side where it lies (issue #346): its top left stays put. False, with nothing
+    // changed, when the turned footprint does not fit there.
+    public bool Rotate(World world, GridItem item) => Move(world, item, item.X, item.Y, !item.Rotated);
+
+    // Halves a stack (issue #346): the bigger half stays where it lies and the rest becomes a stack of its
+    // own in the first free spot, row by row. Nothing is taken or given, so weight and counts stay; the
+    // carrier's inventory gets a second stack of the item, after the first. Refused, with the reason, for
+    // a single item.
+    public bool Split(World world, GridItem item, out string reason)
+    {
+        var text = RpgText.Of(world);
+        int index = Items.IndexOf(item);
+        if (item.Grid != this || index < 0 || item.Count < 2 || !world.IsAlive(Owner) || !world.Has<Inventory>(Owner))
+        {
+            reason = text.Format("@rpg.grid.cannot_split", ("item", item.Label));
+            return false;
+        }
+        ref var inventory = ref world.Get<Inventory>(Owner);
+        var stacks = inventory.Items;
+        int at = -1;
+        for (int i = 0, n = 0; stacks != null && i < stacks.Count; i++)
+        {
+            if (stacks[i].Count <= 0) continue;
+            if (n++ == index) { at = i; break; }
+        }
+        if (at < 0 || stacks![at].Item != item.Item || stacks[at].Count != item.Count)
+        {
+            reason = text.Format("@rpg.grid.gone", ("item", item.Label));
+            return false;
+        }
+
+        int half = item.Count / 2;
+        int fx = 0, fy = 0;
+        for (bool found = false; !found; fy++)
+            for (fx = 0; fx + item.Width <= Columns; fx++)
+                if (Fits(item.Width, item.Height, fx, fy)) { found = true; break; }
+        fy--;
+
+        var list = new List<GridPlacement>(Items.Count + 1);
+        foreach (var each in Items)
+        {
+            list.Add(new GridPlacement { Item = each.Item, X = each.X, Y = each.Y, Rotated = each.Rotated });
+            if (each == item) list.Add(new GridPlacement { Item = item.Item, X = fx, Y = fy, Rotated = item.Rotated });
+        }
+        stacks[at] = new ItemStack { Item = item.Item, Count = item.Count - half };
+        stacks.Insert(at + 1, new ItemStack { Item = item.Item, Count = half });
+        Save(world, list);
+        Refresh(world, Owner);
+        reason = "";
+        return true;
+    }
+
+    // Puts a whole stack on the ground in front of the carrier (Items.Drop), as a pickup someone can take
+    // again (issue #346). Refused, with the reason, by a carrier with nowhere to stand.
+    public bool Drop(World world, GridItem item, out string reason)
+    {
+        var text = RpgText.Of(world);
+        if (item.Grid != this || !world.IsAlive(Owner) || !world.Has<Transform>(Owner))
+        {
+            reason = text.Format("@rpg.grid.cannot_drop", ("item", item.Label));
+            return false;
+        }
+        if (world.Drop(Owner, item.Item, item.Count).IsNull)
+        {
+            reason = text.Format("@rpg.grid.gone", ("item", item.Label));
+            return false;
+        }
+        Refresh(world, Owner);
+        reason = "";
         return true;
     }
 
@@ -249,11 +360,16 @@ public sealed class ItemGrid
     // on the other or, with x < 0, wherever it first fits. Refused, with the reason and nothing moved,
     // when the stack would take the carrier over its capacity — the weight check Items.Give makes,
     // asked first so the screen can say why.
-    public static bool Transfer(World world, GridItem item, ItemGrid to, int x, int y, out string reason)
+    public static bool Transfer(World world, GridItem item, ItemGrid to, int x, int y, out string reason) =>
+        Transfer(world, item, to, x, y, item.Rotated, out reason);
+
+    // The same, put down turned on its side or not (issue #346).
+    public static bool Transfer(World world, GridItem item, ItemGrid to, int x, int y, bool rotated, out string reason)
     {
         var from = item.Grid;
         var text = RpgText.Of(world);
-        if (from == to) { reason = ""; return x < 0 || to.Move(world, item, x, y); }
+        var (width, height) = item.FootprintIf(rotated);
+        if (from == to) { reason = ""; return x < 0 || to.Move(world, item, x, y, rotated); }
         if (!world.IsAlive(to.Owner) || !world.Has<Inventory>(to.Owner))
         {
             reason = text.Format("@rpg.grid.cannot_hold", ("who", World.Describe(to.Owner)));
@@ -268,7 +384,7 @@ public sealed class ItemGrid
             return false;
         }
         // Weight first: no square would make it lighter.
-        if (x >= 0 && !to.Fits(item.Width, item.Height, x, y))
+        if (x >= 0 && !to.Fits(width, height, x, y))
         {
             reason = text.Format("@rpg.grid.no_room", ("item", item.Label));
             return false;
@@ -294,7 +410,7 @@ public sealed class ItemGrid
         to.Refresh(world, to.Owner);
         // A new stack (not one merged into a stack already there) goes where it was put down.
         if (x >= 0 && CountStacks(world, to.Owner) > stacksBefore && to.LastOf(id) is { } placed)
-            to.Move(world, placed, x, y);
+            to.Move(world, placed, x, y, rotated);
         reason = "";
         return true;
     }
@@ -340,6 +456,8 @@ public sealed class ItemGrid
             item.Count = count;
             item.Width = Math.Min(w, Columns);
             item.Height = h;
+            item.Rotated = false;
+            item.Icon = RpgItemRecord.IconOf(records, id);
             item.Weight = each * count;
             item.Grid = this;
             item.X = item.Y = -1;
@@ -358,7 +476,12 @@ public sealed class ItemGrid
             {
                 if (used[p] || _placed[p].Item != item.Item) continue;
                 used[p] = true;
-                if (Fits(item.Width, item.Height, _placed[p].X, _placed[p].Y)) Occupy(item, _placed[p].X, _placed[p].Y);
+                var (w, h) = item.FootprintIf(_placed[p].Rotated);
+                if (Fits(w, h, _placed[p].X, _placed[p].Y))
+                {
+                    if (_placed[p].Rotated) (item.Width, item.Height, item.Rotated) = (w, h, true);
+                    Occupy(item, _placed[p].X, _placed[p].Y);
+                }
                 break;
             }
         foreach (var item in Items)
@@ -386,16 +509,43 @@ public sealed class ItemGrid
                 cell.Item = item;
                 cell.Label = item != null && item.X == x && item.Y == y ? item.Label : "";
                 cell.Tooltip = item?.Tooltip ?? "";
-                cell.Style = item == null ? GridCell.EmptyStyle : GridCell.ItemStyle;
                 Cells.Add(cell);
             }
+        Restyle(null);
     }
 
-    // Marks the squares of the stack being held (or none) with rpg:cell_held.
-    public void Restyle(GridItem? held)
+    // Marks the squares of the stack being held (or none) with rpg:cell_held, and lays every other stack's
+    // picture across its squares. `spread`: the held stack comes apart into its squares, for a hand moved
+    // square by square; a stack being dragged by the pointer stays whole, since its ghost is its picture.
+    public void Restyle(GridItem? held) => Restyle(held, spread: true);
+
+    public void Restyle(GridItem? held, bool spread)
     {
         foreach (var cell in Cells)
-            cell.Style = cell.Item == null ? GridCell.EmptyStyle : cell.Item == held ? GridCell.HeldStyle : GridCell.ItemStyle;
+        {
+            var item = cell.Item;
+            bool whole = item != null && !(item == held && spread);
+            bool corner = item != null && item.X == cell.X && item.Y == cell.Y;
+            cell.Style = item == null ? GridCell.EmptyStyle : item == held ? GridCell.HeldStyle : GridCell.ItemStyle;
+            cell.Shown = !whole || corner;
+            cell.ColumnSpan = whole && corner ? item!.Width : 1;
+            cell.RowSpan = whole && corner ? item!.Height : 1;
+            cell.Icon = whole && corner ? item!.Icon : null;
+            cell.IconTurned = whole && corner && item!.Rotated;
+        }
+    }
+
+    // Shows where a footprint would go with its top left at (x, y) — `moving` (the stack in the hand)
+    // aside: the squares it would take in rpg:cell_target when it fits there, rpg:cell_blocked when not.
+    // After Restyle, which it builds on. Returns whether it fits.
+    public bool Preview(int x, int y, int width, int height, GridItem? moving)
+    {
+        bool fits = Fits(width, height, x, y, moving);
+        string style = fits ? GridCell.TargetStyle : GridCell.BlockedStyle;
+        for (int dy = 0; dy < height; dy++)
+            for (int dx = 0; dx < width; dx++)
+                if (CellAt(x + dx, y + dy) is { } cell) cell.Style = style;
+        return fits;
     }
 
     private void Occupy(GridItem item, int x, int y)
@@ -421,9 +571,14 @@ public sealed class ItemGrid
     // Where every stack lies now, onto the carrier.
     private void Save(World world)
     {
-        if (!world.IsAlive(Owner)) return;
         var list = new List<GridPlacement>(Items.Count);
-        foreach (var item in Items) list.Add(new GridPlacement { Item = item.Item, X = item.X, Y = item.Y });
+        foreach (var item in Items) list.Add(new GridPlacement { Item = item.Item, X = item.X, Y = item.Y, Rotated = item.Rotated });
+        Save(world, list);
+    }
+
+    private void Save(World world, List<GridPlacement> list)
+    {
+        if (!world.IsAlive(Owner)) return;
         if (world.Has<ItemGridPlacements>(Owner)) world.Get<ItemGridPlacements>(Owner).Placed = list;
         else world.Add(Owner, new ItemGridPlacements { Placed = list });
     }

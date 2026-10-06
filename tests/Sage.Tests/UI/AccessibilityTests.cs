@@ -354,4 +354,23 @@ public class AccessibilityTests
         Assert.Empty(subtitles.Lines);
         Assert.False(box.Visible);
     }
+
+    // Menus play sounds while the world is paused or waits at the title: their captions still show, and
+    // lines still run out on real time, so the subtitle reader never falls behind a paused world.
+    [Fact]
+    public void ACaptionShowsAndRunsOutWhileTheWorldIsPaused()
+    {
+        using var app = Boot();
+        var subtitles = app.World.Resources.Get<Subtitles>();
+        Assert.True(app.Engine.CVars.Execute("captions 1"));
+        app.World.Paused = true;
+
+        app.World.Events.Send(new SoundRequested(Id("creak"), default, Vector3.Zero, false, 1f));
+        app.World.RunFixed(1f / 60f);
+        Assert.Equal(new[] { "[door creaks]" }, subtitles.Lines.Select(l => Subtitles.Format(l)).ToArray());
+
+        for (int i = 0; i < 300; i++) app.World.RunFixed(1f / 60f);                     // five paused seconds
+        Assert.Empty(subtitles.Lines);
+        Assert.True(app.World.Paused);
+    }
 }

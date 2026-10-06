@@ -44,6 +44,9 @@ internal struct UiDrawCommand
     // Nine-slice insets in texture pixels; zero draws the texture stretched whole.
     public Thickness Slice;
 
+    // Image: drawn a quarter turn clockwise into Rect (a button's IconTurned, issue #346).
+    public bool Turned;
+
     // Whose command this is (tests, and a debugger).
     public Widget? Widget;
 }
@@ -88,6 +91,7 @@ internal sealed class UiRenderPlan
         var visitor = new Visitor(this, root, styles, pressed, previousFocus);
         root.Walk(ref visitor);
         while (_clipDepth > 0) PopClip(null);   // a walk always balances; this only guards a broken visitor
+        if (root.IsDragging) DrawGhost(root);
         if (root.Popup is { IsOpen: true } popup) DrawPopup(root, styles, popup);
 
         _built = true;
@@ -155,6 +159,31 @@ internal sealed class UiRenderPlan
             text.Size = dropdown.EffectiveTextScale * scale;
         }
     }
+
+    // What is being dragged (issue #346), again, over everything and following the pointer: a copy of
+    // the commands its widget and those inside it drew, moved by how far the pointer has, and faded —
+    // the item's own box, picture and label, so the ghost is the thing itself. Clips are left out: the
+    // ghost is wherever the pointer takes it, outside the scroll it came from too.
+    private void DrawGhost(UiRoot root)
+    {
+        var drag = root.Drag;
+        var source = drag.Source!;
+        var offset = drag.Offset * root.Scale;
+        int drawn = Count;
+        for (int i = 0; i < drawn; i++)
+        {
+            if (_commands[i].Kind is UiDrawKind.PushClip or UiDrawKind.PopClip || !source.Contains(_commands[i].Widget)) continue;
+            var copy = _commands[i];
+            copy.Rect = new Rect(copy.Rect.X + offset.X, copy.Rect.Y + offset.Y, copy.Rect.Width, copy.Rect.Height);
+            copy.Colour = UiColour.Fade(copy.Colour, GhostOpacity);
+            copy.From = UiColour.Fade(copy.From, GhostOpacity);
+            ref var ghost = ref Add(copy.Kind, source, copy.Rect);
+            ghost = copy;
+        }
+    }
+
+    // How opaque a dragged widget's ghost is.
+    internal const float GhostOpacity = 0.7f;
 
     // Forgets the cached plan, so the next Update walks the tree whatever it says.
     public void Invalidate() => _built = false;
@@ -306,6 +335,15 @@ internal sealed class UiRenderPlan
                     break;
 
                 case Label label:
+                    if (label is Button { Icon: { Length: > 0 } icon } button)
+                    {
+                        // The picture first, across the content, so the text (a stack's count) is over it.
+                        ref var picture = ref _plan.Add(UiDrawKind.Image, widget, _root.ToPixels(button.ContentRect));
+                        Colour(ref picture, to.Tint, from.Tint, blend);
+                        picture.Texture = _plan.TexturePath(icon);
+                        picture.Turned = button.IconTurned;
+                        picture.Size = scale;
+                    }
                     DrawLabel(label, to, from, blend, scale);
                     break;
             }
