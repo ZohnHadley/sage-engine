@@ -619,3 +619,67 @@ Sage.Simulation.RegistryDumpSections
 Sage.Simulation.RegistryDumpSections.Add(string! name, System.Func<System.Text.Json.Nodes.JsonNode?>! build) -> void
 Sage.Simulation.RegistryDumpSections.All.get -> System.Collections.Generic.IReadOnlyList<(string! Name, System.Func<System.Text.Json.Nodes.JsonNode?>! Build)>!
 Sage.Simulation.RegistryDumpSections.RegistryDumpSections() -> void
+*REMOVED*Sage.Simulation.PanelLayout
+*REMOVED*Sage.Simulation.PanelLayout.Box.get -> Sage.Simulation.Rect
+*REMOVED*Sage.Simulation.PanelLayout.Contains(System.Numerics.Vector2 point) -> bool
+*REMOVED*Sage.Simulation.PanelLayout.FieldY.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.First.get -> int
+*REMOVED*Sage.Simulation.PanelLayout.HintY.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.IsDrawn(int index) -> bool
+*REMOVED*Sage.Simulation.PanelLayout.LineHeight.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.PanelLayout() -> void
+*REMOVED*Sage.Simulation.PanelLayout.PanelLayout(System.Numerics.Vector2 viewport, float lineHeight, float width, int rowCount, int selected, bool hasField, int titleLines = 1) -> void
+*REMOVED*Sage.Simulation.PanelLayout.ReasonY.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.Right.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.RowAt(System.Numerics.Vector2 point) -> int
+*REMOVED*Sage.Simulation.PanelLayout.RowCount.get -> int
+*REMOVED*Sage.Simulation.PanelLayout.RowRect(int index) -> Sage.Simulation.Rect
+*REMOVED*Sage.Simulation.PanelLayout.RowY(int index) -> float
+*REMOVED*Sage.Simulation.PanelLayout.RowsY.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.TextX.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.TitleLines.get -> int
+*REMOVED*Sage.Simulation.PanelLayout.TitleY.get -> float
+*REMOVED*Sage.Simulation.PanelLayout.Visible.get -> int
+*REMOVED*Sage.Simulation.Screen
+*REMOVED*Sage.Simulation.Screen.Index.get -> int
+*REMOVED*Sage.Simulation.Screen.Index.set -> void
+*REMOVED*Sage.Simulation.Screen.Panel.get -> Sage.Simulation.Panel!
+*REMOVED*Sage.Simulation.Screen.Screen() -> void
+*REMOVED*Sage.Simulation.ScreenStack
+*REMOVED*Sage.Simulation.ScreenStack.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> bool
+*REMOVED*Sage.Simulation.ScreenStack.Alternate(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> bool
+*REMOVED*Sage.Simulation.ScreenStack.Bind(Sage.Simulation.ActionId action, Sage.Simulation.Screen! screen) -> void
+*REMOVED*Sage.Simulation.ScreenStack.Close() -> void
+*REMOVED*Sage.Simulation.ScreenStack.CloseAll() -> void
+*REMOVED*Sage.Simulation.ScreenStack.IsOpen.get -> bool
+*REMOVED*Sage.Simulation.ScreenStack.Move(int delta) -> void
+*REMOVED*Sage.Simulation.ScreenStack.Open.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Screen!>!
+*REMOVED*Sage.Simulation.ScreenStack.OpenActions.get -> System.Collections.Generic.IEnumerable<Sage.Simulation.ActionId>!
+*REMOVED*Sage.Simulation.ScreenStack.Rebuild(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*Sage.Simulation.ScreenStack.ScreenStack() -> void
+*REMOVED*Sage.Simulation.ScreenStack.Show(Sage.Simulation.Screen! screen, Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*Sage.Simulation.ScreenStack.Toggle(Sage.Simulation.ActionId action, Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> bool
+*REMOVED*Sage.Simulation.ScreenStack.Top.get -> Sage.Simulation.Screen?
+*REMOVED*Sage.Simulation.TextField
+*REMOVED*Sage.Simulation.TextField.Backspace() -> bool
+*REMOVED*Sage.Simulation.TextField.Changed -> System.Action?
+*REMOVED*Sage.Simulation.TextField.Clear() -> void
+*REMOVED*Sage.Simulation.TextField.IsEmpty.get -> bool
+*REMOVED*Sage.Simulation.TextField.Length.get -> int
+*REMOVED*Sage.Simulation.TextField.MaxLength.get -> int
+*REMOVED*Sage.Simulation.TextField.Placeholder.get -> string!
+*REMOVED*Sage.Simulation.TextField.Set(string! text) -> void
+*REMOVED*Sage.Simulation.TextField.Text.get -> string!
+*REMOVED*Sage.Simulation.TextField.TextField(int maxLength = 40, string! placeholder = "") -> void
+*REMOVED*Sage.Simulation.TextField.Type(System.ReadOnlySpan<char> typed) -> bool
+*REMOVED*Sage.Simulation.TextField.Type(char c) -> bool
+*REMOVED*abstract Sage.Simulation.Screen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*const Sage.Simulation.PanelLayout.MaxRows = 12 -> int
+*REMOVED*const Sage.Simulation.PanelLayout.Padding = 14 -> float
+*REMOVED*override Sage.Simulation.TextField.ToString() -> string!
+*REMOVED*virtual Sage.Simulation.Screen.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
+*REMOVED*virtual Sage.Simulation.Screen.Alternate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
+*REMOVED*virtual Sage.Simulation.Screen.Field.get -> Sage.Simulation.TextField?
+*REMOVED*virtual Sage.Simulation.Screen.Hint.get -> string!
+*REMOVED*virtual Sage.Simulation.Screen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*virtual Sage.Simulation.Screen.Width.get -> float

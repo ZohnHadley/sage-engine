@@ -14,6 +14,12 @@ namespace Sage.Kits.Rpg;
 //   rpg_conventions `lootScreen` (the kit's rpg:loot). A dead speaker has nothing to say (DialogueRules),
 //   so using the hermit's body loots it.
 //
+// - **Somebody with something to say** (a `dialogue`, issue #350): using them starts the conversation
+//   (DialogueRules.Start) and opens rpg:dialogue (DialogueView) about them. The conversation and its screen
+//   end together: an option that ends it closes the screen, and a screen closed by Back or a click beside
+//   it ends the conversation. A game without a UI (no UiScreenStack) starts none, since a conversation
+//   nobody can see would only take the player's input.
+//
 // A conversation reaches a screen the other way, with an action: `{ "open_screen": "rpg:shop" }` on a
 // dialogue option opens the shop over the speaker's goods (Sage.UI's open_screen, UiScreenActions).
 
@@ -61,16 +67,47 @@ internal sealed class UseScreenSystem : ISystem
                 if (world.IsAlive(died.Victim) && world.Has<Inventory>(died.Victim) && !died.Victim.Tags.Has<PlayerControlled>())
                     died.Victim.AddTag<Interactable>();
 
+        world.Resources.TryGet<UiScreenStack>(out var stack);
+        world.Resources.TryGet<Conversation>(out var conversation);
+        if (stack != null && conversation != null) KeepTogether(stack, conversation);
+
         if (!_used.HasPending) return;
         foreach (ref readonly var used in _used.Read())
         {
             if (!world.IsAlive(used.User) || !world.IsAlive(used.Target) || !used.User.Tags.Has<PlayerControlled>()) continue;
+            if (stack is { IsOpen: true }) continue;   // one window from a press
             var screen = ScreenFor(world, used.Target);
-            if (screen.IsEmpty) continue;
-            if (world.Resources.TryGet<UiScreenStack>(out var stack) && stack is { IsOpen: true }) continue;   // one window from a press
-            UiScreenActions.Open(world, screen, used.User, used.Target);
+            if (!screen.IsEmpty) { UiScreenActions.Open(world, screen, used.User, used.Target); continue; }
+            if (stack != null && world.Has<Dialogue>(used.Target) && DialogueRules.Start(world, used.Target, used.User))
+                _dialogue = UiScreenActions.Open(world, RpgKitModule.DialogueScreen, used.User, used.Target);
         }
     }
+
+    // A conversation this opened and its screen end together: its screen gone (Back, a click beside it), it
+    // ends; it ended (an option said so), its screen goes. One begun some other way (a script) is left alone.
+    private void KeepTogether(UiScreenStack stack, Conversation conversation)
+    {
+        if (_dialogue == null) return;
+        if (_dialogue.IsClosing || _dialogue.IsClosed || !Holds(stack, _dialogue))
+        {
+            if (conversation.Running) conversation.Stop();
+            _dialogue = null;
+        }
+        else if (!conversation.Running)
+        {
+            stack.Close(_dialogue);
+            _dialogue = null;
+        }
+    }
+
+    private static bool Holds(UiScreenStack stack, UiLayer layer)
+    {
+        var layers = stack.Layers;
+        for (int i = 0; i < layers.Count; i++) if (ReferenceEquals(layers[i], layer)) return true;
+        return false;
+    }
+
+    private UiLayer? _dialogue;   // the conversation screen this opened, while it is up
 
     // What using `target` opens: its own screen, the loot screen for a body with an inventory, or nothing.
     internal static RecordId ScreenFor(World world, Entity target)

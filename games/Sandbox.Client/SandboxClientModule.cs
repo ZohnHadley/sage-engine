@@ -16,10 +16,7 @@ namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/
 [Plugin("sandbox.client", "0.1.0")]
 public sealed class SandboxClientModule : IModule
 {
-    private ContentService? _content;
-    private RecordStore? _records;
-
-    // The kit's client half registers the screens this binds (issue #27).
+    // The kit's client half comes with the kit in a host with a window (issue #27).
     public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule), typeof(RpgKitClientModule) };
 
     // `box_mesh` (BoxMeshPart, below) is declared, so Init has nothing to register (issue #17).
@@ -40,41 +37,29 @@ public sealed class SandboxClientModule : IModule
 
     public void Start(ModuleContext ctx)
     {
-        _records = ctx.Engine.Records;
-        _content = ctx.Get<ContentService>();   // textures for the HUD's viewmodel (13 §3)
         _actions = ctx.Engine.Actions;
-        _screens = ctx.Get<ScreenRegistry>();
     }
 
     private ActionRegistry? _actions;
-    private ScreenRegistry? _screens;
 
     // The HUD's screen record (content/data/ui.json): the layout over HudView.
     private static readonly RecordId Hud = new("sandbox", "hud");
 
     public void OnWorldCreated(World world)
     {
-        world.AddSystem(new SandboxHud(world, _records!, _content!));   // the first-person hands (13 §3)
-
-        // Which screens this game has, and what opens them (13 §3, F38). The engine draws and drives
-        // them; saying `I` is the bag and `B` is the spellbook is the game's decision, the same way
-        // the health bar's shape is.
-        var screens = world.Resources.Get<ScreenStack>();
-        screens.Bind(_actions!.Get("Inventory"), new InventoryScreen());
-        screens.Bind(_actions!.Get("Spellbook"), new SpellbookScreen());
-        // The spellmaker is the RPG kit's screen (16 §3.3, issue #27), bound to its default key by the kit's
-        // client half (issue #354); the spellbook is this game's own, and its key is the kit's default too.
-
-        // The widget screens (13 "As built (drawing)", #97, and "As built (the HUD, journal, map and
-        // menus)", #99), built from records in content/data/ui.json: `sandbox:status` (C), the kit's
-        // journal (J) and map (N), and the main menu (F10) with the
-        // saves to load. The HUD is one too, opened once and for good as a layer that never takes a key.
-        // Their Close buttons are the one thing a layout cannot say, so it is said here.
+        // Which screens this game has, and what opens them (13 §3, F38), all widget screens since issue #350
+        // (13 "As built (drawing)", #97, and "As built (the HUD, journal, map and menus)", #99): `I` is the
+        // RPG kit's bag — the list with what is in your hands, equip and drop — which is this game's
+        // decision; the kit binds its own keys itself (B the spellbook, M the spellmaker, J the journal, T
+        // rest, issue #354), and using the hermit opens the kit's conversation. The Sandbox's own are in
+        // content/data/ui.json: `sandbox:status` (C) and the main menu with the saves to load. The HUD is
+        // one too, opened once and for good as a layer that never takes a key. Their Close buttons are the
+        // one thing a layout cannot say, so it is said here.
 #pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
         var widgets = world.Resources.Get<Sage.UI.UiScreenStack>();
+        widgets.Bind(_actions!.Get("Inventory"), RpgKitModule.BagScreen);
         widgets.Bind(_actions!.Get("Status"), new RecordId("sandbox", "status"));
-        // The journal and the map are the RPG kit's own screens (issue #349): J and N.
-        widgets.Bind(_actions!.Get("Journal"), RpgKitModule.JournalScreen);
+        // The map is the RPG kit's own screen (issue #349): N, a key of this game's.
         widgets.Bind(_actions!.Get("Map"), RpgKitModule.MapScreen);
         // F10 is the RPG kit's pause menu (issue #342): Resume, Save, Load, Options, Quit, the world stood
         // still while it is open. The Sandbox's own menu of #99 is still `ui_open main_menu`.

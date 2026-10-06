@@ -65,8 +65,8 @@
   // What SandboxHud used to place by hand, as a layout over the `sandbox_hud` view-model
   // (Sandbox/HudView.cs). SandboxClientModule opens it as a HUD layer (UiScreenStack.OpenHud): drawn under
   // every window, never taking a key. Anchored to the corners in virtual units (1280×720), so it sits the
-  // same on any screen. The first-person hands are still drawn by SandboxHud: a sprite sheet's frame, not
-  // a widget.
+  // same on any screen. The first-person hands are its `hand` image since issue #350: a sprite sheet's frame,
+  // named by the image source's `#x,y,w,h`.
   { "type": "ui_style", "id": "hud_text", "textScale": 2, "textColour": "#FFFFFF" },
   { "type": "ui_style", "id": "hud_message", "base": "hud_text" },
   { "type": "ui_style", "id": "hud_good", "base": "hud_text", "textColour": "#78E68C" },
@@ -83,6 +83,9 @@
 
   { "type": "ui_layout", "id": "hud", "style": "hud_text",
     "nodes": {
+      // The first-person hands (issue #350): a frame of the attack's sprite sheet, first so it is under the rest.
+      "hand":       { "widget": "image", "bind": "handSource", "keepAspect": false,
+                      "bindings": { "x": "handX", "y": "handY", "w": "handW", "h": "handH", "visible": "hasHand" } },
       "health":     { "widget": "stack", "direction": "Row", "spacing": 10, "anchors": "bottom_left", "margin": [24, 0, 0, 54],
                       "bindings": { "visible": "hasPlayer" } },
       "healthBar":  { "widget": "bar", "parent": "health", "bind": "health", "bindings": { "max": "maxHealth", "style": "healthStyle" },

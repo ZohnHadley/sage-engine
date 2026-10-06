@@ -172,8 +172,8 @@ public sealed class UiLayer
 // The widget screens a world has open (docs/design/13 "As built (drawing)", issue #97): a stack of
 // layers, the top modal one taking input. Headless — it is fed a UiInput and a frame's seconds and says
 // what happened — so a test opens a screen, presses Back and watches it fade out and close. The client's
-// ScreenSystem fills the UiInput from the `ui` input context and the mouse, hosts this beside the panel
-// screens (Screen, ScreenStack) and draws each layer; UiModule adds one to every world's resources.
+// ScreenSystem fills the UiInput from the `ui` input context and the mouse and draws each layer; it is the
+// only screen system there is since issue #350 retired the panel screens. UiModule adds one to every world's resources.
 //
 // What it decides, so no screen has to: Back closes the top layer, a press on nothing of it closes it
 // (click-outside), a screen opens with its first focusable widget focused (a gamepad has no pointer to
@@ -471,6 +471,9 @@ public sealed class UiScreenStack
         // Subtitles stay over everything, a window opened after them included.
         if (_subtitleLayer != null && _layers.Remove(_subtitleLayer)) _layers.Add(_subtitleLayer);
         if (modal && (focus == null || !root.Focus(focus))) root.Navigate(UiNavigation.Next);
+        // The first focus is a focus change like any other: the view-model hears it (a list's reason for its
+        // greyed first row shows from the start, not after the player moves).
+        if (modal && screen != null && root.Focused != null) screen.Handle(new UiResult { FocusChanged = true });
         layer.Opened(this);
         if (modal) UiSounds.Raise(_world, _screens, screen, UiSound.Open);
         return layer;
@@ -499,8 +502,7 @@ public sealed class UiScreenStack
         for (int i = _layers.Count - 1; i >= 0; i--) Remove(i);
     }
 
-    // "This action opens that screen", and pressing it again while that screen is on top closes it —
-    // ScreenStack.Bind's rule, for widget screens.
+    // "This action opens that screen", and pressing it again while that screen is on top closes it.
     public void Bind(ActionId action, RecordId screen)
     {
         if (!action.IsValid) { Log.Warn(LogCat.UI, $"UiScreenStack.Bind: {screen} bound to an unregistered action"); return; }
@@ -508,12 +510,18 @@ public sealed class UiScreenStack
         _byAction[action.Index] = screen;
     }
 
+    // The top layer's focused widget takes typed characters (a `text_field`): a key is a letter, not an action.
+    public bool Typing => Top is { IsClosing: false } top && top.Root.Focused is { WantsText: true, IsEnabled: true };
+
     // The actions Bind was given, for whatever reads the buttons (ScreenSystem).
     public IReadOnlyList<ActionId> OpenActions => _openers;
 
     public bool Toggle(ActionId action, UiBindContext context = default)
     {
         if (!action.IsValid || !_byAction.TryGetValue(action.Index, out var screen)) return false;
+        // Not while a text field has the keyboard (issue #350): the keys that open screens are letters too,
+        // and naming a spell "Misty Bind" must not open the spellbook on the way. Escape leaves a field's screen.
+        if (Typing) return false;
         if (Top is { Screen: { } shown } top && shown.Id == screen) { Close(top); return true; }
         Open(screen, context);
         return true;

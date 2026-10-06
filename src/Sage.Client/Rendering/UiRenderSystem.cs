@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Sage.Client;
 
 // Overlay phase (docs/design/13 §3): draws the renderer's Overlay stage (issue 4h-1): the game's UI
-// (the `sage:ui` pass: whatever was queued into UiDraw this frame, plus the crosshair) and any pass a
+// (the `sage:ui` pass: whatever was queued into UiDraw this frame: the widget layers, crosshair included) and any pass a
 // game orders around it; then clears the queue. After the world and before the dev UI.
 // Only the screen world's UI is drawn (`Renderer.ScreenWorld`, issue #77): another world's queue is
 // emptied unseen, the way its views into the screen are never made.

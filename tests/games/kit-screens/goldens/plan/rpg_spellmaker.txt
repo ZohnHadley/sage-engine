@@ -1,0 +1,25 @@
+# rpg:spellmaker: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on name
+rect 330,194.75 620x330.5 #141414e0 @window
+border 330,194.75 620x330.5 #5a4a30ff width 1 @window
+text 338,204.75 189x13.5 #f0e0b0ff scale 1.5 "Make a spell — 1 mana" @title
+rect 338,226.25 604x15 #1c1a16ff>#24201aff @name
+border 338,226.25 604x15 #3a3428ff>#f0e0b0ff width 1 @name
+text 344,229.25 78x9 #e0d8c880 scale 1 "a name for it" @name
+rect 344,229.25 1x9 #e0d8c8ff @name
+pushclip 338,247.25 604x240 @page
+text 360,248.25 48x9 #e0d8c8ff scale 1 "Delivery" @label
+text 908,248.25 30x9 #a0afc8ff scale 1 "Touch" @detail
+text 360,260.25 30x9 #e0d8c8ff scale 1 "Power" @label
+text 926,260.25 12x9 #a0afc8ff scale 1 "×1" @detail
+text 360,272.25 24x9 #e0d8c8ff scale 1 "glow" @label
+text 932,272.25 6x9 #a0afc8ff scale 1 "5" @detail
+text 360,284.25 42x9 #e0d8c8ff scale 1 "burning" @label
+text 926,284.25 12x9 #a0afc8ff scale 1 "10" @detail
+text 360,296.25 24x9 #e0d8c8ff scale 1 "mend" @label
+text 932,296.25 6x9 #a0afc8ff scale 1 "6" @detail
+text 360,308.25 36x9 #e0d8c8ff scale 1 "vigour" @label
+text 932,308.25 6x9 #a0afc8ff scale 1 "8" @detail
+text 360,320.25 66x9 #787882ff scale 1 "— make it —" @label
+popclip 0,0 0x0 @page
+text 338,508.25 354x9 #908878ff scale 1 "Type a name    D-pad: choose    A: add / change    B: close" @hint

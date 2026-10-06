@@ -223,13 +223,15 @@ public class QuestTests
             Kill(world, Wolf(world), player);
             Tick(world, 2);
 
-            var screen = new JournalScreen();
-            screen.Build(world, player);
+#pragma warning disable SAGE0125   // the kit's screens are Phase 4c's experimental UI
+            var screen = new JournalView();
+            screen.Refresh(new Sage.UI.UiBindContext(world, player));
 
-            Assert.Equal("Journal", screen.Panel.Title);
-            Assert.Equal("Thin the Pack", screen.Panel[0].Name);
-            Assert.Contains(screen.Panel.Rows, r => r.Name.Contains("Kill two wolves"));
-            Assert.Contains(screen.Panel.Rows, r => r.Detail == "1/2");
+            Assert.Equal("Thin the Pack", screen.Lines[0].Text);
+            Assert.True(screen.Lines[0].Quest);
+            Assert.Contains(screen.Lines, l => l.Stage && l.Text.Contains("Kill two wolves"));
+            Assert.Contains(screen.Lines, l => l.Objective && l.Progress == "1/2");
+#pragma warning restore SAGE0125
         }
     }
 
@@ -240,10 +242,11 @@ public class QuestTests
         var (engine, world) = NewWorld();
         using (engine)
         {
-            var screen = new JournalScreen();
-            screen.Build(world, Player(world));
-            Assert.Equal(1, screen.Panel.Count);
-            Assert.False(screen.Panel[0].Enabled);
+#pragma warning disable SAGE0125   // the kit's screens are Phase 4c's experimental UI
+            var screen = new JournalView();
+            screen.Refresh(new Sage.UI.UiBindContext(world, Player(world)));
+            Assert.True(screen.Empty);   // the layout's "nothing yet" line shows on this
+#pragma warning restore SAGE0125
         }
     }
 

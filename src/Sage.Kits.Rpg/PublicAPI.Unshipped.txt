@@ -1,6 +1,24 @@
 #nullable enable
+abstract Sage.Kits.Rpg.PanelListView.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject, Sage.Simulation.Panel! panel) -> void
+abstract Sage.Kits.Rpg.PanelListView.Hint.get -> string!
+abstract Sage.Kits.Rpg.PanelListView.Signature(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> int
 const Sage.Kits.Rpg.GridCell.BlockedStyle = "rpg:cell_blocked" -> string!
 const Sage.Kits.Rpg.GridCell.TargetStyle = "rpg:cell_target" -> string!
+const Sage.Kits.Rpg.ListRow.DetailOffStyle = "rpg:list_detail_off" -> string!
+const Sage.Kits.Rpg.ListRow.DetailOnStyle = "rpg:list_detail" -> string!
+const Sage.Kits.Rpg.ListRow.OffStyle = "rpg:list_text_off" -> string!
+const Sage.Kits.Rpg.ListRow.TextStyle = "rpg:list_text" -> string!
+override Sage.Kits.Rpg.BagView.Hint.get -> string!
+override Sage.Kits.Rpg.DialogueView.Back(in Sage.UI.UiBindContext context) -> bool
+override Sage.Kits.Rpg.DialogueView.Hint.get -> string!
+override Sage.Kits.Rpg.DialogueView.Refresh(in Sage.UI.UiBindContext context) -> void
+override Sage.Kits.Rpg.SpellbookView.Hint.get -> string!
+override Sage.Kits.Rpg.SpellmakerView.Hint.get -> string!
+Sage.Kits.Rpg.BagView
+Sage.Kits.Rpg.BagView.BagView() -> void
+Sage.Kits.Rpg.DialogueView
+Sage.Kits.Rpg.DialogueView.DialogueView() -> void
+Sage.Kits.Rpg.DialogueView.Speaker.get -> string!
 Sage.Kits.Rpg.GridCell.ColumnSpan.get -> int
 Sage.Kits.Rpg.GridCell.Icon.get -> string?
 Sage.Kits.Rpg.GridCell.IconTurned.get -> bool
@@ -18,9 +36,51 @@ Sage.Kits.Rpg.ItemGrid.Rotate(Sage.Simulation.World! world, Sage.Kits.Rpg.GridIt
 Sage.Kits.Rpg.ItemGrid.Split(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, out string! reason) -> bool
 Sage.Kits.Rpg.ItemGridView.Dragging.get -> bool
 Sage.Kits.Rpg.ItemGridView.HeldTurned.get -> bool
+Sage.Kits.Rpg.ListRow
+Sage.Kits.Rpg.ListRow.Detail.get -> string!
+Sage.Kits.Rpg.ListRow.DetailStyle.get -> string!
+Sage.Kits.Rpg.ListRow.Enabled.get -> bool
+Sage.Kits.Rpg.ListRow.Id.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.ListRow.Index.get -> int
+Sage.Kits.Rpg.ListRow.ListRow() -> void
+Sage.Kits.Rpg.ListRow.Reason.get -> string!
+Sage.Kits.Rpg.ListRow.Row.get -> Sage.Simulation.PanelRow
+Sage.Kits.Rpg.ListRow.Selected.get -> bool
+Sage.Kits.Rpg.ListRow.Style.get -> string!
+Sage.Kits.Rpg.ListRow.Text.get -> string!
+Sage.Kits.Rpg.ListRow.Tick.get -> string!
+Sage.Kits.Rpg.PanelListView
+Sage.Kits.Rpg.PanelListView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.PanelListView.Command(Sage.UI.UiCommand command, Sage.UI.Widget? target, in Sage.UI.UiBindContext context) -> bool
+Sage.Kits.Rpg.PanelListView.Empty.get -> bool
+Sage.Kits.Rpg.PanelListView.Focused(Sage.UI.Widget? widget, in Sage.UI.UiBindContext context) -> void
+Sage.Kits.Rpg.PanelListView.HasProblem.get -> bool
+Sage.Kits.Rpg.PanelListView.Invalidate() -> void
+Sage.Kits.Rpg.PanelListView.Message.get -> string!
+Sage.Kits.Rpg.PanelListView.Message.set -> void
+Sage.Kits.Rpg.PanelListView.PanelListView() -> void
+Sage.Kits.Rpg.PanelListView.Problem.get -> string!
+Sage.Kits.Rpg.PanelListView.Reason.get -> string!
+Sage.Kits.Rpg.PanelListView.Rows.get -> System.Collections.Generic.List<Sage.Kits.Rpg.ListRow!>!
+Sage.Kits.Rpg.PanelListView.Title.get -> string!
 Sage.Kits.Rpg.RpgItemRecord.Icon -> Sage.Core.AssetPath
+Sage.Kits.Rpg.SpellbookView
+Sage.Kits.Rpg.SpellbookView.SpellbookView() -> void
+Sage.Kits.Rpg.SpellmakerView
+Sage.Kits.Rpg.SpellmakerView.Draft.get -> Sage.Kits.Rpg.SpellDraft!
+Sage.Kits.Rpg.SpellmakerView.Name.get -> string!
+Sage.Kits.Rpg.SpellmakerView.Name.set -> void
+Sage.Kits.Rpg.SpellmakerView.SpellmakerView() -> void
+static readonly Sage.Kits.Rpg.RpgKitModule.BagScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.ControlsScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.DialogueScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.SpellbookScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.SpellmakerScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.SpellmakerView.DeliveryRow -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.SpellmakerView.MakeRow -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.SpellmakerView.PowerRow -> Sage.Core.RecordId
 static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, bool rotated, out string! reason) -> bool
+static Sage.Kits.Rpg.PanelListView.Fold(int hash, int value) -> int
 static Sage.Kits.Rpg.RpgItemRecord.IconOf(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> string?
 virtual Sage.Kits.Rpg.ItemGridView.CanDrop(int grid, in Sage.UI.UiBindContext context) -> bool
 virtual Sage.Kits.Rpg.ItemGridView.Command(Sage.UI.UiCommand command, Sage.UI.Widget? target, in Sage.UI.UiBindContext context) -> bool
@@ -180,3 +240,28 @@ Sage.Kits.Rpg.UseScreenPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> v
 Sage.Kits.Rpg.UseScreenPart.Screen -> Sage.Core.RecordRef<Sage.UI.ScreenRecord!>
 Sage.Kits.Rpg.UseScreenPart.UseScreenPart() -> void
 static readonly Sage.Kits.Rpg.RpgKitModule.ShopScreen -> Sage.Core.RecordId
+*REMOVED*Sage.Kits.Rpg.DialogueScreen
+*REMOVED*Sage.Kits.Rpg.DialogueScreen.DialogueScreen() -> void
+*REMOVED*Sage.Kits.Rpg.JournalScreen
+*REMOVED*Sage.Kits.Rpg.JournalScreen.JournalScreen() -> void
+*REMOVED*Sage.Kits.Rpg.SpellmakerScreen
+*REMOVED*Sage.Kits.Rpg.SpellmakerScreen.Draft.get -> Sage.Kits.Rpg.SpellDraft!
+*REMOVED*Sage.Kits.Rpg.SpellmakerScreen.SpellmakerScreen() -> void
+*REMOVED*override Sage.Kits.Rpg.DialogueScreen.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
+*REMOVED*override Sage.Kits.Rpg.DialogueScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*override Sage.Kits.Rpg.DialogueScreen.Hint.get -> string!
+*REMOVED*override Sage.Kits.Rpg.DialogueScreen.Width.get -> float
+*REMOVED*override Sage.Kits.Rpg.JournalScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*override Sage.Kits.Rpg.JournalScreen.Hint.get -> string!
+*REMOVED*override Sage.Kits.Rpg.JournalScreen.Width.get -> float
+*REMOVED*override Sage.Kits.Rpg.SpellmakerScreen.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, in Sage.Simulation.PanelRow row) -> bool
+*REMOVED*override Sage.Kits.Rpg.SpellmakerScreen.Build(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*override Sage.Kits.Rpg.SpellmakerScreen.Field.get -> Sage.Simulation.TextField?
+*REMOVED*override Sage.Kits.Rpg.SpellmakerScreen.Hint.get -> string!
+*REMOVED*override Sage.Kits.Rpg.SpellmakerScreen.Typed(Sage.Simulation.World! world, Sage.Simulation.Entity subject) -> void
+*REMOVED*override Sage.Kits.Rpg.SpellmakerScreen.Width.get -> float
+virtual Sage.Kits.Rpg.PanelListView.Activate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, Sage.Kits.Rpg.ListRow! row) -> bool
+virtual Sage.Kits.Rpg.PanelListView.Alternate(Sage.Simulation.World! world, Sage.Simulation.Entity subject, Sage.Kits.Rpg.ListRow! row) -> bool
+virtual Sage.Kits.Rpg.PanelListView.Back(in Sage.UI.UiBindContext context) -> bool
+virtual Sage.Kits.Rpg.PanelListView.Changed(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> void
+virtual Sage.Kits.Rpg.PanelListView.Refresh(in Sage.UI.UiBindContext context) -> void

@@ -473,4 +473,64 @@
       "range":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.map.range", "args": { "range": "range", "count": "count" } },
       "hint":     { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.map.hint" }
     } }
+  ,
+
+  // ---- the screens that were panels (issue #350): a titled list of rows -----------------------------
+  // PanelListView's rows (ListViews.cs): `text` (with "×N" for a stack), `detail`, `tick` (readied, equipped,
+  // chosen), and `style` / `detailStyle`, greyed while the row cannot be used; `reason` is why the focused one
+  // cannot. The spellbook (B) and the bag share `rpg:list`; a conversation and the spellmaker have their own.
+  { "type": "screen", "id": "spellbook", "layout": "list", "viewModel": "rpg_spellbook" },
+  { "type": "screen", "id": "bag", "layout": "list", "viewModel": "rpg_bag" },
+  { "type": "ui_layout", "id": "list", "style": "panel",
+    "nodes": {
+      "window":  { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [480, 0] },
+      "title":   { "widget": "label", "parent": "window", "style": "title", "bind": "title" },
+      "problem": { "widget": "label", "parent": "window", "style": "hint", "bind": "problem", "bindings": { "visible": "hasProblem" } },
+      "empty":   { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.list.empty", "bindings": { "visible": "empty" } },
+      "page":    { "widget": "scroll", "parent": "window", "minSize": [0, 240] },
+      "rows":    { "widget": "item_list", "parent": "page", "bind": "rows", "spacing": 1 },
+      "row":     { "widget": "stack", "parent": "rows", "direction": "row", "spacing": 6, "style": "list_row" },
+      "tick":    { "widget": "label", "parent": "row", "style": "list_tick", "bind": "tick", "minSize": [12, 0] },
+      "name":    { "widget": "label", "parent": "row", "bind": "text", "bindings": { "style": "style" }, "expand": 1 },
+      "detail":  { "widget": "label", "parent": "row", "bind": "detail", "bindings": { "style": "detailStyle" }, "textAlign": "end" },
+      "reason":  { "widget": "label", "parent": "window", "style": "warning", "bind": "reason" },
+      "message": { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
+      "hint":    { "widget": "label", "parent": "window", "style": "hint", "bind": "hint" }
+    } },
+
+  // ---- dialogue: what was just said, and what you may say back ------------------------------------
+  // DialogueView: the node's line wraps across the top; each option is a row, greyed with its refusal.
+  { "type": "screen", "id": "dialogue", "layout": "dialogue", "viewModel": "rpg_dialogue" },
+  { "type": "ui_layout", "id": "dialogue", "style": "panel",
+    "nodes": {
+      "window":  { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [620, 0] },
+      "speaker": { "widget": "label", "parent": "window", "style": "hint", "bind": "speaker" },
+      "line":    { "widget": "label", "parent": "window", "style": "title", "bind": "title", "wrap": true, "maxWidth": 600 },
+      "problem": { "widget": "label", "parent": "window", "style": "hint", "bind": "problem", "bindings": { "visible": "hasProblem" } },
+      "rows":    { "widget": "item_list", "parent": "window", "bind": "rows", "spacing": 1 },
+      "row":     { "widget": "stack", "parent": "rows", "direction": "row", "spacing": 6, "style": "list_row" },
+      "name":    { "widget": "label", "parent": "row", "bind": "text", "bindings": { "style": "style" }, "expand": 1 },
+      "detail":  { "widget": "label", "parent": "row", "bind": "detail", "bindings": { "style": "detailStyle" }, "textAlign": "end" },
+      "hint":    { "widget": "label", "parent": "window", "style": "hint", "bind": "hint" }
+    } },
+
+  // ---- spellmaker: a name, a delivery, a power and the effects, then make it -----------------------
+  // SpellmakerView: the name field writes `name` as it is typed; Delivery and Power cycle, an effect goes in
+  // or out, and "make it" is greyed with what is missing (Spellmaker.CanCompose).
+  { "type": "screen", "id": "spellmaker", "layout": "spellmaker", "viewModel": "rpg_spellmaker" },
+  { "type": "ui_layout", "id": "spellmaker", "style": "panel",
+    "nodes": {
+      "window":  { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [620, 0] },
+      "title":   { "widget": "label", "parent": "window", "style": "title", "bind": "title" },
+      "name":    { "widget": "text_field", "parent": "window", "style": "field", "bind": "name", "placeholder": "@rpg.spellmaker.name",
+                   "maxLength": 28 },
+      "page":    { "widget": "scroll", "parent": "window", "minSize": [0, 240] },
+      "rows":    { "widget": "item_list", "parent": "page", "bind": "rows", "spacing": 1 },
+      "row":     { "widget": "stack", "parent": "rows", "direction": "row", "spacing": 6, "style": "list_row" },
+      "tick":    { "widget": "label", "parent": "row", "style": "list_tick", "bind": "tick", "minSize": [12, 0] },
+      "label":   { "widget": "label", "parent": "row", "bind": "text", "bindings": { "style": "style" }, "expand": 1 },
+      "detail":  { "widget": "label", "parent": "row", "bind": "detail", "bindings": { "style": "detailStyle" }, "textAlign": "end" },
+      "reason":  { "widget": "label", "parent": "window", "style": "warning", "bind": "reason" },
+      "hint":    { "widget": "label", "parent": "window", "style": "hint", "bind": "hint" }
+    } }
 ]

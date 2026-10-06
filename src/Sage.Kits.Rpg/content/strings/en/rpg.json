@@ -7,6 +7,24 @@
     "weight_unlimited": "Weight {current} kg",
     "hint": "D-pad: move    A: pick up / put down    LB / R: turn    LT / F: split    X / Del: drop    B: put back, close"
   },
+  // The screens that were panels (issue #350): their titles and rows are the panels' own (GameplayPanels,
+  // DialogueRules, Spellmaker), so only the words around them are here.
+  "list": {
+    "empty": "(nothing)"
+  },
+  "spellbook": {
+    "hint": "D-pad: choose    A: ready    B: close"
+  },
+  "bag": {
+    "hint": "D-pad: choose    A: equip / take off    X / Del: drop    B: close"
+  },
+  "dialogue": {
+    "hint": "D-pad: choose    A: say    B: leave"
+  },
+  "spellmaker": {
+    "name": "a name for it",
+    "hint": "Type a name    D-pad: choose    A: add / change    B: close"
+  },
   "grid": {
     "stack": "{item} ×{count}",
     "tooltip": { "one": "{item}, {weight} kg", "other": "{count} {item}, {weight} kg" },

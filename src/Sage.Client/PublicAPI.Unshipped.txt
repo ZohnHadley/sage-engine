@@ -26,5 +26,15 @@ Sage.Client.RenderStats.InstancedDraws -> int
 Sage.Client.RenderStats.InstancedSprites -> int
 Sage.Client.RenderStats.ShadowMaps -> int
 static readonly Sage.Client.GamepadListener.None -> Sage.Client.GamepadListener!
-Sage.Client.ScreenRegistry.Ledger.get -> Sage.Core.RegistrationLedger?
-Sage.Client.ScreenRegistry.Ledger.set -> void
+*REMOVED*Sage.Client.ClientModule.Screens.get -> Sage.Client.ScreenRegistry!
+*REMOVED*Sage.Client.PanelView
+*REMOVED*Sage.Client.ScreenRegistry
+*REMOVED*Sage.Client.ScreenRegistry.Create(string! id) -> Sage.Simulation.Screen?
+*REMOVED*Sage.Client.ScreenRegistry.Has(string! id) -> bool
+*REMOVED*Sage.Client.ScreenRegistry.Ids.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Sage.Client.ScreenRegistry.Register(string! id, System.Func<Sage.Simulation.Screen!>! create) -> void
+*REMOVED*Sage.Client.ScreenRegistry.ScreenRegistry() -> void
+*REMOVED*Sage.Client.ScreenRegistry.Seal.get -> Sage.Core.RegistrationSeal!
+*REMOVED*const Sage.Client.ScreenRegistry.Dialogue = "dialogue" -> string!
+*REMOVED*static Sage.Client.PanelView.Draw(Sage.Client.UiDraw! ui, Sage.Simulation.Screen! screen, in Sage.Simulation.PanelLayout layout) -> void
+*REMOVED*static Sage.Client.PanelView.WrapTitle(Sage.Client.UiDraw! ui, string! title, float room) -> System.Collections.Generic.List<string!>!

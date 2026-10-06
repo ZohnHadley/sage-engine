@@ -330,12 +330,11 @@ public class Dropdown : Button
     }
 }
 
-// A line of text the player types (Multiline: lines), with a caret: the widget the legacy
-// Sage.Simulation.TextField is to the panel screens. It takes characters, not keys (08 §3.1) — '\b'
+// A line of text the player types (Multiline: lines), with a caret (the spellmaker's name since issue #350
+// retired the panel screens' TextField). It takes characters, not keys (08 §3.1) — '\b'
 // deletes before the caret, DEL after it, Enter is a new line only when Multiline — and Left/Right move
 // the caret while it can move, so at either end they move focus as usual. The type name is
-// `text_field`; the class is not TextField, which would clash with the legacy one in every file that
-// uses both namespaces.
+// `text_field`; the class kept the name TextBox it had beside the panel screens' TextField.
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public class TextBox : Label
 {

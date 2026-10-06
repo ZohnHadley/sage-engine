@@ -1,2 +1,3 @@
 #nullable enable
-Sage.Kits.Rpg.RpgKitClientModule.OnWorldCreated(Sage.Simulation.World! world) -> void
+*REMOVED*const Sage.Kits.Rpg.RpgKitClientModule.Journal = "journal" -> string!
+*REMOVED*const Sage.Kits.Rpg.RpgKitClientModule.Spellmaker = "spellmaker" -> string!

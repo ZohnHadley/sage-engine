@@ -11,7 +11,7 @@ namespace Sage.Simulation;
 // **In the engine, with no MonoGame in sight**, so all of it can be tested without a sound card: the
 // decisions here are gain from distance, pan from direction, per-sound limits and cooldowns, bus
 // volumes, and which voice is stolen when the cap is reached. What is left for the client is starting
-// and stopping actual `SoundEffectInstance`s — the same split as `Panel` and `PanelView`, or
+// and stopping actual `SoundEffectInstance`s — the same split as a view-model and the widget renderer, or
 // `RenderSnapshot` and the renderer.
 //
 // The mixer never loads anything and never blocks. It hands out `Voice` records; the backend reads

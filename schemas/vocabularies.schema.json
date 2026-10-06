@@ -10337,9 +10337,11 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_rest, rpg_save, rpg_shop, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_mods, ui_options, ui_world.",
+      "description": "A view_model by id: rpg_bag, rpg_dialogue, rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_rest, rpg_save, rpg_shop, rpg_spellbook, rpg_spellmaker, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_crosshair, ui_mods, ui_options, ui_world.",
       "type": "string",
       "enum": [
+        "RpgBag",
+        "RpgDialogue",
         "RpgEquipment",
         "RpgInventory",
         "RpgJournal",
@@ -10350,15 +10352,20 @@
         "RpgRest",
         "RpgSave",
         "RpgShop",
+        "RpgSpellbook",
+        "RpgSpellmaker",
         "RpgTitle",
         "RpgTopics",
         "SandboxHud",
         "SandboxMainMenu",
         "SandboxStatus",
         "UiControls",
+        "UiCrosshair",
         "UiMods",
         "UiOptions",
         "UiWorld",
+        "rpg_bag",
+        "rpg_dialogue",
         "rpg_equipment",
         "rpg_inventory",
         "rpg_journal",
@@ -10369,12 +10376,15 @@
         "rpg_rest",
         "rpg_save",
         "rpg_shop",
+        "rpg_spellbook",
+        "rpg_spellmaker",
         "rpg_title",
         "rpg_topics",
         "sandbox_hud",
         "sandbox_main_menu",
         "sandbox_status",
         "ui_controls",
+        "ui_crosshair",
         "ui_mods",
         "ui_options",
         "ui_world"
@@ -10397,6 +10407,64 @@
             "viewModel"
           ],
           "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_bag",
+                      "RpgBag"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_bag.",
+                    "enum": [
+                      "rpg_bag",
+                      "RpgBag"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_bag' (BagView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_dialogue",
+                      "RpgDialogue"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_dialogue.",
+                    "enum": [
+                      "rpg_dialogue",
+                      "RpgDialogue"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_dialogue' (DialogueView)."
+              }
+            },
             {
               "if": {
                 "properties": {
@@ -10701,6 +10769,69 @@
                 "properties": {
                   "viewModel": {
                     "enum": [
+                      "rpg_spellbook",
+                      "RpgSpellbook"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_spellbook.",
+                    "enum": [
+                      "rpg_spellbook",
+                      "RpgSpellbook"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_spellbook' (SpellbookView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_spellmaker",
+                      "RpgSpellmaker"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "viewModel": {
+                    "description": "The view_model: rpg_spellmaker.",
+                    "enum": [
+                      "rpg_spellmaker",
+                      "RpgSpellmaker"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_spellmaker' (SpellmakerView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
                       "rpg_title",
                       "RpgTitle"
                     ]
@@ -10781,12 +10912,42 @@
                     "default": "",
                     "type": "string"
                   },
+                  "handH": {
+                    "description": "(float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "handSource": {
+                    "description": "(string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "handW": {
+                    "description": "(float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "handX": {
+                    "description": "(float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "handY": {
+                    "description": "(float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
                   "hands": {
                     "description": "(string, default \"\")",
                     "default": "",
                     "type": "string"
                   },
                   "hasAmmo": {
+                    "description": "(bool, default false)",
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "hasHand": {
                     "description": "(bool, default false)",
                     "default": false,
                     "type": "boolean"
@@ -10963,6 +11124,35 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'ui_controls' (ControlsView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "ui_crosshair",
+                      "UiCrosshair"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: ui_crosshair.",
+                    "enum": [
+                      "ui_crosshair",
+                      "UiCrosshair"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'ui_crosshair' (CrosshairView)."
               }
             },
             {

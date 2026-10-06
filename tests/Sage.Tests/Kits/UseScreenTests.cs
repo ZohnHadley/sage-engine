@@ -108,12 +108,14 @@ public class UseScreenTests
         world.Add(trader, new Dialogue { Record = Id("trader") });
         Assert.True(world.Give(trader, Id("bread"), 2));
 
-        // Alive, using him is talking (the client's DialogueSystem): no widget screen.
+        // Alive, using him is talking: the kit's conversation screen about him (issue #350), not his loot.
         world.Events.Send(new Used(hero, trader));
         CameraRigTests.Step(world);
-        Assert.Empty(stack.Layers);
-        Assert.True(DialogueRules.Start(world, trader, hero));
-        world.Resources.Get<Conversation>().Stop();
+        Assert.Equal(RpgKitModule.DialogueScreen, Top(stack).Screen!.Id);
+        Assert.True(world.Resources.Get<Conversation>().Running);
+        stack.CloseAll();
+        CameraRigTests.Step(world);
+        Assert.False(world.Resources.Get<Conversation>().Running);   // its screen gone, the conversation ends
 
         var dead = world.Conventions().Dead;
         Assert.False(dead.IsEmpty);
