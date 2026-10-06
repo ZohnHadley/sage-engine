@@ -116,9 +116,11 @@ internal sealed class MaterialRuntime
     public required RasterizerState Raster;
     public required RasterizerState RasterWire;
     public required DepthStencilState Depth;
-    public required SamplerState Sampler;
+    public required SamplerFilter Filter;      // the record's sampler; TextureSampling picks the state (issue #317)
+    public required SamplerAddress Address;
     public required float Fog;
     public EffectParameter? Albedo;   // the material's "Albedo" texture param, overridden per sprite sheet
+    public bool Surface;              // the effect draws surface maps (issue #410), in sampler slots 2 to 5
     public ulong SampledTargets;      // bit n: a param samples render target n (`rt:<name>`); not drawn into it
     public bool IsError;
     public int Drawn;        // items drawn with it in frame DrawnFrame (mat_list)
@@ -137,6 +139,9 @@ internal sealed class MaterialCache : IDisposable
     private readonly Dictionary<RecordId, int> _ids = new();
     private readonly List<RecordId> _idList = new();
     private MaterialRuntime?[] _runtimes = new MaterialRuntime?[16];
+    // The scope each material's textures load at (issue #308): the strongest it was resolved for. A
+    // streaming world's materials load theirs at the sectors' scope, so they go when the sectors do.
+    private AssetScope[] _scopes = new AssetScope[16];
     // Ids whose material *and* the sage:error fallback both failed to build. Remembered until the next
     // Invalidate, so a broken material costs one attempt and one log line, not one per draw per frame
     // (272,780 lines in eight seconds with the shaders missing, 2026-09-27).
@@ -156,21 +161,28 @@ internal sealed class MaterialCache : IDisposable
         _content = content;
         _records = records;
         _targets = targets;
-        // Missing textures: a magenta/black checker (05 §8), impossible to mistake for real content.
-        _missingTexture = new Texture2D(device, 2, 2);
-        _missingTexture.SetData(new[] { Color.Magenta, Color.Black, Color.Black, Color.Magenta });
-        Resolve(MaterialRecord.Error);   // id 0
+        // Missing textures: the content service's checker (05 §8), texture id 0.
+        _missingTexture = content.MissingTexture;
+        Resolve(MaterialRecord.Error, AssetScope.Engine);   // id 0
     }
 
     public int Count => _idList.Count;
 
     public Texture2D MissingTexture => _missingTexture;
 
-    public void Dispose() => _missingTexture.Dispose();   // effects and textures belong to the ContentService
+    public void Dispose() { }   // effects and textures (the checker too) belong to the ContentService
 
-    public int Resolve(RecordId id)
+    // A material id, for the game (its textures stay for the process).
+    public int Resolve(RecordId id) => Resolve(id, AssetScope.Game);
+
+    // A material id for something drawn at a scope: its textures load at the strongest scope it was asked for.
+    public int Resolve(RecordId id, AssetScope scope)
     {
-        if (id.IsEmpty) id = MaterialRecord.Default;
+        if (id.IsEmpty)
+        {
+            id = MaterialRecord.Default;   // the engine's default is everybody's: its textures stay
+            scope = AssetScopes.Stronger(scope, AssetScope.Game);
+        }
         if (!_ids.TryGetValue(id, out int index))
         {
             index = _idList.Count;
@@ -180,8 +192,11 @@ internal sealed class MaterialCache : IDisposable
             {
                 Array.Resize(ref _runtimes, _runtimes.Length * 2);
                 Array.Resize(ref _unbuildable, _runtimes.Length);
+                Array.Resize(ref _scopes, _runtimes.Length);
             }
+            _scopes[index] = scope;
         }
+        else if (scope < _scopes[index]) _scopes[index] = scope;
         return index;
     }
 
@@ -190,7 +205,7 @@ internal sealed class MaterialCache : IDisposable
     {
         var runtime = _runtimes[id];
         if (runtime != null || _unbuildable[id]) return runtime;
-        runtime = Build(_idList[id]) ?? ErrorRuntime();
+        runtime = Build(_idList[id], _scopes[id]) ?? ErrorRuntime();
         _runtimes[id] = runtime;
         _unbuildable[id] = runtime == null;
         return runtime;
@@ -214,24 +229,24 @@ internal sealed class MaterialCache : IDisposable
         if (_error != null || _errorUnbuildable) return _error;
         var record = _records.TryGet(MaterialRecord.Error, out MaterialRecord r) ? r
             : new MaterialRecord { Effect = AssetPath.Intern("shaders/error.mgfxo"), Fog = false };
-        _error = Build(MaterialRecord.Error, record);
+        _error = Build(MaterialRecord.Error, record, AssetScope.Engine);
         _errorUnbuildable = _error == null;
         if (_error == null) Log.Once(LogCat.Shaders, LogLevel.Error, "no-error-material", "sage:error can't be built (shaders/error.mgfxo missing?); broken materials are not drawn");
         else _error.IsError = true;
         return _error;
     }
 
-    private MaterialRuntime? Build(RecordId id)
+    private MaterialRuntime? Build(RecordId id, AssetScope scope)
     {
         if (!_records.TryGet(id, out MaterialRecord record))
         {
             // A terrain material (issue #307) is drawn as a material of the splat effect, made from it.
-            if (_records.TryGet(id, out TerrainMaterialRecord terrain)) return Build(id, SplatMaterial(terrain));
+            if (_records.TryGet(id, out TerrainMaterialRecord terrain)) return Build(id, SplatMaterial(terrain), scope);
             if (id != MaterialRecord.Error)
                 Log.Error(LogCat.Shaders, $"Material {id} not found; drawing sage:error");
             return null;
         }
-        return Build(id, record);
+        return Build(id, record, scope);
     }
 
     // ---- terrain materials (issue #307) ----------------------------------------------------------------
@@ -271,7 +286,7 @@ internal sealed class MaterialCache : IDisposable
         return material;
     }
 
-    private MaterialRuntime? Build(RecordId id, MaterialRecord record)
+    private MaterialRuntime? Build(RecordId id, MaterialRecord record, AssetScope scope)
     {
         if (record.Effect.IsEmpty) { Log.Error(LogCat.Shaders, $"Material {id}: no \"effect\""); return null; }
         var effect = _content.LoadEffect(record.Effect);
@@ -294,7 +309,9 @@ internal sealed class MaterialCache : IDisposable
         {
             if (EffectBinding.EngineParams.Contains(p.Name)) continue;
             if (PostChain.EngineParams.Contains(p.Name)) continue;   // a post effect's picture and night (issue 4h-6)
-            if (!record.Params.TryGetValue(p.Name, out var value)) { missing.Add(p.Name); continue; }
+            // A surface parameter (issue #410) comes from the record's surface fields, or a 1x1 stand-in.
+            if (!record.Params.TryGetValue(p.Name, out var value) && !MaterialSurface.TryGet(record, p.Name, out value))
+            { missing.Add(p.Name); continue; }
             string? problem = Check(p, value);
             if (problem != null) { Log.Error(LogCat.Shaders, $"Material {id}: param {p.Name}: {problem}"); return null; }
             Texture2D? texture = null;
@@ -308,7 +325,7 @@ internal sealed class MaterialCache : IDisposable
             }
             else if (value.IsTexture)
             {
-                texture = _content.LoadTexture(value.Texture);
+                texture = _content.LoadTexture(value.Texture, scope);
                 if (texture == null) Log.Warn(LogCat.Shaders, $"Material {id}: texture {value.Texture} missing; using the checker placeholder");
                 texture ??= _missingTexture;
             }
@@ -322,6 +339,8 @@ internal sealed class MaterialCache : IDisposable
         foreach (var name in record.Params.Keys)
             if (effect.Parameters[name] == null)
                 Log.Warn(LogCat.Shaders, $"Material {id}: param '{name}' isn't used by {record.Effect} (typo?); ignored");
+        if (effect.Parameters[MaterialSurface.SurfaceParams] == null && MaterialSurface.Asked(record))
+            Log.Warn(LogCat.Shaders, $"Material {id}: {record.Effect} draws no surface maps (normalMap, specular, emissive...); they are ignored");
 
         return new MaterialRuntime
         {
@@ -341,18 +360,12 @@ internal sealed class MaterialCache : IDisposable
                 (false, false) => DepthStencilState.None,
                 _ => WriteNoTest,
             },
-            Sampler = (record.Sampler.Filter, record.Sampler.Address) switch
-            {
-                (SamplerFilter.Point, SamplerAddress.Clamp) => SamplerState.PointClamp,
-                (SamplerFilter.Point, _) => SamplerState.PointWrap,
-                (SamplerFilter.Anisotropic, SamplerAddress.Clamp) => SamplerState.AnisotropicClamp,
-                (SamplerFilter.Anisotropic, _) => SamplerState.AnisotropicWrap,
-                (_, SamplerAddress.Clamp) => SamplerState.LinearClamp,
-                _ => SamplerState.LinearWrap,
-            },
+            Filter = record.Sampler.Filter,
+            Address = record.Sampler.Address,
             Fog = record.Fog ? 1f : 0f,
             CastShadows = record.CastShadows,
             Albedo = effect.Parameters["Albedo"],
+            Surface = effect.Parameters[MaterialSurface.SurfaceParams] != null,
             SampledTargets = sampled,
         };
     }
@@ -390,7 +403,11 @@ internal sealed class MaterialCache : IDisposable
         device.BlendState = m.Blend;
         device.RasterizerState = wireframe ? m.RasterWire : m.Raster;
         device.DepthStencilState = m.Depth;
-        device.SamplerStates[0] = m.Sampler;
+        var sampler = TextureSampling.For(m.Filter, m.Address);
+        device.SamplerStates[0] = sampler;
+        // lit.fx's surface maps (issue #410) sample as the albedo does; s1 is the shadow map's (common.fxh).
+        if (m.Surface)
+            for (int slot = 2; slot <= 5; slot++) device.SamplerStates[slot] = sampler;
     }
 
 }

@@ -159,7 +159,10 @@ internal sealed class ParticleExtract : ISystem
         _particles = world.Resources.Get<Particles>();
         _snapshot = world.Resources.Get<RenderSnapshot>();
         _renderer = renderer;
+        _scope = Renderer.ScopeOf(world);
     }
+
+    private readonly AssetScope _scope;   // the sectors' in a streaming world (#308)
 
     public void Run(in SystemContext ctx)
     {
@@ -173,11 +176,14 @@ internal sealed class ParticleExtract : ISystem
             foreach (var group in _particles.Groups)
             {
                 if (group.Count == 0) continue;
-                int texture = _renderer.ResolveTexture(group.Record.Texture);
-                int material = _renderer.Materials.Resolve(group.Record.Material.IsEmpty
-                    ? ParticleRecord.DefaultMaterial : group.Record.Material);
+                if (!_renderer.TryResolveTexture(group.Record.Texture, _scope, out int texture)) continue;   // over the upload budget: next frame
+                int material = group.Record.Material.IsEmpty ? _renderer.Materials.Resolve(ParticleRecord.DefaultMaterial)
+                    : _renderer.Materials.Resolve(group.Record.Material, _scope);
                 var runtime = _renderer.Materials.Get(material);
                 var pass = runtime?.Pass ?? RenderPass.Transparent;
+                // Past the fog's cull distance a fogged particle is its fog colour over a background of
+                // the same colour: not drawn, and counted as fog culled (issue 4n-6).
+                float fogCull = runtime != null && runtime.Fog > 0f ? _snapshot.Environment.FogCull : float.PositiveInfinity;
 
                 for (int i = 0; i < group.Count; i++)
                 {
@@ -185,6 +191,13 @@ internal sealed class ParticleExtract : ISystem
                     if (size <= 0.0001f) continue;
 
                     var centre = group.Position[i] - view.CameraPosition.ToNumerics();
+                    if (fogCull < float.PositiveInfinity && Particles.FogHides(fogCull, centre, size))
+                    {
+                        _snapshot.Culled++;
+                        _snapshot.FogCulled++;
+                        _snapshot.Views[v].Culled++;
+                        continue;
+                    }
                     uint colour = group.ColourOf(i);
 
                     // Every field, every time: `Add()` hands back last frame's slot as it was (06 §3.1).
@@ -192,7 +205,8 @@ internal sealed class ParticleExtract : ISystem
                     instance.Center = centre;
                     instance.Size = new Vector2(size, size);
                     instance.Pivot = new Vector2(0.5f, 0.5f);     // particles turn about their middle
-                    instance.Uv = new Vector4(0f, 0f, 1f, 1f);    // one whole texture, no atlas in v1
+                    var uv = group.UvOf(i);                       // its frame of the sheet (4n-6); 1 x 1: all of it
+                    instance.Uv = new Vector4(uv.X, uv.Y, uv.Z, uv.W);
                     instance.Tint = new Vector4(((colour >> 0) & 0xFF) / 255f,
                                                 ((colour >> 8) & 0xFF) / 255f,
                                                 ((colour >> 16) & 0xFF) / 255f,
@@ -201,6 +215,8 @@ internal sealed class ParticleExtract : ISystem
                     instance.Texture = texture;
                     instance.Mode = BillboardMode.Spherical;      // a spark has no up
                     instance.Roll = group.Rotation[i];            // and it may be turning (`spinDegrees`)
+                    instance.Right = default;                     // a billboard (issue #306)
+                    instance.Up = default;
                     instance.SortKey = RenderSortKey.Make(pass, 0, material, texture,
                                                           Vector3.Dot(centre, view.Forward.ToNumerics()), view.Far);
                     instance.View = v;

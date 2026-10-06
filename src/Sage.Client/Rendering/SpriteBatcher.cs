@@ -20,6 +20,10 @@ internal struct SpriteInstance
     public int Texture;           // Renderer texture id (the sheet's)
     public BillboardMode Mode;
     public float Roll;            // radians about the view axis; 0 for anything that stands upright
+    // A quad laid in a plane rather than turned to the camera (a decal, issue #306): the unit axes its
+    // width and height run along. Zero (every billboard) means the camera decides, as Mode says.
+    public Vector3 Right;
+    public Vector3 Up;
     public ulong SortKey;
     public int View;              // index into RenderSnapshot.Views: Center is relative to that camera
 }
@@ -116,7 +120,14 @@ internal sealed class SpriteBatcher : IDisposable
         // Cylindrical turns about Y only, so characters and trees stay upright when the camera looks
         // up or down; Spherical uses the full camera basis (effects, item pickups).
         Vector3 right, up, normal;
-        if (!FaceCameraPosition)
+        if (s.Right != Vector3.Zero)
+        {
+            // Fixed in the world: it lies where it was put, whatever the camera does.
+            right = s.Right;
+            up = s.Up;
+            normal = Vector3.Cross(right, up);
+        }
+        else if (!FaceCameraPosition)
         {
             // Parallel to the view plane: every quad in the frame shares the camera's own basis, so
             // nothing rotates as the camera moves sideways (06 §3.8).

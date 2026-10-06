@@ -55,3 +55,68 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Bounce = 1 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.Die = 2 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleCollision.None = 0 -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Collision -> Sage.Simulation.ParticleCollision
+Sage.Simulation.ParticleRecord.Friction -> float
+Sage.Simulation.ParticleRecord.Restitution -> float
+Sage.Simulation.ParticleRecord.SheetColumns -> int
+Sage.Simulation.ParticleRecord.SheetCycles -> float
+Sage.Simulation.ParticleRecord.SheetFrames -> int
+Sage.Simulation.ParticleRecord.SheetRandomStart -> bool
+Sage.Simulation.ParticleRecord.SheetRows -> int
+Sage.Simulation.Particles.CollisionBudget.get -> int
+Sage.Simulation.Particles.CollisionBudget.set -> void
+Sage.Simulation.Particles.Group.FirstFrame -> int[]!
+Sage.Simulation.Particles.Group.FrameOf(int i) -> int
+Sage.Simulation.Particles.Group.UvOf(int i) -> System.Numerics.Vector4
+Sage.Simulation.Particles.Hits.get -> int
+Sage.Simulation.Particles.Rays.get -> int
+Sage.Simulation.Particles.RaysSkipped.get -> int
+const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
+Sage.Simulation.Decal
+Sage.Simulation.Decal.Age -> float
+Sage.Simulation.Decal.Alpha.get -> float
+Sage.Simulation.Decal.Colour.get -> uint
+Sage.Simulation.Decal.Decal() -> void
+Sage.Simulation.Decal.Effect -> Sage.Core.RecordId
+Sage.Simulation.Decal.Normal -> System.Numerics.Vector3
+Sage.Simulation.Decal.Position -> System.Numerics.Vector3
+Sage.Simulation.Decal.Record -> Sage.Simulation.DecalRecord!
+Sage.Simulation.Decal.Right -> System.Numerics.Vector3
+Sage.Simulation.Decal.Surface -> Sage.Simulation.Entity
+Sage.Simulation.Decal.Up -> System.Numerics.Vector3
+Sage.Simulation.DecalRecord
+Sage.Simulation.DecalRecord.Colour -> uint
+Sage.Simulation.DecalRecord.DecalRecord() -> void
+Sage.Simulation.DecalRecord.Fade -> float
+Sage.Simulation.DecalRecord.Lifetime -> float
+Sage.Simulation.DecalRecord.Material -> Sage.Core.RecordRef<Sage.Simulation.MaterialRecord!>
+Sage.Simulation.DecalRecord.RandomRotation -> bool
+Sage.Simulation.DecalRecord.Reach -> float
+Sage.Simulation.DecalRecord.Size -> float
+Sage.Simulation.DecalRecord.Texture -> Sage.Core.AssetPath
+Sage.Simulation.Decals
+Sage.Simulation.Decals.Ceiling.get -> int
+Sage.Simulation.Decals.Ceiling.set -> void
+Sage.Simulation.Decals.Clear() -> void
+Sage.Simulation.Decals.Count.get -> int
+Sage.Simulation.Decals.Decals() -> void
+Sage.Simulation.Decals.Evicted.get -> int
+Sage.Simulation.Decals.Live.get -> System.ReadOnlySpan<Sage.Simulation.Decal>
+Sage.Simulation.Decals.Place(Sage.Core.RecordId effect, Sage.Simulation.DecalRecord? record, System.Numerics.Vector3 point, System.Numerics.Vector3 normal, float? rotation = null, Sage.Simulation.Entity surface = default(Sage.Simulation.Entity)) -> bool
+Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
+Sage.Simulation.Decals.ResetStats() -> void
+Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
+static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
+Sage.Simulation.MaterialRecord.Emissive -> System.Numerics.Vector3
+Sage.Simulation.MaterialRecord.EmissiveMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.EnvironmentMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Gloss -> float
+Sage.Simulation.MaterialRecord.NormalMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.Reflectivity -> float
+Sage.Simulation.MaterialRecord.Specular -> float
+Sage.Simulation.MaterialRecord.SpecularMap -> Sage.Core.AssetPath
+Sage.Simulation.MaterialRecord.VertexColors -> bool

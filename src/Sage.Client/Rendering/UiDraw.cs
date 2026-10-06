@@ -188,7 +188,7 @@ public sealed class UiDraw
     }
 
     private static void Begin(SpriteBatch batch, RasterizerState? rasterizer) =>
-        batch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.PointClamp, null, rasterizer);
+        batch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, TextureSampling.PixelClamp, null, rasterizer);
 
     internal void Clear()
     {

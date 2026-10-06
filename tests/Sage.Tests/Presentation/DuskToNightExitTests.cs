@@ -47,7 +47,8 @@ public class DuskToNightExitTests
     private static Entity Player(World world) =>
         Assert.Single(world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList());
 
-    private static List<Entity> Lamps(World world) => world.Query<PointLight>().Entities.ToEntityList().ToList();
+    // The hut's (the `lamp` prefab's); not the lamp circling the brick wall (issue #410), which is always lit.
+    private static List<Entity> Lamps(World world) => world.Query<PointLight>().Entities.ToEntityList().Where(e => e.Name == "lamp").ToList();
 
     // The fit `sage:shadow` makes for the screen's main view (ShadowPass.Extract), from the headless camera.
     private static ShadowFit Fit(World world, Vector3 sun)

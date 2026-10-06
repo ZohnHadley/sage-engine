@@ -369,6 +369,14 @@
         }
       ]
     },
+    "orbit": {
+      "description": "Prefab part 'orbit' (OrbitPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/orbit"
+        }
+      ]
+    },
     "particles": {
       "description": "Prefab part 'particles' (ParticlesPart).",
       "allOf": [
@@ -2023,6 +2031,39 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'offscreen' (OffscreenPart)."
+    },
+    "orbit": {
+      "type": "object",
+      "properties": {
+        "radius": {
+          "description": "The circle's radius. Unit: m. At least 0. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0
+        },
+        "period": {
+          "description": "Seconds to go round once. Unit: s. At least 0.1. (float, default 6)",
+          "default": 6,
+          "type": "number",
+          "minimum": 0.1
+        },
+        "axis": {
+          "description": "The circle's axis, in the world; it goes round counter-clockwise looking down it. (Vector3, default [0,1,0])",
+          "default": [
+            0,
+            1,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'orbit' (OrbitPart)."
     },
     "particles": {
       "type": "object",

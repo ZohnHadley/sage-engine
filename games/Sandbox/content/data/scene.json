@@ -480,9 +480,25 @@
   // A bare id means this file's namespace even inside a patch of an engine record (R11), so
   // `hit_flesh` is sandbox:hit_flesh. The colour is the damage number's.
   { "type": "damage_type", "id": "sage:physical", "patch": true, "sound": "hit_flesh",
-    "particles": "blood", "colour": "#EFE3FF" },
+    "particles": "blood", "colour": "#EFE3FF", "decal": "blood_splat" },
   { "type": "damage_type", "id": "sage:fire", "patch": true, "sound": "boom_fire",
     "particles": "fire_burst", "colour": "#FF9800" },
+
+  // ---- marks that stay (engine issue #306) ----------------------------------------------------------
+  //
+  // The particle dot again, tinted and laid flat: a pistol round leaves a dark hole in the hut's and the
+  // crypt's plaster (the surface's `impact` cue names the decal) and a blow that draws blood leaves a
+  // splash on the wall or the floor behind (the damage type names it). Both fade, and `r_decals` caps
+  // how many there are; the oldest goes first.
+  { "type": "decal", "id": "bullet_hole", "texture": "textures/particle.png", "size": 0.12,
+    "lifetime": 45, "fade": 5, "colour": "#1A1714" },
+  { "type": "decal", "id": "blood_splat", "texture": "textures/particle.png", "size": 0.45,
+    "lifetime": 20, "fade": 4, "colour": "#6E0000D0", "reach": 2.5 },
+  { "type": "cue", "id": "bullet_impact", "description": "A round meeting plaster",
+    "particles": "sparks", "particleCount": 4, "decal": "bullet_hole" },
+  // What the maps' walls, floors and roofs are made of (engine #270): the door is left out, because it
+  // moves and a mark on it would stay where it was.
+  { "type": "physics_material", "id": "plaster", "impact": "bullet_impact", "textures": ["wall", "floor", "roof"] },
 
   // ---- particles (docs/design/06 \u00a73.9, F39) ------------------------------------------------------
   //
@@ -500,7 +516,9 @@
     "sizeStart": 0.07, "sizeEnd": 0.01,
     // White-hot, cooling to orange as it fades. (Written as packed numbers until issue #22, these two
     // had their bytes in the wrong order and drew a pale blue spark turning green.)
-    "colourStart": "#FFE380", "colourEnd": "#FF7F0000"
+    "colourStart": "#FFE380", "colourEnd": "#FF7F0000",
+    // They skitter off the floor rather than falling through it (issue 4n-6): a ray each a frame.
+    "collision": "Bounce", "restitution": 0.35, "friction": 0.3
   },
   {
     "type": "particle", "id": "blood",
@@ -908,6 +926,47 @@
     "parts": { "hop": {} }
   },
 
+  // ---- a normal-mapped wall and a lamp going round in front of it (engine issue #410) ---------------
+  //
+  // lit.fx draws a material's surface maps: a normal map (the bricks' bevels and the mortar's grooves),
+  // a specular map (red: shine, green: gloss) with `specular` and `gloss`, `emissive` (the lamp's glow),
+  // `vertexColors` and an `environmentMap`. A map left out changes nothing, so every other material here
+  // draws as before. The art is made by tools/make_brick_wall.py; the model carries its own tangents.
+  {
+    "type": "material",
+    "id": "brick_wall",
+    "base": "sage:lit_default",
+    "params": { "Albedo": "textures/brick_wall.png" },
+    "normalMap": "textures/brick_wall_normal.png",
+    "specularMap": "textures/brick_wall_spec.png",
+    "specular": 0.8,
+    "gloss": 0.45
+  },
+  {
+    // Glows the lamp's colour whatever lights it, and in the dark.
+    "type": "material",
+    "id": "lamp_glow",
+    "base": "sage:lit_default",
+    "params": { "AlbedoColor": [0.3, 0.25, 0.18, 1] },
+    "emissive": [1.0, 0.8, 0.5],
+    "castShadows": false
+  },
+  {
+    "type": "prefab", "id": "brick_wall", "name": "brick wall",
+    "components": { "mesh_renderer": { "mesh": "models/brick_wall.glb", "material": "brick_wall" } },
+    "parts": { "body": { "size": [3, 3, 0.3] } }
+  },
+  {
+    // Lit always, unlike the hut's: it is here to be looked at. `orbit` is the Sandbox's own part
+    // (SandboxModule.cs): round a circle about where it is placed, about the axis given.
+    "type": "prefab", "id": "wall_lamp", "name": "wall lamp",
+    "parts": {
+      "light": { "colour": [1.0, 0.8, 0.55], "range": 5, "intensity": 2.5 },
+      "box_mesh": { "size": [0.12, 0.12, 0.12], "material": "lamp_glow" },
+      "orbit": { "radius": 0.9, "period": 6, "axis": [-0.755, 0, 0.656] }
+    }
+  },
+
   // ---- where the instances go --------------------------------------------------------------------
   {
     // Placement is not the prefab's business. Map files with a persistent id and per-entity overrides
@@ -956,6 +1015,9 @@
       { "prefab": "hanging_sign", "at": [2.6, 2.3, 8.25] },
       { "prefab": "lamp_link", "at": [3.8, 2.35, 8], "name": "lamp link" },
       { "prefab": "hanging_lamp", "at": [3.8, 1.6, 8] },
+      // The brick wall (engine issue #410), turned to face the start, with its lamp circling 0.9 m in front.
+      { "prefab": "brick_wall", "at": [7, 1, 0], "yaw": -49, "name": "brick wall" },
+      { "prefab": "wall_lamp", "at": [6.32, 1.4, 0.59], "name": "wall lamp" },
       // The fence, and a watcher behind the middle of it: it sees the player over the top, and the only
       // way to reach them is round one end (F23). Walk up and watch it commit to a side.
       { "prefab": "hermit",       "at": [5, 0, 5],     "yaw": 200 },
