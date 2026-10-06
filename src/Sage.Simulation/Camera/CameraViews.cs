@@ -30,6 +30,12 @@ public struct CameraView
     public float Near;
     public float Far;
     public int Priority;                // the camera's; int.MinValue for the ActiveCamera fallback
+    public int Slot;                    // split screen (issue 4n-19): one view per target and slot
+    // The passes this view leaves out (issue 4n-19; Camera.NoShadows and the rest): all false, the whole set.
+    public bool NoShadows;
+    public bool NoViewmodel;
+    public bool NoSky;
+    public bool NoDebugLines;
 
     public readonly bool IsScreen => string.IsNullOrEmpty(Target);
     public readonly bool FromActiveCamera => Entity.IsNull;
@@ -47,11 +53,12 @@ public struct CameraView
 // CameraDirector at the end of its run in FrameUpdate and read from Extract on. **The contract the
 // renderer builds on** (#77):
 //
-//   - At most one view per target. Off-screen targets come first, in ordinal order of their names,
-//     and the screen view (Target == "") is **last**, so drawing in list order renders every target
-//     before the screen that might show it.
-//   - `Main` / `MainIndex` is the screen view: MainIndex is -1 when there is none (a headless world with
-//     no ActiveCamera and no screen camera). With a camera entity on the screen it is that camera's; with
+//   - At most one view per target **and split-screen slot** (Camera.Slot, issue 4n-19; one slot, 0,
+//     unless a game splits the screen). Off-screen targets come first, in ordinal order of their names,
+//     and the screen's views (Target == "") are **last**, each target's in slot order, so drawing in list
+//     order renders every target before the screen that might show it.
+//   - `Main` / `MainIndex` is the screen's view with the lowest slot (player one's): MainIndex is -1 when
+//     there is none (a headless world with no ActiveCamera and no screen camera). With a camera entity on the screen it is that camera's; with
 //     none it is made from ActiveCamera (a null Entity), so a renderer reading only this resource draws
 //     exactly what one reading ActiveCamera did.
 //   - `cam_free` is not a special case (#81): the editor's free camera is a camera entity (DebugCamera)
@@ -98,12 +105,30 @@ public sealed class CameraViews
         return MainIndex >= 0;
     }
 
-    // The view drawing to `target` ("" = the screen), if any.
+    // The view drawing to `target` ("" = the screen), if any: its lowest slot's once the director has
+    // sorted the list (from late FrameUpdate on).
     public int IndexOf(string target)
     {
         for (int i = 0; i < Count; i++)
             if (string.Equals(_views[i].Target, target, StringComparison.Ordinal)) return i;
         return -1;
+    }
+
+    // The view drawing to `target` in split-screen `slot` (Camera.Slot, issue 4n-19), if any.
+    public int IndexOf(string target, int slot)
+    {
+        for (int i = 0; i < Count; i++)
+            if (_views[i].Slot == slot && string.Equals(_views[i].Target, target, StringComparison.Ordinal)) return i;
+        return -1;
+    }
+
+    // The screen's view with the lowest slot (what becomes MainIndex), whatever order the list is in.
+    internal int IndexOfScreen()
+    {
+        int best = -1;
+        for (int i = 0; i < Count; i++)
+            if (_views[i].IsScreen && (best < 0 || _views[i].Slot < _views[best].Slot)) best = i;
+        return best;
     }
 
     // The view `camera` drew this frame, if it won its target.
@@ -124,12 +149,12 @@ public sealed class CameraViews
         MainIndex = -1;
     }
 
-    // One per target: a camera replaces the one already there only by beating it — higher priority, or
+    // One per target and slot: a camera replaces the one already there only by beating it — higher priority, or
     // the same priority and a lower entity id, so a tie resolves the same way every frame and in every
     // run whatever order the query visits them in.
     internal void Offer(in CameraView view)
     {
-        int at = IndexOf(view.Target);
+        int at = IndexOf(view.Target, view.Slot);
         if (at < 0)
         {
             if (Count == _views.Length) Array.Resize(ref _views, _views.Length * 2);
@@ -144,13 +169,14 @@ public sealed class CameraViews
     // The screen's view, whoever offered one: replaces it outright (the ActiveCamera fallback).
     internal void SetScreen(in CameraView view)
     {
-        int at = IndexOf("");
+        int at = IndexOfScreen();
         if (at >= 0) { _views[at] = view; return; }
         if (Count == _views.Length) Array.Resize(ref _views, _views.Length * 2);
         _views[Count++] = view;
     }
 
-    // Off-screen targets by name, the screen last. An insertion sort: a handful of views, no allocation.
+    // Off-screen targets by name, the screen last, each target's by slot. An insertion sort: a handful of
+    // views, no allocation.
     internal void End()
     {
         for (int i = 1; i < Count; i++)
@@ -164,14 +190,15 @@ public sealed class CameraViews
             }
             _views[j + 1] = item;
         }
-        MainIndex = Count > 0 && _views[Count - 1].IsScreen ? Count - 1 : -1;
+        MainIndex = IndexOfScreen();
         Version++;
     }
 
     private static int Compare(in CameraView a, in CameraView b)
     {
         if (a.IsScreen != b.IsScreen) return a.IsScreen ? 1 : -1;
-        return string.CompareOrdinal(a.Target, b.Target);
+        int byName = string.CompareOrdinal(a.Target, b.Target);
+        return byName != 0 ? byName : a.Slot.CompareTo(b.Slot);
     }
 
     // Origin rebasing (Origin.Rebase): the views hold origin-space positions until the next resolve.

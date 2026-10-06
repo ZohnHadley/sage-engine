@@ -1,10 +1,13 @@
 #nullable enable
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sage.Simulation;
 
 // "camera": { "projection": "Orthographic", "orthoHeight": 12, "priority": 10 }
 // "camera": { "fovY": 70, "target": "security_monitor", "viewport": { "x": 0, "y": 0, "width": 0.5, "height": 1 } }
+// "camera": { "slot": 1, "viewport": { "x": 0.5, "y": 0, "width": 0.5, "height": 1 } }   (a split-screen partner)
+// "camera": { "target": "monitor", "noShadows": true, "noSky": true }                  (a cheap monitor)
 //
 // A camera, starting from the defaults a `Camera` component written by hand does not have (enabled,
 // 45°, the whole screen): the options are the component's fields, so `{}` is a working perspective
@@ -32,9 +35,20 @@ public sealed class CameraPart : IPrefabPart
     public CameraViewport Viewport = CameraViewport.Full;
     [Property(Category = "Output", Tooltip = "The render target it draws to, by name; empty = the screen")]
     public string Target = "";
+    [Property(Min = 0, Max = 15, Category = "Output", Tooltip = "Split screen: each slot of a target draws its own view (its highest-priority camera); the screen's lowest is the main view")]
+    public int Slot;
+    [Property(Category = "Passes", Tooltip = "This view has no sun shadows of its own (a cheap monitor, a minimap)")]
+    public bool NoShadows;
+    [Property(Category = "Passes", Tooltip = "This view draws no first-person viewmodel, even from a first-person rig")]
+    public bool NoViewmodel;
+    [Property(Category = "Passes", Tooltip = "This view draws no sky: the clear colour stays behind the world")]
+    public bool NoSky;
+    [Property(Category = "Passes", Tooltip = "This view draws no debug lines")]
+    public bool NoDebugLines;
 
     public void Apply(in PrefabPartContext ctx)
     {
+        if (Slot < 0) ctx.Warn($"slot {Slot} is not a split-screen slot; 0 is used");
         if (Near <= 0f || Far <= Near) ctx.Warn($"near {Near} / far {Far} is not a depth range; the defaults are used");
         if (Projection == CameraProjection.Perspective && (FovY <= 0f || FovY >= 180f))
             ctx.Warn($"fovY {FovY} is not a field of view in degrees; {Camera.DefaultFovY} is used");
@@ -49,6 +63,11 @@ public sealed class CameraPart : IPrefabPart
             Enabled = Enabled,
             Viewport = Viewport,
             Target = Target ?? "",
+            Slot = Math.Max(0, Slot),
+            NoShadows = NoShadows,
+            NoViewmodel = NoViewmodel,
+            NoSky = NoSky,
+            NoDebugLines = NoDebugLines,
         });
     }
 }

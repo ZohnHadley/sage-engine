@@ -6,9 +6,9 @@ namespace Sage.Client;
 
 // Extract, last: the viewmodel pass (issue #121, docs/design/06 "As built (the viewmodel pass)").
 //
-// When the screen looks out of a first-person rig whose camera has a Viewmodel (ViewmodelPass.TryGet,
-// headless and tested), this adds **one more view** to the snapshot: the main view's viewport, rotation
-// and lights, with the viewmodel's own field of view and depth range, drawn after it on the same target
+// For every view that looks out of a first-person rig whose camera has a Viewmodel (ViewmodelPass.TryGet,
+// headless and tested; every view since issue 4n-19, so each split-screen partner draws its own arms),
+// this adds **one more view** to the snapshot: that view's viewport, rotation and lights, with the viewmodel's own field of view and depth range, drawn after it on the same target
 // (a higher Order) and clearing only depth first (RenderView.DepthOnly). Its items are the arms and the
 // weapon, which every other extract leaves out (the `sage:viewmodel_layer` tag): their poses are in view
 // space, so ViewmodelPass turns them camera-relative with the view's rotation. The world's lights reach
@@ -40,10 +40,25 @@ internal sealed class ViewmodelExtract : ISystem
     public void Run(in SystemContext ctx)
     {
         var s = _snapshot;
-        if (s.MainView < 0 || !_renderer.IsScreenWorld(ctx.World)) return;
-        if (!ViewmodelPass.TryGet(_world, out var viewmodel)) return;
+        if (s.Views.Count == 0) return;
+        if (!_world.Resources.TryGet<CameraViews>(out var cameras) || cameras == null) return;
 
-        var main = s.Views[s.MainView];   // a copy: Add below may move the list
+        // Every view drawn from a camera (issue 4n-19), not only the screen's main one: each split-screen
+        // partner looking out of its own first-person rig gets its own arms. The views this adds are not
+        // looked at again (the count is taken first).
+        int views = s.Views.Count;
+        for (int v = 0; v < views; v++)
+        {
+            var main = s.Views[v];   // a copy: Add below may move the list
+            if (main.ShadowCaster || main.DepthOnly || main.NoViewmodel || main.Source < 0 || main.Source >= cameras.Count) continue;
+            if (!ViewmodelPass.TryGet(_world, in cameras[main.Source], out var viewmodel)) continue;
+            Add(s, in main, in viewmodel, ctx.Frame.Alpha);
+        }
+    }
+
+    // The viewmodel's view over `main`, and its pieces in it.
+    private void Add(RenderSnapshot s, in RenderView main, in ViewmodelView viewmodel, float alpha)
+    {
         int index = s.Views.Count;
         ref var view = ref s.Views.Add();
         view = main;
@@ -52,7 +67,7 @@ internal sealed class ViewmodelExtract : ISystem
         view.Far = viewmodel.Far;
         view.Projection = Matrix.CreatePerspectiveFieldOfView(viewmodel.FovY, aspect, viewmodel.Near, viewmodel.Far);
         view.ViewProj = view.View * view.Projection;
-        view.Order = main.Order + 1;          // after the main view on its target
+        view.Order = main.Order + 1;          // after its view on the target (a split-screen partner's Order is its slot)
         view.DepthOnly = true;
         view.Hidden = 0;
         view.DebugStart = view.DebugCount = 0;
@@ -62,7 +77,7 @@ internal sealed class ViewmodelExtract : ISystem
         s.EnsureViewSlots(index + 1);          // per-view culling state; grows only when the view count does
 
         var draws = new Draws { Owner = this, Snapshot = s, View = index, Forward = view.Forward, Far = view.Far };
-        ViewmodelPass.Emit(_world, in viewmodel, ctx.Frame.Alpha, ref draws);
+        ViewmodelPass.Emit(_world, in viewmodel, alpha, ref draws);
     }
 
     private void Item(RenderSnapshot s, int view, int meshId, int part, int materialId, RenderPass pass, byte layer,
