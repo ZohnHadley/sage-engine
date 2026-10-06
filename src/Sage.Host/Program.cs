@@ -78,6 +78,7 @@ try
         UserModsDirectory = Path.Combine(UserPaths.Root, "mods"),
         ModListFile = Path.Combine(UserPaths.Root, "mods.json"),   // ModList.DefaultPath
         ModReportFile = Path.Combine(UserPaths.Logs, "mod_report.txt"),
+        InputFile = Path.Combine(UserPaths.Root, "input.json"),   // the player's rebinds (#328)
     });
     app.Register();
 }

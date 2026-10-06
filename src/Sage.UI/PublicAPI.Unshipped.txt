@@ -1,1 +1,33 @@
 #nullable enable
+const Sage.UI.ControlsView.KeepButton = "keep" -> string!
+const Sage.UI.ControlsView.RebindButton = "rebind" -> string!
+const Sage.UI.ControlsView.ReplaceButton = "replace" -> string!
+const Sage.UI.ControlsView.ResetAllButton = "resetAll" -> string!
+const Sage.UI.ControlsView.ResetButton = "reset" -> string!
+const Sage.UI.ControlsView.TabPrefix = "tab" -> string!
+Sage.UI.ControlsView
+Sage.UI.ControlsView.Activate(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> bool
+Sage.UI.ControlsView.Back(in Sage.UI.UiBindContext context) -> bool
+Sage.UI.ControlsView.CanReplace.get -> bool
+Sage.UI.ControlsView.CaptureAction.get -> string!
+Sage.UI.ControlsView.Capturing.get -> bool
+Sage.UI.ControlsView.ConflictInput.get -> string!
+Sage.UI.ControlsView.ConflictOthers.get -> string!
+Sage.UI.ControlsView.ConflictPending.get -> bool
+Sage.UI.ControlsView.Context.get -> Sage.Simulation.InputContext
+Sage.UI.ControlsView.ContextLabel.get -> string!
+Sage.UI.ControlsView.ControlsView() -> void
+Sage.UI.ControlsView.HasMessage.get -> bool
+Sage.UI.ControlsView.Message.get -> string!
+Sage.UI.ControlsView.MessageDetail.get -> string!
+Sage.UI.ControlsView.NoRows.get -> bool
+Sage.UI.ControlsView.Refresh(in Sage.UI.UiBindContext context) -> void
+Sage.UI.ControlsView.Row
+Sage.UI.ControlsView.Row.Action.get -> string!
+Sage.UI.ControlsView.Row.Bindings.get -> string!
+Sage.UI.ControlsView.Row.Capturing.get -> bool
+Sage.UI.ControlsView.Row.Overridden.get -> bool
+Sage.UI.ControlsView.Row.RebindLabel.get -> string!
+Sage.UI.ControlsView.Row.Row() -> void
+Sage.UI.ControlsView.RowCount.get -> int
+Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!

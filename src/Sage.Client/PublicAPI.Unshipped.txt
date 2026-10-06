@@ -1,4 +1,5 @@
 #nullable enable
+Sage.Client.InputActions.InputActions(Sage.Simulation.ActionRegistry! registry, Sage.Core.RecordStore! records, Sage.Client.InputDevices! devices, Sage.Core.CVarRegistry! cvars, Sage.Simulation.InputRebinds? rebinds) -> void
 Sage.Client.RenderStats.LodCulled -> int
 Sage.Client.RenderStats.LodLowered -> int
 Sage.Client.RenderStats.Lightmapped -> int

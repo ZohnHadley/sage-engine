@@ -20,6 +20,7 @@ public sealed class Engine : IDisposable
         Core = core;
         Vfs = vfs ?? new VirtualFileSystem();
         Records = records ?? new RecordStore();
+        Rebinds = new InputRebinds(Actions, Records, null);   // SageApp replaces it with the player's file (#328)
         // Entity handles in record JSON read as the null entity (EntityJsonConverter): the record store
         // is the kernel's and knows no ECS, so the engine adds it, where the store's own list had it.
         Records.Json.Converters.Insert(3, new EntityJsonConverter());
@@ -170,6 +171,10 @@ public sealed class Engine : IDisposable
     // a mods screen go through it (4j-3). An app with no game has an empty one.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (phase 4j): may change before 1.0
     public ModManager ModManager { get; internal set; } = ModManager.None();
+
+    // The player's rebinds of input (`user://input.json`, issue #328): `bind`, `unbind`, `bind_reset`, and what a
+    // controls screen changes. It keeps nothing when the app has no user folder.
+    public InputRebinds Rebinds { get; internal set; }
 
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }

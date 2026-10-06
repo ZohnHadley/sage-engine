@@ -56,6 +56,7 @@ public sealed class InputActions
     private readonly ActionRegistry _registry;
     private readonly RecordStore _records;
     private readonly InputDevices _devices;
+    private readonly InputRebinds? _rebinds;
     private readonly CVar<float> _sensitivity;
     private readonly CVar<bool> _invertY;
 
@@ -87,8 +88,15 @@ public sealed class InputActions
     }
 
     public InputActions(ActionRegistry registry, RecordStore records, InputDevices devices, CVarRegistry cvars)
+        : this(registry, records, devices, cvars, null) { }
+
+    public InputActions(ActionRegistry registry, RecordStore records, InputDevices devices, CVarRegistry cvars, InputRebinds? rebinds)
     {
         _registry = registry;
+        _rebinds = rebinds;
+        // The names of keys and buttons are MonoGame's, so the one place that can check a rebind is here:
+        // the same compile the bindings from records go through.
+        if (rebinds != null) rebinds.Validator = (action, desc) => Compile(action, desc, "", out string? error) == null ? error : null;
         _records = records;
         _devices = devices;
         _sensitivity = cvars.Register("m_sensitivity", 1f, CVarFlags.Archive, "Mouse look speed multiplier (Look action and the editor camera).", 0.01f, 20f);
@@ -278,6 +286,7 @@ public sealed class InputActions
     public void Update(float dt)
     {
         EnsureCapacity();
+        CaptureNextInput();
         Array.Copy(_rawHeld, _wasRawHeld, _rawHeld.Length);
         Array.Clear(_held);
         Array.Clear(_rawHeld);
@@ -331,6 +340,43 @@ public sealed class InputActions
             if (InputEdges.Pressed(_rawHeld[i], _wasRawHeld[i], swallowed)) _pressedBits = _pressedBits.With(info.Id);
             if (InputEdges.Released(_rawHeld[i], _wasRawHeld[i])) _releasedBits = _releasedBits.With(info.Id);
         }
+    }
+
+    // Capture-next-input (the controls screen, #328): while the rebinds are waiting for a press, the first
+    // new key, mouse button or pad button is offered to them. Escape, the left mouse button and the pad's
+    // B, Back and Start are not offered: they are how a player cancels or clicks the screen's own buttons.
+    // The frame a capture begins is skipped, so the click that began it is not what it captures.
+    private static readonly Keys[] AllKeys = (Keys[])Enum.GetValues(typeof(Keys));
+    private static readonly Buttons[] PadButtons =
+    {
+        Buttons.A, Buttons.X, Buttons.Y, Buttons.LeftShoulder, Buttons.RightShoulder, Buttons.LeftTrigger, Buttons.RightTrigger,
+        Buttons.LeftStick, Buttons.RightStick, Buttons.DPadUp, Buttons.DPadDown, Buttons.DPadLeft, Buttons.DPadRight,
+    };
+
+    private void CaptureNextInput()
+    {
+        if (_rebinds is not { Capturing: true } || _rebinds.TakeFresh()) return;
+        var kb = _devices.Keyboard;
+        foreach (var key in AllKeys)
+            if (key != Keys.None && key != Keys.Escape && kb.IsKeyPressed(key))
+            {
+                _rebinds.Offer(new InputBinding { Key = key.ToString() });
+                return;
+            }
+        var mouse = _devices.Mouse;
+        foreach (var button in new[] { MouseButton.RIGHT, MouseButton.MIDDLE })
+            if (mouse.IsButtonPressed(button))
+            {
+                _rebinds.Offer(new InputBinding { Mouse = button == MouseButton.RIGHT ? "Right" : "Middle" });
+                return;
+            }
+        foreach (var button in PadButtons)
+            if (_devices.Gamepad.IsPressed(button))
+            {
+                string name = button switch { Buttons.LeftStick => "LeftStickButton", Buttons.RightStick => "RightStickButton", _ => button.ToString() };
+                _rebinds.Offer(new InputBinding { Gamepad = name });
+                return;
+            }
     }
 
     // What one button binding's device says, regardless of who is listening. Called once per binding

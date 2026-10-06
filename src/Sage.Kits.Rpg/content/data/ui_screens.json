@@ -193,4 +193,43 @@
       "message":    { "widget": "label", "parent": "window", "style": "text", "bind": "message", "args": { "mod": "messageMod" } },
       "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.mods.hint" }
     } }
+  ,
+
+  // ---- controls: the buttons of each input context and the keys they have, rebound by pressing one (#328) --
+  // Over `ui_controls` (Sage.UI ControlsView), a view of the engine's InputRebinds: Rebind waits for the next
+  // key, mouse or pad button; a conflict asks to replace or keep; every change is written to
+  // user://input.json and is in force at once (the console's bind / unbind / bind_reset do the same).
+  { "type": "screen", "id": "controls", "layout": "controls", "viewModel": "ui_controls" },
+  { "type": "ui_layout", "id": "controls", "style": "panel",
+    "nodes": {
+      "window":     { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [560, 0] },
+      "title":      { "widget": "label", "parent": "window", "style": "title", "text": "@rpg.controls.title" },
+      "tabs":       { "widget": "stack", "parent": "window", "direction": "row", "spacing": 8 },
+      "tabGameplay": { "widget": "button", "parent": "tabs", "style": "button", "text": "@rpg.controls.ctx_Gameplay" },
+      "tabUI":      { "widget": "button", "parent": "tabs", "style": "button", "text": "@rpg.controls.ctx_UI" },
+      "tabEditor":  { "widget": "button", "parent": "tabs", "style": "button", "text": "@rpg.controls.ctx_Editor" },
+      "tabConsole": { "widget": "button", "parent": "tabs", "style": "button", "text": "@rpg.controls.ctx_Console" },
+      "context":    { "widget": "label", "parent": "window", "style": "hint", "bind": "contextLabel" },
+
+      "none":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.controls.none", "bindings": { "visible": "noRows" } },
+      "list":       { "widget": "scroll", "parent": "window", "minSize": [0, 240] },
+      "rows":       { "widget": "item_list", "parent": "list", "bind": "rows", "spacing": 2 },
+      "row":        { "widget": "stack", "parent": "rows", "direction": "row", "spacing": 8 },
+      "action":     { "widget": "label", "parent": "row", "style": "text", "bind": "action", "minSize": [160, 0] },
+      "bindings":   { "widget": "label", "parent": "row", "style": "hint", "bind": "bindings", "expand": 1 },
+      "rebind":     { "widget": "button", "parent": "row", "style": "button", "bind": "rebindLabel" },
+      "reset":      { "widget": "button", "parent": "row", "style": "button", "text": "@rpg.controls.reset", "bindings": { "visible": "overridden" } },
+
+      "capturing":  { "widget": "label", "parent": "window", "style": "warning", "text": "@rpg.controls.capturing",
+                      "args": { "action": "captureAction" }, "bindings": { "visible": "capturing" } },
+      "conflict":   { "widget": "label", "parent": "window", "style": "warning", "text": "@rpg.controls.conflict",
+                      "args": { "input": "conflictInput", "others": "conflictOthers" }, "bindings": { "visible": "conflictPending" } },
+      "choice":     { "widget": "stack", "parent": "window", "direction": "row", "spacing": 8, "bindings": { "visible": "canReplace" } },
+      "replace":    { "widget": "button", "parent": "choice", "style": "button", "text": "@rpg.controls.replace" },
+      "keep":       { "widget": "button", "parent": "choice", "style": "button", "text": "@rpg.controls.keep" },
+      "message":    { "widget": "label", "parent": "window", "style": "text", "bind": "message",
+                      "args": { "others": "messageDetail" }, "bindings": { "visible": "hasMessage" } },
+      "resetAll":   { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.controls.reset_all" },
+      "hint":       { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.controls.hint" }
+    } }
 ]
