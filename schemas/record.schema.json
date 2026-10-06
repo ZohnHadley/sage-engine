@@ -35,6 +35,7 @@
             "calendar_event",
             "cue",
             "damage_type",
+            "decal",
             "dialogue",
             "dialogue_topic",
             "effect",
@@ -242,6 +243,21 @@
           },
           "then": {
             "$ref": "damage_type.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "decal"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "decal.schema.json"
           }
         },
         {

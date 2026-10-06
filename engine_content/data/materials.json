@@ -72,6 +72,18 @@
     "depthWrite": false
   },
   {
+    // What a decal draws with (issue #306): the blended particle look, a mark's texture laid flat on a
+    // surface. Linear sampling, so a bullet hole seen up close is round rather than a block of texels.
+    "type": "material",
+    "id": "decal",
+    "base": "sprite_default",
+    "technique": "UnlitBlend",
+    "pass": "Transparent",
+    "blend": "AlphaBlend",
+    "depthWrite": false,
+    "sampler": { "filter": "Linear", "address": "Clamp" }
+  },
+  {
     // The fallback for broken materials and the placeholder for missing meshes (07 §8).
     "type": "material",
     "id": "error",

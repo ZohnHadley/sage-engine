@@ -128,8 +128,10 @@
       "description": "The id of a cue record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "bullet_impact",
         "fireball_boom",
         "fireball_cast",
+        "sandbox:bullet_impact",
         "sandbox:fireball_boom",
         "sandbox:fireball_cast",
         "sandbox:weapon_swing",
@@ -144,6 +146,16 @@
         "physical",
         "sage:fire",
         "sage:physical"
+      ]
+    },
+    "record:decal": {
+      "description": "The id of a decal record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "blood_splat",
+        "bullet_hole",
+        "sandbox:blood_splat",
+        "sandbox:bullet_hole"
       ]
     },
     "record:dialogue": {
@@ -358,6 +370,7 @@
         "crate",
         "crypt_floor",
         "crypt_wall",
+        "decal",
         "door",
         "dummy",
         "dummy_helmeted",
@@ -377,6 +390,7 @@
         "post_grade",
         "post_vignette",
         "roof",
+        "sage:decal",
         "sage:error",
         "sage:lit_default",
         "sage:particle_additive",
@@ -469,6 +483,7 @@
         "glass",
         "grass",
         "metal",
+        "plaster",
         "sage:default",
         "sage:dirt",
         "sage:flesh",
@@ -477,6 +492,7 @@
         "sage:metal",
         "sage:stone",
         "sage:wood",
+        "sandbox:plaster",
         "stone",
         "wood"
       ]
@@ -1201,8 +1217,10 @@
       "description": "Another cue record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "bullet_impact",
         "fireball_boom",
         "fireball_cast",
+        "sandbox:bullet_impact",
         "sandbox:fireball_boom",
         "sandbox:fireball_cast",
         "sandbox:weapon_swing",
@@ -1217,6 +1235,16 @@
         "physical",
         "sage:fire",
         "sage:physical"
+      ]
+    },
+    "base:decal": {
+      "description": "Another decal record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "blood_splat",
+        "bullet_hole",
+        "sandbox:blood_splat",
+        "sandbox:bullet_hole"
       ]
     },
     "base:dialogue": {
@@ -1431,6 +1459,7 @@
         "crate",
         "crypt_floor",
         "crypt_wall",
+        "decal",
         "door",
         "dummy",
         "dummy_helmeted",
@@ -1450,6 +1479,7 @@
         "post_grade",
         "post_vignette",
         "roof",
+        "sage:decal",
         "sage:error",
         "sage:lit_default",
         "sage:particle_additive",
@@ -1542,6 +1572,7 @@
         "glass",
         "grass",
         "metal",
+        "plaster",
         "sage:default",
         "sage:dirt",
         "sage:flesh",
@@ -1550,6 +1581,7 @@
         "sage:metal",
         "sage:stone",
         "sage:wood",
+        "sandbox:plaster",
         "stone",
         "wood"
       ]

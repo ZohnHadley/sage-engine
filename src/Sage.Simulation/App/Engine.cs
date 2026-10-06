@@ -56,6 +56,8 @@ public sealed class Engine : IDisposable
         Records.AddCheck<AnimEventsRecord>(AnimEvents.Check);
         // First-person arms name a model, and a weapon a socket (issue #121).
         Records.AddCheck<ViewmodelRecord>(ViewmodelRecord.Check);
+        // A decal names a texture and a size, lifetime and fade that make sense (issue #306).
+        Records.AddCheck<DecalRecord>(DecalRecord.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the
