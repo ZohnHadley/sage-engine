@@ -13,7 +13,7 @@ namespace Sage.Host;
 // run it (issue #298: they compile this file in, since a test may not reference the host).
 internal sealed class HostOptions
 {
-    public static readonly string[] Known = { "game", "dump-registry", "mods", "nomods", "edit" };
+    public static readonly string[] Known = { "game", "dump-registry", "mods", "nomods", "edit", "notitle" };
 
     // -game <folder>: null when not given, and GameManifest.Locate decides.
     public string? Game { get; private init; }
@@ -29,6 +29,10 @@ internal sealed class HostOptions
     // -edit [placements-or-scene]: the editor (phase 10a, issue #219); "" opens it on the game's scene.
     // A Shipping host has no editor, which Program.cs says.
     public string? Edit { get; private init; }
+
+    // -notitle: start the world at once, past game.json's "title" screen (issue #342): a scripted run, a
+    // developer going straight into the game.
+    public bool NoTitle { get; private init; }
 
     public IReadOnlyList<string> Warnings { get; private init; } = Array.Empty<string>();
 
@@ -62,6 +66,7 @@ internal sealed class HostOptions
             Mods = mods,
             DumpRegistry = dump,
             Edit = launch.Options.TryGetValue("edit", out var edit) ? edit ?? "" : null,
+            NoTitle = launch.Options.ContainsKey("notitle"),
             Warnings = warnings,
         };
     }

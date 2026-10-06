@@ -983,6 +983,7 @@ internal static class ManifestSchemas
             ["plugins"] = Strings("The engine's simulation plugins this game uses (\"sage.physics3d\", \"sage.gameplay.*\"). Left out, all; empty, none."),
             ["kits"] = Strings("The kits this game is built on, by plugin id: \"sage.kits.rpg\"."),
             ["scene"] = Str("The scene record every world starts in."),
+            ["title"] = Str("The screen record shown before the world starts (a host with a window; -notitle skips it)."),
             ["sage"] = Str("The engine versions this game was made for: \"^0.1\"."),
             ["version"] = Str("The game's own version, 1.4.0: what a mod's \"gameVersion\" is checked against."),
             ["cook"] = cook,

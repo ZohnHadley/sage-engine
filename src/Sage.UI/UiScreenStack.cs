@@ -77,6 +77,9 @@ public sealed class UiLayer
     // The confirm prompt or message box this shows (UiScreenStack.Confirm, Message), when it is one.
     public UiDialog? Dialog { get; internal set; }
 
+    // Its screen `pauses` the world, and it still counts (UiScreenStack.PausesWorld): until it starts closing.
+    internal bool HoldsPause { get; set; }
+
     // Takes the UI's input while it is on top, holds the `ui` input context and dims what is behind it.
     // A HUD layer is not modal: it is drawn, and never takes a key.
     public bool Modal { get; }
@@ -267,6 +270,37 @@ public sealed class UiScreenStack
     // with no records behind it.
     private bool RightToLeft => _screens?.Text.IsRightToLeft ?? false;
 
+    private int _pausing;        // open layers whose screen `pauses` (issue #342)
+    private bool _pausedWorld;   // and the world was running when the first opened: this stack paused it
+
+    // A screen that `pauses` is open (a pause menu, issue #342): the world's time stands still until the
+    // last of them starts closing, and runs again then — unless it was already paused when the first one
+    // opened (the `pause` command, the title), which is left as it was.
+    public bool PausesWorld => _pausing > 0;
+
+    // This stack paused the world itself (PausesWorld, on a world that was running), and will let it run.
+    // A save taken from a pause menu unpauses the world around it, or the save would load paused.
+    public bool HoldsPause => _pausedWorld;
+
+    private void Hold(UiLayer layer)
+    {
+        layer.HoldsPause = true;
+        if (_pausing++ == 0 && _world != null && !_world.Paused)
+        {
+            _world.Paused = true;
+            _pausedWorld = true;
+        }
+    }
+
+    private void Release(UiLayer layer)
+    {
+        if (!layer.HoldsPause) return;
+        layer.HoldsPause = false;
+        if (--_pausing > 0 || !_pausedWorld) return;
+        _pausedWorld = false;
+        if (_world != null) _world.Paused = false;
+    }
+
     public void SetViewport(Vector2 pixels)
     {
         if (pixels.X < 1f || pixels.Y < 1f || pixels == _viewport) return;
@@ -355,6 +389,7 @@ public sealed class UiScreenStack
         var layer = new UiLayer(root, content, screen, modal) { Backdrop = modal ? Backdrop : 0u };
         MarkSolid(content);
         _layers.Add(layer);
+        if (modal && screen is { Record.Pauses: true }) Hold(layer);
         if (modal && (focus == null || !root.Focus(focus))) root.Navigate(UiNavigation.Next);
         layer.Opened(this);
         if (modal) UiSounds.Raise(_world, _screens, screen, UiSound.Open);
@@ -366,6 +401,7 @@ public sealed class UiScreenStack
     {
         if (!_layers.Contains(layer)) return;
         bool leaving = layer.IsClosing;
+        Release(layer);   // the world runs again as a pause menu fades out
         layer.StartClosing(this);
         if (!leaving && layer.Modal) UiSounds.Raise(_world, _screens, layer.Screen, UiSound.Close);
     }
@@ -468,6 +504,7 @@ public sealed class UiScreenStack
     {
         var layer = _layers[index];
         _layers.RemoveAt(index);
+        Release(layer);
         layer.Screen?.Close();
     }
 

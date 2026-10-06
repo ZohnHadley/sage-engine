@@ -16,6 +16,7 @@
 # builds it and starts the Player host the SDK names with -game on that folder. SAGE_SMOKE_COMMANDS, one
 # console command per line, runs before the quit (e.g. $'+wait 1\n+in_axis Move 0 1 2', a walk).
 # SAGE_SMOKE_ARGS, launch options separated by spaces, go before them: `-edit yard` runs the editor (#219).
+# With commands the run adds `-notitle`, so the world starts at once rather than at the game's title (#342).
 #
 # SAGE_SMOKE_EXPECT, one extended regular expression per line, must each match a log line, in that order: a
 # check that something happened, not only that nothing went wrong (the mouse capture handoff, #334).
@@ -46,6 +47,9 @@ options=()
 [ -n "${SAGE_SMOKE_ARGS:-}" ] && read -r -a options <<< "$SAGE_SMOKE_ARGS"
 if [ -n "${SAGE_SMOKE_COMMANDS:-}" ]; then
     while IFS= read -r line; do [ -n "$line" ] && commands+=("$line"); done <<< "$SAGE_SMOKE_COMMANDS"
+    # A scripted run plays the game, so it starts past a title screen (game.json's "title", issue #342);
+    # a run with no commands boots to the title, as a player's would.
+    [[ " ${options[*]} " == *" -notitle "* ]] || options+=(-notitle)
 fi
 
 game_id=$(python3 -c 'import json,re,sys; t=open(sys.argv[1]).read(); t=re.sub(r"//[^\n]*","",t); t=re.sub(r",(\s*[}\]])",r"\1",t); print(json.loads(t)["id"])' "$game_dir/game.json")

@@ -269,6 +269,9 @@ Sage.UI.ControlsView.RowCount.get -> int
 Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!
 static Sage.UI.Localisation.DirectionOf(string! language, Sage.UI.TextDirection declared = Sage.UI.TextDirection.Auto) -> Sage.UI.TextDirection
 static Sage.UI.Localisation.Languages(Sage.Core.VirtualFileSystem! vfs) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.UI.ScreenRecord.Pauses -> bool
+Sage.UI.UiScreenStack.HoldsPause.get -> bool
+Sage.UI.UiScreenStack.PausesWorld.get -> bool
 Sage.UI.UiNode.Actions -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
 Sage.UI.UiScreenActions
 static Sage.UI.UiScreenActions.Open(Sage.Simulation.World! world, Sage.Core.RecordId screen, Sage.Simulation.Entity subject, Sage.Simulation.Entity other = default(Sage.Simulation.Entity)) -> Sage.UI.UiLayer?

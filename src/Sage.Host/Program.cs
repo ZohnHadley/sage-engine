@@ -79,6 +79,7 @@ try
         ModListFile = Path.Combine(UserPaths.Root, "mods.json"),   // ModList.DefaultPath
         ModReportFile = Path.Combine(UserPaths.Logs, "mod_report.txt"),
         InputFile = Path.Combine(UserPaths.Root, "input.json"),   // the player's rebinds (#328)
+        ShowTitle = !options.NoTitle,   // game.json's "title" screen before the world starts (#342)
     });
     app.Register();
 }
