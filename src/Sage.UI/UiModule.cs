@@ -137,7 +137,7 @@ public sealed class UiModule : IModule
 // paths its layout binds. Errors at the record's line, like every other content check (05 §3.6).
 internal static class UiContentChecks
 {
-    private static readonly string[] Leaves = { "label", "button", "image", "bar" };
+    private static readonly string[] Leaves = { "label", "button", "image", "bar", "slider", "checkbox", "dropdown", "text_field" };
 
     public static void Layout(UiLayoutRecord layout, RecordCheck check)
     {
@@ -238,6 +238,11 @@ internal static class UiContentChecks
                 else if (!BindingPaths.IsReadable(leaf))
                     Log.Error(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
                                               $"{target} to '{path}', a {leaf.Name}: a binding reads a number, a flag, text or an object");
+                // A form widget writes what the player sets back to its binding (issue #340): a path
+                // that cannot be written shows the value and forgets every change, which is a warning.
+                else if (target == UiBindings.Written(node.Widget) && !BindingPaths.IsWritable(source, path, out string? readOnly))
+                    Log.Warn(LogCat.Records, $"{records.Where("screen", id, "Layout")}: screen {id}: layout {screen.Layout.Id} node '{name}' binds " +
+                                             $"{target} to '{path}': {readOnly}, so what the player changes is not kept");
             }
             // A row template's paths are into its row, not the view-model; a plain IList's rows can't be told.
             if (rows != null) { if (rows != typeof(object)) CheckPaths(records, id, screen, layout, tree, name, rows); }

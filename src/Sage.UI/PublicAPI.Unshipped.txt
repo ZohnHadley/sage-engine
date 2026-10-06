@@ -1,11 +1,107 @@
 #nullable enable
+const Sage.UI.Dropdown.Arrow = "v" -> string!
+override Sage.UI.Checkbox.IsSelected.get -> bool
+override Sage.UI.Checkbox.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Checkbox.OnActivate() -> void
+override Sage.UI.Checkbox.TypeName.get -> string!
+override Sage.UI.Dropdown.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Dropdown.OnActivate() -> void
+override Sage.UI.Dropdown.OnBack() -> bool
+override Sage.UI.Dropdown.OnNavigate(Sage.UI.UiNavigation direction) -> bool
+override Sage.UI.Dropdown.TypeName.get -> string!
+override Sage.UI.Slider.OnNavigate(Sage.UI.UiNavigation direction) -> bool
+override Sage.UI.Slider.OnPointerDragged(System.Numerics.Vector2 point) -> void
+override Sage.UI.Slider.OnPointerPressed(System.Numerics.Vector2 point) -> void
+override Sage.UI.Slider.TypeName.get -> string!
+override Sage.UI.Tabs.ArrangeContent(Sage.Simulation.Rect content) -> void
+override Sage.UI.Tabs.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.Tabs.OnDescendantFocused(Sage.UI.Widget! widget) -> void
+override Sage.UI.Tabs.TypeName.get -> string!
+override Sage.UI.TextBox.MeasureContent(System.Numerics.Vector2 available, Sage.UI.ITextMeasure! text) -> System.Numerics.Vector2
+override Sage.UI.TextBox.OnNavigate(Sage.UI.UiNavigation direction) -> bool
+override Sage.UI.TextBox.OnText(System.ReadOnlySpan<char> typed) -> void
+override Sage.UI.TextBox.TypeName.get -> string!
+override Sage.UI.TextBox.WantsText.get -> bool
+Sage.UI.Checkbox
+Sage.UI.Checkbox.BoxRect.get -> Sage.Simulation.Rect
+Sage.UI.Checkbox.Checkbox() -> void
+Sage.UI.Checkbox.Checkbox(string! text) -> void
+Sage.UI.Checkbox.Checked.get -> bool
+Sage.UI.Checkbox.Checked.set -> void
+Sage.UI.Dropdown
+Sage.UI.Dropdown.ArrowRect.get -> Sage.Simulation.Rect
+Sage.UI.Dropdown.Choose(int index) -> bool
+Sage.UI.Dropdown.Close() -> void
+Sage.UI.Dropdown.Dropdown() -> void
+Sage.UI.Dropdown.Highlighted.get -> int
+Sage.UI.Dropdown.IsOpen.get -> bool
+Sage.UI.Dropdown.ListRect.get -> Sage.Simulation.Rect
+Sage.UI.Dropdown.Open() -> void
+Sage.UI.Dropdown.OptionAt(System.Numerics.Vector2 point) -> int
+Sage.UI.Dropdown.OptionRect(int index) -> Sage.Simulation.Rect
+Sage.UI.Dropdown.Options.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.UI.Dropdown.RowHeight.get -> float
+Sage.UI.Dropdown.Selected.get -> int
+Sage.UI.Dropdown.Selected.set -> void
+Sage.UI.Dropdown.SelectedOption.get -> string?
+Sage.UI.Dropdown.SetOptions(System.Collections.Generic.IEnumerable<string!>! options) -> void
+Sage.UI.IViewModel.Changed(Sage.UI.Widget! widget, in Sage.UI.UiBindContext context) -> void
 Sage.UI.ScreenRecord.Sounds -> Sage.Core.RecordRef<Sage.UI.UiSoundsRecord!>
+Sage.UI.Slider
+Sage.UI.Slider.Increment.get -> float
+Sage.UI.Slider.KnobRect.get -> Sage.Simulation.Rect
+Sage.UI.Slider.SetValue(float value) -> bool
+Sage.UI.Slider.Slider() -> void
+Sage.UI.Slider.Step.get -> float
+Sage.UI.Slider.Step.set -> void
+Sage.UI.Tabs
+Sage.UI.Tabs.AddPage<T>(string! title, T! page) -> T!
+Sage.UI.Tabs.Choose(int index) -> bool
+Sage.UI.Tabs.Header.get -> Sage.UI.Stack!
+Sage.UI.Tabs.Page(int index) -> Sage.UI.Widget!
+Sage.UI.Tabs.PageCount.get -> int
+Sage.UI.Tabs.RemovePage(Sage.UI.Widget! page) -> bool
+Sage.UI.Tabs.Selected.get -> int
+Sage.UI.Tabs.Selected.set -> void
+Sage.UI.Tabs.SelectedPage.get -> Sage.UI.Widget?
+Sage.UI.Tabs.Spacing.get -> float
+Sage.UI.Tabs.Spacing.set -> void
+Sage.UI.Tabs.Tab(int index) -> Sage.UI.Button!
+Sage.UI.Tabs.Tabs() -> void
+Sage.UI.Tabs.TabStyle.get -> string?
+Sage.UI.Tabs.TabStyle.set -> void
+Sage.UI.TextBox
+Sage.UI.TextBox.Caret.get -> int
+Sage.UI.TextBox.Caret.set -> void
+Sage.UI.TextBox.MaxLength.get -> int
+Sage.UI.TextBox.MaxLength.set -> void
+Sage.UI.TextBox.Multiline.get -> bool
+Sage.UI.TextBox.Multiline.set -> void
+Sage.UI.TextBox.Placeholder.get -> string!
+Sage.UI.TextBox.Placeholder.set -> void
+Sage.UI.TextBox.TextBox() -> void
+Sage.UI.UiInput.Typed -> string?
+Sage.UI.UiNode.Checked -> bool?
+Sage.UI.UiNode.MaxLength -> int
+Sage.UI.UiNode.Multiline -> bool
+Sage.UI.UiNode.Options -> System.Collections.Generic.List<string!>!
+Sage.UI.UiNode.Placeholder -> string!
+Sage.UI.UiNode.Selected -> int?
+Sage.UI.UiNode.Step -> float?
+Sage.UI.UiNode.TabStyle -> Sage.Core.RecordRef<Sage.UI.UiStyleRecord!>
+Sage.UI.UiNode.Title -> string!
+Sage.UI.UiResult.Changed -> Sage.UI.Widget?
+Sage.UI.UiRoot.Popup.get -> Sage.UI.Dropdown?
 Sage.UI.UiSoundsRecord
 Sage.UI.UiSoundsRecord.Close -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.Move -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.Open -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.Select -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.UI.UiSoundsRecord.UiSoundsRecord() -> void
+Sage.UI.UiState.Selected = 5 -> Sage.UI.UiState
+Sage.UI.UiStyleStates.Selected -> Sage.UI.UiStyleState?
+Sage.UI.Widget.NotifyValueChanged() -> void
+Sage.UI.Widget.ValueChanged -> System.Action<Sage.UI.Widget!>?
 static readonly Sage.UI.UiSoundsRecord.DefaultId -> Sage.Core.RecordId
 const Sage.UI.ControlsView.KeepButton = "keep" -> string!
 const Sage.UI.ControlsView.RebindButton = "rebind" -> string!
@@ -39,3 +135,12 @@ Sage.UI.ControlsView.Row.RebindLabel.get -> string!
 Sage.UI.ControlsView.Row.Row() -> void
 Sage.UI.ControlsView.RowCount.get -> int
 Sage.UI.ControlsView.Rows.get -> System.Collections.Generic.List<Sage.UI.ControlsView.Row!>!
+static Sage.UI.UiInput.Drag(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
+static Sage.UI.UiInput.Type(string! text) -> Sage.UI.UiInput
+virtual Sage.UI.Widget.IsSelected.get -> bool
+virtual Sage.UI.Widget.OnBack() -> bool
+virtual Sage.UI.Widget.OnNavigate(Sage.UI.UiNavigation direction) -> bool
+virtual Sage.UI.Widget.OnPointerDragged(System.Numerics.Vector2 point) -> void
+virtual Sage.UI.Widget.OnPointerPressed(System.Numerics.Vector2 point) -> void
+virtual Sage.UI.Widget.OnText(System.ReadOnlySpan<char> typed) -> void
+virtual Sage.UI.Widget.WantsText.get -> bool

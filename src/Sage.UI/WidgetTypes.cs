@@ -12,6 +12,7 @@ public static class WidgetTypes
     public static IReadOnlyList<string> Names { get; } = new[]
     {
         "box", "stack", "grid", "label", "image", "button", "item_list", "bar", "scroll",
+        "slider", "checkbox", "dropdown", "text_field", "tabs",
     };
 
     // A new widget of that type, or null for a name that is not one.
@@ -26,6 +27,11 @@ public static class WidgetTypes
         "item_list" => new ItemList(),
         "bar" => new Bar(),
         "scroll" => new Scroll(),
+        "slider" => new Slider(),
+        "checkbox" => new Checkbox(),
+        "dropdown" => new Dropdown(),
+        "text_field" => new TextBox(),
+        "tabs" => new Tabs(),
         _ => null,
     };
 }

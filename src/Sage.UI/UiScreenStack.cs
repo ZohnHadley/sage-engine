@@ -444,6 +444,10 @@ internal struct UiControls
     // A dev window has the mouse (ImGui): the UI sees no pointer at all this frame.
     public bool PointerTaken;
 
+    // Characters the window reported this frame, for a focused text field (issue #340); null: none, or
+    // a dev window has the keyboard.
+    public string? Typed;
+
     public float DeltaTime;
 }
 
@@ -468,6 +472,7 @@ internal static class UiInputMap
             Back = c.Back,
             Pointer = c.Pointer,
             DeltaTime = c.DeltaTime,
+            Typed = c.Typed,
         };
         if (!c.PointerTaken)
         {

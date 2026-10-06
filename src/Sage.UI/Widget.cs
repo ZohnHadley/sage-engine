@@ -301,6 +301,40 @@ public abstract class Widget
     // A widget below this one was activated or took focus (an ItemList turns that into its selection).
     protected internal virtual void OnDescendantActivated(Widget widget) { }
     protected internal virtual void OnDescendantFocused(Widget widget) { }
+
+    // ---- Form widgets (issue #340) --------------------------------------------------------------------
+
+    // A direction pressed while this has focus, asked before focus moves: true keeps focus here (a slider
+    // steps, a dropdown cycles, a text field moves its caret).
+    protected internal virtual bool OnNavigate(UiNavigation direction) => false;
+
+    // Back pressed while this has focus: true when it used it (an open dropdown closes), so the screen stays.
+    protected internal virtual bool OnBack() => false;
+
+    // Whether characters typed while this has focus are its (a text field): the root hands them to OnText
+    // and drops a direction pressed by a key that typed one, so W types a "w" and does not move focus.
+    protected internal virtual bool WantsText => false;
+
+    // A frame's typed characters, as the window reported them (08 §3.1: characters, not keys).
+    protected internal virtual void OnText(ReadOnlySpan<char> typed) { }
+
+    // The pointer went down on it, and moved while held after that, in virtual units (a slider follows it).
+    protected internal virtual void OnPointerPressed(Vector2 point) { }
+    protected internal virtual void OnPointerDragged(Vector2 point) { }
+
+    // Drawn in its style's `selected` state when nothing else applies: a ticked checkbox, the open tab.
+    public virtual bool IsSelected => false;
+
+    // The player changed its value (a slider moved, a box ticked, text typed, a tab chosen) — not a
+    // binding or the game setting it. A screen's binding writes the value back to its view-model, and
+    // UiResult.Changed reports it.
+    public event Action<Widget>? ValueChanged;
+
+    protected void NotifyValueChanged()
+    {
+        ValueChanged?.Invoke(this);
+        Root?.ValueChangedBy(this);
+    }
 }
 
 // A widget that holds any number of children: Box, Stack (and ItemList), Grid.
