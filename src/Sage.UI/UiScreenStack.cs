@@ -177,6 +177,7 @@ public sealed class UiScreenStack
 {
     private readonly UiScreens? _screens;
     private readonly UiStyles? _styles;
+    private readonly World? _world;   // where the screen sounds are raised (UiSounds); none for a stack of tests and tools
     private readonly List<UiLayer> _layers = new();
     private readonly List<ActionId> _openers = new();
     private readonly Dictionary<int, RecordId> _byAction = new();
@@ -187,10 +188,11 @@ public sealed class UiScreenStack
     // what the client measures with too, so a layout is the same headless and on screen.
     internal static readonly MonospaceTextMeasure FontCells = new(6f, 9f);
 
-    internal UiScreenStack(UiScreens? screens, UiStyles? styles)
+    internal UiScreenStack(UiScreens? screens, UiStyles? styles, World? world = null)
     {
         _screens = screens;
         _styles = styles;
+        _world = world;
     }
 
     // A stack with no records behind it: Push only (tests, tools).
@@ -302,6 +304,7 @@ public sealed class UiScreenStack
         _layers.Add(layer);
         if (modal) root.Navigate(UiNavigation.Next);
         layer.Opened(this);
+        if (modal) UiSounds.Raise(_world, _screens, screen, UiSound.Open);
         return layer;
     }
 
@@ -309,7 +312,9 @@ public sealed class UiScreenStack
     public void Close(UiLayer layer)
     {
         if (!_layers.Contains(layer)) return;
+        bool leaving = layer.IsClosing;
         layer.StartClosing(this);
+        if (!leaving && layer.Modal) UiSounds.Raise(_world, _screens, layer.Screen, UiSound.Close);
     }
 
     public bool CloseTop()
@@ -371,7 +376,15 @@ public sealed class UiScreenStack
                 if (layer.Modal && layer.Root.Focused == null) layer.Root.Navigate(UiNavigation.Next);
             }
             layer.Screen?.Refresh();
-            if (layer == top) result = layer.Root.Update(input);
+            if (layer == top)
+            {
+                var focusBefore = layer.Root.Focused;
+                result = layer.Root.Update(input);
+                // Focus moved by the player's own direction: the "ui_move" tick (a pointer sliding over
+                // rows is not one, and nor is a screen opening with its first widget focused).
+                if (input.Navigate != UiNavigation.None && layer.Root.Focused != focusBefore)
+                    UiSounds.Raise(_world, _screens, layer.Screen, UiSound.Move);
+            }
             else layer.Root.Update(idle);
             layer.Track(this, layer == top ? input : idle, layer == top);
         }
@@ -380,6 +393,7 @@ public sealed class UiScreenStack
         {
             if (result.Activated is { } activated)
             {
+                UiSounds.Raise(_world, _screens, top.Screen, UiSound.Select);
                 top.RaiseActivated(activated);
                 Activated?.Invoke(top, activated);
             }
