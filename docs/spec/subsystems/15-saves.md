@@ -32,7 +32,7 @@ Not responsible for: what a slot menu looks like (it is given each slot's title 
 | Type or command | Role |
 |---|---|
 | `SaveSystem` | `Save(slot, kind)`, `Load(slot)`, `RequestSave`, `RequestLoad`, `QuickSave`, `QuickLoad`, `Autosave`, `Delete`, `Slots`, `Rescan`; `Save`/`RequestSave` take a title; `Thumbnail` (the client's hook), `IsWriting`, `WaitForWrites`, `Report(slot)`, `QuickSlotName`, `AutosavePrefixName` (#285). Format constants `FormatVersion` (4) and `OldestReadableFormat` (1). |
-| `SaveSlot`, `SaveKind`, `SavedMod` | A slot read from its header alone: name, time, format, game, engine version, `Kind` (manual, quick, auto), `Title`, `ThumbnailPath`, `Compressed`, `CanLoad`, plugins, content, mods, `Mismatches`. |
+| `SaveSlot`, `SaveKind`, `SavedMod` | A slot read from its header alone: name, time, format, game, engine version, `Kind` (manual, quick, auto), `Title`, `Scene` (where the player was, for a load menu; #342), `ThumbnailPath`, `Compressed`, `CanLoad`, plugins, content, mods, `Mismatches`. |
 | `SaveVersionReport`, `SaveVersionEntry`, `SaveVersionStatus` | What a load of a slot would do, read without loading it: the format, and each component and resource version as `Current`, `Upgrade` (with its `[Upgrade]` steps), `Newer` or `Unknown`; the plugin, content and mod mismatches (#285). |
 | `SaveThumbnail` | RGBA pixels a client hands over; `Shrink(maxWidth)`. |
 | `Persistent`, `PersistentId` | The stable identity of a saved entity (`src/Sage.Simulation/ECS/PersistentId.cs`). |

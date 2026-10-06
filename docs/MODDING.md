@@ -173,6 +173,17 @@ player's own rebinds (`user://input.json`) are patches mounted after every mod, 
 mod's binding, and a rebound action is emptied in your map too; `bind_reset` brings the mod's own back (MAKING_A_GAME
 "Sound, music and controls").
 
+Phase 4q made screens moddable the same way (MAKING_A_GAME §7). A mod can add a whole screen with a working
+button from records alone: a `ui_layout` whose buttons have `actions` (`open_screen`, `close_screen`, a `command`
+line, or any action), a part of another layout brought in with `include` and its `params`, and a `screen` over the
+`ui_world` view-model, which reads and writes the world's variables
+(test: AModAddsAScreenWithAWorkingButtonAndAReusablePartFromRecordsAlone). It can add a `ui_option` to the options
+screen, or patch or disable one of the game's; give a chest a `use_screen`; open a shop from a dialogue option
+with `open_screen`; patch the RPG kit's default keys (`input_map` `rpg:ui` and `rpg:gameplay`); give an item a
+picture (`rpg_item` `icon`) or a scene a map (`area_map`); and offer a high-contrast `ui_style_set`. A translation is
+a `strings/<code>/` folder and a `language` record naming its direction and fonts; `loc_check` says what it
+still lacks (test: ValidateReportsWhatATranslationLacks).
+
 ## 6. Conflicts and the report
 
 When two mods change the same thing, the later wins and the game tells you. A **conflict** is:

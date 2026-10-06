@@ -693,6 +693,22 @@ Creatures walk round things instead of into them.
   greetings and per-speaker "known" lists, and a `TopicAsked` event for `talk` objectives (an info's
   `then` can `set_stage` already).
 
+### As built (quest targets, the journal's history, and the dead say nothing — 2026-10-06, issues #349 and #344)
+- **Where a quest is going (#349).** A stage's `target` and an objective's `target` name an entity a map marks
+  while that stage is on or that objective is unmet — the hermit a "go and tell him" stage waits on, a watcher
+  while the hunt is on; an objective that names none may have a place of its own (`QuestObjective.TryGetPlace`:
+  a `reach` objective's `at`). The RPG kit's map shows them for the quests the player tracks
+  (test: ATrackedQuestShowsItsTargetOnTheMap).
+- **Tracking and history (#349).** A journal entry has `Tracked` — starting a quest tracks it, `Quests.Track`
+  and `IsTracked` change and ask — and `History`, the stages it has moved on from, in order, saved with the
+  journal, so the kit's journal shows the story so far and a finished quest keeps it
+  (test: TheJournalKeepsFinishedStagesAndTracksAQuest).
+- **The dead say nothing (#344).** `DialogueRules.Start` refuses a speaker with the conventions' dead tag, so
+  using a body is looting it (the RPG kit's `use_screen`, 13) and not a conversation
+  (test: ADeadBodyWithAnInventoryLoots_AndTheDeadSayNothing). A dialogue option opens a screen with the UI's
+  `open_screen` action about the player and the speaker
+  (test: ADialogueOptionOpensTheShopOverTheSpeakersGoods).
+
 ### As built (state machines, issue #92, 2026-09-30)
 - **The language's second reader in the base:** a `state_machine` record's transitions ask a `when`
   condition every tick and its states run `enter`/`exit` actions (and a transition its `then`), with the

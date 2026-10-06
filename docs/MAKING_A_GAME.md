@@ -198,6 +198,11 @@ replaces for a game that uses it.
   mod) replaces an engine texture without touching it.
 - `assembly` is optional: a game made only of data and engine plugins leaves it out.
 - `scene` is the scene record every world starts in (§4).
+- `title` (optional, issue #342) is a `screen` record shown before the world starts — `"rpg:title"`, the RPG
+  kit's — in a host with a window: the world waits behind it, paused, with no scene placed and its rules not
+  started, until the player chooses New game (or the console's `new_game`) or loads a save. `-notitle` on the
+  host's command line skips it; a test, a server and `sage validate` start at once but still check the name
+  (§7 "Menus").
 - `modsDirectory` (default `mods`) is the folder of your game's data mods, each a folder with a `mod.json`;
   players add theirs in `user://mods`. `version` (optional, `"1.2.0"`) is what a mod's `gameVersion` is
   checked against. Mods are mounted after your content, so they patch your records as you patch the
@@ -235,10 +240,12 @@ spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L
 | Casting | the **readied spell** — `world.Ready(e, id)`, `world.Readied(e)` — which the `Cast` button fires; `ready`, `spells` | |
 | Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects` | the `"spellmaker"` screen |
 | Things you carry | the two hands, `MainHand` and `OffHand`, as equipment slots; `inv` | |
-| Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook) | registers them as `"spellmaker"`, `"journal"`, `"dialogue"`; the `Spellbook`, `Spellmaker` and `Journal` actions |
-| Screens from records (#98) | `rpg:inventory` (a grid with weight), `rpg:equipment`, `rpg:loot` (take all), `rpg:topics`: `screen`/`ui_layout` records in the kit's content over `InventoryView`, `EquipmentView`, `LootView`, `TopicsView`; `ItemGrid`, the `rpg_item` record (`grid` footprint) and the saved `rpg:item_grid` | drawing them is #97's |
-| Journal, map, shop (#99) | view-models `rpg_journal` (`JournalView`: a line per quest, stage and objective), `rpg_map` (`MapView`: markers only, round the player, north up) over the `sage:map_marker` component, and `rpg_shop` (`ShopView`, a shell: two grids priced by `IPriceRule`, the `StubPriceRule` until 4f) with its `rpg:shop` screen | the Sandbox lays out the journal and the map in its own content |
-| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`), `castAction` (`"Cast"`) and `inventoryGrid` (`[8, 6]`); the `rpg` string table | |
+| Screens | `SpellmakerScreen`, `JournalScreen`, `DialogueScreen`, and `GameplayPanels` (bag, spellbook); the `Spellbook`, `Spellmaker`, `Journal` and `Rest` actions with default keys (B, M, J, T) in its `rpg:ui` and `rpg:gameplay` input maps (#354) | registers the panels as `"spellmaker"`, `"journal"`, `"dialogue"` and binds the spellmaker's and journal's keys to them |
+| Screens from records (#98) | `rpg:inventory` (a grid with weight), `rpg:equipment`, `rpg:loot` (take all), `rpg:topics`: `screen`/`ui_layout` records in the kit's content over `InventoryView`, `EquipmentView`, `LootView`, `TopicsView`; `ItemGrid`, the `rpg_item` record (`grid` footprint, `icon` picture since #346) and the saved `rpg:item_grid` | drawing them is #97's |
+| Journal, map, shop (#99, #349) | `rpg:journal` over `rpg_journal` (`JournalView`: a line per quest, stage and objective, the stages it moved on from, tracking), `rpg:map` over `rpg_map` (`MapView`: the scene's `area_map` picture under fog the saved `map_discovery` lifts, markers round the player, north up, zoom and pan, a tracked quest's targets) over the `sage:map_marker` component, and `rpg:shop` over `rpg_shop` (`ShopView`, a shell: two grids priced by `IPriceRule`, the `StubPriceRule` until 4f) | |
+| Menus (#342, #339) | `rpg:title`, `rpg:pause` (`"pauses": true`), `rpg:save` and `rpg:load` over `rpg_title`, `rpg_pause`, `rpg_save` and `rpg_load`; `rpg:options` over the base's `ui_options`, with the kit's `ui_option` records; `rpg:controls` | |
+| From play (#344) | the `use_screen` part (Use on it opens its screen about it) and bodies with an inventory, which loot | |
+| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`), `castAction` (`"Cast"`), `inventoryGrid` (`[8, 6]`) and `lootScreen` (`rpg:loot`); the `rpg` string table | |
 
 To build on it, name it in `game.json` and reference it, compile-time only, like the base. With
 `Sage.Sdk` that is one item in each project that uses it; in a client half it brings the kit's client
@@ -270,9 +277,12 @@ naming the file and where it looked (test: AKitThatIsNotThereIsAnErrorThatSaysWh
 is built on the RPG kit; `games/Hello` is not, and runs on the base alone
 (test: HelloHasNoKitAndTheSandboxHasTheRpgKit).
 
-Which keys open the kit's screens is your game's: bind the kit's actions in your own `input_map`
-records (`games/Sandbox/content/data/input.json`) and the screens in your client module (§7). The kit's
-words have defaults, and a game that wants others adds one `rpg_conventions` record in its own namespace
+The kit's screens open on its own default keys (issue #354): its `rpg:ui` and `rpg:gameplay` input maps bind
+`Spellbook` (B), `Spellmaker` (M), `Journal` (J) and `Rest` (T) in both contexts, so the key that opens a screen
+closes it (test: ABareKitGameHasTheKitsDefaultKeysInBothContexts). For other keys, patch those maps — `{ "type":
+"input_map", "id": "rpg:ui", "patch": true, "actions": { "Journal": [ { "key": "K" } ] } }` — as you patch any
+record (test: ADefaultMapIsPatchedByAGameLikeAnyRecord); which screen a key opens beyond those is still your
+client module's (§7). The kit's words have defaults, and a game that wants others adds one `rpg_conventions` record in its own namespace
 (test: AGameChoosesTheNamespaceItsComposedSpellsLiveIn).
 
 **A kit carries content** (issue #98): `[PluginContent("rpg")]` on its module mounts the files its
@@ -300,7 +310,8 @@ project); a stale game dll fails with "Could not load file or assembly":
 dotnet run --project src/Sage.Host -c Development -- -game games/YourGame +sv_cheats 1 +god 1
 ```
 
-Console commands can be run at startup with `+`. **Without `-game` the host does not guess**: it runs
+Console commands can be run at startup with `+`. `-notitle` starts the world at once, past `game.json`'s
+`"title"` screen; `tools/smoke_run.sh` adds it when it is given commands. **Without `-game` the host does not guess**: it runs
 a `game` folder beside the executable (how a packaged game ships) or stops with an error that says what
 to pass — and, in this repository, lists its games (test: GameManifest_Locate_WithoutAGameIsAnErrorThatListsTheGames).
 Until issue #32 a dev build loaded `games/Sandbox` instead, so a forgotten `-game` ran the wrong game
@@ -1273,7 +1284,11 @@ The player's volumes are the archived cvars `snd_volume` (master), `snd_sfx`, `s
 and `snd_occlusion_rays` (8; 0 turns occlusion off). `snd_play <sound>` plays a record where you stand (and plays
 it again when you save its file), `snd_stats` says what is playing and what was refused, `snd_debug 1` overlays
 the voices and the bus levels in the dev tools, and the editor's Audio panel (EDITOR.md) has a meter per bus and
-a Play button. `log_level audio trace` says why a sound played or was refused.
+a Play button. `log_level audio trace` says why a sound played or was refused. A sound may carry a `caption`
+(text or a `@key`) and a `speaker` (issue #351): with a speaker, or on the `Voice` bus, it is a line of dialogue
+shown as a subtitle while the archived `subtitles` cvar is on (it is by default); otherwise it is a caption of the
+noise, `[door creaks]`, shown while `captions` is on (off by default). C# says a line with
+`world.Resources.Get<Subtitles>().Say(speaker, text)` (test: SoundsCaptionThemselvesAndTheStackShowsThemOnTop).
 
 **Music** (issue #325). A `music` record is a `track` (an `.ogg`; music always streams), `layers` (stems the same
 length as the track: `asset`, `volume`, `intensity`, `fade`; a layer is heard while the world's music intensity
@@ -1329,7 +1344,8 @@ changes nothing. The RPG kit's `rpg:controls` screen (a `screen` over the view-m
 `rpg.controls.*`) lists every button action by context, captures the next key, mouse button or pad button the
 player presses (never Escape, the left mouse button or the pad's B, Back and Start, which cancel and click),
 asks to replace or keep on a conflict, and resets one action or all; bind a key to it as to any screen. A game
-without the kit makes its own layout over `ui_controls`. Axis actions (`Move`, `Look`) cannot be rebound. In code:
+without the kit makes its own layout over `ui_controls`. The kit's options screen opens it from its controls page
+(§7 "Menus"). Axis actions (`Move`, `Look`) cannot be rebound. In code:
 `Engine.Rebinds` (`InputRebinds`), `SageAppOptions.InputFile` and, in tests,
 `HeadlessAppBuilder.WithUserInput(file)`.
 
@@ -1352,7 +1368,10 @@ player whose entity raised it, the damage type's by the player it hurt. Effects 
 are clamped at 1. `in_tap`, `in_hold`, `in_axis`, `in_look`, `in_release` and `in_clear` take a trailing `@N`
 (`in_tap Attack @2`) to drive the Nth player. In code: `Engine.Pads` (`PadAssignment`), `Engine.LastDevice`
 (`LastUsedDevice`, which a prompt asks whether to say "E" or "A"), `InputGlyphs.Pick`, `StickResponse`,
-`ScriptedInput`, `RumbleMixer` and `PlayerInput.SetCommand(player, command)`. The Sandbox ships no rumble.
+`ScriptedInput`, `RumbleMixer` and `PlayerInput.SetCommand(player, command)`. The Sandbox ships no rumble. A
+prompt shows the player's own button with `{action:Use}` in its text (issue #352, §7 "Text in other languages"):
+"E" at the keyboard, "X" on an Xbox pad, "Square" on a PlayStation one, which the pad's name decides unless the
+archived `joy_glyphs` says `xbox` or `playstation`.
 
 **Recording a session** (issue #333). `record <name>` saves the world as it is and then each tick's player command
 to `user://demos/<name>.sagedemo`; `stop` ends it; `playdemo <name>` loads that save and plays the commands back,
@@ -1987,7 +2006,8 @@ record hot reload rebuilds every open screen. Three record types, from the `sage
 ```
 
 - A layout's `nodes` are **flat, by name**; each says its `widget` (`box`, `stack`, `grid`, `label`,
-  `image`, `button`, `item_list`, `bar`, `scroll`) and its `parent`. A patch changes one node by name.
+  `image`, `button`, `item_list`, `bar`, `scroll`, and since 4q `slider`, `checkbox`, `dropdown`, `text_field`,
+  `tabs` and `view`) and its `parent`. A patch changes one node by name.
 - `bind` reads the view-model for the widget's main value (a label's text, a bar's value, a list's
   rows — the list's one child is the template for each row, bound to that row); `bindings` names others
   (`visible`, `enabled`, `max`, `style`, …); `args` fill `{placeholders}`; `visibleIf`/`enabledIf` are
@@ -2046,6 +2066,162 @@ record hot reload rebuilds every open screen. Three record types, from the `sage
   (English fills what it lacks). A missing key shows as the key and is a warning; `sage validate` lists
   every key your records name that no table has.
 
+### Forms, fonts and focus
+
+Phase 4q (#337) filled in what a real menu needs. All of it is fields of the same three records.
+
+- **Form widgets** (issue #340): `slider` (`min`, `max`, `step`), `checkbox` (`checked`), `dropdown`
+  (`options`, `selected`), `text_field` (`placeholder`, `maxLength`, `multiline`) and `tabs` (each child a page,
+  its `title` the tab's text, `tabStyle` the tabs' style). Each takes focus and works from the D-pad: Left and Right
+  step a slider and cycle a dropdown, Confirm opens a dropdown's list. Bind its main value (`bind`) and what the
+  player sets is written back to that path of your view-model, after which its `Changed(widget, context)` is
+  called; a path that cannot be written is a load warning. A ticked box and the open tab are drawn in their
+  style's `selected` state (test: AFormBuiltFromALayoutRecordWritesWhatThePlayerChangesBack).
+- **Fonts** (issue #338): a style's `font` may be a `.ttf` or `.otf` in your content, `fontSize` its size in
+  virtual units (0 is 9, the engine font's line), rasterised as it is drawn; `fonts/sage.ttf` is the engine's own
+  letters as a TTF. A node's `wrap` breaks its text at spaces to fit (and `maxWidth`), and `overflow` is `Clip`
+  or `Ellipsis` for what still does not fit (test: AStyleNamesAFontAndASizeAndItsLabelsAreLaidOutInIt)
+  (test: ALongLineWrapsAtSpacesToItsWidthAndTheLabelMeasuresEveryLine).
+- **Focus** (issue #343): `focusUp`, `focusDown`, `focusLeft` and `focusRight` name the node the D-pad goes to
+  from here; `focusScope` makes a node a trap for focus while it shows, which is what a question over a menu is.
+  For a yes or no, call `widgets.Confirm(title, message, answered)` — `answered` hears true or false, Cancel has
+  focus first, Back cancels — or `widgets.Message(title, message)`; `DialogStyle` and `DialogButtonStyle` on the
+  stack style them (test: AConfirmPromptOverAMenuTrapsFocusUntilAnsweredAndGivesItBack).
+
+### Buttons that do things, and parts made once
+
+A screen can work with no C# at all (issues #344, #347):
+
+```json
+{ "type": "ui_layout", "id": "tally", "style": "panel",
+  "nodes": {
+    "window": { "widget": "stack", "anchors": "center", "include": "mygame:titled_window",
+                "params": { "title": "@mygame.tally.title" } },
+    "count":  { "widget": "label", "parent": "window", "text": "Bells: {n}", "args": { "n": "vars[bells]" } },
+    "ring":   { "widget": "button", "parent": "window", "text": "Ring",
+                "actions": [ { "add_var": "bells", "amount": 1 }, { "command": "echo ding" } ] },
+    "shop":   { "widget": "button", "parent": "window", "text": "Trade", "actions": [ { "open_screen": "rpg:shop" } ] },
+    "close":  { "widget": "button", "parent": "window", "text": "Close", "actions": [ { "close_screen": {} } ] }
+  } },
+{ "type": "screen", "id": "tally", "layout": "tally", "viewModel": "ui_world" }
+```
+
+- A node's `actions` run when it is pressed, before the view-model hears of it, with the screen's subject and
+  other: any action of the vocabulary, plus `open_screen` (a screen about the same two), `close_screen` (`{}` the
+  top window, `{ "all": true }` every one) and `command`, a console line run as typed, where `{path}` is read from
+  the pressed row (`$parent.` the scope around it, `$root.` the view-model) and put in as one argument
+  (test: ALayoutButtonsActionsRunWhenItIsPressed) (test: AButtonRunsAConsoleCommandFilledFromItsRow).
+- `include` puts another layout's nodes inside a node (named `node/inner`), and its `params` fill that layout's
+  `{$name}`; the included layout's own `params` are the defaults (test: ALayoutIncludesAnotherWithItsParamsAndActions).
+- Paths index: `items[0].name`, `stats[health]`, any C# indexer; `scope` makes a node and what is inside it read
+  from a path (test: BindingPathsIndexListsArraysDictionariesAndIndexers).
+- `ui_world` is a view-model every game has: the world's variables, `vars[name]`, read and written. A mod adds a
+  screen with it from records alone (test: AModAddsAScreenWithAWorkingButtonAndAReusablePartFromRecordsAlone).
+
+### Menus
+
+The RPG kit has the screens round a playthrough (issues #342, #339); a game without the kit makes its own layouts
+over the same view-models.
+
+- **The title**, `rpg:title` (New game, Continue, Load, Options, Mods, Quit): name it in `game.json`'s `"title"`
+  (§2). In C#, `Engine.BeginGame(world)` starts a waiting world and `Scenes.AtTitle(world)` asks whether it is
+  waiting; a test boots there with `HeadlessAppBuilder.AtTitle()` (test: AWorldWaitsAtTheTitleUntilNewGame).
+- **The pause menu**, `rpg:pause` (Resume, Save, Load, Options, Quit, which asks first). A `screen` with
+  `"pauses": true` stands the world still while it is open; bind it to a key in your client module
+  (`widgets.Bind(actions.Get("MainMenu"), RpgKitModule.PauseScreen)`, the Sandbox's F10)
+  (test: ThePauseMenuStandsTheWorldStillUntilItCloses).
+- **Save and load**, `rpg:save` and `rpg:load`: the slots on disk, newest first, with when and where (a save's
+  header now has its `scene`, `SaveSlot.Scene`), asking before overwriting, deleting, or loading over a game
+  (test: TheSaveScreenAsksBeforeOverwritingOrDeleting).
+- **Options**, `rpg:options`: four pages of `ui_option` records, each a setting over a cvar, staged until Apply.
+
+  ```json
+  { "type": "ui_option", "id": "gore", "page": "gameplay", "order": 60, "label": "@mygame.options.gore",
+    "kind": "toggle", "cvar": "mygame_gore" },
+  { "type": "ui_option", "id": "rpg:fov", "patch": true, "max": 120 },
+  { "type": "ui_option", "id": "rpg:render_scale", "patch": true, "disabled": true }
+  ```
+
+  `kind` is `slider` (`min`, `max`, `step`, `percent`, `decimals`, `defaultLabel`), `toggle` (`on`, `off`) or
+  `choice` (`choices`, each a `label` with a `value` and/or `set`, several cvars at once — a resolution, a quality
+  preset — or `"choicesFrom": "languages"`). A setting whose cvar the host does not have is left off; a mistake is
+  a load error (test: OptionMistakesAreLoadErrors). Archived cvars are kept in `config.cfg` when the game closes
+  (test: AnAppliedSettingSurvivesARestart). The kit's settings include `fov` (the player camera's field of view,
+  0 = the camera's own) and `vid_fullscreen` (borderless), both new.
+
+### Loot, talk and trade from play
+
+- **Use opens a screen about what is used** (issue #344): give a chest `"use_screen": "rpg:loot"` (the part also
+  makes it usable); a body that dies with an inventory is usable and opens `rpg_conventions`' `lootScreen`, and the
+  dead start no conversation (test: UsingAChestWithAUseScreenOpensItsLootAboutIt).
+- **A conversation opens one** with an action on an option: `"actions": [ { "open_screen": "rpg:shop" } ]` sells
+  the speaker's goods (test: ADialogueOptionOpensTheShopOverTheSpeakersGoods).
+- **The console** too: `ui_open rpg:loot watcher` opens it about the entity called `watcher`.
+
+### Grids, pictures and views
+
+- **Drag and drop** (issue #346): a `draggable` node can be pulled and dropped; the view-model hears
+  `DragStart`, `DragMove` and `Drop` (a `UiDrag`: the row, where from, what is under the pointer, or nothing — the
+  world). Its `Command(command, target, context)` hears `UiCommand.Rotate` (R, LB), `Split` (F, LT) and `Alternate`
+  (Delete, X). A grid child may span cells (`columnSpan`, `rowSpan`), and a button may have an `icon` drawn under
+  its text, `iconTurned` a quarter turn; all four can be bound. The kit's inventory does all of it with an
+  `rpg_item`'s `icon` (test: AMouseDragsAnItemByItsPictureTurnsItAndDropsAStackOnTheGround).
+- **A picture of the world** (issue #348): a `view` node shows a named render target. Give it a `camera` —
+  `{ "mode": "Orbit", "distance": 3, "height": 0.9, "rotatable": true }` round the player, or `{ "mode": "TopDown",
+  "radius": 40 }` straight down with north up — and it draws its own; `subject` is `player`, `other` or an entity's
+  name. An image or a view can bind `fog` (a `UiFogMask`) drawn in `fogColour` over what is not revealed. The
+  Sandbox's status window (C) has a turnable paper doll (test: AViewFromALayoutShowsItsTargetWithItsCameraAndBindings).
+- **A scene's map** (issue #349): an `area_map` with the scene's id gives the kit's map a picture and fog.
+
+  ```json
+  { "type": "area_map", "id": "main", "picture": "textures/map_main.png",
+    "from": [448, 448], "to": [576, 576], "cell": 8, "reveal": 16 }
+  ```
+
+  `from` is the picture's north-west corner and `to` its south-east, absolute metres X and Z; fog lifts in `cell`
+  squares `reveal` metres round the player and is saved. A quest stage's or objective's `target` (an entity's
+  name) is marked while the player tracks the quest (test: ATrackedQuestShowsItsTargetOnTheMap). A `box` with
+  `clip` cuts off what its children place past its edges, and a child can bind `x`, `y`, `w` and `h` to be a rect
+  rather than a point.
+
+### Text in other languages
+
+- **`{action:Use}`** in any text is the key or button for that action on the device in use (issue #352); a string
+  table can name each glyph — `strings/en/input.json` with `{ "key": { "Space": "Space bar" }, "playstation":
+  { "A": "Cross" } }` is `@input.key.Space` and `@input.playstation.A` — or the built-in names are used
+  (test: AStringTableNamesAGlyphAndAnUnboundActionShowsItsName).
+- **Plurals and formats** (issue #345) follow CLDR's rule of each language; `{gold:n0}` is "1,234" in English and
+  "1.234" in German.
+- **A `language` record** per translation, by its code: `{ "type": "language", "id": "ar", "name": "العربية",
+  "fonts": ["fonts/naskh.ttf"] }`. `direction` is Auto (from the code), `LeftToRight` or `RightToLeft`; `fonts`
+  stand behind every style's font for the characters it lacks. Arabic is joined and reordered, a right-to-left
+  screen is mirrored, and Japanese and Chinese wrap between characters
+  (test: AJapaneseAndAnArabicTableRenderInTheirOwnFontsAndArabicIsMirrored).
+- **`loc_check`**, and `sage validate`, list what each translation lacks: keys, placeholders, plural forms and
+  characters its fonts cannot draw (test: ValidateReportsWhatATranslationLacks).
+
+### Accessibility
+
+- `ui_scale` and `ui_text_scale` (0.5 to 3, archived) make the whole UI, or its text, bigger, live; layouts
+  reflow (test: UiScaleMakesEverythingBiggerAndReflowsTheLayoutLive).
+- A `ui_style_set` swaps styles while the `ui_style_set` cvar names it:
+
+  ```json
+  { "type": "ui_style_set", "id": "high_contrast", "label": "@mygame.options.high_contrast", "highContrast": true,
+    "swaps": [ { "from": "mygame:button", "to": "mygame:button_hc" } ] }
+  ```
+
+  A dev build and `sage validate` warn where text is below 4.5:1 against what is behind it, and with a set marked
+  `highContrast` below 7:1 is an error (test: TheLoadSaysWhereTextIsHardToRead).
+- Subtitles and captions are a sound's `caption` and `speaker` (§4 "Sound, music and controls"), drawn over every
+  screen in the engine's `subtitles` and `captions` styles, which you may patch.
+
+### The Shipping console
+
+A Shipping build has no Dear ImGui. With `con_enable 1` the tilde key drops down the game UI's own console: the
+log at `log_console_level`, Page Up and Page Down to scroll, Up and Down for history, Tab to complete (issue #353;
+test: Shipping_ConsoleOpensOnlyWithConEnable).
+
 ---
 
 ## 8. Saving
@@ -2064,8 +2240,9 @@ separate resources in this engine were marked saved and none of them were. `save
 `load <name>` and `saves` drive it from the console, and **`SaveSystem.Slots`** lists the saves for a
 menu (issue #99): each slot's name and header (`SavedUtc`, `FormatVersion`, `Game`, `EngineVersion`,
 `CanLoad`), newest first, read from disk once and again after a `Save`, a new `Root` or `Rescan()`;
-`SlotsVersion` moves when it was read again. The Sandbox's main menu (`F10`, `sandbox:main_menu` over
-`MainMenuView`) lists them and loads the one chosen from its `Activate`.
+`SlotsVersion` moves when it was read again. The Sandbox's own menu (`ui_open main_menu`, `sandbox:main_menu` over
+`MainMenuView`) lists them and loads the one chosen from its `Activate`; F10 is now the RPG kit's pause menu,
+whose `rpg:save` and `rpg:load` screens read the same list (§7 "Menus").
 
 **Titles, thumbnails, compression and the background write** (issue #285, SAGE0131). `save <slot> <title…>`
 (or `Save(slot, kind, title)`) gives a slot the title a menu shows, `SaveSlot.Title`. A client that sets
@@ -2450,6 +2627,9 @@ Worth knowing before you plan around it:
   strongest four, chosen per draw). A brush level can bake its unswitched lamps into a lightmap, with
   shadows (issue #313, no bounce light), the sun casts cascaded shadows and lamps that say `shadows` cast
   too (issue #315, the nearest two by default).
+- **Two ways to build a screen, for now.** The widget screens of §7 are the way; the older panel screens
+  (`Screen`, `ScreenStack`, `Panel`) still host the RPG kit's conversation, spellmaker and journal panels, and the
+  first-person hands are still drawn with `UiDraw`. Issue #350 moves those onto widgets and retires the panels.
 - **No multiplayer.** The engine follows rules that keep it possible (fixed tick, data-only components,
   no gameplay in rendering), but there is no networking. That is Phase 7.
 - **Mods are data only (phase 4j).** A mod is a folder of records, strings and assets with a `mod.json`
