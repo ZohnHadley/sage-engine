@@ -11,7 +11,8 @@ namespace Sage.UI;
 // every frame — a layer's fade and slide, and how far the focus highlight has eased — so the plan
 // itself is rebuilt only when what it says changes: the root's Version, the styles' or the string
 // tables', the pressed widget or the viewport. A clean screen costs a comparison and allocates nothing.
-internal enum UiDrawKind : byte { Rect, Border, Text, Image, PushClip, PopClip }
+// Fog (issue #348): a picture's UiFogMask, stretched over Rect, its unrevealed cells in Colour.
+internal enum UiDrawKind : byte { Rect, Border, Text, Image, PushClip, PopClip, Fog }
 
 internal struct UiDrawCommand
 {
@@ -40,6 +41,12 @@ internal struct UiDrawCommand
     public bool Ellipsis;
     public float EllipsisAt;
     public AssetPath Texture;
+
+    // Image: a render target by name, drawn instead of Texture (a view widget's, issue #348).
+    public string? Target;
+
+    // Fog: the mask; the client uploads its cells again when its Version changes.
+    public UiFogMask? Fog;
 
     // Nine-slice insets in texture pixels; zero draws the texture stretched whole.
     public Thickness Slice;
@@ -326,15 +333,28 @@ internal sealed class UiRenderPlan
                         Colour(ref _plan.Add(UiDrawKind.Rect, widget, _root.ToPixels(slider.KnobRect)), to.Text, from.Text, blend);
                     break;
 
-                case Image picture when !string.IsNullOrEmpty(picture.Source):
-                    // A nine-sliced picture fills its content rect: keeping the aspect is what slicing
-                    // is there to avoid.
-                    bool sliced = style.Slice != Thickness.Zero;
-                    ref var drawn = ref _plan.Add(UiDrawKind.Image, widget, _root.ToPixels(sliced ? widget.ContentRect : picture.ImageRect));
-                    Colour(ref drawn, to.Tint, from.Tint, blend);
-                    drawn.Texture = _plan.TexturePath(picture.Source);
-                    drawn.Slice = style.Slice;
-                    drawn.Size = scale;
+                case View { Target.Length: > 0 } view:
+                    // A render target (issue #348): whatever draws it this frame, the picture is the target's.
+                    ref var shown = ref _plan.Add(UiDrawKind.Image, widget, _root.ToPixels(view.ImageRect));
+                    Colour(ref shown, to.Tint, from.Tint, blend);
+                    shown.Target = view.Target;
+                    shown.Size = scale;
+                    Fog(view);
+                    break;
+
+                case Image picture:
+                    if (!string.IsNullOrEmpty(picture.Source))
+                    {
+                        // A nine-sliced picture fills its content rect: keeping the aspect is what slicing
+                        // is there to avoid.
+                        bool sliced = style.Slice != Thickness.Zero;
+                        ref var drawn = ref _plan.Add(UiDrawKind.Image, widget, _root.ToPixels(sliced ? widget.ContentRect : picture.ImageRect));
+                        Colour(ref drawn, to.Tint, from.Tint, blend);
+                        drawn.Texture = _plan.TexturePath(picture.Source);
+                        drawn.Slice = style.Slice;
+                        drawn.Size = scale;
+                    }
+                    Fog(picture);
                     break;
 
                 case Label label:
@@ -350,6 +370,15 @@ internal sealed class UiRenderPlan
                     DrawLabel(label, to, from, blend, scale);
                     break;
             }
+        }
+
+        // A picture's discovery fog (issue #348), over where the picture is drawn.
+        private void Fog(Image picture)
+        {
+            if (picture.Fog is not { } mask || !Visible(picture.FogColour)) return;
+            ref var fog = ref _plan.Add(UiDrawKind.Fog, picture, _root.ToPixels(picture.ImageRect));
+            fog.Colour = fog.From = picture.FogColour;
+            fog.Fog = mask;
         }
 
         // A label's text, and what the form widgets that are labels add to it (issue #340): a checkbox's

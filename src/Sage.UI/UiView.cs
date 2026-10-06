@@ -178,6 +178,8 @@ internal sealed class LayoutBuilder
                 if (!n.Source.IsEmpty) image.Source = n.Source.ToString();
                 image.NaturalSize = n.NaturalSize;
                 if (n.KeepAspect is { } keep) image.KeepAspect = keep;
+                if (n.FogColour is { } fog) image.FogColour = fog;
+                if (image is View view) ApplyView(view, n);
                 break;
             case Bar bar:
                 if (n.Min is { } min) bar.Min = min;
@@ -224,6 +226,30 @@ internal sealed class LayoutBuilder
         }
     }
 
+    // A view's target and its own camera (issue #348).
+    private static void ApplyView(View view, UiNode n)
+    {
+        if (n.Target.Length > 0) view.Target = n.Target;
+        if (n.Camera is not { } c) return;
+        view.Camera = c.Mode;
+        view.Subject = c.Subject ?? "";
+        view.Centre = c.Centre;
+        view.Distance = c.Distance;
+        view.Height = c.Height;
+        view.Yaw = c.Yaw;
+        view.Pitch = c.Pitch;
+        view.Spin = c.Spin;
+        view.FieldOfView = c.FieldOfView;
+        view.Radius = c.Radius;
+        view.Altitude = c.Altitude;
+        view.Far = c.Far;
+        view.Resolution = c.Resolution;
+        view.Rotatable = c.Rotatable;
+        if (n.Focusable is { } focusable) view.Focusable = focusable;   // said outright, it wins over Rotatable's
+        view.Sky = c.Sky;
+        view.Shadows = c.Shadows;
+    }
+
     private static string? NameOrNull(string name) => name.Length > 0 ? name : null;
 
     private void Bind(BoundNode bound, UiNode node, LayoutTree tree, string name, RecordId style)
@@ -254,6 +280,9 @@ internal sealed class LayoutBuilder
                 case UiBindings.Columns: bound.Columns = reader; break;
                 case UiBindings.X: bound.X = reader; break;
                 case UiBindings.Y: bound.Y = reader; break;
+                case UiBindings.Fog: bound.Fog = reader; break;
+                case UiBindings.Target: bound.Target = reader; break;
+                case UiBindings.Radius: bound.Radius = reader; break;
                 case UiBindings.Icon: bound.Icon = reader; break;
                 case UiBindings.IconTurned: bound.IconTurned = reader; break;
                 case UiBindings.ColumnSpan: bound.ColumnSpan = reader; break;
@@ -430,11 +459,14 @@ internal static class UiBindings
                         // Where in its parent Box it sits, 0..1 across and down: a point anchor there (a map's
                         // markers, issue #99). Kept inside the box: a point anchor places the widget proportionally.
                         X = "x", Y = "y",
+                        // A picture's discovery fog (a UiFogMask), a view's render target and its top-down
+                        // camera's radius in metres (issue #348).
+                        Fog = "fog", Target = "target", Radius = "radius",
                         // A button's picture and whether it is turned on its side, and the cells a grid's child
                         // spans (issue #346: an item's picture across its footprint). Lower case: keys are.
                         Icon = "icon", IconTurned = "iconturned", ColumnSpan = "columnspan", RowSpan = "rowspan";
 
-    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, Checked, Selected, Options,
+    public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, Checked, Selected, Options, Fog, Target, Radius,
                                             Icon, IconTurned, ColumnSpan, RowSpan };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
@@ -444,6 +476,7 @@ internal static class UiBindings
         "bar" or "slider" => Value,
         "checkbox" => Checked,
         "image" => Source,
+        "view" => Target,
         "stack" or "item_list" or "grid" => Rows,
         "dropdown" or "tabs" => Selected,
         _ => null,
@@ -467,7 +500,9 @@ internal static class UiBindings
         Checked => widget == "checkbox",
         Selected => widget is "dropdown" or "tabs",
         Options => widget == "dropdown",
-        Source => widget == "image",
+        Source => widget is "image" or "view",
+        Fog => widget is "image" or "view",
+        Target or Radius => widget == "view",
         Icon or IconTurned => widget == "button",
         Rows => widget is "stack" or "item_list" or "grid" or "box",
         Columns => widget == "grid",   // a grid as wide as its view-model says (an inventory's, issue #98)
@@ -509,11 +544,12 @@ internal sealed class BoundNode
     public TextSlot? Text, Tooltip;
     public BindingReader? Value, Min, Max, Source, Style, Visible, Enabled, Data, Columns, X, Y;
     public BindingReader? Checked, Selected, Options, Content;   // the form widgets' (issue #340)
+    public BindingReader? Fog, Target, Radius;                     // a picture's fog, a view's (issue #348)
     public BindingReader? Icon, IconTurned, ColumnSpan, RowSpan;  // pictures across a grid's cells (issue #346)
     private string? _icon;
     public RowsSlot? Rows;
     public BindingReader? Scope;    // what this node and everything inside it read from (issue #347)
-    private string? _source, _style, _content;
+    private string? _source, _style, _content, _target;
     private IList? _options;
     private int _optionCount = -1;
     private bool _selectedIsText;
@@ -522,6 +558,7 @@ internal sealed class BoundNode
                            || Value != null || Min != null || Max != null || Source != null || Style != null || Visible != null
                            || Enabled != null || Data != null || Columns != null || X != null || Y != null
                            || Checked != null || Selected != null || Options != null || Content != null
+                           || Fog != null || Target != null || Radius != null
                            || Icon != null || IconTurned != null || ColumnSpan != null || RowSpan != null;
 
     // Listens for the player changing the widget, when its value is bound, to write it back (issue #340).
@@ -598,6 +635,16 @@ internal sealed class BoundNode
             // An asset path as the view-model holds it; compared by reference, so the same string costs nothing.
             string? path = Source.Read(source, scopes).AsString;
             if (!ReferenceEquals(path, _source)) { _source = path; image.Source = path; }
+        }
+        if (Fog != null && Widget is Image fogged) fogged.Fog = Fog.Read(source).Ref as UiFogMask;
+        if (Widget is View view)
+        {
+            if (Target != null)
+            {
+                string? target = Target.Read(source).AsString;
+                if (!ReferenceEquals(target, _target)) { _target = target; view.Target = target; }
+            }
+            if (Radius != null) view.Radius = Radius.Read(source).AsFloat;
         }
         if (Widget is Button button)
         {

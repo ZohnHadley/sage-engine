@@ -1,6 +1,17 @@
 #nullable enable
 const Sage.UI.InputPrompts.GlyphTablePrefix = "@input." -> string!
 const Sage.UI.InputPrompts.Placeholder = "action:" -> string!
+const Sage.UI.UiFogMask.MaxSize = 1024 -> int
+const Sage.UI.View.Other = "other" -> string!
+const Sage.UI.View.Player = "player" -> string!
+override Sage.UI.View.OnNavigate(Sage.UI.UiNavigation direction) -> bool
+override Sage.UI.View.OnPointerDragged(System.Numerics.Vector2 point) -> void
+override Sage.UI.View.OnPointerPressed(System.Numerics.Vector2 point) -> void
+override Sage.UI.View.TypeName.get -> string!
+Sage.UI.Image.Fog.get -> Sage.UI.UiFogMask?
+Sage.UI.Image.Fog.set -> void
+Sage.UI.Image.FogColour.get -> uint
+Sage.UI.Image.FogColour.set -> void
 Sage.UI.InputPrompts
 Sage.UI.InputPrompts.Binding(string! action) -> Sage.Simulation.InputBinding?
 Sage.UI.InputPrompts.Device.get -> Sage.Simulation.InputDeviceKind
@@ -80,6 +91,23 @@ Sage.UI.TrueTypeFont.HasGlyph(int codepoint) -> bool
 Sage.UI.TrueTypeFont.Kerning(int left, int right, float size) -> float
 Sage.UI.TrueTypeFont.LineHeight(float size) -> float
 Sage.UI.TrueTypeFont.Name.get -> string!
+Sage.UI.UiFogMask
+Sage.UI.UiFogMask.CellAt(System.Numerics.Vector3 position, out int x, out int y) -> bool
+Sage.UI.UiFogMask.Cells.get -> System.ReadOnlySpan<byte>
+Sage.UI.UiFogMask.Fill(byte value) -> void
+Sage.UI.UiFogMask.Height.get -> int
+Sage.UI.UiFogMask.IsRevealed(System.Numerics.Vector3 position) -> bool
+Sage.UI.UiFogMask.Load(System.ReadOnlySpan<byte> cells) -> void
+Sage.UI.UiFogMask.Max.get -> System.Numerics.Vector2
+Sage.UI.UiFogMask.Max.set -> void
+Sage.UI.UiFogMask.Min.get -> System.Numerics.Vector2
+Sage.UI.UiFogMask.Min.set -> void
+Sage.UI.UiFogMask.Reveal(System.Numerics.Vector3 position, float radius) -> int
+Sage.UI.UiFogMask.this[int x, int y].get -> byte
+Sage.UI.UiFogMask.this[int x, int y].set -> void
+Sage.UI.UiFogMask.UiFogMask(int width, int height) -> void
+Sage.UI.UiFogMask.Version.get -> int
+Sage.UI.UiFogMask.Width.get -> int
 Sage.UI.UiCommand
 Sage.UI.UiCommand.Alternate = 1 -> Sage.UI.UiCommand
 Sage.UI.UiCommand.None = 0 -> Sage.UI.UiCommand
@@ -109,11 +137,14 @@ Sage.UI.UiFonts.UiFonts(System.Func<Sage.Core.AssetPath, byte[]?>! read) -> void
 Sage.UI.UiFonts.Version.get -> int
 Sage.UI.UiInput.Command -> Sage.UI.UiCommand
 Sage.UI.UiModule.Fonts.get -> Sage.UI.UiFonts!
+Sage.UI.UiNode.Camera -> Sage.UI.UiViewCameraNode?
+Sage.UI.UiNode.FogColour -> uint?
+Sage.UI.UiNode.MaxWidth -> float
+Sage.UI.UiNode.Overflow -> Sage.UI.TextOverflow?
+Sage.UI.UiNode.Target -> string!
 Sage.UI.UiNode.ColumnSpan -> int
 Sage.UI.UiNode.Draggable -> bool
 Sage.UI.UiNode.Icon -> Sage.Core.AssetPath
-Sage.UI.UiNode.MaxWidth -> float
-Sage.UI.UiNode.Overflow -> Sage.UI.TextOverflow?
 Sage.UI.UiNode.RowSpan -> int
 Sage.UI.UiNode.Wrap -> bool
 Sage.UI.UiResult.Command -> Sage.UI.UiCommand
@@ -422,6 +453,78 @@ Sage.UI.UiStyleSetRecord.Label -> string!
 Sage.UI.UiStyleSetRecord.Swaps -> System.Collections.Generic.List<Sage.UI.UiStyleSwap!>!
 Sage.UI.UiStyleSetRecord.UiStyleSetRecord() -> void
 Sage.UI.UiStyleStates.Selected -> Sage.UI.UiStyleState?
+Sage.UI.UiViewCameraNode
+Sage.UI.UiViewCameraNode.Altitude -> float
+Sage.UI.UiViewCameraNode.Centre -> System.Numerics.Vector3
+Sage.UI.UiViewCameraNode.Distance -> float
+Sage.UI.UiViewCameraNode.Far -> float
+Sage.UI.UiViewCameraNode.FieldOfView -> float
+Sage.UI.UiViewCameraNode.Height -> float
+Sage.UI.UiViewCameraNode.Mode -> Sage.UI.ViewCamera
+Sage.UI.UiViewCameraNode.Pitch -> float
+Sage.UI.UiViewCameraNode.Radius -> float
+Sage.UI.UiViewCameraNode.Resolution -> int
+Sage.UI.UiViewCameraNode.Rotatable -> bool
+Sage.UI.UiViewCameraNode.Shadows -> bool
+Sage.UI.UiViewCameraNode.Sky -> bool
+Sage.UI.UiViewCameraNode.Spin -> float
+Sage.UI.UiViewCameraNode.Subject -> string!
+Sage.UI.UiViewCameraNode.UiViewCameraNode() -> void
+Sage.UI.UiViewCameraNode.Yaw -> float
+Sage.UI.View
+Sage.UI.View.Altitude.get -> float
+Sage.UI.View.Altitude.set -> void
+Sage.UI.View.Camera.get -> Sage.UI.ViewCamera
+Sage.UI.View.Camera.set -> void
+Sage.UI.View.Centre.get -> System.Numerics.Vector3
+Sage.UI.View.Centre.set -> void
+Sage.UI.View.Distance.get -> float
+Sage.UI.View.Distance.set -> void
+Sage.UI.View.DragRate.get -> float
+Sage.UI.View.DragRate.set -> void
+Sage.UI.View.Far.get -> float
+Sage.UI.View.Far.set -> void
+Sage.UI.View.FieldOfView.get -> float
+Sage.UI.View.FieldOfView.set -> void
+Sage.UI.View.Height.get -> float
+Sage.UI.View.Height.set -> void
+Sage.UI.View.Pitch.get -> float
+Sage.UI.View.Pitch.set -> void
+Sage.UI.View.Radius.get -> float
+Sage.UI.View.Radius.set -> void
+Sage.UI.View.Resolution.get -> int
+Sage.UI.View.Resolution.set -> void
+Sage.UI.View.Rotatable.get -> bool
+Sage.UI.View.Rotatable.set -> void
+Sage.UI.View.RotateStep.get -> float
+Sage.UI.View.RotateStep.set -> void
+Sage.UI.View.Shadows.get -> bool
+Sage.UI.View.Shadows.set -> void
+Sage.UI.View.Sky.get -> bool
+Sage.UI.View.Sky.set -> void
+Sage.UI.View.Spin.get -> float
+Sage.UI.View.Spin.set -> void
+Sage.UI.View.Subject.get -> string!
+Sage.UI.View.Subject.set -> void
+Sage.UI.View.Target.get -> string?
+Sage.UI.View.Target.set -> void
+Sage.UI.View.View() -> void
+Sage.UI.View.Yaw.get -> float
+Sage.UI.View.Yaw.set -> void
+Sage.UI.ViewCamera
+Sage.UI.ViewCamera.None = 0 -> Sage.UI.ViewCamera
+Sage.UI.ViewCamera.Orbit = 1 -> Sage.UI.ViewCamera
+Sage.UI.ViewCamera.TopDown = 2 -> Sage.UI.ViewCamera
+Sage.UI.ViewPose
+Sage.UI.ViewPose.Far -> float
+Sage.UI.ViewPose.FovY -> float
+Sage.UI.ViewPose.Near -> float
+Sage.UI.ViewPose.Orthographic -> bool
+Sage.UI.ViewPose.OrthoHeight -> float
+Sage.UI.ViewPose.Position -> System.Numerics.Vector3
+Sage.UI.ViewPose.Rotation -> System.Numerics.Quaternion
+Sage.UI.ViewPose.Subject -> Sage.Simulation.Entity
+Sage.UI.ViewPose.ViewPose() -> void
 Sage.UI.UiStyleSwap
 Sage.UI.UiStyleSwap.From -> Sage.Core.RecordRef<Sage.UI.UiStyleRecord!>
 Sage.UI.UiStyleSwap.To -> Sage.Core.RecordRef<Sage.UI.UiStyleRecord!>
@@ -444,6 +547,7 @@ Sage.UI.Widget.FocusScope.get -> bool
 Sage.UI.Widget.FocusScope.set -> void
 Sage.UI.Widget.FocusUp.get -> string?
 Sage.UI.Widget.FocusUp.set -> void
+Sage.UI.WorldViews
 static readonly Sage.UI.UiFonts.EngineFont -> Sage.Core.AssetPath
 static readonly Sage.UI.UiSoundsRecord.DefaultId -> Sage.Core.RecordId
 const Sage.UI.ControlsView.KeepButton = "keep" -> string!
@@ -498,6 +602,8 @@ static Sage.UI.UiInput.Drag(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
 static Sage.UI.UiInput.Hold(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
 static Sage.UI.UiInput.Release(System.Numerics.Vector2 pointer) -> Sage.UI.UiInput
 static Sage.UI.UiInput.Type(string! text) -> Sage.UI.UiInput
+static Sage.UI.WorldViews.SubjectOf(Sage.Simulation.World! world, Sage.UI.View! view, in Sage.UI.UiBindContext context) -> Sage.Simulation.Entity
+static Sage.UI.WorldViews.TryPose(Sage.Simulation.World! world, Sage.UI.View! view, in Sage.UI.UiBindContext context, double time, out Sage.UI.ViewPose pose) -> bool
 virtual Sage.UI.Widget.IsSelected.get -> bool
 virtual Sage.UI.Widget.OnBack() -> bool
 virtual Sage.UI.Widget.OnNavigate(Sage.UI.UiNavigation direction) -> bool

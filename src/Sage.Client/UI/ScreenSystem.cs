@@ -31,6 +31,7 @@ internal sealed class ScreenSystem : ISystem
     private readonly Localisation? _text;
     private readonly ContentService _content;
     private readonly TrueTypeText _truetype;   // glyph atlases for the TTF fonts styles name (#338)
+    private readonly UiPictures? _pictures;    // render targets and fog masks widgets show (#348)
     private readonly UiDraw _ui;
     private readonly InputActions _actions;
     private readonly InputDevices _devices;
@@ -39,8 +40,9 @@ internal sealed class ScreenSystem : ISystem
 
     private readonly ActionId _up, _down, _left, _right, _tab, _confirm, _alternate, _back, _rotate, _split;
 
-    public ScreenSystem(World world, InputActions actions, InputDevices devices, ActionRegistry registry, ContentService content)
+    public ScreenSystem(World world, InputActions actions, InputDevices devices, ActionRegistry registry, ContentService content, Renderer? renderer = null)
     {
+        if (renderer != null) _pictures = world.Resources.GetOrAdd(() => new UiPictures(renderer));
         _devices = devices;
         _content = content;
         _truetype = new TrueTypeText(content.Device);
@@ -118,7 +120,7 @@ internal sealed class ScreenSystem : ISystem
         _widgets.SetViewport(new System.Numerics.Vector2(_ui.Size.X, _ui.Size.Y));
         var controls = widgetsOpen ? Controls(dt) : new UiControls { DeltaTime = dt };
         _widgets.Update(UiInputMap.From(in controls));
-        WidgetRenderer.Draw(_ui, _widgets, _styles!, _text!, _content, _truetype);
+        WidgetRenderer.Draw(_ui, _widgets, _styles!, _text!, _content, _truetype, _pictures);
     }
 
     // What the `ui` context's buttons and the mouse say this frame (issue #97). Menu* are the panel
