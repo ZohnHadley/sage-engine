@@ -107,6 +107,16 @@ internal struct EnvironmentParams
     public bool DrawSky;             // `sage:sky` draws (issue 4h-5); else the sky is ClearColor
     public Vector3 Zenith;
     public float Stars;
+    // Issue 4n-16 (SkyRules): haze, turning stars, the moon and the clouds.
+    public float HazeBand, HazeAbove, StarTurn;
+    public Vector3 StarAxis;
+    public AssetPath MoonTexture;
+    public Vector3 MoonDirection;
+    public float MoonAge, MoonSize, MoonLevel;
+    public AssetPath CloudTexture;
+    public float CloudCover, CloudScale;
+    public Vector2 CloudScroll;
+    public Vector3 CloudColor;
 }
 
 // One of the frame's shadow maps (issue 4h-4), written by `sage:shadow`: which views hold the casters, and

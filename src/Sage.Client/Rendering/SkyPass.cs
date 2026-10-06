@@ -33,6 +33,8 @@ internal sealed class SkyDome : IDisposable
     private readonly VertexBuffer _triangle;
     private Effect? _effect;
     private EffectParameter? _invViewProj, _horizon, _zenith, _fogColor, _sunDir, _sunColor, _params, _disc;
+    private EffectParameter? _haze, _starAxis, _moon, _moonLight, _cloud, _cloudColor, _moonTex, _cloudTex;
+    private ContentService? _content;
 
     public SkyDome(GraphicsDevice device)
     {
@@ -62,7 +64,10 @@ internal sealed class SkyDome : IDisposable
             _invViewProj = P("SkyInvViewProj"); _horizon = P("SkyHorizon"); _zenith = P("SkyZenith");
             _fogColor = P("SkyFog"); _sunDir = P("SkySunDir"); _sunColor = P("SkySunColor");
             _params = P("SkyParams"); _disc = P("SkyDisc");
+            _haze = P("SkyHaze"); _starAxis = P("SkyStarAxis"); _moon = P("SkyMoon"); _moonLight = P("SkyMoonLight");
+            _cloud = P("SkyCloud"); _cloudColor = P("SkyCloudColor"); _moonTex = P("MoonTex"); _cloudTex = P("CloudTex");
         }
+        _content = content;
         return true;
     }
 
@@ -79,6 +84,19 @@ internal sealed class SkyDome : IDisposable
         // x: stars (0-1), y: the horizon hazes to the fog colour (fog on), z: the haze band, w: time
         _params?.SetValue(new Vector4(env.Stars, env.FogParams.Z, SkyRules.HazeBand, env.Time));
         _disc?.SetValue(new Vector4(SkyRules.SunDiscOuter, SkyRules.SunDiscInner, SkyRules.SunDiscGain, SkyRules.StarsOut));
+
+        // Issue 4n-16: the haze, the turning stars, the moon and the clouds. A picture that is not named, or
+        // not loaded, switches its part off (a moon of radius 0, clouds of no cover).
+        _haze?.SetValue(new Vector4(env.HazeBand, env.HazeAbove, env.StarTurn, 0f));
+        _starAxis?.SetValue(env.StarAxis);
+        var moon = !env.MoonTexture.IsEmpty ? _content?.LoadTexture(env.MoonTexture) : null;
+        _moonTex?.SetValue(moon);
+        _moon?.SetValue(new Vector4(env.MoonDirection, moon != null ? env.MoonSize : 0f));
+        _moonLight?.SetValue(new Vector4(env.MoonAge, env.MoonLevel, SkyRules.MoonGain, 0f));
+        var clouds = !env.CloudTexture.IsEmpty ? _content?.LoadTexture(env.CloudTexture) : null;
+        _cloudTex?.SetValue(clouds);
+        _cloud?.SetValue(new Vector4(clouds != null ? env.CloudCover : 0f, env.CloudScale, env.CloudScroll.X, env.CloudScroll.Y));
+        _cloudColor?.SetValue(env.CloudColor);
 
         _device.BlendState = BlendState.Opaque;
         _device.DepthStencilState = DepthStencilState.DepthRead;   // behind everything drawn; writes nothing

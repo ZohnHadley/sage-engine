@@ -72,6 +72,62 @@
         "Exp2"
       ]
     },
+    "hazeBand": {
+      "description": "How high above the horizon fog's haze reaches (sin of elevation); 0.12 is about seven degrees. Range: 0.009999999776482582 to 1. Category: Fog. (float, default 0.12)",
+      "default": 0.12,
+      "type": "number",
+      "minimum": 0.009999999776482582,
+      "maximum": 1
+    },
+    "hazeAbove": {
+      "description": "How much fog colour stays over the whole sky above the haze band: 0 leaves it clear, 1 is a fog bank to the zenith (issue 4n-16) Range: 0 to 1. Category: Fog. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "moon": {
+      "description": "The moon's picture, drawn as a disc whose phase follows the world's calendar (CalendarRecord.MoonCycle) and which crosses the sky opposite the sun at the full. Empty: no moon (issue 4n-16) A texture path. Category: Moon. (AssetPath)",
+      "type": "string"
+    },
+    "moonSize": {
+      "description": "The moon's angular width. Unit: deg. Range: 0.10000000149011612 to 45. Category: Moon. (float, default 5)",
+      "default": 5,
+      "type": "number",
+      "minimum": 0.10000000149011612,
+      "maximum": 45
+    },
+    "clouds": {
+      "description": "A cloud layer: a tiling grey picture whose bright parts are cloud, thresholded by the weather's cloudCover and scrolled across the sky with the hour. Empty: no clouds (issue 4n-16) A texture path. Category: Clouds. (AssetPath)",
+      "type": "string"
+    },
+    "cloudScale": {
+      "description": "How many times the cloud picture repeats across the sky. Range: 0.05000000074505806 to 20. Category: Clouds. (float, default 1.5)",
+      "default": 1.5,
+      "type": "number",
+      "minimum": 0.05000000074505806,
+      "maximum": 20
+    },
+    "cloudSpeed": {
+      "description": "How fast the clouds drift, in repeats of the picture per game hour. Unit: 1/h. At least 0. Category: Clouds. (float, default 0.05)",
+      "default": 0.05,
+      "type": "number",
+      "minimum": 0
+    },
+    "cloudDirection": {
+      "description": "Which way the clouds drift, turning from +x toward +z. Unit: deg. Range: 0 to 360. Category: Clouds. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360
+    },
+    "starTilt": {
+      "description": "How high the pole star is: the stars turn about an axis this far above the northern (-z) horizon, once a day (issue 4n-16) Unit: deg. Range: 0 to 90. Category: Stars. (float, default 45)",
+      "default": 45,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 90
+    },
     "keys": {
       "description": "The keyframes, by hour; any order, any number. One is a sky that never changes. (List<SkyKey>)",
       "type": "array",

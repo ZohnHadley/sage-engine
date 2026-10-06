@@ -595,11 +595,11 @@
   // the scales dim the sun and the ambient and pull the fog in, the tints darken or pale the fog and the
   // sky, and `fogColor`/`skyColor` are only for a world with no sky. So a storm at dusk is dusk, darker.
   {
-    "type": "weather", "id": "clear", "label": "clear"
+    "type": "weather", "id": "clear", "label": "clear", "cloudCover": 0.3
   },
   {
     "type": "weather", "id": "rain", "label": "rain",
-    "particles": "raindrop", "rate": 900,
+    "cloudCover": 0.85, "particles": "raindrop", "rate": 900,
     "volume": [26, 14, 26], "ceiling": 10,
     "wind": [-3.5, 0, 1.5],
     "fogColor": [0.30, 0.33, 0.30], "fogStart": 8, "fogEnd": 95,
@@ -612,7 +612,7 @@
     // Rain with lightning (issue #311): a flash on the sky and the ambient every so often, outdoors only, and
     // the thunder some seconds after by how far off it struck. `weather storm 6`.
     "type": "weather", "id": "storm", "label": "storm",
-    "particles": "raindrop", "rate": 1400,
+    "cloudCover": 1.0, "particles": "raindrop", "rate": 1400,
     "volume": [26, 14, 26], "ceiling": 10,
     "wind": [-6, 0, 2.5],
     "fogColor": [0.22, 0.24, 0.24], "fogStart": 6, "fogEnd": 75,
@@ -624,7 +624,7 @@
   },
   {
     "type": "weather", "id": "snow", "label": "snow",
-    "particles": "snowflake", "rate": 260,
+    "cloudCover": 0.9, "particles": "snowflake", "rate": 260,
     "volume": [24, 14, 24], "ceiling": 9,
     "wind": [-0.8, 0, 0.4],
     "fogColor": [0.62, 0.65, 0.70], "fogStart": 12, "fogEnd": 110,
@@ -652,8 +652,13 @@
   // world clock (a game minute a real second; `time_scale`, `time_set 21`) runs it into the night. The sun
   // is geometry (up at 5:30, down at 19:30); the keys say its colour, the ambient, the sky, the fog and how
   // dark shadows are. Exp² fog: soft near, closing in at the end. The lamps in level.json come on at sunset.
+  // The Sandbox's calendar: the usual months and weekdays, with the moon eleven days into its cycle at day 0.
+  { "type": "calendar", "id": "moon", "moonStart": 11 },
   {
     "type": "sky", "id": "day", "sunrise": 5.5, "sunset": 19.5, "fogMode": "Exp2",
+    // Issue 4n-16: a moon whose phase follows the calendar, a cloud layer the weather's cloudCover thickens
+    // (tools/make_sky_art.py), stars that turn with the hour, and a thin haze over the whole sky.
+    "moon": "textures/moon.png", "moonSize": 6, "clouds": "textures/clouds.png", "cloudSpeed": 0.08, "hazeAbove": 0.05,
     "keys": [
       { "hour": 0,    "sun": [0.0, 0.0, 0.0],    "ambientSky": [0.03, 0.04, 0.09], "ambientGround": [0.01, 0.01, 0.02],
         "horizon": [0.03, 0.04, 0.08], "zenith": [0.005, 0.01, 0.03], "fog": [0.03, 0.04, 0.07], "fogStart": 10, "fogEnd": 140, "shadow": 0 },
