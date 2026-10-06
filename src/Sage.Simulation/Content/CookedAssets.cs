@@ -149,12 +149,13 @@ internal readonly record struct SourceStamp(long Length, ulong Hash)
 //   int32 joints (0 = no skin); per joint: string name, mat4 inverseBind, mat4 rest; then int32 logicalIndex
 //   int32 parts; per part: byte kind (0 rigid, 1 skinned), int32 vertices, int32 indices,
 //                          vertices × 52 or 72 bytes (MeshVertex, SkinnedMeshVertex), indices × int32
+// Version 3 (issue #321) follows each part by a byte (1 = a second UV set) and then vertices × vec2.
 // Version 2 (issue #410): each vertex gained a tangent and a colour. A version-1 file is refused like any
 // file this engine does not read, so the client falls back to the loose `.glb` (with a warning) until it is
 // cooked again.
 internal static class CookedMesh
 {
-    public const int Version = 2;
+    public const int Version = 3;   // 3: a second UV set per part (issue #321)
     private static ReadOnlySpan<byte> Magic => "SGMS"u8;
 
     public static void Write(Stream stream, MeshGeometry mesh, in SourceStamp stamp)
@@ -186,6 +187,8 @@ internal static class CookedMesh
             if (part.Skinned != null) writer.Write(MemoryMarshal.AsBytes(part.Skinned.AsSpan()));
             else writer.Write(MemoryMarshal.AsBytes(part.Rigid.AsSpan()));
             writer.Write(MemoryMarshal.AsBytes(part.Indices.AsSpan()));
+            writer.Write((byte)(part.Uv1 != null ? 1 : 0));
+            if (part.Uv1 != null) writer.Write(MemoryMarshal.AsBytes(part.Uv1.AsSpan()));
         }
     }
 
@@ -229,6 +232,9 @@ internal static class CookedMesh
             else part.Rigid = MemoryMarshal.Cast<byte, MeshVertex>(vertexBytes).ToArray();
             foreach (int index in part.Indices)
                 if ((uint)index >= (uint)vertices) throw new InvalidDataException($"part {p} has an index past its {vertices} vertices");
+            byte hasUv1 = reader.ReadByte();
+            if (hasUv1 > 1) throw new InvalidDataException($"part {p} is malformed");
+            if (hasUv1 == 1) part.Uv1 = MemoryMarshal.Cast<byte, Vector2>(CookedAssets.ReadArray(reader, checked(vertices * 8))).ToArray();
             mesh.Parts.Add(part);
         }
         return mesh;

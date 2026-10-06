@@ -155,4 +155,95 @@ public class CameraBlendTests
         Assert.True(world.Get<Camera>(cam).Enabled);
         Near(new Vector3(3, 0, 0), world.Resources.Get<CameraViews>().Main.Position);
     }
+
+    // Blending out (issue 4n-19): `CameraOff [blend [ease]]` eases from where the camera was to whatever
+    // has the screen next — here a lower-priority camera standing in for the player's rig — rather than
+    // cutting back, and ActiveCamera's readers see it too. Without a blend time it is still a cut.
+    [Fact]
+    public void CameraOffWithABlendTime_EasesOutToWhatHasTheScreenNext()
+    {
+        using var app = HeadlessApp.Gameplay().Boot("blend-out");
+        var world = app.World;
+        var views = world.Resources.Get<CameraViews>();
+        var active = world.Resources.Get<ActiveCamera>();
+        var a = new Vector3(0, 2, 0);
+        var b = new Vector3(12, 2, 0);
+        var rig = world.Create(Transform.At(a), "rig");
+        world.Add(rig, Camera.Perspective(45f, priority: 0));
+        var cam = CameraAt(world, b, fovY: 90f);
+        Step(world);
+        Assert.Equal(rig, views.Main.Entity);
+
+        world.IO().FireInput(cam, "CameraOn");                       // a cut in
+        Step(world);
+        Near(b, views.Main.Position);
+
+        world.IO().FireInput(cam, "CameraOff", "1 linear");          // a one-second linear blend out
+        Step(world);                                                 // delivered: the rig has the screen, still where the camera was
+        Assert.Equal(rig, views.Main.Entity);
+        Assert.True(world.Get<CameraBlend>(cam).Out);
+        Near(b, views.Main.Position);
+        Assert.Equal(90f * MathF.PI / 180f, views.Main.FovY, 4);
+
+        Step(world, 30);                                             // half-way back
+        Near(Vector3.Lerp(b, a, 0.5f), views.Main.Position);
+        Near(Vector3.Lerp(b, a, 0.5f), active.Position);
+        Assert.Equal(67.5f * MathF.PI / 180f, views.Main.FovY, 4);
+
+        Step(world, 30);
+        Near(a, views.Main.Position);
+        Step(world, 5);
+        Near(a, views.Main.Position);
+        Assert.False(world.Get<CameraBlend>(cam).Active);
+
+        // Without a blend time: the cut it always was.
+        world.IO().FireInput(cam, "CameraOn");
+        Step(world);
+        world.IO().FireInput(cam, "CameraOff");
+        Step(world);
+        Near(a, views.Main.Position);
+
+        // Turned on again mid-blend-out, a camera cuts back in and its stale blend out stops easing anything.
+        world.IO().FireInput(cam, "CameraOn");
+        Step(world);
+        world.IO().FireInput(cam, "CameraOff", "1");
+        Step(world, 10);
+        world.IO().FireInput(cam, "CameraOn");
+        Step(world);
+        Near(b, views.Main.Position);
+        Assert.False(world.Get<CameraBlend>(cam).Active);
+    }
+
+    // A scripted camera's hold running out blends out over its own BlendOutTime, along its BlendEase —
+    // the `scripted_camera` part's `blendOutTime` — the way a wire's CameraOff with a blend does.
+    [Fact]
+    public void AHoldRunningOut_BlendsOutOverTheCamerasBlendOutTime()
+    {
+        const string content = """
+        [
+          { "type": "prefab", "id": "cut", "name": "cut",
+            "parts": { "camera": { "enabled": false, "priority": 100 },
+                       "scripted_camera": { "holdTime": 0.5, "blendOutTime": 1, "blendEase": "Linear" } } },
+          { "type": "prefab", "id": "rig", "name": "rig", "parts": { "camera": {} } },
+          { "type": "scene", "id": "hold", "place": [ { "prefab": "cut", "at": [0, 0, 30], "name": "cut" },
+                                                      { "prefab": "rig", "at": [0, 0, 0], "name": "rig" } ] }
+        ]
+        """;
+        using var app = HeadlessApp.Gameplay().File("data/hold.json", content).StartScene("sage:hold").Boot("hold");
+        var world = app.World;
+        var views = world.Resources.Get<CameraViews>();
+        var cut = world.FindByName("cut");
+        Assert.Equal(1f, world.Get<ScriptedCamera>(cut).BlendOutTime);
+        Step(world);
+        world.IO().FireInput(cut, "CameraOn");
+        int ticks = 0;
+        do { Step(world); ticks++; } while (world.Get<Camera>(cut).Enabled && ticks < 120);
+        Assert.False(world.Get<Camera>(cut).Enabled);
+        Assert.Equal(world.FindByName("rig"), views.Main.Entity);
+        Near(new Vector3(0, 0, 30), views.Main.Position);            // the hold ended: still where the cut was
+        Step(world, 30);
+        Near(new Vector3(0, 0, 15), views.Main.Position);
+        Step(world, 30);
+        Near(Vector3.Zero, views.Main.Position);
+    }
 }
