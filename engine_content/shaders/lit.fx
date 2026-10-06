@@ -259,6 +259,8 @@ struct VSInstanceInput
     float4 Position : POSITION0;
     float3 Normal   : NORMAL0;
     float2 UV       : TEXCOORD0;
+    float4 Tangent  : TANGENT0;    // as VSInput (issue #410)
+    float4 Color    : COLOR0;
     float4 World0   : TEXCOORD4;
     float4 World1   : TEXCOORD5;
     float4 World2   : TEXCOORD6;
@@ -279,6 +281,8 @@ VSOutput VSInstanced(VSInstanceInput input)
     output.Normal = mul(input.Normal, (float3x3)world);
     output.UV = input.UV;
     output.Relative = relative.xyz;
+    output.Tangent = float4(mul(input.Tangent.xyz, (float3x3)world), input.Tangent.w);
+    output.Color = input.Color;
     return output;
 }
 
