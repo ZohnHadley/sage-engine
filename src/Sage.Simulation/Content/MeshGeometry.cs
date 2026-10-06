@@ -26,21 +26,43 @@ internal sealed class MeshGeometry
     public Vector3 BoundsCentre;
     public float BoundsRadius = 1f;
 
-    // Reads every primitive of every mesh in a `.glb`. Returns null when the file is not glTF or has nothing
-    // drawable in it, which is a content problem (logged), not a crash.
-    public static MeshGeometry? ReadGlb(Stream stream, string name)
+    // Reads every primitive of every mesh in a `.glb`. Returns null when the file is not glTF, uses a feature
+    // outside the supported subset (`GltfSubset`: one named error per feature, logged and returned in
+    // `errors`) or has nothing drawable in it, which is a content problem, not a crash.
+    public static MeshGeometry? ReadGlb(Stream stream, string name) => ReadGlb(stream, name, out _);
+
+    public static MeshGeometry? ReadGlb(Stream stream, string name, out IReadOnlyList<string> errors)
     {
+        byte[] bytes;
+        using (var copy = new MemoryStream())
+        {
+            stream.CopyTo(copy);
+            bytes = copy.ToArray();
+        }
+
+        var warnings = new List<string>();
+        var problems = GltfSubset.Check(bytes, name, warnings);
+        errors = problems;
+        if (problems.Count > 0)
+        {
+            foreach (string problem in problems) Log.Error(LogCat.Assets, problem);
+            return null;
+        }
+        foreach (string warning in warnings) Log.Warn(LogCat.Assets, warning);
+
         SharpGLTF.Schema2.ModelRoot root;
         try
         {
             // `ReadGLB` for the binary form; the text form has its buffers beside it, which a VFS mount
-            // cannot always give us, so a model that ships as `.gltf` plus a `.bin` is not supported
-            // (05 §8: say so rather than half-loading it).
-            root = SharpGLTF.Schema2.ModelRoot.ReadGLB(stream, new SharpGLTF.Schema2.ReadSettings());
+            // cannot always give us, so a model that ships as `.gltf` plus a `.bin` is rejected by the
+            // subset check (05 §8: say so rather than half-loading it).
+            root = SharpGLTF.Schema2.ModelRoot.ReadGLB(new MemoryStream(bytes, writable: false), new SharpGLTF.Schema2.ReadSettings());
         }
         catch (Exception ex)
         {
-            Log.Warn(LogCat.Assets, $"Model '{name}': not a .glb ({ex.GetType().Name}: {ex.Message})");
+            string error = GltfSubset.Error(GltfSubset.NotGltf, name, $"{ex.GetType().Name}: {ex.Message}");
+            errors = new[] { error };
+            Log.Error(LogCat.Assets, error);
             return null;
         }
 
@@ -60,13 +82,17 @@ internal sealed class MeshGeometry
         {
             // Reading geometry can throw on a file this loader does not handle — a primitive drawn as
             // points or lines has no triangles to ask for. Same contract as a bad header.
-            Log.Warn(LogCat.Assets, $"Model '{name}': could not read geometry ({ex.GetType().Name}: {ex.Message})");
+            string error = GltfSubset.Error(GltfSubset.NotGltf, name, $"could not read geometry, {ex.GetType().Name}: {ex.Message}");
+            errors = new[] { error };
+            Log.Error(LogCat.Assets, error);
             return null;
         }
 
         if (model.Parts.Count == 0)
         {
-            Log.Warn(LogCat.Assets, $"Model '{name}': no drawable primitives");
+            string error = GltfSubset.Error(GltfSubset.NoGeometry, name);
+            errors = new[] { error };
+            Log.Error(LogCat.Assets, error);
             return null;
         }
 
@@ -107,6 +133,7 @@ internal sealed class MeshGeometry
 
             var normals = primitive.GetVertexAccessor("NORMAL")?.AsVector3Array();
             var uvs = primitive.GetVertexAccessor("TEXCOORD_0")?.AsVector2Array();
+            var uvs1 = primitive.GetVertexAccessor("TEXCOORD_1")?.AsVector2Array();
             var fileTangents = primitive.GetVertexAccessor("TANGENT")?.AsVector4Array();
             var colours = primitive.GetVertexAccessor("COLOR_0")?.AsColorArray();
             var joints = restPalette != null ? primitive.GetVertexAccessor("JOINTS_0")?.AsVector4Array() : null;
@@ -117,6 +144,13 @@ internal sealed class MeshGeometry
 
             var part = new MeshGeometryPart { Indices = Triangles(primitive) };
             if (part.Indices.Length == 0) continue;
+            // The second UV set (lightmaps), beside the vertices rather than in them: the client vertex
+            // formats are the first set's, and a file without TEXCOORD_1 leaves this null.
+            if (uvs1 != null && uvs1.Count >= positions.Count)
+            {
+                part.Uv1 = new Vector2[positions.Count];
+                for (int i = 0; i < part.Uv1.Length; i++) part.Uv1[i] = uvs1[i];
+            }
             if (skinned) part.Skinned = new SkinnedMeshVertex[positions.Count];
             else part.Rigid = new MeshVertex[positions.Count];
 
@@ -306,6 +340,7 @@ internal sealed class MeshGeometryPart
     public MeshVertex[]? Rigid;
     public SkinnedMeshVertex[]? Skinned;
     public required int[] Indices;
+    public Vector2[]? Uv1;   // TEXCOORD_1 per vertex (issue #321), null when the file has no second set
     public int VertexCount => Rigid?.Length ?? Skinned!.Length;
 }
 
