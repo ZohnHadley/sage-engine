@@ -67,6 +67,8 @@ public sealed class Engine : IDisposable
         // A material's surface maps and factors (issue #410). The record type is the client's; the check
         // runs wherever it is registered (the client, `sage validate`).
         Records.AddCheck<MaterialRecord>(MaterialSurface.Check);
+        // A water surface's colours, waves and fogs make sense (issue #411).
+        Records.AddCheck<WaterSurfaceRecord>(WaterSurfaceRecord.Check);
         // The engine's own declarations (Plugin = RegistrationOwners.Core): prefabs and placements,
         // which every game uses, and the weather every world saves. Registered by generated code
         // (issue #16), because an attribute used to be decoration until someone also registered the

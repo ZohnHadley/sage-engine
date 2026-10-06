@@ -77,6 +77,7 @@
             "ui_layout",
             "ui_style",
             "viewmodel",
+            "water_surface",
             "weather",
             "weather_pattern"
           ]
@@ -876,6 +877,21 @@
           },
           "then": {
             "$ref": "viewmodel.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "water_surface"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "water_surface.schema.json"
           }
         },
         {

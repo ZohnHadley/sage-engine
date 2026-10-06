@@ -1,8 +1,12 @@
 #nullable enable
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
-Sage.Simulation.DebugDraw.CopyLabelsTo(System.Collections.Generic.List<Sage.Simulation.DebugLine>! into, System.Numerics.Vector3 right, System.Numerics.Vector3 up) -> void
-Sage.Simulation.DebugDraw.LabelCount.get -> int
-Sage.Simulation.DebugDraw.Text3D(System.Numerics.Vector3 at, string! text, uint colour = 4294967295, float height = 0.25, float seconds = 0) -> void
+const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
+const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
+*REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
+const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
+const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
+const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
+const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
 Sage.Simulation.Decal.Alpha.get -> float
@@ -37,12 +41,18 @@ Sage.Simulation.Decals.Place(Sage.Core.RecordId effect, Sage.Simulation.DecalRec
 Sage.Simulation.Decals.Rebase(System.Numerics.Vector3 offset) -> void
 Sage.Simulation.Decals.ResetStats() -> void
 Sage.Simulation.Decals.Update(Sage.Simulation.World? world, float dt) -> void
-Sage.Simulation.RenderPassInfo.By.get -> string?
-Sage.Simulation.RenderPassInfo.Replaces.get -> System.Type?
-Sage.Simulation.RenderPassRegistry<TPass>.Disable(string! id, string! by) -> void
-Sage.Simulation.RenderPassRegistry<TPass>.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.RenderPassInfo!>!
-Sage.Simulation.RenderPassRegistry<TPass>.Replace(string! id, TPass! pass, string? by = null) -> void
+Sage.Simulation.ShadowAtlas
+Sage.Simulation.ShadowAtlas.Cascades.get -> int
+Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
+Sage.Simulation.ShadowAtlas.Columns.get -> int
+Sage.Simulation.ShadowAtlas.Corner(int cascade) -> (int X, int Y)
+Sage.Simulation.ShadowAtlas.Height.get -> int
+Sage.Simulation.ShadowAtlas.Rows.get -> int
+Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
+Sage.Simulation.ShadowAtlas.Width.get -> int
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
+Sage.Simulation.MapRecord.Lightmap -> float
+Sage.Simulation.PointLight.Baked -> bool
 const Sage.Simulation.MeshLod.Culled = -1 -> int
 const Sage.Simulation.MeshLod.Unknown = -2 -> int
 readonly Sage.Simulation.RenderEnvironment.LayerDrawDistance -> float[]!
@@ -87,6 +97,14 @@ Sage.Simulation.TerrainMaterialRecord.Fallback -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.Layers -> System.Collections.Generic.List<Sage.Simulation.TerrainLayer!>!
 Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
+static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
+static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
+static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int
+static Sage.Simulation.ShadowMath.CascadeSplits(float near, float far, System.Span<float> splits, float blend = 0.75) -> void
+static Sage.Simulation.ShadowMath.CasterTechnique(Sage.Simulation.RenderPass pass, bool skinned) -> string!
+static Sage.Simulation.ShadowMath.CutOutKeeps(float alpha, float cutoff) -> bool
+static Sage.Simulation.ShadowMath.FitCascades(System.Numerics.Vector3 camera, System.Numerics.Vector3 forward, bool orthographic, float lensX, float lensY, float near, float far, System.Numerics.Vector3 sunDirection, int size, System.Numerics.Vector3 origin, System.Span<Sage.Simulation.ShadowFit> fits, System.Span<float> splits, float casterReach = 200, float blend = 0.75) -> void
+static Sage.Simulation.ShadowMath.QuantiseSun(System.Numerics.Vector3 sunDirection, float stepDegrees) -> System.Numerics.Vector3
 Sage.Simulation.PostEffectRecord.Depth -> bool
 Sage.Simulation.SceneEnvironment.WeatherPattern -> Sage.Core.RecordRef<Sage.Simulation.WeatherPatternRecord!>
 Sage.Simulation.SceneEnvironment.WeatherRegion -> string!
@@ -157,32 +175,28 @@ Sage.Simulation.MaterialRecord.Reflectivity -> float
 Sage.Simulation.MaterialRecord.Specular -> float
 Sage.Simulation.MaterialRecord.SpecularMap -> Sage.Core.AssetPath
 Sage.Simulation.MaterialRecord.VertexColors -> bool
-const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
-const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
-*REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
-const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
-const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
-const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
-const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
-Sage.Simulation.ShadowAtlas
-Sage.Simulation.ShadowAtlas.Cascades.get -> int
-Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
-Sage.Simulation.ShadowAtlas.Columns.get -> int
-Sage.Simulation.ShadowAtlas.Corner(int cascade) -> (int X, int Y)
-Sage.Simulation.ShadowAtlas.Height.get -> int
-Sage.Simulation.ShadowAtlas.Rows.get -> int
-Sage.Simulation.ShadowAtlas.ShadowAtlas() -> void
-Sage.Simulation.ShadowAtlas.Width.get -> int
-Sage.Simulation.MapRecord.Lightmap -> float
-Sage.Simulation.PointLight.Baked -> bool
-static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
-static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
-static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int
-static Sage.Simulation.ShadowMath.CascadeSplits(float near, float far, System.Span<float> splits, float blend = 0.75) -> void
-static Sage.Simulation.ShadowMath.CasterTechnique(Sage.Simulation.RenderPass pass, bool skinned) -> string!
-static Sage.Simulation.ShadowMath.CutOutKeeps(float alpha, float cutoff) -> bool
-static Sage.Simulation.ShadowMath.FitCascades(System.Numerics.Vector3 camera, System.Numerics.Vector3 forward, bool orthographic, float lensX, float lensY, float near, float far, System.Numerics.Vector3 sunDirection, int size, System.Numerics.Vector3 origin, System.Span<Sage.Simulation.ShadowFit> fits, System.Span<float> splits, float casterReach = 200, float blend = 0.75) -> void
-static Sage.Simulation.ShadowMath.QuantiseSun(System.Numerics.Vector3 sunDirection, float stepDegrees) -> System.Numerics.Vector3
+Sage.Simulation.WaterSurface
+Sage.Simulation.WaterSurface.Look -> Sage.Core.RecordId
+Sage.Simulation.WaterSurface.WaterSurface() -> void
+Sage.Simulation.WaterSurfacePart
+Sage.Simulation.WaterSurfacePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.WaterSurfacePart.Look -> Sage.Core.RecordId
+Sage.Simulation.WaterSurfacePart.WaterSurfacePart() -> void
+Sage.Simulation.WaterSurfaceRecord
+Sage.Simulation.WaterSurfaceRecord.Colour -> System.Numerics.Vector3
+Sage.Simulation.WaterSurfaceRecord.FogDensity -> float
+Sage.Simulation.WaterSurfaceRecord.Reflectivity -> float
+Sage.Simulation.WaterSurfaceRecord.Refraction -> float
+Sage.Simulation.WaterSurfaceRecord.ShoreFade -> float
+Sage.Simulation.WaterSurfaceRecord.Specular -> float
+Sage.Simulation.WaterSurfaceRecord.UnderwaterColour -> System.Numerics.Vector3
+Sage.Simulation.WaterSurfaceRecord.UnderwaterDensity -> float
+Sage.Simulation.WaterSurfaceRecord.UnderwaterTint -> System.Numerics.Vector3
+Sage.Simulation.WaterSurfaceRecord.WaterSurfaceRecord() -> void
+Sage.Simulation.WaterSurfaceRecord.WaveDirection -> float
+Sage.Simulation.WaterSurfaceRecord.WaveLength -> float
+Sage.Simulation.WaterSurfaceRecord.WaveSpeed -> float
+Sage.Simulation.WaterSurfaceRecord.WaveStrength -> float
 Sage.Simulation.Camera.NoDebugLines -> bool
 Sage.Simulation.Camera.NoShadows -> bool
 Sage.Simulation.Camera.NoSky -> bool
@@ -243,3 +257,11 @@ static Sage.Simulation.SkyRules.MoonLit(System.Numerics.Vector2 local, double mo
 static Sage.Simulation.SkyRules.RotateStars(System.Numerics.Vector3 direction, System.Numerics.Vector3 axis, float turn) -> System.Numerics.Vector3
 static Sage.Simulation.SkyRules.StarAxis(float tiltDegrees) -> System.Numerics.Vector3
 static Sage.Simulation.SkyRules.StarTurn(double hour) -> float
+Sage.Simulation.DebugDraw.CopyLabelsTo(System.Collections.Generic.List<Sage.Simulation.DebugLine>! into, System.Numerics.Vector3 right, System.Numerics.Vector3 up) -> void
+Sage.Simulation.DebugDraw.LabelCount.get -> int
+Sage.Simulation.DebugDraw.Text3D(System.Numerics.Vector3 at, string! text, uint colour = 4294967295, float height = 0.25, float seconds = 0) -> void
+Sage.Simulation.RenderPassInfo.By.get -> string?
+Sage.Simulation.RenderPassInfo.Replaces.get -> System.Type?
+Sage.Simulation.RenderPassRegistry<TPass>.Disable(string! id, string! by) -> void
+Sage.Simulation.RenderPassRegistry<TPass>.Disabled.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.RenderPassInfo!>!
+Sage.Simulation.RenderPassRegistry<TPass>.Replace(string! id, TPass! pass, string? by = null) -> void

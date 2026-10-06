@@ -23,7 +23,7 @@ public sealed partial class Renderer
     private bool PreparePost()
     {
         _hdrSupported ??= QueryHdr();
-        if (!_post.Prepare(TargetSize(RenderViewPlan.Screen), _hdrSupported.Value, _maxSamples)) return false;
+        if (!_post.Prepare(TargetSize(RenderViewPlan.Screen), _hdrSupported.Value, _maxSamples, _waterWanted)) return false;
         var options = _post.Options;
         _sceneSize = _post.SceneSize;
         var format = options.Hdr ? SurfaceFormat.HdrBlendable : SurfaceFormat.Color;
@@ -80,7 +80,7 @@ public sealed partial class Renderer
         var o = _post.Options;
         return (o.Hdr ? ", hdr" : "") + (o.Bloom ? $", bloom {o.BloomLevels}" : "")
              + (o.Aa == AntiAliasing.Fxaa ? ", fxaa" : o.Msaa ? $", msaa {o.Samples}x" : "")
-             + (_post.NeedsDepth ? ", depth" : "");
+             + (o.Water ? ", water" : "") + (_post.NeedsDepth ? ", depth" : "");
     }
 
     // ---- The depth hook (issue #316) ----
@@ -227,9 +227,10 @@ public sealed partial class Renderer
             var bloomIn = step.Kind == PostStepKind.Tonemap ? bloomTexture : null;
             effect.Parameters["BloomOn"]?.SetValue(bloomIn != null ? 1f : 0f);
             effect.Parameters["Bloom"]?.SetValue(bloomIn ?? source);
+            if (step.Kind == PostStepKind.Water) SetWaterParams(effect, s);   // issue #411
             if (effect.Parameters["SceneDepth"] is { } sceneDepth)
             {
-                bool reads = step.Kind == PostStepKind.Effect && step.Effect >= 0 && _post.ReadsDepth(step.Effect);
+                bool reads = (step.Kind == PostStepKind.Effect && step.Effect >= 0 && _post.ReadsDepth(step.Effect)) || step.Kind == PostStepKind.Water;
                 if (!reads)
                     Log.Once(LogCat.Render, LogLevel.Warn, "post-depth-undeclared:" + m.Id,
                              $"Post material {m.Id} reads SceneDepth, but its post_effect does not say \"depth\": true; it reads a blank");
@@ -255,9 +256,5 @@ public sealed partial class Renderer
     }
 
     // Whether one of the engine's steps has a material that built (no shaders: none does).
-    private bool Built(PostStepKind kind)
-    {
-        var m = Materials.Get(_post.StepMaterial(kind));
-        return m != null && !m.IsError;
-    }
+    private bool Built(PostStepKind kind) => _post.Built(kind);
 }

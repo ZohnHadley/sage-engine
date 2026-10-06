@@ -358,11 +358,9 @@
         "crypt",
         "hut",
         "openworld:crypt",
-        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:hut",
-        "saves:camp",
-        "yard"
+        "saves:camp"
       ]
     },
     "record:material": {
@@ -382,7 +380,6 @@
         "dummy_helmeted",
         "error",
         "floor",
-        "grey",
         "gunmetal",
         "lamp_glow",
         "lit_default",
@@ -403,7 +400,7 @@
         "post_grade",
         "post_tonemap",
         "post_vignette",
-        "rendercheck:grey",
+        "post_water",
         "roof",
         "sage:decal",
         "sage:error",
@@ -419,6 +416,7 @@
         "sage:post_grade",
         "sage:post_tonemap",
         "sage:post_vignette",
+        "sage:post_water",
         "sage:sprite_default",
         "sage:sprite_lit",
         "sage:sprite_unlit",
@@ -540,9 +538,7 @@
       "type": "string",
       "enum": [
         "grade",
-        "grey",
         "haze",
-        "rendercheck:grey",
         "sage:grade",
         "sage:vignette",
         "sandbox:haze",
@@ -583,7 +579,6 @@
         "editor:light",
         "editor:plate",
         "editor:player",
-        "eye",
         "fan",
         "fence",
         "ferryman",
@@ -606,6 +601,7 @@
         "hut_path",
         "jogger",
         "keeper",
+        "lake",
         "lamp",
         "lamp_link",
         "lift",
@@ -639,7 +635,6 @@
         "player",
         "player_camera",
         "rain",
-        "rendercheck:eye",
         "reward_check",
         "ring_on_floor",
         "road_sign",
@@ -681,6 +676,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
         "sandbox:pistol_pickup",
@@ -832,7 +828,6 @@
         "openworld:crypt",
         "openworld:valley",
         "range",
-        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:main",
         "sandbox:wilds",
@@ -896,8 +891,6 @@
       "type": "string",
       "enum": [
         "day",
-        "noon",
-        "rendercheck:noon",
         "sandbox:day"
       ]
     },
@@ -1134,6 +1127,16 @@
         "sandbox:pistol_arms",
         "sandbox:sword_arms",
         "sword_arms"
+      ]
+    },
+    "record:water_surface": {
+      "description": "The id of a water_surface record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "lake",
+        "sage:water",
+        "sandbox:lake",
+        "water"
       ]
     },
     "record:weather": {
@@ -1508,11 +1511,9 @@
         "crypt",
         "hut",
         "openworld:crypt",
-        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:hut",
-        "saves:camp",
-        "yard"
+        "saves:camp"
       ]
     },
     "base:material": {
@@ -1532,7 +1533,6 @@
         "dummy_helmeted",
         "error",
         "floor",
-        "grey",
         "gunmetal",
         "lamp_glow",
         "lit_default",
@@ -1553,7 +1553,7 @@
         "post_grade",
         "post_tonemap",
         "post_vignette",
-        "rendercheck:grey",
+        "post_water",
         "roof",
         "sage:decal",
         "sage:error",
@@ -1569,6 +1569,7 @@
         "sage:post_grade",
         "sage:post_tonemap",
         "sage:post_vignette",
+        "sage:post_water",
         "sage:sprite_default",
         "sage:sprite_lit",
         "sage:sprite_unlit",
@@ -1690,9 +1691,7 @@
       "type": "string",
       "enum": [
         "grade",
-        "grey",
         "haze",
-        "rendercheck:grey",
         "sage:grade",
         "sage:vignette",
         "sandbox:haze",
@@ -1734,7 +1733,6 @@
         "editor:light",
         "editor:plate",
         "editor:player",
-        "eye",
         "fan",
         "fence",
         "ferryman",
@@ -1757,6 +1755,7 @@
         "hut_path",
         "jogger",
         "keeper",
+        "lake",
         "lamp",
         "lamp_link",
         "lift",
@@ -1790,7 +1789,6 @@
         "player",
         "player_camera",
         "rain",
-        "rendercheck:eye",
         "reward_check",
         "ring_on_floor",
         "road_sign",
@@ -1833,6 +1831,7 @@
         "sandbox:hermit",
         "sandbox:hopper",
         "sandbox:hut_path",
+        "sandbox:lake",
         "sandbox:lamp_link",
         "sandbox:light",
         "sandbox:pistol_pickup",
@@ -1984,7 +1983,6 @@
         "openworld:crypt",
         "openworld:valley",
         "range",
-        "rendercheck:yard",
         "sandbox:crypt",
         "sandbox:main",
         "sandbox:wilds",
@@ -2048,8 +2046,6 @@
       "type": "string",
       "enum": [
         "day",
-        "noon",
-        "rendercheck:noon",
         "sandbox:day"
       ]
     },
@@ -2286,6 +2282,16 @@
         "sandbox:pistol_arms",
         "sandbox:sword_arms",
         "sword_arms"
+      ]
+    },
+    "base:water_surface": {
+      "description": "Another water_surface record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "lake",
+        "sage:water",
+        "sandbox:lake",
+        "water"
       ]
     },
     "base:weather": {

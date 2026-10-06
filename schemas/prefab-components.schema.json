@@ -1380,6 +1380,14 @@
         }
       ]
     },
+    "sage:water_surface": {
+      "description": "Component sage:water_surface (WaterSurface).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:water_surface"
+        }
+      ]
+    },
     "sage:water_volume": {
       "description": "Component sage:water_volume (WaterVolume).",
       "allOf": [
@@ -1569,6 +1577,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:viewmodel"
+        }
+      ]
+    },
+    "water_surface": {
+      "description": "The component sage:water_surface (WaterSurface), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:water_surface"
         }
       ]
     },
@@ -6882,6 +6898,21 @@
       },
       "additionalProperties": false,
       "description": "Component sage:viewmodel (Viewmodel)."
+    },
+    "sage:water_surface": {
+      "type": "object",
+      "properties": {
+        "look": {
+          "description": "How the surface looks (a water_surface record); empty: the engine's sage:water. Names a water_surface record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:water_surface"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:water_surface (WaterSurface)."
     },
     "sage:water_volume": {
       "type": "object",

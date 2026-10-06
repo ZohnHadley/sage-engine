@@ -1,0 +1,46 @@
+[
+  // Water (issue #411), namespace "sage": how a water volume's top is drawn. A prefab puts a surface on
+  // its volume with the `water_surface` part beside the `water` one:
+  //   { "type": "prefab", "id": "pond", "parts": { "water": { "size": [12, 2, 8] }, "water_surface": "sandbox:pond" } }
+  // and a game describes its own looks as `water_surface` records (or overrides this one with "patch").
+
+  // The engine's look: what a surface that names none, and the view from under a volume with no surface,
+  // are drawn with. A clear, blue-green lake.
+  {
+    "type": "water_surface",
+    "id": "water",
+    "colour": [0.05, 0.15, 0.18],
+    "fogDensity": 0.35,
+    "shoreFade": 0.6,
+    "reflectivity": 1,
+    "refraction": 0.03,
+    "specular": 1.5,
+    "waveLength": 4,
+    "waveStrength": 0.12,
+    "waveSpeed": 0.8,
+    "waveDirection": 30,
+    "underwaterColour": [0.04, 0.16, 0.2],
+    "underwaterDensity": 0.12,
+    "underwaterTint": [0.55, 0.8, 0.85]
+  },
+
+  // The chain's water step (PostStepKind.Water), which no post_effect names: the chain draws it while
+  // `r_water` is on and the frame has water in view or the camera under it. Everything per surface comes
+  // from the water_surface records; these params tune the screen-space reflection of the shore:
+  //   ReflectionDistance   how far along the reflected ray the march looks for something on screen (m)
+  //   ReflectionThickness  how far behind what the screen shows the ray may pass and still hit it (m)
+  //   ScreenReflections    1 marches the screen; 0 reflects only the sky (the cheaper look)
+  {
+    "type": "material",
+    "id": "post_water",
+    "effect": "shaders/water.mgfxo",
+    "technique": "Water",
+    "pass": "Opaque",
+    "cull": "None",
+    "depthTest": false,
+    "depthWrite": false,
+    "fog": false,
+    "sampler": { "filter": "Linear", "address": "Clamp" },
+    "params": { "ReflectionDistance": 60, "ReflectionThickness": 2, "ScreenReflections": 1 }
+  }
+]

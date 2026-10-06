@@ -213,6 +213,9 @@ internal sealed class RenderSnapshot
         Shadows = Pool<ShadowFrame>(ShadowViews.MaxViews);
     }
 
+    // The water the main view sees (issue #411), written by WaterExtract: drawn by the chain's water step.
+    public readonly WaterFrame Water = new();
+
     public int Culled;                   // items rejected by frustum culling this frame, every view
     public int FogCulled;                // of those, rejected because fog hides them wholly (issue 4h-5)
     public LodCounts Lod;                // renderers per view LOD left out or drew coarser (issue 4n-1, MeshLod.Pick)
@@ -287,6 +290,7 @@ internal sealed class RenderSnapshot
         FogCulled = 0;
         Lod = default;
         MainView = -1;
+        Water.Clear();
     }
 }
 
