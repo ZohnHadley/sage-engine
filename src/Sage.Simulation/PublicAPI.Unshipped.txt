@@ -189,3 +189,5 @@ Sage.Simulation.MaterialRecord.Specular -> float
 Sage.Simulation.MaterialRecord.SpecularMap -> Sage.Core.AssetPath
 Sage.Simulation.MaterialRecord.VertexColors -> bool
 Sage.Simulation.PostEffectRecord.Depth -> bool
+Sage.Simulation.MapRecord.Lightmap -> float
+Sage.Simulation.PointLight.Baked -> bool

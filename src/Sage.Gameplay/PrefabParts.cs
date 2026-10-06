@@ -33,6 +33,8 @@ public sealed class LightPart : IPrefabPart
     public float Intensity = 1f;
     [Property(Tooltip = "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night)")]
     public bool Off;
+    [Property(Tooltip = "Static: baked into the lightmap of the level that places it, with shadows (a map record's \"lightmap\"); it should not switch")]
+    public bool Baked;
     [Property(Tooltip = "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. SetPattern changes it")]
     public string Pattern = "";
     [Property(Min = 0, Unit = "1/s", Tooltip = "Letters of the pattern a second; 0 = 10, Quake's")]
@@ -47,12 +49,19 @@ public sealed class LightPart : IPrefabPart
         if (!LightStyles.TryResolve(Pattern, out _))
             ctx.Error($"\"pattern\": \"{Pattern}\" is neither letters a..z nor a preset ({string.Join(", ", LightStyles.PresetNames)})");
 
+        // A lightmap holds a baked lamp as it is when the level loads: steady, and all round (issue #313).
+        if (Baked && !string.IsNullOrEmpty(Pattern))
+            ctx.Warn($"\"baked\" with \"pattern\": \"{Pattern}\": the lightmap holds it steady, so its flicker shows only on what is not lightmapped");
+        if (Baked && Cone > 0f)
+            ctx.Warn("\"baked\" with a \"cone\": the lightmap bakes it as a point light, lighting all round");
+
         ctx.World.Add(ctx.Entity, new PointLight
         {
             Colour = Colour == Vector3.Zero ? Vector3.One : Colour,
             Range = Range <= 0f ? 8f : Range,
             Intensity = Intensity <= 0f ? 1f : Intensity,
             Off = Off,
+            Baked = Baked,
             Pattern = string.IsNullOrEmpty(Pattern) ? null : Pattern,
             PatternRate = PatternRate,
             Cone = Cone,

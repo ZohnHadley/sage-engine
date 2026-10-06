@@ -18,6 +18,7 @@ internal sealed class EffectBinding
         "World", "Tint", "FogEnabled", "LightPositions", "LightColors", "LightCount", "LightSpots",
         "Bones",   // the skinned draw's palette (issue #117), set per draw
         "ShadowViewProj", "ShadowParams", "ShadowMap",   // the sun's shadow map (issue 4h-4), frame tier
+        "Lightmap",   // a lightmapped draw's baked light (issue #313), set per draw
     };
 
     public EffectBinding(Effect effect)
@@ -32,6 +33,7 @@ internal sealed class EffectBinding
         LightSpots = P("LightSpots");   // spot lights' cones (issue #314); an effect without them lights all round
         Bones = P("Bones");
         ShadowViewProj = P("ShadowViewProj"); ShadowParams = P("ShadowParams"); ShadowMap = P("ShadowMap");
+        Lightmap = P("Lightmap");
         ShadowCaster = effect.Techniques["ShadowCaster"];
         ShadowCasterSkinned = effect.Techniques["ShadowCasterSkinned"];
         ShadowCasterInstanced = effect.Techniques[Instancing.TechniqueFor("ShadowCaster")];
@@ -43,6 +45,7 @@ internal sealed class EffectBinding
     public readonly EffectParameter? LightPositions, LightColors, LightCount, LightSpots;
     public readonly EffectParameter? Bones;   // float4x3[SkinMath.MaxBones]: object tier, skinned draws only
     public readonly EffectParameter? ShadowViewProj, ShadowParams, ShadowMap;   // issue 4h-4
+    public readonly EffectParameter? Lightmap;   // texture: object tier, lightmapped draws only (issue #313)
     public readonly EffectTechnique? ShadowCaster, ShadowCasterSkinned;          // what draws a caster into the map
     public readonly EffectTechnique? ShadowCasterInstanced;                      // a run of one mesh's casters in one draw (issue 4n-5)
 
@@ -111,6 +114,10 @@ internal sealed class MaterialRuntime
     public required EffectTechnique Technique;
     public EffectTechnique? Skinned;   // the effect's `Skinned` technique, for skinned meshes (issue #117)
     public EffectTechnique? Instanced; // the technique's instanced twin (Instancing.TechniqueFor, issue 4n-5), if the effect has one
+    // The effect's `Lightmapped` technique, for a mesh with a baked lightmap (issue #313): only for a material
+    // drawn with `Default`, since it is Default's lighting with the lightmap in it. Any other technique
+    // (AlphaTest, Unlit, a game's) draws such a mesh as it would any other.
+    public EffectTechnique? Lightmapped;
     public bool WarnedNoSkin;
     public bool CastShadows;           // the record's `castShadows` (issue 4h-4; ShadowMath.Casts)
     public required (EffectParameter Parameter, MaterialParam Value, Texture2D? Texture)[] Params;
@@ -352,6 +359,7 @@ internal sealed class MaterialCache : IDisposable
             Technique = technique,
             Skinned = effect.Techniques["Skinned"],
             Instanced = effect.Techniques[Instancing.TechniqueFor(record.Technique)],
+            Lightmapped = technique.Name == "Default" ? effect.Techniques["Lightmapped"] : null,
             Params = values.ToArray(),
             Pass = record.Pass,
             Blend = record.Blend switch { MaterialBlend.AlphaBlend => BlendState.AlphaBlend, MaterialBlend.Additive => BlendState.Additive, _ => BlendState.Opaque },
