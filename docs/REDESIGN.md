@@ -841,7 +841,7 @@ editor, if one ever exists, is a front end over stages 2–4, never a new runtim
     **not sandboxed**.
   - Data mods get the stage-2 vocabulary, so most mods never need code.
 - **Shaders in mods.** The host compiles `.fx` with mgfxc for any mount in dev builds, and on
-  hot reload. The mod SDK ships a `sage build-mod` step that precompiles for packaging.
+  hot reload. The mod SDK ships a `sage build-mod` step that precompiles for packaging. *As built (#400, 2026-10-07):* `ShaderHotCompile` compiles a folder mount's `shaders/*.fx` on load and on edit in dev builds, beside the source in its own mount, keeping the last good `.mgfxo` and drawing `sage:error` when there is none; the step is `sage mods build <mod>`, and `sage mods pack` precompiles into the package (MODDING §8b). The on-screen reload needs mgfxc on Windows or Wine and was not run.
 - **Tools for modders.** The editor host (§4.6) is **shippable next to a game**. A studio can choose to
   release it, with its build configuration separate from the dev overlay. Shipping itself contains no
   tools at all. *As built (#375, 2026-10-07):* `sage package --editor` (or `-p:SagePackageEditor=true`)
@@ -849,7 +849,9 @@ editor, if one ever exists, is a front end over stages 2–4, never a new runtim
   <id>` saves into that mod only, the game's own levels as placements patches (15 §10x; test:
   AModderSavesBothTabsIntoTheModAndTheGamesLevelAsAPatch). No Shipping-with-editor configuration was made:
   the editor beside a game is a full Development host.
-- **Hardening:** zip-slip checks, size limits, and no absolute paths in mounts.
+- **Hardening:** zip-slip checks, size limits, and no absolute paths in mounts. *As built (#397, 2026-10-07):* `ZipMount` refuses, at mount and with the rule named, absolute paths, `..`, `.` and empty segments, `:` and control characters, symlinks, entries that are one path ignoring case, more than 200,000 entries, files over 1 GiB or 16 GiB in all, a 500:1 ratio over 1 MiB and a file longer than its header says (design 05 §3.7; tests in MODDING §8a). A game's own mounts may still point outside its folder.
+
+*As built, phase 9 (2026-10-07, #396–#401):* the package is a `.sagemod` with `mod.json` at its root laid out as the folder (`sage mods pack`, deterministic), not `content/` plus `bin/`; **namespaced assets** are implicit (a bare path a mod ships alone is `mod_id:path`) with `@<ns>/` replacing on purpose, so `shadows` in `mod.json` was not needed; **keyed lists** are named by `[ListKey]` in C#, with `$remove` and `replace` in the patch; **code mods** are `"kind": "code"` with `assemblies`, trusted, flagged, never downloaded; the **conflict report** has the editor's per-field view; and `sage build-mod` shipped as `sage mods build`. The user guide is MODDING.md; design 17 "As built (phase 9)" has the code.
 
 ### 4.5 Saves that survive content and mod changes
 
@@ -1016,7 +1018,7 @@ because it edits the live play world (`DevTools.cs:84-87`).
   #297 below). CI packs all three packages into a local feed and, outside the checkout, builds a game from
   each template, validates it (the mod against the game), checks SAGE0050 fires, and `dotnet run`s it
   under Xvfb, walking; Windows builds one with a shader of its own. Not yet: a public feed (§6 decision
-  7), `sage` as a dotnet tool (#296), `sage-mod-code` (#396), and the Sandbox on the SDK. Done since:
+  7), `sage` as a dotnet tool (#296), `sage-mod-code` (code mods exist since #396; the template does not), and the Sandbox on the SDK. Done since:
   ~~the Release→Shipping `{config}` fix~~ (issue #294: `-c Release` is Shipping and writes `bin/Shipping`, so
   `{config}` and the packed Player's Shipping host agree; test: AReleaseBuildIsShippingAndWritesTheShippingFolder)
   and `sage-game-client` (#297, below).
@@ -1033,7 +1035,7 @@ because it edits the live play world (`DevTools.cs:84-87`).
   ImGui in it (Debug, Development) is refused rather than stripped, and the written folder is validated with
   the host's `Content/` (tests: APackageIsTheShippingHostWithTheGameBesideItAndNothingElse,
   AHostWithTheEditorOrImGuiInItIsRefused, ThePackagedHelloAndSceneOnlyGamesLoadAndValidateFromTheOutputFolder).
-  Mounts are copied as folders, not zipped (#397).
+  Mounts are copied as folders, not zipped (zip mounts exist since #397; `sage package` does not write them).
 
   *As built (issue #297, 2026-10-05).* `sage new <template> [-o dir] [-n name] [--game folder-or-id]
   [--dry-run] [dotnet new options]` is `dotnet new` with the Sage.Templates short names (`game`, `game-data`,
@@ -1051,7 +1053,7 @@ because it edits the live play world (`DevTools.cs:84-87`).
   folder with no such project (data only, a package's `game/`, the Sandbox) the host of that configuration
   started with `-game` (test: Run_AFolderWithNoSdkProject_StartsTheHostOnIt). CI makes a mod and a client half
   with the verbs, builds and validates them, and starts the data game through `sage run`
-  (`tools/smoke_run.sh --sage-run`). `sage-mod-code` waits for code mods (#396), and `sage` as a dotnet tool is
+  (`tools/smoke_run.sh --sage-run`). `sage-mod-code` is not a template yet (code mods exist since #396), and `sage` as a dotnet tool is
   #296.
 
   *As built (issue #302, 2026-10-05): the cook step.* `sage cook <game> [--force] [--clean]` writes a
@@ -1151,7 +1153,7 @@ what the base therefore needs first:
 | Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); the far ring, several streaming sources, followers, and interiors that stay live beside their exterior (4m); more LOD in 4n |
 | Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m); cascaded shadows, lamp shadows, lightmaps, a moon and clouds, flickering and spot lamps, lightning, weather under roofs, wet ground and puddles, soft particles (4n) |
 | Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i); thumbnails, compression, a background write that costs the tick about 3 ms at 10k entities, and a version report (4m) |
-| Mod culture (data mods first) | ○ | ● | ●● | ●● | ◐ data mods (4j); packed and code mods in 9 |
+| Mod culture (data mods first) | ○ | ● | ●● | ●● | ✅ data mods (4j); packed, namespaced, keyed and code mods (9) |
 
 *"Sage today" refreshed 2026-10-05.* The owner also named **Lugaru** (third-person skeletal fighting) as a game to emulate: rendering must carry lit, normal-mapped meshes and skinned characters as well as billboard sprites. Lugaru maps onto 4k, 4p, 4r and #410 (Stage B, part 2).
 
@@ -1235,7 +1237,7 @@ order, so `4l-1` is the first thing to build in 4l.
 | 8 | **10b** Editor, part 2 | #365 | #366–#375, #61, #49 | Brushes, the asset browser, multi-select and scale, nested inspector, BT view, conditions editor, terrain tools | a designer blocks out a room, textures it, edits an AI tree and saves, without JSON |
 | 9 | **4f** RPG progression and economy | #376 | #377–#384 | Skills and levelling, containers, loot tables, shops with money, perks, durability, item instances | a skill rises with use and a trader buys, sells and restocks, in data |
 | 10 | **4r** AI, combat and narrative depth (**done**, 2026-10-07) | #385 | #386–#394 | Hearing, behaviour trees, squads, crime, blocking and knockback, richer quest objectives | a creature hears a gunshot and investigates; a guard pursues a thief; a timed quest fails |
-| 11 | **9** Code mods and packaging | #395 | #396–#401 | Code mods, `.sagemod` packages, namespaced assets, keyed list merge, mod shaders | a packed data mod and a code mod conflict and are reported; saves survive toggling |
+| 11 | **9** Code mods and packaging (**done**, 2026-10-07) | #395 | #396–#401 | Code mods, `.sagemod` packages, namespaced assets, keyed list merge, mod shaders | a packed data mod and a code mod conflict and are reported; saves survive toggling |
 
 **Why this order.** It follows the owner's rule that generic engine work comes before RPG-specific work.
 4l carries the only P0s (a closing door traps the player: TODO bug 61). 4m and R1 are cheap and unblock the
@@ -1340,6 +1342,8 @@ the cost of hitboxes (#394). The exit is met headlessly: a creature hears a guns
 (test: StealingFromAFlaggedChestInViewOfAGuard_RaisesABountyAndThePursuit) and a timed quest fails
 (test: ATimedStageFailsWhenTheClockRunsOut). Left: formations, an arrest and jail flow, bounty decay, out-of-combat
 healing; the handoff's §1 lists each issue's follow-ups. Next is 9 (#395).
+
+**9 (#395) as of 2026-10-07: done.** #396–#401 are built (PRs #568–#573; spec sheet [19](spec/subsystems/19-modding.md), design 17 "As built (phase 9)", [MODDING](MODDING.md) §5, §6 and §8a–§8c, [`history/handoff-2026-10-07-9.md`](history/handoff-2026-10-07-9.md)): trusted code mods in a collectible load context per mod (#396), zip mounts and `.sagemod` packages with a hardened reader and `sage mods pack` (#397), namespaced mod assets (#398), keyed list merge with `$remove` and `replace` (#399), mod shaders with `sage mods build` (#400), and the editor's per-field conflict view, the Workshop interface and the mod.json self-checks (#401). The exit is met headlessly: a packed data mod and a packed code mod conflict and are reported, and a save survives toggling the code mod (test: PackedDataAndCodeModsLoad_Conflict_AndSavesSurviveTogglingThePackedCodeMod). Left: the `sage-mod-code` template, a Workshop service, `sage package` writing zips, and an on-screen run of the mod `.fx` reload on Windows or Wine. Every phase in the §5 order is now done; the owner picks what comes next.
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,
@@ -1568,7 +1572,7 @@ body position, documented rather than synced. SAGE0127. Details: docs/design/16 
 | Phase | Work | Exit criterion |
 |---|---|---|
 | **8** | Designer logic polish: AI behaviour trees (§4.3 stage 4), per-entity map keys, problems panel, `sage validate` in templates | a quest with a door, a counter and a custom-BT creature, built with no C# |
-| **9** | **Replanned 2026-10-02 as #395 (#396–#401); see Stage B, part 2.** Full modding (code mods, `.sagemod` packages, namespaced assets, keyed list merge) and save headers (§4.4, §4.5) [F37, F27] | two conflicting example mods (data and code) show the report; saves survive mod changes |
+| **9** | **Done 2026-10-07 as #395 (#396–#401); see Stage B, part 2.** Full modding (code mods, `.sagemod` packages, namespaced assets, keyed list merge) and save headers (§4.4, §4.5) [F37, F27] | two conflicting example mods (data and code) show the report; saves survive mod changes |
 | **10** | **10a done** (#215: #216–#228, 10-1 to 10-13; pulled forward on the owner's request, 2026-10-01). The `Sage.Editing` model, commands and the command log, file-preserving write-back, the `-edit` mode of the dev host, picking and gizmos, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, the problems panel, and the exit game `tests/games/editor` (10-13); the guide is docs/EDITOR.md. **10b done** (#365: #366–#375, with #61 and #49, 2026-10-07; see Stage B, part 2): brushes, the asset browser, multi-select and scale, the nested inspector, the AI graph view, the conditions form, terrain tools, document tabs and the editor for modders. Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
 | **gate** | Scripting decision (§4.3 stage 5), informed by what the phase-5 samples needed | a written decision with evidence, replacing or confirming D3 |
 

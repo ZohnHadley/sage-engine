@@ -209,6 +209,13 @@ environment maps and its effect, each a slot an asset from the **Assets** panel 
 that holds conditions, actions or another vocabulary's entries has a `<field>...` button that opens the
 **Conditions** form on it, even before the field is written.
 
+**Mod conflicts.** When two or more mods wrote the same field of the open record, a "Mod conflicts (N)" header
+above the form lists each such field with every mod's value (and its op and path), the winner in green; hover a row
+for the file, line and column and the `base` it came through. A field of a keyed list is named by its key
+(`parts.inventory.items[village:lantern].count`), and two mods on different keys are no conflict. `ed_rec_conflicts`
+prints the same in the console (tests: OpeningAConflictedRecord_ShowsEachModsValueForEachField_AndTheWinner,
+TwoModsEditingDifferentKeys_AreNoConflict_AndNothingOpenHasNone, AModDisablingARecordAnotherPatched_ShowsBothWrites).
+
 ### I/O: wiring
 
 Select the thing that fires (a pressure plate), open **I/O**, and add a wire: choose an **output**
@@ -490,6 +497,7 @@ share a name; on its own, `mover.seconds` means the part's field, the one you ca
 | `ed_rec_undo [n]`, `ed_rec_redo [n]` | The record's own undo and redo |
 | `ed_rec_save` | Save it (§8) |
 | `ed_rec_close` | Close it, dropping unsaved edits |
+| `ed_rec_conflicts` | The open record's fields that two or more mods wrote, each mod's value, and the winner |
 | `ed_rec_live [0\|1]` | Show the open record's edits in the game before a save (on by default) |
 
 **Assets**

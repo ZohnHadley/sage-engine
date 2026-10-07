@@ -556,8 +556,17 @@ inspector) only draws and calls them.
   (an object's fields, a list's item) for the range, tooltip, enum values and record type the form's
   widgets follow. (test: AFormKnowsAFieldsDeclarationAndWhereItCameFrom)
 - **Console**: `ed_rec_open <type> <id>`, `ed_rec_set <path> <value>`, `ed_rec_get [path]`, `ed_rec_save`,
-  `ed_rec_undo`, `ed_rec_redo`, `ed_rec_close`; Ctrl+Z / Ctrl+Shift+Z / Ctrl+S act on the Records panel
+  `ed_rec_undo`, `ed_rec_redo`, `ed_rec_close`, `ed_rec_conflicts`; Ctrl+Z / Ctrl+Shift+Z / Ctrl+S act on the Records panel
   while it has the focus. (test: TheConsoleOpensSetsUndoesAndSavesARecord)
+- **Per-field mod conflicts (#401, 2026-10-07).** `RecordConflicts.Find(engine, type, id)` (and an overload taking a built
+  `ContentReport`) returns the open record's `FieldConflict`s (Kind, Path, keyed where a list is, e.g.
+  `parts.inventory.items[village:lantern].count`; Winner; Current; Line; Contributions), each with its
+  `FieldContribution`s (Mount, IsMod, Op, Path, the Value read back from the writing file with `RecordWrite.Written()`, At, Via,
+  Wins). `RecordEditor.Conflicts` caches them for the open record, recomputed after an open or `Records.Reloaded`. The
+  Records panel draws a "Mod conflicts (N)" header above the form and a table per field (mod, op and value, path; the winner
+  green; hover for file:line:column and base), and `ed_rec_conflicts` prints the same. (tests:
+  OpeningAConflictedRecord_ShowsEachModsValueForEachField_AndTheWinner, TwoModsEditingDifferentKeys_AreNoConflict_AndNothingOpenHasNone,
+  AModDisablingARecordAnotherPatched_ShowsBothWrites)
 - **The form is drawn over the JSON**, not with the inspector's widgets: those edit a field of a boxed
   struct (`FieldMetadata.Set`), which a JSON value is not. Both read the same metadata, so ranges, units,
   enums and record pickers agree.

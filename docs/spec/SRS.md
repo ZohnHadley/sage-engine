@@ -42,7 +42,7 @@ Out of scope here: the design of any particular game, art and audio content, and
 |---|---|
 | **Designers** | Build levels, creatures, items, quests and logic in data and in the editor, with errors that name the file and line, and no C#. |
 | **Developers** | A small, stable, documented API; one boot path; fast headless tests; a template that runs outside the repo. |
-| **Modders** | Data mods that patch content without copying it, a load order, a conflict report, saves that survive a mod change; code mods later. |
+| **Modders** | Data mods that patch content without copying it, a load order, a conflict report, saves that survive a mod change; code mods (trusted, flagged, not sandboxed), `.sagemod` packages. |
 | **Players** | A game that runs at a steady frame rate, saves anywhere, lets them rebind controls and change settings. |
 | **The owner** | A Daggerfall-like action RPG on top of a base that can also make other genres. |
 
@@ -174,7 +174,7 @@ summary and the traceability index.
 | REQ-QUAL-05 | **Save robustness.** Saves shall survive content rebalances, prefab edits and mod changes without losing or doubling entities. | Must | Done (4i, 4j exits); remaining limits in 4m |
 | REQ-QUAL-06 | **API stability.** Public base and kit API shall change only with a declared entry and SemVer; unstable areas carry `[Experimental]` ids. | Must | Done |
 | REQ-QUAL-07 | **Honest documentation.** Claims that something exists shall cite the test that proves it, checked in CI. | Must | Done (`tools/check_docs.py`) |
-| REQ-QUAL-08 | **Moddability.** Every record type shall be patchable by a mod without copying the whole record. | Must | Done for data; keyed list merge in phase 9 |
+| REQ-QUAL-08 | **Moddability.** Every record type shall be patchable by a mod without copying the whole record. | Must | Done (data mods, and keyed list merge since phase 9, #399) |
 | REQ-QUAL-09 | **Accessibility.** Players shall be able to rebind every action, scale the UI, and read subtitles. | Should | Done: rebinding (4o, #328; axis actions excepted), UI and text scale, style sets, subtitles and captions (4q, #351) |
 | REQ-QUAL-10 | **Extensibility.** A game or kit shall add components, records, systems, render passes, vocabulary words and UI widgets without engine edits. | Must | Done except new widget types from data (screens and their buttons are data since #347) and pass replacement (4n) |
 

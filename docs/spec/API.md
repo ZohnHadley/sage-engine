@@ -546,9 +546,9 @@ can. Neither should surface as a crash in play.
 | Change | Effect on callers | Milestone |
 |---|---|---|
 | Per-app services: log, user folder and crash reporter per `SageApp` instead of per process (#49) | Code that reaches process-wide services (static `Log`, `UserPaths`) gets a per-app route; statics stay as the host app's | Stage E |
-| Code mods: one `AssemblyLoadContext` per mod, loaded before registries seal, `[RequiresPlugin]` checked (#396 9-1) | Mods gain the game assembly's contract; `"assemblies"` in `mod.json` stops being refused | Phase 9 |
-| Packed `.sagemod` mods and namespaced mod assets (#397 9-2, #398 9-3) | Asset paths gain a mod namespace | Phase 9 |
-| Keyed list merge, `"$remove"` and `"replace": true` in patches (#399 9-4) | Lists of objects with a key merge by key; per-key conflicts | Phase 9 |
+| Code mods: one `AssemblyLoadContext` per mod, loaded before registries seal, `[RequiresPlugin]` checked (#396 9-1) | Mods gain the game assembly's contract; `"assemblies"` in `mod.json` stops being refused (built: #396) | Phase 9 (done) |
+| Packed `.sagemod` mods and namespaced mod assets (#397 9-2, #398 9-3) | Asset paths gain a mod namespace (built: #397, #398; `ns:path`, `@ns/`) | Phase 9 (done) |
+| Keyed list merge, `"$remove"` and `"replace": true` in patches (#399 9-4) | Lists of objects with a key merge by key; per-key conflicts (built: #399, `[ListKey]` is new stable API) | Phase 9 (done) |
 | First tagged release (#295 R1-3; the Shipped freeze is done, the tag is the owner's push) | Version numbers stop being pre-releases | R1 |
 
 Each experimental area in §1.4 is expected to leave experimental once its first outside consumer has
