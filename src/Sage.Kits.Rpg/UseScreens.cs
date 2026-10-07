@@ -10,8 +10,11 @@ namespace Sage.Kits.Rpg;
 //
 // - **A container**, from content: the `use_screen` part names the screen and makes the thing usable.
 //     "parts": { "inventory": { "items": [ { "item": "bread", "count": 2 } ] }, "use_screen": "rpg:loot" }
-// - **A body**: anything that dies with an inventory becomes usable, and using it opens
-//   rpg_conventions `lootScreen` (the kit's rpg:loot). A dead speaker has nothing to say (DialogueRules),
+// - **A `container`** (the base's part, issue #378): using it opens rpg_conventions `lootScreen` (the
+//   kit's rpg:loot), unless it is locked and the user has no key; what is taken from an owned one is
+//   `Stolen` (Containers.Took, called by the loot screen's moves).
+// - **A body**: anything that dies with an inventory becomes a container (the base's ContainerSystem),
+//   and using it opens rpg_conventions `lootScreen` (the kit's rpg:loot). A dead speaker has nothing to say (DialogueRules),
 //   so using the hermit's body loots it.
 //
 // - **Somebody with something to say** (a `dialogue`, issue #350): using them starts the conversation
@@ -45,28 +48,21 @@ public sealed class UseScreenPart : IPrefabPart
     }
 }
 
-// Gameplay phase, after the Use action: a player's `Used` on something with a screen opens it, and a
-// death leaves a body with an inventory usable.
-[System("rpg.use_screens", Phase.Gameplay, After = new[] { "sage.items.use" })]
+// Gameplay phase, after the Use action and the base's containers (which unlock, refill and make a body a
+// container, issue #378): a player's `Used` on something with a screen opens it; a locked one opens nothing.
+[System("rpg.use_screens", Phase.Gameplay, After = new[] { "sage.items.use", "sage.items.containers" })]
 internal sealed class UseScreenSystem : ISystem
 {
     private readonly EventReader<Used> _used;
-    private readonly EventReader<Died> _died;
 
     public UseScreenSystem(World world)
     {
         _used = world.Events.Reader<Used>(this);
-        _died = world.Events.Reader<Died>(this);
     }
 
     public void Run(in SystemContext ctx)
     {
         var world = ctx.World;
-        if (_died.HasPending)
-            foreach (ref readonly var died in _died.Read())
-                if (world.IsAlive(died.Victim) && world.Has<Inventory>(died.Victim) && !died.Victim.Tags.Has<PlayerControlled>())
-                    died.Victim.AddTag<Interactable>();
-
         world.Resources.TryGet<UiScreenStack>(out var stack);
         world.Resources.TryGet<Conversation>(out var conversation);
         if (stack != null && conversation != null) KeepTogether(stack, conversation);
@@ -114,7 +110,9 @@ internal sealed class UseScreenSystem : ISystem
     {
         var loot = RpgConventions.Of(world.Records()).LootScreen;
         var lootScreen = loot.IsEmpty ? RpgKitModule.LootScreen : loot.Id;
+        if (Containers.IsLocked(world, target)) return default;   // it said so (Containers.Open)
         if (world.TryGet<UseScreen>(target, out var own)) return own.Screen.IsEmpty ? lootScreen : own.Screen;
+        if (world.Has<ItemContainer>(target)) return lootScreen;
         if (!world.Has<Inventory>(target)) return default;
         var dead = world.Conventions().Dead;
         return !dead.IsEmpty && world.Has<GameplayTags>(target) && world.HasTag(target, dead.Id) ? lootScreen : default;

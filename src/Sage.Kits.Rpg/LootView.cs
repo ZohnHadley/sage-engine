@@ -79,7 +79,7 @@ public sealed class LootView : ItemGridView
                         && (bag.Capacity <= 0f || world.WeightOf(to) + weight <= bag.Capacity);
             if (fits && world.Take(from, item, count))
             {
-                if (world.Give(to, item, count)) { taken++; continue; }
+                if (world.Give(to, item, count)) { taken++; Containers.Took(world, to, from, item, count); continue; }
                 world.Give(from, item, count);
             }
             left++;

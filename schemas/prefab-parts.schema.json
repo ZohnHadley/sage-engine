@@ -112,6 +112,14 @@
         }
       ]
     },
+    "container": {
+      "description": "Prefab part 'container' (ContainerPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/container"
+        }
+      ]
+    },
     "dialogue": {
       "description": "Prefab part 'dialogue' (DialoguePart). A bare value is its \"id\".",
       "anyOf": [
@@ -1223,6 +1231,45 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'character' (CharacterPart)."
+    },
+    "container": {
+      "type": "object",
+      "properties": {
+        "locked": {
+          "description": "Starts locked: shut until someone carrying the key uses it. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "key": {
+          "description": "The item that unlocks it. Names a item record. (RecordRef<ItemRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:item"
+            }
+          ]
+        },
+        "respawn": {
+          "description": "Game hours after it was first taken from until it refills; 0 = never. Unit: h. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "owner": {
+          "description": "The name of the entity it belongs to; taking from it is theft. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "faction": {
+          "description": "The faction it belongs to; taking from it is theft, except for its members. Names a faction record. (RecordRef<FactionRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'container' (ContainerPart)."
     },
     "dialogue": {
       "type": "object",

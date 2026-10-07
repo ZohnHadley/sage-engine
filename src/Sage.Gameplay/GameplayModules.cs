@@ -360,6 +360,7 @@ public sealed class ItemsModule : IModule
     {
         world.Resources.Add(new InteractionState());
         world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!));
+        world.AddSystem(new ContainerSystem(world));   // chests and bodies (issue #378)
     }
 }
 
