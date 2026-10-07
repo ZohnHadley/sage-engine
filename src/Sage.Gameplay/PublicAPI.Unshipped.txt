@@ -2,6 +2,33 @@
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.AttributeGained
+Sage.Gameplay.AttributeGained.Amount.get -> float
+Sage.Gameplay.AttributeGained.Amount.init -> void
+Sage.Gameplay.AttributeGained.Attribute.get -> Sage.Core.RecordId
+Sage.Gameplay.AttributeGained.Attribute.init -> void
+Sage.Gameplay.AttributeGained.AttributeGained() -> void
+Sage.Gameplay.AttributeGained.AttributeGained(Sage.Simulation.Entity Entity, Sage.Core.RecordId Attribute, float Amount, Sage.Core.RecordId Rule) -> void
+Sage.Gameplay.AttributeGained.Entity.get -> Sage.Simulation.Entity
+Sage.Gameplay.AttributeGained.Entity.init -> void
+Sage.Gameplay.AttributeGained.Rule.get -> Sage.Core.RecordId
+Sage.Gameplay.AttributeGained.Rule.init -> void
+Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Cast = 3 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Hit = 0 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Hurt = 1 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Kill = 2 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Use = 4 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainRecord
+Sage.Gameplay.AttributeGainRecord.Abilities -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.AbilityRecord!>>!
+Sage.Gameplay.AttributeGainRecord.Amount -> float
+Sage.Gameplay.AttributeGainRecord.Attribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.AttributeGainRecord.AttributeGainRecord() -> void
+Sage.Gameplay.AttributeGainRecord.DamageTypes -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.DamageTypeRecord!>>!
+Sage.Gameplay.AttributeGainRecord.Items -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
+Sage.Gameplay.AttributeGainRecord.On -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainRecord.PerDamage -> float
+Sage.Gameplay.AttributeGainRecord.Wielding -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
 Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!

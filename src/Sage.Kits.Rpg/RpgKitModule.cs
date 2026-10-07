@@ -83,6 +83,7 @@ public sealed class RpgKitModule : IModule
 
     private ActionRegistry? _actions;
     private EquipSlots? _slots;
+    private ProgressionRules? _progression;
 
     // Spells need abilities, the bag needs items; both bring attributes and combat with them. The
     // screens need sage.ui (a kit brings the base plugins it needs, even past game.json's `plugins`).
@@ -111,6 +112,12 @@ public sealed class RpgKitModule : IModule
         slots.Register(OffHand);
         ctx.Engine.Records.AddCheck<RpgItemRecord>(RpgItemRecord.Check);
         ctx.Engine.Records.AddCheck<AreaMapRecord>(AreaMapRecord.Check);
+
+        // Skills and levelling (issue #377): the skill and levelling records over the base's attribute_gain.
+        ctx.Engine.Records.AddCheck<SkillRecord>(SkillRecord.Check);
+        ctx.Engine.Records.AddCheck<LevellingRecord>(LevellingRecord.Check);
+        _progression = new ProgressionRules(ctx.Engine.Records);
+        Skills.RegisterCommands(ctx.Engine);
 
         // Composing spells at the console (F21), the same rules a spellmaker screen calls.
         Spellmaker.RegisterCommands(ctx.Engine);
@@ -159,6 +166,9 @@ public sealed class RpgKitModule : IModule
         world.AddSystem(new UseScreenSystem(world));
         // Walking lifts the map's fog (issue #349).
         world.AddSystem(new MapDiscoverySystem());
+        // Use-XP becomes a skill's rank, and rises a level (issue #377).
+        world.Resources.Add(_progression!);
+        world.AddSystem(new ProgressionSystem(world, _progression!));
         // The kit's screens open with its buttons (the keys are the kit's default maps', issue #354): the
         // spellbook, the spellmaker, the journal and the rest screen. A game that binds one of these actions
         // to a screen of its own after this replaces it.

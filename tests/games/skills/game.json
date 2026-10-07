@@ -1,0 +1,14 @@
+{
+  // Phase 4f's first piece (engine issue #377, REDESIGN §5): skills that rise with use and a character that
+  // levels by them, in data. No C#: a Morrowind-style blade skill that rises as you hit a training dummy with a
+  // sword (an attribute_gain on Hit into its use-XP, the RPG kit's `skill` turning use-XP into rank), and a
+  // Daggerfall-style level that comes from skill use (the kit's `levelling`, fed by the skill's rises), whose
+  // level raises the governing attribute by how often its skills rose. tests/Sage.Tests/Games/SkillsExitTests.cs
+  // swings, quick-saves, boots a fresh app and quick-loads.
+  "name": "Skills",
+  "id": "skills",
+  "plugins": ["sage.gameplay.character", "sage.gameplay.attributes", "sage.gameplay.combat", "sage.gameplay.items"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "yard"
+}
