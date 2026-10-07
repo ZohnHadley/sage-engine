@@ -429,3 +429,9 @@ static Sage.Editing.ViewportTools.Duplicate(Sage.Editing.EditorSelection! select
 static Sage.Editing.ViewportTools.MoveBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 delta) -> void
 static Sage.Editing.ViewportTools.RotateBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Quaternion turn) -> void
 static Sage.Editing.ViewportTools.ScaleBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 factors, System.Numerics.Quaternion axes) -> void
+Sage.Editing.EntityLabelCache
+Sage.Editing.EntityLabelCache.Count.get -> int
+Sage.Editing.EntityLabelCache.EntityLabelCache() -> void
+Sage.Editing.EntityLabelCache.Label(Sage.Simulation.Entity entity) -> string!
+Sage.Editing.EntityLabelCache.Prune(System.Collections.Generic.IReadOnlyCollection<Sage.Simulation.Entity>! live) -> void
+Sage.Editing.LogView.Texts.get -> System.Collections.Generic.IReadOnlyList<string!>!
