@@ -29,6 +29,8 @@ internal sealed class RecordsPanel
     private string _raw = "";       // the open record's text, rebuilt when it changes
     private bool _rawStale = true;
 
+    // Opens the conditions form on a field of the record (issue #370; DevTools sets it).
+    public Action<RecordDocument, string>? EditField { get; set; }
     // The asset browser's thumbnails (#366): with them, a record's asset slots are drawn above its form.
     public Thumbnails? Thumbnails { get; set; }
 
@@ -122,6 +124,7 @@ internal sealed class RecordsPanel
         if (Thumbnails != null) RecordAssetStrip.Draw(record, Thumbnails);   // #366
 
         ImGui.Separator();
+        VocabularyButtons(record, "");
         foreach (var (name, value) in record.Working.ToArray())
             Node(record, RecordDocument.ChildPath("", name), name, value);
         if (!ImGui.IsAnyItemActive()) record.History.EndMerge();
@@ -144,6 +147,7 @@ internal sealed class RecordsPanel
                 if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
                 {
                     Hover(record, path);
+                    VocabularyButtons(record, path);
                     foreach (var (name, child) in obj.ToArray())
                         Node(record, RecordDocument.ChildPath(path, name), name, child);
                     ImGui.TreePop();
@@ -165,6 +169,19 @@ internal sealed class RecordsPanel
                 break;
         }
         ImGui.PopID();
+    }
+
+    // A button per field of the object at `path` that holds conditions, actions or other vocabulary entries,
+    // written or not: the conditions form edits it (issue #370).
+    private void VocabularyButtons(RecordDocument record, string path)
+    {
+        if (EditField == null) return;
+        var fields = VocabularyEditor.FieldsAt(record, path);
+        for (int i = 0; i < fields.Count; i++)
+        {
+            if (i > 0) ImGui.SameLine();
+            if (ImGui.SmallButton($"{fields[i].Name}...##vocab{fields[i].Path}")) EditField(record, fields[i].Path);
+        }
     }
 
     // The tooltip: what the type declares about the field, and which file wrote it.
