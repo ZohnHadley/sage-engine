@@ -11,7 +11,8 @@ using System.Linq;
 //   sage schema <game> [<game> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...]
 //               [--engine-content <dir>] [--client <Sage.Client.dll>]
 //   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
-//   sage mods pack <mod folder> [--out <file.sagemod>]
+//   sage mods pack <mod folder> [--out <file.sagemod>] [--engine-content <dir>]
+//   sage mods build <mod folder> [--engine-content <dir>]
 //   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]
 //   sage cook <game> [--force] [--clean]
 //   sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]
@@ -24,6 +25,9 @@ using System.Linq;
 // `mods` lists the order and the refusals and prints the content report (what each mod added and patched,
 // where mods conflict, which assets are shadowed): it uses the game's own mods too, exits 1 on a refusal
 // or a content error, and a conflict is a warning (phase 4j, 4j-5).
+// A code mod (mod.json names "assemblies", phase 9, issue #396) is loaded and run as the game would load it
+// (its modules' Init and the validation world's OnWorldCreated), so `validate` checks its code too; `mods`
+// flags it "[contains code: not sandboxed]". Nothing is downloaded: a mod is a folder the player installed.
 //
 // `validate` boots the game headlessly and runs every content check (issue #22). `schema` boots each
 // game the same way and writes JSON Schemas for its records, components and parts, with the ids its
@@ -67,7 +71,8 @@ static int Usage()
     Console.Error.WriteLine("usage: sage validate <game folder> [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage schema <game folder> [<game folder> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>] [--client <Sage.Client.dll>]");
     Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
-    Console.Error.WriteLine("       sage mods pack <mod folder> [--out <file.sagemod>]");
+    Console.Error.WriteLine("       sage mods pack <mod folder> [--out <file.sagemod>] [--engine-content <dir>]");
+    Console.Error.WriteLine("       sage mods build <mod folder> [--engine-content <dir>]");
     Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]");
     Console.Error.WriteLine("       sage cook <game folder> [--force] [--clean]");
     Console.Error.WriteLine("       sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]");
@@ -178,6 +183,7 @@ static int Validate(string[] args)
 static int Mods(string[] args)
 {
     if (args.Length > 0 && args[0] == "pack") return ModsPack(args[1..]);
+    if (args.Length > 0 && args[0] == "build") return ModsBuild(args[1..]);
     if (Options.Parse(args, allowOut: false) is not { Games.Count: 1 } options) return Usage();
     string game = options.Games[0];
     var report = Headless(() => ContentValidation.Run(options.For(game, gameMods: true)));
@@ -191,27 +197,29 @@ static int Mods(string[] args)
         Console.WriteLine($"WARN  {warning}");
     foreach (string error in report.Errors) Console.WriteLine($"ERROR {error}");
     int refused = report.Mods.Refused.Count;
-    Console.WriteLine($"{Path.GetFullPath(game)}: {report.Mods.Active.Count} mod(s) active, {refused} refused, {report.Conflicts} conflict(s), " +
+    // Code mods (phase 9, issue #396) are flagged in the list above; the count says it once more.
+    int code = report.Mods.Active.Count(m => m.AsksForCode);
+    Console.WriteLine($"{Path.GetFullPath(game)}: {report.Mods.Active.Count} mod(s) active{(code > 0 ? $" ({code} with code, not sandboxed)" : "")}, {refused} refused, {report.Conflicts} conflict(s), " +
                       $"{report.Errors.Count} error(s)");
     return refused == 0 && report.Ok ? 0 : 1;
 }
 
-// `sage mods pack <mod folder> [--out <file.sagemod>]` (issue #397): the folder into one `.sagemod`, checked as the
-// game will check it. Exit 1 when the mod or a file in it can't be packed, saying why.
+// `sage mods pack <mod folder> [--out <file.sagemod>] [--engine-content <dir>]` (issue #397): the folder into one
+// `.sagemod`, checked as the game will check it. Every `shaders/**.fx` is compiled into it first (issue #400), with
+// the engine's headers to include, so a packed mod never needs mgfxc where it is played; where mgfxc cannot run,
+// an up-to-date `.mgfxo` beside its source is packed as it is. Exit 1 when the mod, a file in it or a shader can't
+// be packed, saying why.
 static int ModsPack(string[] args)
 {
-    string? folder = null, output = null;
-    for (int i = 0; i < args.Length; i++)
-    {
-        if (args[i] == "--out" && i + 1 < args.Length) output = args[++i];
-        else if (args[i].StartsWith("--", StringComparison.Ordinal) || folder != null) return Usage();
-        else folder = args[i];
-    }
-    if (folder == null) return Usage();
+    if (ModFolderArgs(args, allowOut: true) is not { } parsed) return Usage();
+    var (folder, output, engine) = parsed;
     try
     {
-        var (mod, files, written) = Sage.Core.ModPackage.Pack(folder, output);
-        Console.WriteLine($"{written}: mod '{mod.Id}' {mod.Version}, {files} file(s)");
+        var (mod, files, written, compiled, upToDate, why) =
+            ShaderBuild.PackMod(folder, output, MgfxcCompiler.Instance, ShaderBuild.EngineHeaders(engine));
+        string shaders = compiled > 0 ? $", {compiled} shader(s) compiled"
+            : upToDate > 0 ? $", {upToDate} shader(s) packed as already compiled ({why})" : "";
+        Console.WriteLine($"{written}: mod '{mod.Id}' {mod.Version}, {files} file(s){shaders}");
         return 0;
     }
     catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -219,6 +227,46 @@ static int ModsPack(string[] args)
         Console.WriteLine($"ERROR {ex.Message}");
         return 1;
     }
+}
+
+// `sage mods build <mod folder> [--engine-content <dir>]` (issue #400, REDESIGN's `build-mod`): compiles the mod's
+// `shaders/**.fx` whose `.mgfxo` beside them is missing or out of date, as a dev build does when it loads the mod.
+// Exit 1 when one does not compile (mgfxc's messages printed) or mgfxc can't run here.
+static int ModsBuild(string[] args)
+{
+    if (ModFolderArgs(args, allowOut: false) is not { } parsed) return Usage();
+    var (folder, _, engine) = parsed;
+    if (!Directory.Exists(folder)) { Console.WriteLine($"ERROR no mod folder {Path.GetFullPath(folder)}"); return 1; }
+    try
+    {
+        var results = ShaderBuild.BuildMod(folder, MgfxcCompiler.Instance, ShaderBuild.EngineHeaders(engine));
+        foreach (var (effect, result) in results)
+            Console.WriteLine(result.Ok ? $"compiled {effect}" : $"ERROR {effect} did not compile:\n{result.Output}");
+        int failed = results.Count(r => !r.Result.Ok);
+        Console.WriteLine($"{Path.GetFullPath(folder)}: {results.Count - failed} shader(s) compiled, {failed} failed" +
+                          (results.Count == 0 ? " (all up to date)" : ""));
+        return failed == 0 ? 0 : 1;
+    }
+    catch (InvalidOperationException ex)
+    {
+        Console.WriteLine($"ERROR {ex.Message}");
+        return 1;
+    }
+}
+
+// `<mod folder> [--out <file>] [--engine-content <dir>]`; null on a usage mistake. The engine content defaults to
+// the one `validate` finds.
+static (string Folder, string? Output, string? Engine)? ModFolderArgs(string[] args, bool allowOut)
+{
+    string? folder = null, output = null, engine = null;
+    for (int i = 0; i < args.Length; i++)
+    {
+        if (allowOut && args[i] == "--out" && i + 1 < args.Length) output = args[++i];
+        else if (args[i] == "--engine-content" && i + 1 < args.Length) engine = args[++i];
+        else if (args[i].StartsWith("--", StringComparison.Ordinal) || folder != null) return null;
+        else folder = args[i];
+    }
+    return folder == null ? null : (folder, output, engine ?? Options.FindEngineContent());
 }
 
 // Boots each game, collects what it declares and loads into one catalog, and writes the schemas. The
@@ -479,7 +527,7 @@ sealed class Options
     }
 
     // A host's Content/ beside this program, or the repository's engine_content/ above it or the current folder.
-    private static string? FindEngineContent()
+    internal static string? FindEngineContent()
     {
         string beside = Path.Combine(AppContext.BaseDirectory, "Content");
         if (Directory.Exists(beside)) return beside;

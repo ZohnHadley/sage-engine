@@ -1,0 +1,23 @@
+{
+  // A code mod for tests/games/mods (phase 9, engine issue #396; docs/MODDING.md): C# in a mod. Its assembly is
+  // built by the solution from SmithsGuild.csproj beside this file (Sage.Sdk, the engine compile-time only) to
+  // bin/<config>/SmithsGuild.dll, and loaded by the engine into a collectible load context of the mod's own,
+  // before any module's Init and before the first world. Code is trusted, not sandboxed: wherever mods are
+  // listed it is flagged "contains code".
+  //   - its module, SmithsGuildModule, is the plugin `smiths_guild`, after the game's and the kit's;
+  //   - it declares a record type of its own (`guild_order`) and a saved resource (`guild_ledger`, at version 2
+  //     with an upgrader from 1), and registers the console command `guild_commission`;
+  //   - its data renames the village trader, as better_blades does: the conflict `mod_conflicts` reports.
+  // Not in the mods game's own mods/ folder: a test or `sage validate tests/games/mods --game-mods --mods
+  // tests/games/code-mod` names it.
+  "id": "smiths_guild",
+  "name": "The Smiths' Guild",
+  "version": "1.0.0",
+  "author": "Sage",
+  "description": "The guild takes over the village forge, and keeps a ledger of commissions.",
+  "game": "village",
+  "gameVersion": "^1.0",
+  "sage": ">=0.1",
+  "kind": "code",
+  "assemblies": ["bin/{config}/SmithsGuild.dll"]
+}

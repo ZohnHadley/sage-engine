@@ -124,13 +124,13 @@ public class ModBootTests
         var reasons = app.Engine.Mods.Refused.ToDictionary(r => r.Id, r => r.Reason);
         Assert.Equal(new[] { "broken", "coder", "elsewhere", "needy", "rpg" }, reasons.Keys.OrderBy(k => k, StringComparer.Ordinal));
         Assert.Contains("can't be read", reasons["broken"]);
-        Assert.Contains("code mods are phase 9", reasons["coder"]);
+        Assert.Contains("names no \"assemblies\"", reasons["coder"]);
         Assert.Contains("another_game", reasons["elsewhere"]);
         Assert.Contains("'absent'", reasons["needy"]);
         Assert.Contains("a kit's content", reasons["rpg"]);
         Assert.Equal(new[] { "mods/good" }, app.Vfs.Mounts.Select(m => m.Name).Where(n => n.StartsWith("mods/", StringComparison.Ordinal)));
         Assert.Contains(log.Entries, e => e.Category == LogCat.Mods && e.Message.StartsWith("Mods: 1 active (good 1.0.0), 5 refused", StringComparison.Ordinal));
-        Assert.Contains(log.Entries, e => e.Level == LogLevel.Warn && e.Message.StartsWith("Mod 'coder' is not loaded: code mods are phase 9", StringComparison.Ordinal));
+        Assert.Contains(log.Entries, e => e.Level == LogLevel.Warn && e.Message.StartsWith("Mod 'coder' is not loaded: it says \"kind\": \"code\" and names no \"assemblies\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public class ModBootTests
         string text = File.ReadAllText(report);
         Assert.Contains("Mods: 2 active (kept 1.0.0, rival 1.0.0), 1 refused", text);
         Assert.Contains("  1. kept 1.0.0", text);
-        Assert.Contains("coder: code mods are phase 9", text);
+        Assert.Contains("coder: it says \"kind\": \"code\" and names no \"assemblies\"", text);
         // 4j-2's content report: the two mods' clash over the rock's name, and each mod's override of the game.
         Assert.Contains("prefab modtest:rock name: kept, rival; rival won", text);
         Assert.Contains("patched prefab modtest:rock (overrides modtest", text);

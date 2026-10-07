@@ -41,6 +41,10 @@ public sealed class ModsView : IViewModel
         public string Author { get; internal set; } = "";
         public string Description { get; internal set; } = "";
 
+        // A code mod (phase 9, issue #396): its mod.json names assemblies, which run with the game's full
+        // trust and are not sandboxed. A layout shows a warning for it.
+        public bool ContainsCode { get; internal set; }
+
         // "1." for the active, in load order; empty otherwise.
         public string Place { get; internal set; } = "";
 
@@ -187,7 +191,7 @@ public sealed class ModsView : IViewModel
         foreach (var refused in next.Refused)
         {
             var row = Row();
-            row.Id = refused.Id; row.Name = refused.Id; row.Version = ""; row.Author = ""; row.Description = "";
+            row.Id = refused.Id; row.Name = refused.Id; row.Version = ""; row.Author = ""; row.Description = ""; row.ContainsCode = false;
             var manifest = mods.Found.FirstOrDefault(m => m.Id == refused.Id);
             if (manifest != null) Fill(row, manifest);
             row.Active = false; row.Refused = true;
@@ -204,6 +208,7 @@ public sealed class ModsView : IViewModel
         row.Version = mod.Version;
         row.Author = mod.Author;
         row.Description = mod.Description;
+        row.ContainsCode = mod.AsksForCode;
         return row;
     }
 
