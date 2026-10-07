@@ -15,7 +15,8 @@ namespace Sage.Simulation;
 // mods screen), and nothing changes until then — the VFS has no unmount, and records, the ECS schema and
 // saves assume one fixed set of mounts (decision 3).
 //
-// Where mods are found (decision 2): `<game>/<modsDirectory>/*/mod.json` and `user://mods/*/mod.json`; the
+// Where mods are found (decision 2): `<game>/<modsDirectory>/*/mod.json` and `user://mods/*/mod.json`, and a
+// `.sagemod` package beside those folders (issue #397, mounted as a ZipMount, never hot reloaded); the
 // same id in both is an error, and the user's copy is used. SageAppOptions.Mods names the folders instead
 // (the host's -mods and -nomods, a test, a tool). A broken mod is refused with a reason; the game boots.
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (phase 4j): may change before 1.0
@@ -198,15 +199,17 @@ public sealed class ModManager
         return new ModLoadResult(result.Active, _unresolved.Concat(result.Refused).ToList(), result.Disabled, result.Notes);
     }
 
-    // Every folder under `root` with a mod.json. A folder without one is not a mod, and is said so.
+    // Every folder under `root` with a mod.json, and every `.sagemod` beside them (issue #397), by name. A
+    // folder without a mod.json is not a mod, and is said so.
     private static void Scan(string root, List<string> searched, List<ModManifest> found, List<RefusedMod> unresolved)
     {
         root = Path.GetFullPath(root);
         if (!Directory.Exists(root)) return;
         searched.Add(root);
-        foreach (string folder in Directory.GetDirectories(root).OrderBy(d => d, StringComparer.Ordinal))
+        var packages = Directory.GetFiles(root).Where(ModManifest.IsPackagePath);
+        foreach (string folder in Directory.GetDirectories(root).Concat(packages).OrderBy(d => d, StringComparer.Ordinal))
         {
-            if (!File.Exists(Path.Combine(folder, "mod.json")))
+            if (!ModManifest.IsPackagePath(folder) && !File.Exists(Path.Combine(folder, "mod.json")))
             {
                 Log.Warn(LogCat.Mods, $"{folder} has no mod.json, so it is not a mod (skipped)");
                 continue;
@@ -225,16 +228,34 @@ public sealed class ModManager
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or FormatException)
         {
             string full = Path.GetFullPath(folder);
-            unresolved.Add(new RefusedMod(Path.GetFileName(Path.TrimEndingDirectorySeparator(full)), full,
-                $"its mod.json can't be read: {ex.Message}"));
+            bool package = ModManifest.IsPackagePath(full);
+            string name = Path.GetFileName(Path.TrimEndingDirectorySeparator(full));
+            // A package that breaks a rule of ZipMount's (zip-slip, a limit) says which, by its message.
+            unresolved.Add(new RefusedMod(package ? Path.GetFileNameWithoutExtension(name) : name, full,
+                package ? $"its package can't be used: {ex.Message}" : $"its mod.json can't be read: {ex.Message}"));
         }
     }
 
-    // Each active mod's folder, after everything else, in load order: the last one wins (05 §3.1).
+    // Each active mod's folder or package, after everything else, in load order: the last one wins (05 §3.1).
+    // A package was checked when it was found; one that has changed since and fails now is skipped, an error.
     internal void Mount(VirtualFileSystem vfs)
     {
         foreach (var mod in Loaded.Active)
-            vfs.Mount(new FolderMount(MountPrefix + mod.Id, mod.Directory, mod.Id));
+        {
+            if (!mod.IsPackage)
+            {
+                vfs.Mount(new FolderMount(MountPrefix + mod.Id, mod.Directory, mod.Id));
+                continue;
+            }
+            try
+            {
+                vfs.Mount(new ZipMount(MountPrefix + mod.Id, mod.Directory, mod.Id));
+            }
+            catch (InvalidDataException ex)
+            {
+                Log.Error(LogCat.Mods, $"Mod '{mod.Id}' is not mounted: {ex.Message}");
+            }
+        }
     }
 
     // The Mods log at boot: one summary line, then a line per refusal and note.
@@ -284,7 +305,7 @@ public sealed class ModManager
         yield return $"Active, in load order ({Loaded.Active.Count}):";
         int n = 0;
         foreach (var mod in Loaded.Active)
-            yield return $"  {++n}. {mod.Id} {mod.Version}{(mod.Name != mod.Id ? $" ({mod.Name})" : "")}  {mod.Directory}";
+            yield return $"  {++n}. {mod.Id} {mod.Version}{(mod.Name != mod.Id ? $" ({mod.Name})" : "")}  {mod.Directory}{(mod.IsPackage ? " (packed)" : "")}";
         if (Loaded.Disabled.Count > 0)
         {
             yield return $"Switched off ({Loaded.Disabled.Count}):";

@@ -11,6 +11,7 @@ using System.Linq;
 //   sage schema <game> [<game> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...]
 //               [--engine-content <dir>] [--client <Sage.Client.dll>]
 //   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
+//   sage mods pack <mod folder> [--out <file.sagemod>]
 //   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]
 //   sage cook <game> [--force] [--clean]
 //   sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]
@@ -66,6 +67,7 @@ static int Usage()
     Console.Error.WriteLine("usage: sage validate <game folder> [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage schema <game folder> [<game folder> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>] [--client <Sage.Client.dll>]");
     Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
+    Console.Error.WriteLine("       sage mods pack <mod folder> [--out <file.sagemod>]");
     Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]");
     Console.Error.WriteLine("       sage cook <game folder> [--force] [--clean]");
     Console.Error.WriteLine("       sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]");
@@ -175,6 +177,7 @@ static int Validate(string[] args)
 // error is exit code 1.
 static int Mods(string[] args)
 {
+    if (args.Length > 0 && args[0] == "pack") return ModsPack(args[1..]);
     if (Options.Parse(args, allowOut: false) is not { Games.Count: 1 } options) return Usage();
     string game = options.Games[0];
     var report = Headless(() => ContentValidation.Run(options.For(game, gameMods: true)));
@@ -191,6 +194,31 @@ static int Mods(string[] args)
     Console.WriteLine($"{Path.GetFullPath(game)}: {report.Mods.Active.Count} mod(s) active, {refused} refused, {report.Conflicts} conflict(s), " +
                       $"{report.Errors.Count} error(s)");
     return refused == 0 && report.Ok ? 0 : 1;
+}
+
+// `sage mods pack <mod folder> [--out <file.sagemod>]` (issue #397): the folder into one `.sagemod`, checked as the
+// game will check it. Exit 1 when the mod or a file in it can't be packed, saying why.
+static int ModsPack(string[] args)
+{
+    string? folder = null, output = null;
+    for (int i = 0; i < args.Length; i++)
+    {
+        if (args[i] == "--out" && i + 1 < args.Length) output = args[++i];
+        else if (args[i].StartsWith("--", StringComparison.Ordinal) || folder != null) return Usage();
+        else folder = args[i];
+    }
+    if (folder == null) return Usage();
+    try
+    {
+        var (mod, files, written) = Sage.Core.ModPackage.Pack(folder, output);
+        Console.WriteLine($"{written}: mod '{mod.Id}' {mod.Version}, {files} file(s)");
+        return 0;
+    }
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+    {
+        Console.WriteLine($"ERROR {ex.Message}");
+        return 1;
+    }
 }
 
 // Boots each game, collects what it declares and loads into one catalog, and writes the schemas. The

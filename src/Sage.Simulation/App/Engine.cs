@@ -387,5 +387,8 @@ public sealed class Engine : IDisposable
         for (int i = _worlds.Count - 1; i >= 0; i--)
             _worlds[i].Dispose();
         _worlds.Clear();
+        // A zip mount holds its archive open (issue #397).
+        foreach (var mount in Vfs.Mounts)
+            (mount as IDisposable)?.Dispose();
     }
 }
