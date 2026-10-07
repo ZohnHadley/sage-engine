@@ -196,13 +196,22 @@ internal static class ContentValues
 
 // An asset a record names exists in some mount (issue #22). A compiled shader counts as there when
 // its source is: the build turns shaders/lit.fx into shaders/lit.mgfxo, and content names the output.
+// Only a source in a folder counts (issue #400): a dev build compiles a folder's `.fx` when it loads, but
+// nothing compiles inside a zip or a plugin's embedded content, so a packed mod ships its `.mgfxo`.
 internal static class AssetChecks
 {
     public static bool Exists(VirtualFileSystem vfs, VirtualPath path)
     {
         if (vfs.Exists(path)) return true;
-        return IsCompiledShader(path) && vfs.Exists(VirtualPath.Parse(path.Value[..^".mgfxo".Length] + ".fx"));
+        return IsCompiledShader(path) && vfs.Which(SourceOf(path)) is FolderMount;
     }
+
+    // The same, inside one mount.
+    public static bool ExistsIn(IMount mount, VirtualPath path) =>
+        mount.Exists(path) || (IsCompiledShader(path) && mount is FolderMount && mount.Exists(SourceOf(path)));
+
+    // shaders/lit.mgfxo's source, shaders/lit.fx.
+    public static VirtualPath SourceOf(VirtualPath compiled) => VirtualPath.Parse(compiled.Value[..^".mgfxo".Length] + ".fx");
 
     public static bool IsCompiledShader(VirtualPath path) => path.Value.EndsWith(".mgfxo", StringComparison.OrdinalIgnoreCase);
 }

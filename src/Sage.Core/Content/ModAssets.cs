@@ -9,7 +9,8 @@ namespace Sage.Core;
 // no mount that is not a mod has. Such a path is written `mod_id:path` when the records load, so it finds the
 // mod's file whichever mod loads later with a file at the same path, and two mods' `textures/falchion.png`
 // are two assets, not a conflict. A path the game, the engine or a kit also has stays bare: the mod's file
-// replaces theirs for everyone (an override, as before), and two mods doing that are a conflict.
+// replaces theirs for everyone (an override, as before), and two mods doing that are a conflict. A folder
+// mod's `.fx` ships its `.mgfxo` (AssetChecks), which a dev build compiles once the records are in (#400).
 internal sealed class ModAssets
 {
     private readonly VirtualFileSystem _vfs;
@@ -34,8 +35,8 @@ internal sealed class ModAssets
         {
             var path = VirtualPath.Parse(text);
             var mine = VirtualPath.InNamespace(mount.RecordNamespace, path);
-            bool ships = _vfs.Mounts.Any(m => string.Equals(m.RecordNamespace, mount.RecordNamespace, StringComparison.OrdinalIgnoreCase) && m.Exists(mine));
-            if (ships && !_vfs.Mounts.Any(m => !ContentReport.IsModMount(m) && m.Exists(path))) own = mine.Value;
+            bool ships = _vfs.Mounts.Any(m => string.Equals(m.RecordNamespace, mount.RecordNamespace, StringComparison.OrdinalIgnoreCase) && AssetChecks.ExistsIn(m, mine));
+            if (ships && !_vfs.Mounts.Any(m => !ContentReport.IsModMount(m) && AssetChecks.ExistsIn(m, path))) own = mine.Value;
         }
         catch (ArgumentException) { }   // not a path: the field's converter says so
         _seen[(mount, text)] = own;
