@@ -53,6 +53,9 @@ public sealed class ConsoleCommand
 // Console line syntax, as in Quake/Source:
 //   statements separated by ';'   tokens separated by whitespace   "double quotes" group
 //   // starts a comment (outside quotes)
+//   'single quotes' at the start of a token take everything up to the closing quote raw, quotes and
+//   backslashes included, so a JSON value is one argument: ed_set door loot '{"id":"x"}'. A \' inside
+//   them is a quote; a lone ' that never closes stays an ordinary character.
 internal static class CommandLine
 {
     public static List<string> SplitStatements(string text)
@@ -63,6 +66,12 @@ internal static class CommandLine
         for (int i = 0; i < text.Length; i++)
         {
             char c = text[i];
+            if (!inQuotes && c == '\'' && AtTokenStart(text, i) && RawEnd(text, i) is int end)
+            {
+                current.Append(text, i, end - i + 1);
+                i = end;
+                continue;
+            }
             if (c == '"') inQuotes = !inQuotes;
             if (!inQuotes && c == '/' && i + 1 < text.Length && text[i + 1] == '/')
             {
@@ -93,8 +102,20 @@ internal static class CommandLine
         var tokens = new List<string>();
         var current = new StringBuilder();
         bool inQuotes = false, hasToken = false;
-        foreach (char c in statement)
+        for (int i = 0; i < statement.Length; i++)
         {
+            char c = statement[i];
+            if (!inQuotes && c == '\'' && !hasToken && RawEnd(statement, i) is int end)
+            {
+                for (int j = i + 1; j < end; j++)
+                {
+                    if (statement[j] == '\\' && statement[j + 1] == '\'') j++;
+                    current.Append(statement[j]);
+                }
+                hasToken = true;
+                i = end;
+                continue;
+            }
             if (c == '"')
             {
                 inQuotes = !inQuotes;
@@ -115,8 +136,21 @@ internal static class CommandLine
         return tokens;
     }
 
+    private static bool AtTokenStart(string text, int i) => i == 0 || char.IsWhiteSpace(text[i - 1]);
+
+    // The index of the quote closing the raw argument opened at `open`, or null when it never closes.
+    private static int? RawEnd(string text, int open)
+    {
+        for (int i = open + 1; i < text.Length; i++)
+        {
+            if (text[i] == '\\' && i + 1 < text.Length && text[i + 1] == '\'') i++;
+            else if (text[i] == '\'') return i;
+        }
+        return null;
+    }
+
     public static string Quote(string value) =>
-        value.Length == 0 || value.IndexOfAny(new[] { ' ', '\t', ';', '/' }) >= 0 ? $"\"{value}\"" : value;
+        value.Length == 0 || value[0] == '\'' || value.IndexOfAny(new[] { ' ', '\t', ';', '/' }) >= 0 ? $"\"{value}\"" : value;
 }
 
 // Launch arguments (docs/design/01 §5.1 step 1):
