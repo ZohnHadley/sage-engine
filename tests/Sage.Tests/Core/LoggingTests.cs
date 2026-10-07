@@ -17,9 +17,9 @@ public class LoggingTests
     public void DisabledLevel_FormatsNothing_EnabledLevel_Writes()
     {
         var cat = new LogCat("TestGate" + Guid.NewGuid().ToString("N"));
+        using var sink = new CaptureSink();
         cat.MinLevel = LogLevel.Warn;
         var probe = new FormatProbe();
-        using var sink = new CaptureSink();
 
         Log.Info(cat, $"hidden {probe}");
         Assert.Equal(0, probe.Count);
@@ -34,8 +34,9 @@ public class LoggingTests
     public void TraceAndDebug_ExistInDevBuilds()
     {
         Assert.True(BuildInfo.IsDevBuild, "tests are expected to run in a dev build (Debug/Development)");
-        var cat = new LogCat("TestDev" + Guid.NewGuid().ToString("N")) { MinLevel = LogLevel.Trace };
+        var cat = new LogCat("TestDev" + Guid.NewGuid().ToString("N"));
         using var sink = new CaptureSink();
+        cat.MinLevel = LogLevel.Trace;
 
         Log.Trace(cat, "a trace");
         Log.Debug(cat, $"a debug {42}");
@@ -50,7 +51,7 @@ public class LoggingTests
         var cat = new LogCat("TestFields" + Guid.NewGuid().ToString("N"));
         using var sink = new CaptureSink();
         Log.SetFrame(1234);
-        string msg = TestEnv.Unique("missing texture");
+        const string msg = "missing texture";
 
         Log.Warn(cat, msg, new LogField("path", "a.png"), new LogField("mount", "game"));
 
@@ -111,16 +112,13 @@ public class LoggingTests
     {
         var cat = new LogCat("TestDup" + Guid.NewGuid().ToString("N"));
         using var sink = new CaptureSink();
-        string msg = TestEnv.Unique("same thing");
+        const string msg = "same thing";   // the test's own log collapses only its own lines (#49)
 
         for (int i = 0; i < 5; i++) Log.Warn(cat, msg);
-        Log.Warn(cat, TestEnv.Unique("different"));
+        Log.Warn(cat, "different");
 
         var mine = sink.Entries.Where(e => e.Category == cat).Select(e => e.Message).ToList();
-        Assert.Equal(msg, mine[0]);
-        Assert.Equal("(previous message repeated 4 more times)", mine[1]);
-        Assert.StartsWith("different", mine[2]);
-        Assert.Equal(3, mine.Count);
+        Assert.Equal(new[] { msg, "(previous message repeated 4 more times)", "different" }, mine);
     }
 
     [Fact]

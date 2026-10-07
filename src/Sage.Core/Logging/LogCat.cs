@@ -14,9 +14,10 @@ public enum LogLevel { Trace, Debug, Info, Warn, Error, Fatal }
 public sealed class LogCat
 {
     // Declared before the category fields below: static initializers run in textual order.
+    // The registry of names is the process's (a category is a name, the same in every app); the levels
+    // are each app's (Logger, issue #49).
     private static readonly object RegistryLock = new();
     private static readonly List<LogCat> Registry = new();
-    private static LogLevel _defaultLevel = LogLevel.Info;
 
     public static readonly LogCat Core = new("Core");
     public static readonly LogCat Host = new("Host");
@@ -42,10 +43,10 @@ public sealed class LogCat
     public static readonly LogCat Mods = new("Mods");
     public static readonly LogCat Console = new("Console");   // console echo and command output
 
-    private volatile int _minLevel;
-    private bool _explicit;
-
     public string Name { get; }
+
+    // Where this category's level sits in each Logger's table.
+    internal int Index { get; }
 
     // Games and mods define their own categories the same way:
     //   public static readonly LogCat Quests = new("Quests");
@@ -54,43 +55,33 @@ public sealed class LogCat
         Name = name;
         lock (RegistryLock)
         {
-            _minLevel = (int)_defaultLevel;
+            Index = Registry.Count;
             Registry.Add(this);
         }
     }
 
+    // The level, the override flag and the default below are the current app's
+    // (AppEnvironment.Current.Logger): `log_level` in one app leaves another's alone.
     public LogLevel MinLevel
     {
-        get => (LogLevel)_minLevel;
-        set { lock (RegistryLock) { _minLevel = (int)value; _explicit = true; } }
+        get => Logger.Current.GetLevel(this);
+        set => Logger.Current.SetLevel(this, value);
     }
 
     // True when MinLevel was set explicitly (log_level) rather than following the default.
-    public bool IsOverridden { get { lock (RegistryLock) return _explicit; } }
+    public bool IsOverridden => Logger.Current.IsOverridden(this);
 
-    public bool IsEnabled(LogLevel level) => (int)level >= _minLevel;
+    public bool IsEnabled(LogLevel level) => Logger.Current.IsEnabled(this, level);
 
     // Makes this category follow the default level again.
-    public void ResetToDefault()
-    {
-        lock (RegistryLock) { _explicit = false; _minLevel = (int)_defaultLevel; }
-    }
+    public void ResetToDefault() => Logger.Current.ResetLevel(this);
 
     public override string ToString() => Name;
 
     public static LogLevel DefaultLevel
     {
-        get { lock (RegistryLock) return _defaultLevel; }
-        set
-        {
-            lock (RegistryLock)
-            {
-                _defaultLevel = value;
-                foreach (var cat in Registry)
-                    if (!cat._explicit)
-                        cat._minLevel = (int)value;
-            }
-        }
+        get => Logger.Current.DefaultLevel;
+        set => Logger.Current.DefaultLevel = value;
     }
 
     public static IReadOnlyList<LogCat> All

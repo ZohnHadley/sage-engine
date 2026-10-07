@@ -4,8 +4,9 @@ using System.IO;
 
 namespace Sage.Testing;
 
-// UserPaths and the log are process-wide, so tests share one temporary user folder and capture log
-// output with a sink (CaptureSink).
+// Tests share one temporary user folder, the process environment's (each app's folder is its
+// environment's, issue #49, and an app a test makes has the process's unless it says otherwise), and
+// capture log output with a sink (CaptureSink).
 public static class TestEnv
 {
     private static readonly object Lock = new();
@@ -22,7 +23,7 @@ public static class TestEnv
                 if (_root == null)
                 {
                     _root = Path.Combine(Path.GetTempPath(), "sage-tests-" + Guid.NewGuid().ToString("N"));
-                    UserPaths.Initialize("tests", _root);
+                    AppEnvironment.Process.SetUserFolder("tests", _root);
                 }
                 return _root;
             }
@@ -36,9 +37,6 @@ public static class TestEnv
         Directory.CreateDirectory(dir);
         return dir;
     }
-
-    // Messages must be unique per test: the log collapses consecutive identical messages globally.
-    public static string Unique(string text) => $"{text} [{Guid.NewGuid():N}]";
 
     // The nearest folder above the test assembly that holds `marker` (a solution file, say): how a test
     // finds its repository's games and engine content without depending on where it was run from.

@@ -217,7 +217,7 @@ public class SkinnedExtractTests
     public void MoreJointsThanADrawTakes_AreCutToMaxBones_WithAWarning()
     {
         using var capture = new CaptureSink();
-        string name = TestEnv.Unique("too_many_bones.glb");   // the warning is once per name per process
+        string name = "too_many_bones.glb";   // the warning is once per name per log: this test's own (#49)
         var rest = Chain(SkinMath.MaxBones + 6, 0f);
         var views = Views.Of(true);
         views.Bones = new Matrix4x4[128];
