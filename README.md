@@ -64,7 +64,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Dialogue and quests | Conversations as records — nodes, options gated on what you carry, what they think of you and what you are on — plus quests whose stages advance when their objectives are met, and a journal that counts them |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; TrueType fonts with wrap, form widgets, focus scopes and confirm prompts, non-Latin scripts, UI scale and subtitles; the kit's title, pause, save, load and options screens, its inventory grid with drag and drop, equipment, loot and shop reachable from play, topics, a journal and a map under fog, and the HUD — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices; written in the background, optionally compressed, with a thumbnail and a title |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2374 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2448 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: code mods and multiplayer. The level editor (phases 10a and 10b)
 is a mode of the dev host, with brushes, terrain tools and an asset browser ([`docs/EDITOR.md`](docs/EDITOR.md)),
