@@ -110,7 +110,9 @@
       "melee": { "attack": "claws" },
       "effects": ["tough_hide"],
       // What its body gives up (issue #344): Use on a dead watcher opens the RPG kit's loot screen.
-      "inventory": { "items": [ { "item": "pelt" } ] }
+      "inventory": { "items": [ { "item": "pelt" } ] },
+      // And what else it was carrying, rolled from the world's seed as it dies (issue #379).
+      "loot": "watcher_loot"
     }
   },
   {
@@ -419,6 +421,10 @@
   { "type": "item", "id": "pistol_rounds", "label": "pistol rounds", "sound": "pickup", "weight": 0.01, "maxStack": 100, "value": 1 },
   { "type": "item", "id": "bolt", "label": "bolts", "sound": "pickup", "weight": 0.05, "maxStack": 50, "value": 1 },
   { "type": "item", "id": "pelt", "label": "watcher pelt", "sound": "pickup", "weight": 1.5, "maxStack": 10, "value": 8 },
+  // What a dead watcher may have been carrying (issue #379): one time in two nothing, else a few bolts.
+  { "type": "loot_table", "id": "watcher_loot", "rolls": 1,
+    "entries": [ { "weight": 2 },
+                 { "item": "bolt", "weight": 2, "min": 2, "max": 6 } ] },
 
   // Their colours, in hand (viewmodel.json) and on the ground.
   { "type": "material", "id": "gunmetal", "base": "sage:lit_default", "params": { "AlbedoColor": [0.22, 0.23, 0.25, 1] } },

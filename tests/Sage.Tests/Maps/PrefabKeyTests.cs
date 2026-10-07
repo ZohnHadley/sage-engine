@@ -49,7 +49,7 @@ public class PrefabKeyTests
         Assert.True(watcher.Success, "the watcher has no keys");
         var sections = watcher.Groups["keys"].Value.Split('\n', System.StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.Trim().Split('.')[0]).Distinct().ToList();
-        Assert.Equal(new[] { "sprite", "character", "faction", "melee", "inventory", "ai_state", "map_marker" }, sections);   // map_marker: on the map (#99); inventory: its body is looted (#344)
+        Assert.Equal(new[] { "sprite", "character", "faction", "melee", "inventory", "loot", "ai_state", "map_marker" }, sections);   // map_marker: on the map (#99); inventory: its body is looted (#344); loot: its drop (#379)
 
         // Outputs come from what the plugins declare, with what each means.
         Assert.Matches(@"//   OnUse +Something used this entity", fgd);

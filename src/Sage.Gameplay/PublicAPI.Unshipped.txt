@@ -93,3 +93,32 @@ static Sage.Gameplay.Containers.Took(Sage.Simulation.World! world, Sage.Simulati
 static Sage.Gameplay.Quests.IsTracked(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.Track(Sage.Simulation.World! world, Sage.Core.RecordId quest, bool tracked = true) -> bool
 virtual Sage.Gameplay.QuestObjective.TryGetPlace(out System.Numerics.Vector3 at) -> bool
+Sage.Gameplay.Loot
+Sage.Gameplay.Loot.Loot() -> void
+Sage.Gameplay.Loot.Rolled -> bool
+Sage.Gameplay.Loot.Table -> Sage.Core.RecordId
+Sage.Gameplay.LootEntry
+Sage.Gameplay.LootEntry.Always -> bool
+Sage.Gameplay.LootEntry.Item -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
+Sage.Gameplay.LootEntry.LootEntry() -> void
+Sage.Gameplay.LootEntry.Max -> int
+Sage.Gameplay.LootEntry.Min -> int
+Sage.Gameplay.LootEntry.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.LootEntry.Table -> Sage.Core.RecordRef<Sage.Gameplay.LootTableRecord!>
+Sage.Gameplay.LootEntry.Weight -> float
+Sage.Gameplay.LootPart
+Sage.Gameplay.LootPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.LootPart.LootPart() -> void
+Sage.Gameplay.LootPart.Table -> Sage.Core.RecordRef<Sage.Gameplay.LootTableRecord!>
+Sage.Gameplay.LootPart.When -> Sage.Gameplay.LootWhen
+Sage.Gameplay.LootTableRecord
+Sage.Gameplay.LootTableRecord.Entries -> System.Collections.Generic.List<Sage.Gameplay.LootEntry!>!
+Sage.Gameplay.LootTableRecord.LootTableRecord() -> void
+Sage.Gameplay.LootTableRecord.MaxRolls -> int
+Sage.Gameplay.LootTableRecord.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.LootTableRecord.Rolls -> int
+Sage.Gameplay.LootTables
+Sage.Gameplay.LootWhen
+Sage.Gameplay.LootWhen.Death = 0 -> Sage.Gameplay.LootWhen
+Sage.Gameplay.LootWhen.Spawn = 1 -> Sage.Gameplay.LootWhen
+static Sage.Gameplay.LootTables.Roll(Sage.Simulation.World! world, Sage.Simulation.Entity into, Sage.Core.RecordId table) -> int
