@@ -1,0 +1,22 @@
+[
+  {
+    // A behaviour tree (issue #387): the watcher's way of fighting, written as a tree instead of chosen
+    // schedules. Each branch has a guard; the first that holds runs, and one that becomes true drops what
+    // a later one was doing (seeing you ends the rest). `spawn sentry` puts one in front of you; open it in
+    // the editor's AI Graph to watch which node it is on.
+    "type": "behaviour_tree", "id": "sentry",
+    "root": { "selector": [
+      { "name": "fight", "when": ["SeeEnemy"], "selector": [
+          { "when": ["EnemyInMeleeRange", "CanMelee"], "sequence": ["FaceTarget", { "task": "MeleeAttack", "giveUpAfter": 1.5 }] },
+          { "task": "MoveToTarget", "distance": 1.6 } ] },
+      { "name": "hunt", "when": ["RememberEnemy"], "task": "MoveToTarget", "distance": 1.6 },
+      { "name": "listen", "when": ["Suspicious"],
+        "sequence": ["FaceNoise", { "task": "MoveToNoise", "distance": 1.5 }, { "task": "Wait", "seconds": 1 }, "ForgetNoise"] },
+      { "name": "rest", "task": "Wait", "seconds": 1.5 } ] }
+  },
+  {
+    // A watcher with that tree for a brain: everything else (body, claws, hide, loot) is the watcher's.
+    "type": "prefab", "id": "sentry", "base": "watcher", "name": "sentry",
+    "components": { "ai_state": { "tree": "sentry" } }
+  }
+]
