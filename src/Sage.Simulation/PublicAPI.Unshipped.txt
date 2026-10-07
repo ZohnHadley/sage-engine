@@ -1,6 +1,8 @@
 #nullable enable
 const Sage.Simulation.ClipRetargeter.DefaultSampleRate = 30 -> float
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
+const Sage.Simulation.SculptSector.Resolution = 129 -> int
+const Sage.Simulation.SculptSector.Vertices = 16641 -> int
 const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
 const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
 *REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
@@ -8,6 +10,7 @@ const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
 const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
 const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
 const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
+const Sage.Simulation.TerrainSculpt.Extension = ".sterrain" -> string!
 Sage.Simulation.ClipRetargeter
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
@@ -220,6 +223,21 @@ Sage.Simulation.ReverbZonePart.ReverbZonePart() -> void
 Sage.Simulation.ReverbZonePart.Size -> System.Numerics.Vector3
 Sage.Simulation.SageAppOptions.InputFile.get -> string?
 Sage.Simulation.SageAppOptions.InputFile.init -> void
+Sage.Simulation.SculptSector
+Sage.Simulation.SculptSector.Clone() -> Sage.Simulation.SculptSector!
+Sage.Simulation.SculptSector.Coord.get -> Sage.Simulation.SectorCoord
+Sage.Simulation.SculptSector.HasHeights.get -> bool
+Sage.Simulation.SculptSector.HeightAt(int x, int z) -> float
+Sage.Simulation.SculptSector.Heights.get -> float[]!
+Sage.Simulation.SculptSector.IsEmpty.get -> bool
+Sage.Simulation.SculptSector.Paint.get -> uint[]?
+Sage.Simulation.SculptSector.Paint.set -> void
+Sage.Simulation.SculptSector.PaintAt(int x, int z) -> uint
+Sage.Simulation.SculptSector.Painted(int x, int z, int layer) -> float
+Sage.Simulation.SculptSector.SameAs(Sage.Simulation.SculptSector? other) -> bool
+Sage.Simulation.SculptSector.SculptSector(Sage.Simulation.SectorCoord coord) -> void
+Sage.Simulation.SculptSector.Water.get -> float?
+Sage.Simulation.SculptSector.Water.set -> void
 Sage.Simulation.ShadowAtlas
 Sage.Simulation.ShadowAtlas.Cascades.get -> int
 Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
@@ -238,6 +256,29 @@ Sage.Simulation.SkeletonMapRecord.Source -> Sage.Core.AssetPath
 Sage.Simulation.SkeletonMapRecord.Target -> Sage.Core.AssetPath
 Sage.Simulation.SoundRecord.Caption -> string!
 Sage.Simulation.SoundRecord.Speaker -> string!
+Sage.Simulation.Terrain.CopySculpt() -> Sage.Simulation.TerrainSculpt!
+Sage.Simulation.Terrain.Record.get -> Sage.Core.RecordId
+Sage.Simulation.Terrain.Refresh(Sage.Simulation.SectorCoord coord) -> bool
+Sage.Simulation.Terrain.Refreshed -> System.Action<Sage.Simulation.SectorCoord>?
+Sage.Simulation.Terrain.Resculpt(Sage.Simulation.SectorCoord coord, Sage.Simulation.SculptSector? sector) -> void
+Sage.Simulation.Terrain.SculptPath.get -> string!
+Sage.Simulation.Terrain.SetSculpt(Sage.Simulation.TerrainSculpt? sculpt) -> void
+Sage.Simulation.TerrainBuilt
+Sage.Simulation.TerrainBuilt.TerrainBuilt() -> void
+Sage.Simulation.TerrainRecord.Sculpt -> Sage.Core.AssetPath
+Sage.Simulation.TerrainSculpt
+Sage.Simulation.TerrainSculpt.Clone() -> Sage.Simulation.TerrainSculpt!
+Sage.Simulation.TerrainSculpt.Count.get -> int
+Sage.Simulation.TerrainSculpt.Get(Sage.Simulation.SectorCoord coord) -> Sage.Simulation.SculptSector?
+Sage.Simulation.TerrainSculpt.GetOrAdd(Sage.Simulation.SectorCoord coord) -> Sage.Simulation.SculptSector!
+Sage.Simulation.TerrainSculpt.Remove(Sage.Simulation.SectorCoord coord) -> bool
+Sage.Simulation.TerrainSculpt.Sectors.get -> System.Collections.Generic.IEnumerable<Sage.Simulation.SculptSector!>!
+Sage.Simulation.TerrainSculpt.Set(Sage.Simulation.SculptSector! sector) -> void
+Sage.Simulation.TerrainSculpt.TerrainSculpt() -> void
+Sage.Simulation.TerrainSculpt.ToBytes() -> byte[]!
+Sage.Simulation.TerrainSculpt.Write(System.IO.Stream! stream) -> void
+Sage.Simulation.TerrainSector.Water.get -> float?
+Sage.Simulation.TerrainSector.Water.init -> void
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
@@ -330,6 +371,8 @@ Sage.Simulation.WeatherRecord.LightningRate -> float
 Sage.Simulation.WeatherRecord.ShelteredVolume -> float
 Sage.Simulation.WeatherRecord.Thunder -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Simulation.WeatherRecord.ThunderVolume -> float
+static Sage.Simulation.TerrainSculpt.FromBytes(byte[]! bytes) -> Sage.Simulation.TerrainSculpt!
+static Sage.Simulation.TerrainSculpt.Read(System.IO.Stream! stream) -> Sage.Simulation.TerrainSculpt!
 static Sage.Simulation.WeatherRules.LightningRateNow(Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather) -> float
 const Sage.Simulation.LightStyles.DefaultRate = 10 -> float
 Sage.Simulation.LightSample.ConeAt(System.Numerics.Vector3 at) -> float

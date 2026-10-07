@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
@@ -54,6 +55,10 @@ public sealed class Heightfield
         }
         CellLayers[cellZ * Cells + cellX] = layer;
     }
+
+    // How much of each layer is painted over the terrain material's rules, by vertex (a sculpt's paint,
+    // issue #372): what TerrainSplat.Weights lays over the rules' weights. Null where nothing is painted.
+    internal uint[]? Paint { get; set; }
 
     public byte LayerAt(int cellX, int cellZ) =>
         CellLayers == null || (uint)cellX >= (uint)Cells || (uint)cellZ >= (uint)Cells ? (byte)0 : CellLayers[cellZ * Cells + cellX];
@@ -151,7 +156,19 @@ public sealed class TerrainSector
     // anything standing: physics and the client may build it over a few ticks. False for anything loaded
     // because something is about to stand on it (the first ring, a jump, travel, a game's own Load).
     public bool Budgeted;
+
+    // The water a sculpt put over this sector (issue #372): its surface in absolute metres, or null.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public float? Water { get; init; }
+    internal bool WaterBuilt;
 }
+
+// On what streaming builds from a terrain sector's heights — its chunk meshes, its collision, its water
+// (issue #372): what goes when the sector is refreshed after a sculpt, while what the sector's content
+// placed stays.
+[Tag("sage:terrain_built")]
+[Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+public struct TerrainBuilt : ITag { }
 
 // World resource: the loaded terrain sectors. Gameplay asks it for the ground height; the client
 // builds meshes for sectors it hasn't drawn yet.
@@ -201,6 +218,79 @@ public sealed class Terrain
         Version++;
         _ahead.Clear();
     }
+
+    // ---- sculpt (issue #372) ---------------------------------------------------------------------------
+    //
+    // What the editor's terrain tools wrote over the generator (TerrainSculpt), applied to every sector as it
+    // is generated. Held as an immutable snapshot that a job captures when it starts, so the editor can
+    // write the next stroke while a worker generates with the last one.
+    private ImmutableDictionary<SectorCoord, SculptSector> _sculpt = ImmutableDictionary<SectorCoord, SculptSector>.Empty;
+
+    // The terrain record the ground came from (a scene's `terrain`), and the file its sculpt is read from and
+    // saved to (a VFS path); empty for ground a game set up itself.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public RecordId Record { get; internal set; }
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public string SculptPath { get; internal set; } = "";
+
+    // A hash of the sculpt file last read, so placing the same scene again keeps its ground.
+    internal ulong SculptHash { get; set; }
+
+    // A copy of the sculpt applied now: what an editor starts from.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public TerrainSculpt CopySculpt()
+    {
+        var copy = new TerrainSculpt();
+        foreach (var sector in _sculpt.Values) copy.Set(sector.Clone());
+        return copy;
+    }
+
+    // The whole sculpt replaced (null: none). Like a new generator, the sectors generated ahead are
+    // dropped; the ones loaded keep their ground until they are refreshed or loaded again.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public void SetSculpt(TerrainSculpt? sculpt)
+    {
+        var builder = ImmutableDictionary.CreateBuilder<SectorCoord, SculptSector>();
+        if (sculpt != null)
+            foreach (var sector in sculpt.Sectors)
+                if (!sector.IsEmpty) builder[sector.Coord] = sector.Clone();
+        _sculpt = builder.ToImmutable();
+        Changed();
+    }
+
+    // One sector's sculpt replaced (`sector` empty or null: taken away), copied so the caller may go on
+    // writing its own. What was generated ahead around it is dropped (its edge normals read this one); call
+    // Refresh for the loaded sectors it changes.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public void Resculpt(SectorCoord coord, SculptSector? sector)
+    {
+        _sculpt = sector == null || sector.IsEmpty ? _sculpt.Remove(coord) : _sculpt.SetItem(coord, sector.Clone());
+        for (int z = -1; z <= 1; z++)
+            for (int x = -1; x <= 1; x++)
+                _ahead.Remove(new SectorCoord(coord.X + x, coord.Z + z));
+    }
+
+    // A loaded sector generated again with the sculpt as it is now, in place: what it placed stays, and
+    // what was built from its heights (TerrainBuilt: chunk meshes, collision, water) goes through
+    // `Refreshed` to be built again. False when it is not loaded.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public bool Refresh(SectorCoord coord)
+    {
+        if (_generator == null || !_sectors.TryGetValue(coord, out var old)) return false;
+        var heights = Generate(_generator, _seed, coord, SectorResolution, _sculpt);
+        var sector = new TerrainSector { Coord = coord, Heights = heights, Water = WaterOf(coord) };
+        _sectors[coord] = sector;
+        _loaded[_loaded.IndexOf(old)] = sector;
+        Refreshed?.Invoke(coord);
+        return true;
+    }
+
+    // Raised when a loaded sector was generated again (Refresh): what was built from its old heights is
+    // dropped (the streaming plugin destroys its TerrainBuilt entities), and is built again from the new.
+    [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
+    public event Action<SectorCoord>? Refreshed;
+
+    private float? WaterOf(SectorCoord coord) => _sculpt.TryGetValue(coord, out var s) ? s.Water : null;
     public IReadOnlyList<TerrainSector> Sectors => _loaded;
 
     // Where the simulation is running (R6). Sectors are keyed **absolutely** — sector (12, -3) is the
@@ -242,7 +332,7 @@ public sealed class Terrain
     internal void Prefetch(SectorCoord coord)
     {
         if (!Jobs || _generator == null || _sectors.ContainsKey(coord) || _ahead.ContainsKey(coord)) return;
-        var job = Job(_generator, _seed, coord, SectorResolution);
+        var job = Job(_generator, _seed, coord, SectorResolution, _sculpt);
         _ahead[coord] = job;
         Start(job);
     }
@@ -274,7 +364,7 @@ public sealed class Terrain
     internal Lazy<Heightfield>? Coarse(SectorCoord coord, int resolution = FarResolution)
     {
         if (_generator == null) return null;
-        var job = Job(_generator, _seed, coord, resolution);
+        var job = Job(_generator, _seed, coord, resolution, _sculpt);
         if (Jobs) Start(job);
         else _ = job.Value;
         return job;
@@ -282,7 +372,8 @@ public sealed class Terrain
 
     // Every one of these is evaluated (Prefetch and Coarse start them, Load takes the value), so each is a
     // load in `stat assets` from when it is made to when its heights are there (issue #300).
-    private Lazy<Heightfield> Job(ITerrainGenerator generator, int seed, SectorCoord coord, int resolution)
+    private Lazy<Heightfield> Job(ITerrainGenerator generator, int seed, SectorCoord coord, int resolution,
+                                  ImmutableDictionary<SectorCoord, SculptSector> sculpt)
     {
         WorkStats.LoadStarted();
         return new(() =>
@@ -291,7 +382,7 @@ public sealed class Terrain
             Heightfield heights;
             using (Profiler.Begin(resolution == SectorResolution ? "Job.TerrainSector" : "Job.TerrainCoarse"))
             {
-                try { heights = Generate(generator, seed, coord, resolution); }
+                try { heights = Generate(generator, seed, coord, resolution, sculpt); }
                 finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
             }
             if (resolution == SectorResolution)
@@ -322,15 +413,26 @@ public sealed class Terrain
 
     // One sector's heights and normals, on whatever thread. With an ITerrainSampler the normals at the
     // edges come from the neighbours' heights, so they match theirs (seam-free); without one they clamp.
-    internal static Heightfield Generate(ITerrainGenerator generator, int seed, SectorCoord coord, int resolution)
+    // A sculpt (#372) is laid on after the generator, and the heights past the edge carry the neighbours'.
+    internal static Heightfield Generate(ITerrainGenerator generator, int seed, SectorCoord coord, int resolution,
+                                         ImmutableDictionary<SectorCoord, SculptSector>? sculpt = null)
     {
         var heights = new Heightfield(resolution, SectorSize);
         generator.Generate(coord, heights, seed);
+        bool sculpted = sculpt is { IsEmpty: false };
+        if (sculpted) SculptApply.Apply(sculpt!, coord, heights);
         if (generator is ITerrainSampler sampler)
         {
             var corner = coord.Origin(SectorSize);
             double spacing = heights.Spacing;
-            heights.ComputeNormals((x, z) => sampler.SampleHeight(corner.X + x * spacing, corner.Z + z * spacing, seed));
+            if (sculpted)
+            {
+                int step = SculptApply.Cells / (resolution - 1);
+                long gx0 = (long)coord.X * SculptApply.Cells, gz0 = (long)coord.Z * SculptApply.Cells;
+                heights.ComputeNormals((x, z) => sampler.SampleHeight(corner.X + x * spacing, corner.Z + z * spacing, seed)
+                                                 + SculptApply.OffsetAt(sculpt!, gx0 + x * step, gz0 + z * step));
+            }
+            else heights.ComputeNormals((x, z) => sampler.SampleHeight(corner.X + x * spacing, corner.Z + z * spacing, seed));
         }
         else heights.ComputeNormals(null);
         return heights;
@@ -348,9 +450,9 @@ public sealed class Terrain
         }
         var watch = System.Diagnostics.Stopwatch.StartNew();
         bool ahead = _ahead.Remove(coord, out var job);
-        var heights = (job ?? Job(_generator, _seed, coord, SectorResolution)).Value;
+        var heights = (job ?? Job(_generator, _seed, coord, SectorResolution, _sculpt)).Value;
         GeneratedOnJobs = System.Threading.Volatile.Read(ref _generatedOnJobs);
-        var sector = new TerrainSector { Coord = coord, Heights = heights };
+        var sector = new TerrainSector { Coord = coord, Heights = heights, Water = WaterOf(coord) };
         _sectors[coord] = sector;
         _loaded.Add(sector);
         Log.Info(LogCat.Streaming, $"Terrain sector {coord} {(ahead ? "taken from its job" : "generated")} in {watch.Elapsed.TotalMilliseconds:F1} ms " +
