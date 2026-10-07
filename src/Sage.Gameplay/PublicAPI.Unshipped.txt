@@ -1,18 +1,66 @@
 #nullable enable
+const Sage.Gameplay.AIScheduleSelectors.Utility = "utility" -> string!
 Sage.Gameplay.ActionConventions.Block -> string!
+Sage.Gameplay.AIBlackboard
+Sage.Gameplay.AIBlackboardEntry
+Sage.Gameplay.AIBlackboardEntry.AIBlackboardEntry() -> void
+Sage.Gameplay.AIBlackboardEntry.Key -> string!
+Sage.Gameplay.AIBlackboardEntry.Value -> float
 Sage.Gameplay.AICondition.HearNoise = 4096 -> Sage.Gameplay.AICondition
 Sage.Gameplay.AICondition.Suspicious = 8192 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AIConsideration
+Sage.Gameplay.AIConsideration.Add -> float
+Sage.Gameplay.AIConsideration.AIConsideration() -> void
+Sage.Gameplay.AIConsideration.From -> float
+Sage.Gameplay.AIConsideration.Measure -> string!
+Sage.Gameplay.AIConsideration.To -> float
+Sage.Gameplay.AIConsideration.Unless -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.AIConsideration.When -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.AIMeasureAttribute
+Sage.Gameplay.AIMeasureAttribute.AIMeasureAttribute(string! id) -> void
 Sage.Gameplay.AIProfileRecord.Hearing -> float
 Sage.Gameplay.AIProfileRecord.InterestSeconds -> float
 Sage.Gameplay.AIProfileRecord.OccludedHearing -> float
+Sage.Gameplay.AIProfileRecord.Utility -> System.Collections.Generic.List<Sage.Gameplay.AIUtilityOption!>!
+Sage.Gameplay.AIScheduleChoice.Perception -> Sage.Gameplay.AIPerception
 Sage.Gameplay.AIScheduleConventions.Investigate -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIState.Blackboard -> System.Collections.Generic.List<Sage.Gameplay.AIBlackboardEntry>?
 Sage.Gameplay.AIState.Heard -> System.Numerics.Vector3
 Sage.Gameplay.AIState.HeardLoudness -> float
 Sage.Gameplay.AIState.HeardSource -> Sage.Simulation.Entity
 Sage.Gameplay.AIState.HeardUntil -> float
+Sage.Gameplay.AIState.Tree -> Sage.Core.RecordId
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
+Sage.Gameplay.AIUtility
+Sage.Gameplay.AIUtilityOption
+Sage.Gameplay.AIUtilityOption.AIUtilityOption() -> void
+Sage.Gameplay.AIUtilityOption.Considerations -> System.Collections.Generic.List<Sage.Gameplay.AIConsideration!>!
+Sage.Gameplay.AIUtilityOption.Schedule -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIUtilityOption.Score -> float
 Sage.Gameplay.AttackRecord.NoiseRadius -> float
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.BehaviourTreeNode
+Sage.Gameplay.BehaviourTreeNode.BehaviourTreeNode() -> void
+Sage.Gameplay.BehaviourTreeNode.Children.get -> System.Collections.Generic.IReadOnlyList<Sage.Gameplay.BehaviourTreeNode!>!
+Sage.Gameplay.BehaviourTreeNode.Kind.get -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNode.Name.get -> string!
+Sage.Gameplay.BehaviourTreeNode.Task.get -> Sage.Gameplay.AITaskStep
+Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Check = 3 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Condition = 1 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Cooldown = 10 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Invert = 7 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Repeat = 9 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Selector = 5 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Sequence = 4 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Set = 2 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Succeed = 8 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Task = 0 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Utility = 6 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeRecord
+Sage.Gameplay.BehaviourTreeRecord.BehaviourTreeRecord() -> void
+Sage.Gameplay.BehaviourTreeRecord.NodeCount.get -> int
+Sage.Gameplay.BehaviourTreeRecord.Root -> Sage.Gameplay.BehaviourTreeNode?
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
 Sage.Gameplay.Durability
@@ -28,6 +76,8 @@ Sage.Gameplay.FootIk.RightTilt -> float
 Sage.Gameplay.FootIkPart.MaxFootTilt -> float
 Sage.Gameplay.FootIkPart.PelvisSmoothing -> float
 Sage.Gameplay.GameplayConventionsRecord.Noise -> Sage.Gameplay.NoiseConventions!
+Sage.Gameplay.IAIMeasure
+Sage.Gameplay.IAIMeasure.Measure(in Sage.Gameplay.AIPerception perception) -> float
 Sage.Gameplay.InventoryPart.Stack.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.ItemBreak
 Sage.Gameplay.ItemBreak.Keep = 2 -> Sage.Gameplay.ItemBreak
@@ -121,6 +171,12 @@ Sage.Gameplay.Pickup.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.PickupPart.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.QuestObjective.Target -> string!
 Sage.Gameplay.QuestStage.Target -> string!
+static Sage.Gameplay.AIBlackboard.Get(in Sage.Gameplay.AIState state, string! key) -> float
+static Sage.Gameplay.AIBlackboard.Get(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! key) -> float
+static Sage.Gameplay.AIBlackboard.Set(ref Sage.Gameplay.AIState state, string! key, float value) -> void
+static Sage.Gameplay.AIBlackboard.Set(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! key, float value) -> bool
+static Sage.Gameplay.AIUtility.Curve(float value, float from, float to) -> float
+static Sage.Gameplay.AIUtility.Score(in Sage.Gameplay.AIPerception perception, Sage.Gameplay.AIConditions! names, float score, System.Collections.Generic.IReadOnlyList<Sage.Gameplay.AIConsideration!>! considerations) -> float
 static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
 *REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.Footstep.Kind.get -> Sage.Gameplay.FootstepKind

@@ -73,7 +73,9 @@ internal sealed class AIThinkSystem : ISystem
                 var profile = !profileId.IsEmpty && _records.TryGet(profileId, out AIProfileRecord found)
                     ? found : FallbackProfile;
 
-                // Think: perception and, if something changed, a new schedule.
+                // Think: perception and, if something changed, a new schedule. A creature with a behaviour
+                // tree (issue #387) perceives the same way and lets its tree decide, every tick.
+                bool thought = false;
                 if (time >= s[n].NextThink)
                 {
                     float period = 1f / MathF.Max(profile.ThinkRate, 0.1f);
@@ -82,10 +84,13 @@ internal sealed class AIThinkSystem : ISystem
                     s[n].Conditions |= Hearing.Conditions(ref s[n], time);
                     bool moved = Routines.Think(world, _records, entity, ref s[n], profile, time, out var routine);
                     Sense(world, entity, ref t[n], ref s[n], profile, time);
-                    ChooseSchedule(world, entity, ref s[n], profile, conventions.Schedules, routine, moved);
+                    if (s[n].Tree.IsEmpty) ChooseSchedule(world, entity, ref t[n], ref s[n], profile, conventions.Schedules, routine, moved, time);
+                    else s[n].Schedule = default;
+                    thought = true;
                 }
 
-                RunTask(world, entity, ref t[n], ref s[n], ref i[n], profile, dt);
+                if (s[n].Tree.IsEmpty) RunTask(world, entity, ref t[n], ref s[n], ref i[n], profile, dt);
+                else RunTree(world, entity, ref t[n], ref s[n], ref i[n], profile, dt, time, thought);
             }
         }
     }
@@ -360,8 +365,8 @@ internal sealed class AIThinkSystem : ISystem
     // Which schedule fits what it knows: the profile's selector decides (issue #28), and the engine's
     // own choice — HL1's GetSchedule, in code — is the `default` one (DefaultScheduleSelector). Utility
     // scoring or a behaviour tree is another selector, and nothing about the tasks changes (16 §3.4).
-    private void ChooseSchedule(World world, Entity entity, ref AIState state, AIProfileRecord profile, AIScheduleConventions schedules,
-                                RecordId routine, bool routineMoved)
+    private void ChooseSchedule(World world, Entity entity, ref Transform transform, ref AIState state, AIProfileRecord profile, AIScheduleConventions schedules,
+                                RecordId routine, bool routineMoved, float time)
     {
         var choice = new AIScheduleChoice
         {
@@ -373,6 +378,16 @@ internal sealed class AIThinkSystem : ISystem
             Schedules = schedules,
             Names = _conditions,
             Routine = routine,
+            Perception = new AIPerception
+            {
+                World = world,
+                Entity = entity,
+                Transform = ref transform,
+                State = ref state,
+                Profile = profile,
+                Time = time,
+                Conditions = state.Conditions,
+            },
         };
         RecordId wanted = AIScheduleSelectors.Of(world, profile).Choose(in choice);
 
@@ -438,9 +453,7 @@ internal sealed class AIThinkSystem : ISystem
         }
 
         // The body's own movement numbers, for anything that has to produce a walkable result (F23).
-        var movement = MovementProfileRecord.Fallback;
-        if (world.TryGet<CharacterController>(entity, out var character))
-            movement = CharacterConventions.Of(world).ProfileOf(_records, character.Profile);
+        var movement = MovementOf(world, entity);
 
         var context = new AITaskContext
         {
@@ -487,4 +500,52 @@ internal sealed class AIThinkSystem : ISystem
         }
     }
 
+    private MovementProfileRecord MovementOf(World world, Entity entity) =>
+        world.TryGet<CharacterController>(entity, out var character)
+            ? CharacterConventions.Of(world).ProfileOf(_records, character.Profile)
+            : MovementProfileRecord.Fallback;
+
+    // A creature with a behaviour tree (issue #387, BehaviourTrees.cs): its tree, ticked from where it is.
+    // Its place in the tree is made again when the tree was reloaded or the creature loaded (TreeRun is
+    // never saved), and starts from the root.
+    private void RunTree(World world, Entity entity, ref Transform transform, ref AIState state, ref PawnIntent intent, AIProfileRecord profile,
+                         float dt, float time, bool thought)
+    {
+        if (intent.Held.Has(_block)) intent.Held = AITasks.Release(intent.Held, _block);
+        if (!_records.TryGet(state.Tree, out BehaviourTreeRecord tree))
+        {
+            Log.Once(LogCat.AI, LogLevel.Error, $"bt-missing:{state.Tree}",
+                $"{World.Describe(entity)} runs behaviour_tree {state.Tree}, which is not loaded; it stands still");
+            intent.Move = Vector2.Zero;
+            return;
+        }
+        if (state.TreeRun is not { } run || !run.IsFor(tree, entity))
+        {
+            state.TreeRun = run = new BehaviourTreeRun(tree, entity);
+            state.TaskStarted = false;
+            state.TaskTime = 0;
+        }
+
+        var tick = new BehaviourTreeTick
+        {
+            World = world,
+            Entity = entity,
+            State = ref state,
+            Intent = ref intent,
+            Transform = ref transform,
+            Profile = profile,
+            Movement = MovementOf(world, entity),
+            Space = _space,
+            Attack = _attack,
+            Block = _block,
+            Dt = dt,
+            Time = time,
+            Thought = thought,
+            Records = _records,
+            Tasks = _tasks,
+            Names = _conditions,
+            Run = run,
+        };
+        BehaviourTrees.Tick(ref tick);
+    }
 }

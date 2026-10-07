@@ -464,6 +464,7 @@ public sealed class AIModule : IModule
         var vocabularies = ctx.Engine.Vocabularies;
         _records.AddCheck<AIScheduleRecord>((schedule, check) => AIChecks.Schedule(vocabularies, schedule, check));
         _records.AddCheck<AIProfileRecord>((profile, check) => AIChecks.Profile(vocabularies, profile, check));
+        _records.AddCheck<BehaviourTreeRecord>((tree, check) => BehaviourTrees.Check(vocabularies, tree, check));   // #387
         var records = _records;
         _records.AddCheck<RoutineRecord>((routine, check) => RoutineChecks.Check(records, routine, check));
         _aiDebug = ctx.Engine.CVars.Register("ai_debug", false, CVarFlags.DevOnly,
@@ -575,6 +576,13 @@ public sealed class AIModule : IModule
                 else if (step.Argument != null && task.Argument != null && !string.Equals(step.Argument, task.Argument, StringComparison.OrdinalIgnoreCase))
                     Log.Error(LogCat.AI, $"{where}: task '{step.Task}' takes '{task.Argument}', not '{step.Argument}'");
             }
+        }
+        // And every behaviour tree's task nodes (issue #387).
+        foreach (var id in _records.Ids("behaviour_tree"))
+        {
+            if (!_records.TryGet(id, out BehaviourTreeRecord tree)) continue;
+            foreach (var (path, problem) in BehaviourTrees.TaskProblems(tree, AITasks))
+                Log.Error(LogCat.AI, $"{_records.Where("behaviour_tree", id, path)}: behaviour_tree {id}: {problem}");
         }
     }
 

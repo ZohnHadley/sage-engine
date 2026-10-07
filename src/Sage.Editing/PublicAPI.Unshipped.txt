@@ -1,6 +1,7 @@
 #nullable enable
 const Sage.Editing.AnimationPreview.TickSeconds = 0.016666668 -> float
 override Sage.Editing.VocabularyProblem.ToString() -> string!
+Sage.Editing.AIGraphKind.BehaviourTree = 3 -> Sage.Editing.AIGraphKind
 Sage.Editing.AnimationPreview
 Sage.Editing.AnimationPreview.Advance(float seconds) -> void
 Sage.Editing.AnimationPreview.AnimationPreview(Sage.Simulation.Engine! engine) -> void

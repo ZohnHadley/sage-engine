@@ -161,6 +161,14 @@
         "skills:blade_practice"
       ]
     },
+    "record:behaviour_tree": {
+      "description": "The id of a behaviour_tree record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "sandbox:sentry",
+        "sentry"
+      ]
+    },
     "record:calendar": {
       "description": "The id of a calendar record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -887,6 +895,7 @@
         "sandbox:player",
         "sandbox:road_sign",
         "sandbox:rounds_pickup",
+        "sandbox:sentry",
         "sandbox:smith",
         "sandbox:spot",
         "sandbox:sword_pickup",
@@ -1728,6 +1737,14 @@
         "skills:blade_practice"
       ]
     },
+    "base:behaviour_tree": {
+      "description": "Another behaviour_tree record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "sandbox:sentry",
+        "sentry"
+      ]
+    },
     "base:calendar": {
       "description": "Another calendar record to inherit every field from, abstract or not.",
       "type": "string",
@@ -2456,6 +2473,7 @@
         "sandbox:player",
         "sandbox:road_sign",
         "sandbox:rounds_pickup",
+        "sandbox:sentry",
         "sandbox:smith",
         "sandbox:spot",
         "sandbox:sword_pickup",
