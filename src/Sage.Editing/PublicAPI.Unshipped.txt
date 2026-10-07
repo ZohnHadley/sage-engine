@@ -595,3 +595,17 @@ static Sage.Editing.PrefabCommands.Register(Sage.Core.CVarRegistry! cvars, Syste
 static Sage.Editing.PrefabCommands.RevertAll(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, out string! error) -> bool
 static Sage.Editing.TerrainCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.TerrainDocument?>! document) -> void
 static Sage.Editing.PrefabCommands.Overrides(Sage.Simulation.Placement! placement) -> bool
+const Sage.Editing.PanelTour.DefaultFrames = 3 -> int
+Sage.Editing.EditorStatus
+Sage.Editing.PanelTour
+Sage.Editing.PanelTour.Add(string! title, System.Action? open = null) -> void
+Sage.Editing.PanelTour.Current.get -> string?
+Sage.Editing.PanelTour.FramesEach.get -> int
+Sage.Editing.PanelTour.FramesEach.set -> void
+Sage.Editing.PanelTour.IsTouring.get -> bool
+Sage.Editing.PanelTour.Next() -> string?
+Sage.Editing.PanelTour.PanelTour() -> void
+Sage.Editing.PanelTour.Show(string! which, out string! error) -> bool
+Sage.Editing.PanelTour.Titles.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Editing.EditorStatus.Line(Sage.Editing.EditDocument? document, Sage.Simulation.World? world, Sage.Simulation.Entity selection, System.Numerics.Vector3 camera, string? problems = null) -> string!
+static Sage.Editing.PanelTour.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.PanelTour?>! tour) -> void

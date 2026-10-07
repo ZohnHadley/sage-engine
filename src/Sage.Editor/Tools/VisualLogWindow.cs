@@ -13,6 +13,8 @@ namespace Sage.Editor;
 // console command or cvar as well (vlog_at, vlog_step, vlog_show, vlog_list).
 internal sealed class VisualLogWindow
 {
+    public const string Title = "Visual log";
+
     private readonly CVarRegistry _cvars;
     private readonly Func<World?> _world;
     private readonly CVar<bool> _open;
@@ -27,6 +29,8 @@ internal sealed class VisualLogWindow
             "Show the visual log's timeline: scrub through the recorded ticks (vlog_record), pick categories (issue #300).");
     }
 
+    public void Open() => _open.Value = true;
+
     public void Draw()
     {
         if (!_open.Value || _world() is not { } world) return;
@@ -34,7 +38,7 @@ internal sealed class VisualLogWindow
 
         ImGui.SetNextWindowSize(new Vector2(460, 300), ImGuiCond.FirstUseEver);
         bool open = true;
-        if (ImGui.Begin("Visual log", ref open))
+        if (ImGui.Begin(Title, ref open))
         {
             if (!log.Recording)
             {
