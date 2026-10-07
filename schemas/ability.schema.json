@@ -254,6 +254,61 @@
       "description": "(float, default 18)",
       "default": 18,
       "type": "number"
+    },
+    "affects": {
+      "description": "Who it reaches by faction: Default, Anyone, NotAllies, Hostile or Allies (a heal) Category: Targeting. (FactionFilter, default \"Default\")",
+      "default": "Default",
+      "type": "string",
+      "enum": [
+        "Default",
+        "Anyone",
+        "NotAllies",
+        "Hostile",
+        "Allies"
+      ]
+    },
+    "aIUse": {
+      "description": "What a creature casts it for: Auto, Attack, Heal, Buff or Never. Category: AI. (AbilityAIUse, default \"Auto\")",
+      "default": "Auto",
+      "type": "string",
+      "enum": [
+        "Auto",
+        "Attack",
+        "Heal",
+        "Buff",
+        "Never"
+      ]
+    },
+    "aIHealBelow": {
+      "description": "Heal: cast on someone whose health is below this fraction of its maximum. Range: 0 to 1. Category: AI. (float, default 0.5)",
+      "default": 0.5,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "projectileBounces": {
+      "description": "How many times it bounces off scenery before it stops. At least 0. Category: Projectile. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "projectileBounciness": {
+      "description": "The speed it keeps on each bounce. Range: 0 to 1. Category: Projectile. (float, default 0.6)",
+      "default": 0.6,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "projectileSticks": {
+      "description": "It stays where it stops, in what it struck, instead of vanishing. Category: Projectile. (bool, default false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "projectileStickSeconds": {
+      "description": "How long a stuck projectile stays. Unit: s. At least 0. Category: Projectile. (float, default 30)",
+      "default": 30,
+      "type": "number",
+      "minimum": 0
     }
   },
   "additionalProperties": false

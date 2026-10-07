@@ -397,6 +397,8 @@ public sealed class AbilitiesModule : IModule
         // An ability's `delivery` names a registered one (issue #28), checked when content loads.
         var vocabularies = ctx.Engine.Vocabularies;
         _records.AddCheck<AbilityRecord>((ability, check) => AbilityDeliveries.Check(vocabularies, ability, check));
+        // A heal or a buff a creature casts on others must be able to land on them (issue #393).
+        _records.AddCheck<AbilityRecord>(AISupport.Check);
 
         _debugCasts = ctx.Engine.CVars.Register("cast_debug", false, CVarFlags.DevOnly,
             "Draw every cast: where it reached and what it caught (needs r_debugdraw 1).");

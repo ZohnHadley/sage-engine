@@ -62,15 +62,15 @@ public ref struct AbilityLanding
 
     public readonly void AddCaster() => Payload.AddTarget(Caster);
 
-    // Everything that can be affected within the ability's `radius` of the point, that the caster may
-    // hurt (factions, F24); the caster itself only when asked.
-    public readonly void AddBurst(bool includeCaster) => Payload.Gather(World, Point, Record.Radius, Caster, includeCaster);
+    // Everything that can be affected within the ability's `radius` of the point, that its `affects`
+    // lets the caster reach (factions, F24, issue #393); the caster itself only when asked.
+    public readonly void AddBurst(bool includeCaster) => Payload.Gather(World, Point, Record.Radius, Caster, includeCaster, Record.Affects);
 
-    // What it struck, when that can hold an effect and the caster may hurt it. A bolt that strikes an
-    // ally fizzles rather than burning it.
+    // What it struck, when that can hold an effect and the ability's `affects` lets the caster reach it
+    // (issue #393). A touch that strikes someone it spares fizzles rather than burning it.
     public readonly void AddStruck()
     {
-        if (AbilityPayload.CanBeAffected(World, Struck) && Struck != Caster && Factions.MayHurt(World, Caster, Struck))
+        if (AbilityPayload.CanBeAffected(World, Struck) && Struck != Caster && FactionFilters.Allows(World, Caster, Struck, Record.Affects))
             Payload.AddTarget(Struck);
     }
 

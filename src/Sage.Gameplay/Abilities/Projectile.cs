@@ -37,6 +37,31 @@ public struct Projectile : IComponent
     // The last thing it passed through, left out of its sweeps while it is still inside it.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public Entity Passed;
+
+    // Bouncing and sticking (issue #393). Scenery it meets with `Bounces` left turns it back, keeping
+    // `Bounciness` of its speed; with none left it stops there as before.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Tooltip = "How many more times it bounces off scenery before scenery stops it")]
+    public int Bounces;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Max = 1, Tooltip = "The speed it keeps on each bounce")]
+    public float Bounciness;
+    // Where it stops on something, it stays — parented to what it struck when that can be hurt (an arrow
+    // in a deer) — for `StickSeconds`, then goes.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "It stays where it stops instead of vanishing")]
+    public bool Sticks;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "s", Tooltip = "How long it stays once stuck")]
+    public float StickSeconds;
+    // It has stopped and stays: it no longer flies or lands, and `Life` is the seconds it has left.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public bool Stuck;
+    // The body it is stuck in, whose child it is; null for scenery. Kept here because a save keeps no
+    // hierarchy but this one's own: after a load it is made the body's child again, its transform still
+    // relative to it, and it goes when the body does.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public Entity Host;
 }
 
 // Gameplay phase, before effects tick: moves everything in flight and delivers what it was carrying
@@ -60,6 +85,9 @@ internal sealed class ProjectileSystem : ISystem
     // Arrivals are handled after the loop: delivering a payload applies effects to other entities and
     // destroys this one, neither of which a query allows (R14).
     private readonly Deferred<Arrival> _arrivals = new();
+    private readonly Deferred<Arrival> _bounces = new();
+    private readonly Deferred<Entity> _expired = new();
+    private readonly Deferred<Entity> _reattach = new();
 
     // `Final`: it stops here and is destroyed; otherwise it passed through `Struck` (piercing) and flies on.
     // `Collider` is what the sweep met — `Struck` itself, or one of its hitboxes — and `Location` that
@@ -96,10 +124,18 @@ internal sealed class ProjectileSystem : ISystem
             for (int n = 0; n < p.Length; n++)
             {
                 var entity = entities.EntityAt(n);
+                p[n].Life -= dt;
+                // Stuck in something (issue #393): it only waits out its time.
+                if (p[n].Stuck)
+                {
+                    if (p[n].Life <= 0f || (!p[n].Host.IsNull && !world.IsAlive(p[n].Host))) _expired.Add(entity);
+                    else if (!p[n].Host.IsNull && entity.Parent != p[n].Host) _reattach.Add(entity);   // after a load
+                    continue;
+                }
+
                 Vector3 from = t[n].LocalPosition;
                 float step = p[n].Velocity.Length() * dt;
 
-                p[n].Life -= dt;
                 if (step <= 0f || p[n].Life <= 0f)
                 {
                     _arrivals.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, from, default, default));
@@ -125,6 +161,7 @@ internal sealed class ProjectileSystem : ISystem
 
                 Vector3 at = from;
                 float left = step;
+                int spared = 0;
                 // A piercing bolt may pass through several things in one tick; each pass is one more sweep
                 // from where it left the last, so the loop is bounded by its pierce count.
                 while (true)
@@ -165,6 +202,33 @@ internal sealed class ProjectileSystem : ISystem
 
                     at += direction * distance;
                     left -= distance;
+                    bool hurtable = struck != p[n].Caster && Hits.CanBeHurt(world, struck);
+
+                    // Who its thrower may not hurt it flies past (issue #393): the ability's `affects` or
+                    // the attack's `friendlyFire`, so a creature's bolt does not stop at, and burst on, a
+                    // packmate in front of it. Bounded, as two spared bodies overlapping could trade places
+                    // as `Passed` for ever.
+                    if (hurtable && spared < 8 && !FactionFilters.Allows(world, p[n].Caster, struck, FilterOf(in p[n])))
+                    {
+                        spared++;
+                        p[n].Passed = struck;
+                        continue;
+                    }
+
+                    // Scenery turns a bouncing one back (issue #393): its velocity mirrored about the
+                    // surface and slowed, from just off the surface, and the rest of the tick is lost.
+                    if (!hurtable && struck != p[n].Caster && p[n].Bounces > 0)
+                    {
+                        var n0 = normal.LengthSquared() > 1e-6f ? Vector3.Normalize(normal) : -direction;
+                        if (Vector3.Dot(p[n].Velocity, n0) > 0f) n0 = -n0;
+                        p[n].Velocity = (p[n].Velocity - 2f * Vector3.Dot(p[n].Velocity, n0) * n0) * Math.Clamp(p[n].Bounciness, 0f, 1f);
+                        p[n].Bounces--;
+                        p[n].Passed = default;
+                        at += n0 * 0.02f;
+                        _bounces.Add(new Arrival(entity, p[n].Caster, p[n].Ability, p[n].Attack, at, direction, struck, Final: false, collider, location)
+                                     { Surface = surface, Normal = n0 });
+                        break;
+                    }
                     if (p[n].Pierce > 0 && struck != p[n].Caster && Hits.CanBeHurt(world, struck))
                     {
                         p[n].Pierce--;
@@ -184,11 +248,59 @@ internal sealed class ProjectileSystem : ISystem
         }
 
         foreach (var arrival in _arrivals.Drain()) Arrive(world, arrival);
+        // A bounce makes the noise and mark of what it met, as a bolt stopping there would.
+        foreach (var bounce in _bounces.Drain()) Impacts.Raise(world, bounce.Caster, bounce.Point, bounce.Normal, bounce.Surface);
+        foreach (var gone in _expired.Drain()) if (world.IsAlive(gone)) world.Destroy(gone);
+        foreach (var stuck in _reattach.Drain())
+            if (world.IsAlive(stuck) && world.IsAlive(world.Get<Projectile>(stuck).Host)) world.SetParent(stuck, world.Get<Projectile>(stuck).Host);
+    }
+
+    // Who the payload may reach: the attack's `friendlyFire` or the ability's `affects`.
+    private FactionFilter FilterOf(in Projectile projectile)
+    {
+        if (!projectile.Attack.IsEmpty)
+            return _records.TryGet(projectile.Attack, out AttackRecord attack) ? attack.FriendlyFire : FactionFilter.Default;
+        return _records.TryGet(projectile.Ability, out AbilityRecord ability) ? ability.Affects : FactionFilter.Default;
+    }
+
+    // Stays where it stopped (issue #393): no longer flying, for its `StickSeconds`, and in what it struck
+    // when that is a body (a root with a Transform), so it moves with it.
+    private static void Stick(World world, in Arrival arrival)
+    {
+        ref var projectile = ref world.Get<Projectile>(arrival.Projectile);
+        projectile.Stuck = true;
+        projectile.Velocity = Vector3.Zero;
+        projectile.Passed = default;
+        projectile.Life = MathF.Max(projectile.StickSeconds, 0f);
+        if (!world.TryGet<Transform>(arrival.Projectile, out var transform)) return;
+        transform.LocalPosition = arrival.Point;
+
+        var host = arrival.Struck;
+        if (!host.IsNull && host != arrival.Caster && world.IsAlive(host) && host.Parent.IsNull && arrival.Projectile.Parent.IsNull
+            && Hits.CanBeHurt(world, host) && world.TryGet<Transform>(host, out var body))
+        {
+            var unturn = Quaternion.Inverse(body.LocalRotation);
+            var scale = body.LocalScale;
+            if (scale.X == 0f || scale.Y == 0f || scale.Z == 0f) scale = Vector3.One;
+            transform.LocalPosition = Vector3.Transform(arrival.Point - body.LocalPosition, unturn) / scale;
+            transform.LocalRotation = unturn * transform.LocalRotation;
+            projectile.Host = host;                                       // before the hierarchy moves it
+            world.Get<Transform>(arrival.Projectile) = transform;
+            world.SetParent(arrival.Projectile, host);
+            // In a body a save does not keep, it has nowhere to come back to.
+            if (!world.Has<Persistent>(host)) world.Remove<Persistent>(arrival.Projectile);
+            return;
+        }
+        world.Get<Transform>(arrival.Projectile) = transform;
     }
 
     private void Arrive(World world, in Arrival arrival)
     {
-        if (arrival.Final && world.IsAlive(arrival.Projectile)) world.Destroy(arrival.Projectile);
+        if (arrival.Final && world.IsAlive(arrival.Projectile))
+        {
+            if (!arrival.Struck.IsNull && world.TryGet<Projectile>(arrival.Projectile, out var flying) && flying.Sticks) Stick(world, in arrival);
+            else world.Destroy(arrival.Projectile);
+        }
 
         // An attack's bolt (issue #133) is one strike: what it struck takes the attack's hit, through the
         // same Combat.ApplyHit a sword's swing and a pistol's ray use. Running out of range hits nothing.
@@ -224,7 +336,9 @@ public static class ProjectileExtensions
     public static Entity Launch(this World world, Entity caster, RecordId ability, AbilityRecord record,
                                 Vector3 from, Vector3 direction) =>
         Hits.Carrier(world, caster, record.Projectile.Id, ability.Name, from, direction,
-                     record.ProjectileSpeed, record.Range, record.Width, ability, default);
+                     record.ProjectileSpeed, record.Range, record.Width, ability, default,
+                     bounces: record.ProjectileBounces, bounciness: record.ProjectileBounciness,
+                     sticks: record.ProjectileSticks, stickSeconds: record.ProjectileStickSeconds);
 
     // Throws an attack's bolt (issue #134): its `projectile` prefab on the same carrier, flying at its
     // `projectileSpeed` for its `range`, falling at its `projectileGravity` and passing through
@@ -235,5 +349,6 @@ public static class ProjectileExtensions
                                 Vector3 from, Vector3 direction) =>
         Hits.Carrier(world, shooter, record.Projectile.Id, attack.Name, from, direction,
                      record.ProjectileSpeed, record.Range, record.Radius, default, attack,
-                     record.ProjectileGravity, record.ProjectilePierce);
+                     record.ProjectileGravity, record.ProjectilePierce,
+                     record.ProjectileBounces, record.ProjectileBounciness, record.ProjectileSticks, record.ProjectileStickSeconds);
 }

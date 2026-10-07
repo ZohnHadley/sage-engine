@@ -83,6 +83,42 @@ public sealed class AbilityRecord
     // and how fast. `Radius` is still the burst it makes on arrival, `Width` how fat it is in flight.
     public RecordRef<PrefabRecord> Projectile;
     public float ProjectileSpeed = 18f;
+
+    // Who the payload reaches, by faction (issue #393; the filter an attack's `friendlyFire` is): a burst's
+    // targets, what a touch or a bolt strikes, and so a heal's or a buff's. `Default` is the engine's rule
+    // (a player's spell reaches anyone, anybody else's spares its allies); a heal thrown at a friend says
+    // `Allies`. A bolt flies on past what its filter spares instead of stopping at it.
+    [Property(Category = "Targeting", Tooltip = "Who it reaches by faction: Default, Anyone, NotAllies, Hostile or Allies (a heal)")]
+    public FactionFilter Affects = FactionFilter.Default;
+
+    // What a creature casts it for (issue #393): `Auto` throws it at enemies unless it lands on the caster
+    // or reaches only allies (then never); `Heal` casts it on itself or an ally whose health is below
+    // `aiHealBelow`; `Buff` on itself or an ally, in a fight, that lacks one of its effects.
+    [Property(Category = "AI", Tooltip = "What a creature casts it for: Auto, Attack, Heal, Buff or Never")]
+    public AbilityAIUse AIUse = AbilityAIUse.Auto;
+    [Property(Category = "AI", Min = 0, Max = 1, Tooltip = "Heal: cast on someone whose health is below this fraction of its maximum")]
+    public float AIHealBelow = 0.5f;
+
+    // Projectile targeting: what it does when it meets scenery or stops (issue #393), as an attack's
+    // `projectileBounces` and `projectileSticks` say for its bolt.
+    [Property(Category = "Projectile", Min = 0, Tooltip = "How many times it bounces off scenery before it stops")]
+    public int ProjectileBounces;
+    [Property(Category = "Projectile", Min = 0, Max = 1, Tooltip = "The speed it keeps on each bounce")]
+    public float ProjectileBounciness = 0.6f;
+    [Property(Category = "Projectile", Tooltip = "It stays where it stops, in what it struck, instead of vanishing")]
+    public bool ProjectileSticks;
+    [Property(Category = "Projectile", Min = 0, Unit = "s", Tooltip = "How long a stuck projectile stays")]
+    public float ProjectileStickSeconds = 30f;
+}
+
+// What a creature casts an ability for (AbilityRecord.AIUse, issue #393).
+public enum AbilityAIUse
+{
+    Auto,     // at enemies, unless it lands on the caster or reaches only allies: then never
+    Attack,   // at enemies
+    Heal,     // on itself or an ally whose health is low
+    Buff,     // on itself or an ally, in a fight, that lacks one of its effects
+    Never,
 }
 
 // A cue is a *name for something to show*, and deliberately almost empty: the simulation raises it,

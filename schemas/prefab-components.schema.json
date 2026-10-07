@@ -6970,6 +6970,38 @@
         },
         "passed": {
           "description": "(Entity)"
+        },
+        "bounces": {
+          "description": "How many more times it bounces off scenery before scenery stops it. At least 0. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "bounciness": {
+          "description": "The speed it keeps on each bounce. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sticks": {
+          "description": "It stays where it stops instead of vanishing. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "stickSeconds": {
+          "description": "How long it stays once stuck. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "stuck": {
+          "description": "(bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "host": {
+          "description": "(Entity)"
         }
       },
       "additionalProperties": false,
