@@ -190,6 +190,16 @@ item on a creature's leveled list, lock a chest with a `container` part, add an 
 code), or add a `skill`, a `levelling` step or a `perk` to a game built on the RPG kit. A trader without a
 `merchant` record, like the village trader below, still sells at the kit's stub prices.
 
+Phase 4r's AI, combat and narrative are records as well, with no code. A mod can give a creature a `behaviour_tree`
+(`"ai_state": { "tree": "..." }` on a prefab patch) or `utility` options on its `ai_profile`, using any task the game
+has (`Strafe`, `RetreatToRange`, `TakeCover`, `Flee`, `HealSelf`, `Flank`, `CallForHelp`, besides the schedules' own)
+and, if it adds a task or an `ai_measure` in code, those too; put a `squad` part on a pack; widen or silence what
+creatures hear (`hearing` on a profile, `noise` and `schedules.investigate` on the conventions, an attack's
+`noiseRadius`); add a `crime`, a `guard` or an `owned_place`, or a rung to a `faction_ranks` ladder; give an attack
+a `block`, `knockback`, `cleave` or a `damage` execution (a poison); lines for a creature in a `barks` record, a
+greeting or a speaker's own topics on a `dialogue`; and a timer, a failure or a `volume` or `topic` objective on a
+`quest` stage. A list field the mod extends with `+` keeps the game's entries, as with a loot table.
+
 Phase 10b gave modders the editor (issue #375). A game packaged with `sage package <game> --out <dir>
 --editor` has the editor beside its Shipping host, in `editor/`, and `edit.sh` / `edit.cmd` open it on the
 game. `./edit.sh [level] +ed_mod <your mod>` makes your mod's folder the only one the editor writes: a level

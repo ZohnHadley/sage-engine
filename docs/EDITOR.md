@@ -289,10 +289,19 @@ edges. Paint shows only with a `terrain_material`; water is a volume you can swi
 
 **AI Graph** (issue #369) shows the record open in **Records** when it is a `state_machine` (a tree of
 states, nested and parallel, with their transitions; the machine's own transitions are under "(any)"), an
-`ai_schedule` (its tasks) or a `routine` (its entries). Add, remove, move, reparent and rename nodes; each
+`ai_schedule` (its tasks), a `routine` (its entries) or a `behaviour_tree` (see below). Add, remove, move, reparent and rename nodes; each
 edit is a step in the record's own undo, and a renamed state is renamed everywhere a transition or
 `initial` names it. While playing, the states the chosen agent is in, and the task it is on, are lit (a
-picker chooses the agent). The engine has no behaviour-tree record; these three are its AI graphs.
+picker chooses the agent). 
+#### A behaviour-tree view
+
+A `behaviour_tree` record (issue #387) is drawn as the tree of its nodes, one line each, such as
+`fight: MoveToTarget  distance 2  [when SeeEnemy]`: a task with its arguments, a composite
+(`sequence`, `selector`, `utility`), a decorator (`invert`, `succeed`, `repeat`, `cooldown`), a blackboard
+`set` or `check`, and the guard a node carries. While playing, the node the chosen agent is running and its
+ancestors are lit. Add a node (into a composite), remove one, move it among its siblings and rename it (a
+task node's rename changes its task; any other gets a `name`); each is one step in the record's own undo.
+Reparenting is refused.
 
 ### Conditions
 
