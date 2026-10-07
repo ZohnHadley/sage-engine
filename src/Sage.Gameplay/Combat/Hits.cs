@@ -171,7 +171,8 @@ public static class Hits
     // a bare entity named `name`), and this adds the flight.
     internal static Entity Carrier(World world, Entity caster, RecordId prefab, string name, Vector3 from, Vector3 direction,
                                    float speed, float range, float radius, RecordId ability, RecordId attack,
-                                   float gravity = 0f, int pierce = 0)
+                                   float gravity = 0f, int pierce = 0, int bounces = 0, float bounciness = 0f,
+                                   bool sticks = false, float stickSeconds = 0f)
     {
         var entity = prefab.IsEmpty
             ? world.Create(Transform.At(from), name)
@@ -194,6 +195,10 @@ public static class Hits
             Radius = radius,
             Gravity = MathF.Max(gravity, 0f),
             Pierce = Math.Max(pierce, 0),
+            Bounces = Math.Max(bounces, 0),
+            Bounciness = Math.Clamp(bounciness, 0f, 1f),
+            Sticks = sticks,
+            StickSeconds = MathF.Max(stickSeconds, 0f),
         });
         // A bolt or a fireball in flight is part of the world a save keeps (issue #134): it comes back
         // where it was, as fast, still its thrower's, and lands after the load.

@@ -200,6 +200,30 @@
       "type": "integer",
       "minimum": 0
     },
+    "projectileBounces": {
+      "description": "How many times a projectile delivery's carrier bounces off scenery before it stops (issue #393) At least 0. (int, default 0)",
+      "default": 0,
+      "type": "integer",
+      "minimum": 0
+    },
+    "projectileBounciness": {
+      "description": "The speed the carrier keeps on each bounce. Range: 0 to 1. (float, default 0.6)",
+      "default": 0.6,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "projectileSticks": {
+      "description": "The carrier stays where it stops, in what it struck, instead of vanishing (an arrow) (bool, default false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "projectileStickSeconds": {
+      "description": "How long a stuck carrier stays. Unit: s. At least 0. (float, default 30)",
+      "default": 30,
+      "type": "number",
+      "minimum": 0
+    },
     "ammo": {
       "description": "The item this attack spends; empty = infinite ammunition. Names a item record. (RecordRef<ItemRecord>)",
       "allOf": [

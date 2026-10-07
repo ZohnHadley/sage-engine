@@ -80,7 +80,8 @@ internal sealed class AbilityPayload
         if (!entity.IsNull && !_targets.Contains(entity)) _targets.Add(entity);
     }
 
-    internal void Gather(World world, Vector3 point, float radius, Entity caster, bool includeCaster)
+    internal void Gather(World world, Vector3 point, float radius, Entity caster, bool includeCaster,
+                         FactionFilter filter = FactionFilter.Default)
     {
         int count = _space.OverlapBox(point, new Vector3(radius), _nearby, LayerMask.All);
         for (int i = 0; i < count; i++)
@@ -88,8 +89,9 @@ internal sealed class AbilityPayload
             var entity = _nearby[i];
             if (!CanBeAffected(world, entity) || (!includeCaster && entity == caster)) continue;
             // A firebug's burst does not burn other firebugs (16 §3.5, F24). The player's does burn
-            // whoever is standing there: aiming is their business, and their name pays for it.
-            if (!Factions.MayHurt(world, caster, entity)) continue;
+            // whoever is standing there: aiming is their business, and their name pays for it. The
+            // ability's `affects` (issue #393) can say otherwise: Allies for a healing burst.
+            if (!FactionFilters.Allows(world, caster, entity, filter)) continue;
             if (!world.TryGet<Transform>(entity, out var transform)) continue;
             if (Vector3.Distance(transform.LocalPosition, point) > radius + 0.5f) continue;   // +half a body
             if (!_targets.Contains(entity)) _targets.Add(entity);
