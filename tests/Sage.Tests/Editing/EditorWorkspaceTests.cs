@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json.Nodes;
 using Sage.Editing;
 
 namespace Sage.Tests;
@@ -24,6 +25,7 @@ public class EditorWorkspaceTests
     private const string GameRecords = """
     [
       { "type": "prefab", "id": "thing", "name": "thing", "components": { "transform": {} } },
+      { "type": "state_machine", "id": "guard", "initial": "idle", "states": { "idle": {} } },
       { "type": "placements", "id": "yard", "place": [
           { "prefab": "thing", "at": [0, 0, 0], "name": "gate" },
           { "prefab": "thing", "at": [5, 0, 0], "name": "door" } ] },
@@ -35,6 +37,8 @@ public class EditorWorkspaceTests
 
     private const string ModRecords = """
     [
+      // A machine with the same name as the game's: what a bare id written in the mod's file could be taken for.
+      { "type": "state_machine", "id": "guard", "initial": "asleep", "states": { "asleep": {} } },
       // The mod's own level.
       { "type": "placements", "id": "tower_placements", "place": [ { "prefab": "game:thing", "at": [0, 10, 0], "name": "bell" } ] },
       { "type": "scene", "id": "tower", "placements": ["tower_placements"] }
@@ -204,6 +208,39 @@ public class EditorWorkspaceTests
             Assert.True(app.Engine.Records.TryGet(Yard, out loaded));
             Assert.Equal(4, loaded.Place.Count);
             Assert.Equal(gameText, File.ReadAllText(gameFile));
+        }
+    }
+
+    // An override's record ids, saved into a mod's patch of the game's level, are written in full: the
+    // game's `guard`, which the mod has a record of the same name beside, stays the game's after the reload.
+    [Fact]
+    public void AnOverridesBareRecordIdSavedAsAModPatchStillNamesTheGamesRecord()
+    {
+        var (app, files) = NewGame();
+        using (app)
+        {
+            var (workspace, _) = NewWorkspace(app);
+            Assert.True(workspace.SetTarget("tweaks", out _));
+            var yard = workspace.Open(Yard)!;
+            var door = yard.Find("door")!;
+            // As a person types it in the inspector: the bare name.
+            yard.Execute(new SetOverride(yard, door, OverrideSection.Part, "state_machine", "machine", JsonValue.Create("guard")));
+            Assert.True(yard.Save());
+
+            string patch = File.ReadAllText(Path.Combine(files.Dir("mods/tweaks"), "data", "patches", "placements_game_yard.json"));
+            Assert.Contains("\"game:guard\"", patch);
+            Assert.DoesNotContain("\"guard\"", patch);
+
+            app.Engine.Records.Reload();
+            Assert.Equal(0, app.Engine.Records.ErrorCount);
+            Assert.True(app.Engine.Records.TryGet(Yard, out PlacementsRecord loaded));
+            Assert.Equal("game:guard", (string?)loaded.Place[1].Overrides!.Parts!["state_machine"]!["machine"]);
+
+            // And spawned, the door runs the game's machine, not the mod's.
+            var reopened = new EditDocument(app.Engine.CreateWorld("check"));
+            Assert.True(reopened.Open(Yard));
+            var entity = reopened.EntityOf(reopened.Find("door")!);
+            Assert.Equal(new RecordId("game", "guard"), reopened.World.Get<StateMachine>(entity).Machine);
         }
     }
 

@@ -351,8 +351,9 @@ public sealed class EditDocument
 
     // The document is defined somewhere the target is not (the shipped game, another mod): the change is a
     // patch of it in the target. The patch says the whole record — every placement, the frame — because a
-    // patch replaces a list it names, and a placement list is one value; ids are written in full, since a bare
-    // id in the target's file would mean the target's namespace (R11).
+    // patch replaces a list it names, and a placement list is one value; ids are written in full, prefabs and
+    // the record ids inside overrides alike, since a bare id in the target's file could be read as the
+    // target's namespace (R11).
     private bool SavePatch(IMount target)
     {
         string virtualFile = PatchFileOf(target) ?? $"data/patches/placements_{Id.Namespace}_{Id.Name}.json";
@@ -368,7 +369,12 @@ public sealed class EditDocument
         var patch = new JsonObject { ["type"] = "placements", ["id"] = Id.ToString(), ["patch"] = true };
         patch["origin"] = dialect.ToNode(_record.Origin);
         patch["relativeTo"] = dialect.ToNode(_record.RelativeTo);
-        patch["place"] = json["place"]!.DeepClone();
+        var place = json["place"]!.DeepClone().AsArray();
+        // And the ids inside an override, which mean the prefab's namespace (OverrideIds).
+        for (int i = 0; i < place.Count && i < _record.Place.Count; i++)
+            if (place[i]?["overrides"] is JsonObject overrides && !_record.Place[i].Prefab.Id.IsEmpty)
+                OverrideIds.Qualify(Engine, overrides, _record.Place[i].Prefab.Id.Namespace);
+        patch["place"] = place;
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
