@@ -8,6 +8,12 @@ namespace Sage.Core;
 
 // A path inside the VFS (docs/design/05 §3.1): forward slashes, lower case, no leading slash, no "..".
 // It is the identity of an asset and what mods shadow.
+//
+// It may start with a namespace (issue #398): `better_blades:textures/falchion.png` is the file
+// `textures/falchion.png` of the mounts whose RecordNamespace is `better_blades` — a mod's own asset, which
+// another mod's file at the same path neither hides nor conflicts with — unless a later mount replaces it on
+// purpose with a file at `@better_blades/textures/falchion.png` (MountLookup). A mod's records get such paths
+// for the assets only that mod ships; anything else is bare and global, the later mount winning.
 public readonly record struct VirtualPath
 {
     public string Value { get; }
@@ -19,11 +25,31 @@ public readonly record struct VirtualPath
         string p = path.Replace('\\', '/').Trim().Trim('/').ToLowerInvariant();
         while (p.Contains("//")) p = p.Replace("//", "/");
         if (p.Length == 0) throw new ArgumentException("Empty virtual path.", nameof(path));
-        if (p.Split('/').Any(seg => seg == ".." || seg == "."))
+        int colon = p.IndexOf(':');
+        if (colon >= 0 && (p.IndexOf(':', colon + 1) >= 0 || !IsNamespace(p.AsSpan(0, colon)) || colon == p.Length - 1 || p[colon + 1] == '/'))
+            throw new ArgumentException($"Virtual path '{path}' may contain ':' only after a namespace (\"mod_id:textures/x.png\").", nameof(path));
+        if (p[(colon + 1)..].Split('/').Any(seg => seg == ".." || seg == "."))
             throw new ArgumentException($"Virtual path '{path}' may not contain '.' or '..' segments.", nameof(path));
-        if (p.Contains(':'))
-            throw new ArgumentException($"Virtual path '{path}' may not contain ':'.", nameof(path));
         return new VirtualPath(p);
+    }
+
+    // The namespace a path names (`better_blades` in `better_blades:textures/falchion.png`); "" when bare.
+    public string Namespace => Value.IndexOf(':') is var colon and >= 0 ? Value[..colon] : "";
+
+    // The path without its namespace: what the file is called inside its mount.
+    public VirtualPath Local => Value.IndexOf(':') is var colon and >= 0 ? new VirtualPath(Value[(colon + 1)..]) : this;
+
+    public bool IsNamespaced => Value.Contains(':');
+
+    // `ns:path`, or `path` when `ns` is empty.
+    public static VirtualPath InNamespace(string ns, VirtualPath path) =>
+        ns.Length == 0 ? path.Local : Parse($"{ns}:{path.Local.Value}");
+
+    private static bool IsNamespace(ReadOnlySpan<char> s)
+    {
+        foreach (char c in s)
+            if (!(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_' || c == '.' || c == '-')) return false;
+        return s.Length > 0;
     }
 
     public string Extension => Path.GetExtension(Value);
@@ -49,6 +75,50 @@ public interface IMount
     string? WritablePath(VirtualPath path);   // for tools, logs and hot reload; null for archives
 }
 
+// How a mount finds a path that may name a namespace (issue #398), for every IMount to share. Inside a mount
+// whose RecordNamespace is `ns`, `ns:p` is the file `p`; `other:p` is an explicit replacement of another
+// namespace's file, kept at `@other/p`; and a bare `p` is `p`, or failing that `@x/p` for any `x` the mount
+// replaces something of (a mod replacing the game's file on purpose, `@village/textures/hut.png`). Null when
+// the mount has none of them; `exists` says whether the mount holds one literal path.
+[System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (4j-2, #398): may change before 1.0
+public static class MountLookup
+{
+    public const char OverridePrefix = '@';
+
+    public static VirtualPath? Find(VirtualPath path, string mountNamespace, Func<VirtualPath, bool> exists, Func<IEnumerable<string>> overrideNamespaces)
+    {
+        if (path.IsNamespaced)
+        {
+            var local = path.Local;
+            if (string.Equals(path.Namespace, mountNamespace, StringComparison.OrdinalIgnoreCase))
+                return exists(local) ? local : null;
+            var replaced = OverrideOf(path.Namespace, local);
+            return exists(replaced) ? replaced : null;
+        }
+        if (exists(path)) return path;
+        if (path.Value[0] == OverridePrefix) return null;
+        foreach (string ns in overrideNamespaces())
+        {
+            var replaced = OverrideOf(ns, path);
+            if (exists(replaced)) return replaced;
+        }
+        return null;
+    }
+
+    // `@ns/path`: where a mount keeps its replacement of namespace `ns`'s `path`.
+    public static VirtualPath OverrideOf(string ns, VirtualPath path) => VirtualPath.Parse($"{OverridePrefix}{ns}/{path.Local.Value}");
+
+    // For a path a mount enumerated: the namespace and path it replaces when it is `@ns/path`, else null.
+    public static (string Namespace, VirtualPath Path)? Replaces(VirtualPath path)
+    {
+        string v = path.Value;
+        if (v.Length < 3 || v[0] != OverridePrefix) return null;
+        int slash = v.IndexOf('/');
+        if (slash <= 1 || slash == v.Length - 1) return null;
+        return (v[1..slash], VirtualPath.Parse(v[(slash + 1)..]));
+    }
+}
+
 public sealed class FolderMount : IMount
 {
     public FolderMount(string name, string directory, string recordNamespace)
@@ -62,17 +132,39 @@ public sealed class FolderMount : IMount
     public string Root { get; }
     public string RecordNamespace { get; }
 
-    public bool Exists(VirtualPath path) => Resolve(path) != null;
+    public bool Exists(VirtualPath path) => Find(path) != null;
 
     public Stream Open(VirtualPath path) =>
-        Resolve(path) is { } file
+        Find(path) is { } file
             ? new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)
             : throw new FileNotFoundException($"'{path}' not found in mount {Name}");
 
-    public string? PhysicalPath(VirtualPath path) => Resolve(path);
+    public string? PhysicalPath(VirtualPath path) => Find(path);
 
-    public string? WritablePath(VirtualPath path) =>
-        Path.Combine(Root, path.Value.Replace('/', Path.DirectorySeparatorChar));
+    // A namespaced path is written where this mount would keep it: its own file, or its `@ns/` replacement.
+    public string? WritablePath(VirtualPath path)
+    {
+        var local = !path.IsNamespaced ? path
+            : string.Equals(path.Namespace, RecordNamespace, StringComparison.OrdinalIgnoreCase) ? path.Local
+            : MountLookup.OverrideOf(path.Namespace, path);
+        return Path.Combine(Root, local.Value.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    // The file a path names in this folder, namespaces and `@ns/` replacements followed (MountLookup).
+    private string? Find(VirtualPath path)
+    {
+        string? found = null;
+        MountLookup.Find(path, RecordNamespace, p => (found = Resolve(p)) != null, OverrideNamespaces);
+        return found;
+    }
+
+    // The namespaces this folder replaces files of: its `@ns` folders.
+    private IEnumerable<string> OverrideNamespaces() =>
+        System.IO.Directory.Exists(Root)
+            ? System.IO.Directory.EnumerateDirectories(Root, MountLookup.OverridePrefix + "*")
+                .Select(d => Path.GetFileName(d)[1..].ToLowerInvariant()).Where(n => n.Length > 0 && !n.Contains(':'))
+                .OrderBy(n => n, StringComparer.Ordinal)
+            : Enumerable.Empty<string>();
 
     public IEnumerable<VirtualPath> Enumerate(VirtualPath? directory, string searchPattern, bool recursive)
     {
@@ -84,9 +176,11 @@ public sealed class FolderMount : IMount
             yield return VirtualPath.Parse(Path.GetRelativePath(Root, file));
     }
 
-    // Case-insensitive lookup, so content behaves the same on Windows and Linux (05 §3.1).
+    // Case-insensitive lookup, so content behaves the same on Windows and Linux (05 §3.1). Literal: a
+    // namespaced path is Find's.
     private string? Resolve(VirtualPath path)
     {
+        if (path.IsNamespaced) return null;
         string direct = Path.Combine(Root, path.Value.Replace('/', Path.DirectorySeparatorChar));
         if (File.Exists(direct)) return direct;
         string? dir = path.Directory.Length == 0 ? Root : ResolveDirectory(VirtualPath.Parse(path.Directory));
@@ -97,6 +191,7 @@ public sealed class FolderMount : IMount
 
     private string? ResolveDirectory(VirtualPath dirPath)
     {
+        if (dirPath.IsNamespaced) return null;
         string current = Root;
         foreach (var segment in dirPath.Value.Split('/'))
         {
@@ -145,12 +240,18 @@ public sealed class AssemblyContentMount : IMount
     // How many files it carries.
     public int Count => _files.Count;
 
-    public bool Exists(VirtualPath path) => _files.ContainsKey(path.Value);
+    public bool Exists(VirtualPath path) => Find(path) != null;
 
     public Stream Open(VirtualPath path) =>
-        _files.TryGetValue(path.Value, out var resource) && _assembly.GetManifestResourceStream(resource) is { } stream
+        Find(path) is { } found && _files.TryGetValue(found.Value, out var resource) && _assembly.GetManifestResourceStream(resource) is { } stream
             ? stream
             : throw new FileNotFoundException($"'{path}' not found in mount {Name}");
+
+    private VirtualPath? Find(VirtualPath path) =>
+        MountLookup.Find(path, RecordNamespace, p => _files.ContainsKey(p.Value), () => _overrides ??= _files.Keys
+            .Select(f => MountLookup.Replaces(VirtualPath.Parse(f))?.Namespace).OfType<string>().Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList());
+
+    private List<string>? _overrides;
 
     public string? PhysicalPath(VirtualPath path) => null;
 

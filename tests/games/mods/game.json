@@ -5,8 +5,9 @@
   // a player; the RPG kit brings the shop screen and the hands a blade is held in. `mods/` (game.json's
   // default "modsDirectory") holds two data mods, found and mounted after the game as `mods/<id>`:
   //   better_blades  a falchion (an attack and an item) in the trader's stock, and the trader renamed;
-  //   rival_trade    a spear in the stock too, the trader renamed again, a stall placed in the scene, and
-  //                  better_blades' falchion texture re-skinned.
+  //   rival_trade    a spear in the stock too, the trader renamed again, a stall placed in the scene, a
+  //                  falchion of its own from its own textures/falchion.png (each mod sees its own, #398),
+  //                  and the game's lantern picture replaced on purpose (`@village/textures/lantern.png`).
   // CI validates it with --game-mods, runs `sage mods` and smoke-runs it; tests/Sage.Tests/Games/ModsExitTests.cs
   // plays it headlessly: the falchion bought, wielded and swung, the conflict report, the order reversed,
   // a mod switched off, and a save carried across.

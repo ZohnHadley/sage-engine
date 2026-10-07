@@ -124,7 +124,7 @@ with file and line from `rec_get`.
 | REQ-MOD-07 | Players shall switch and reorder mods in a screen and at the console, applying at next start. | Should | Done | test: TheConsoleWritesThePlayersListForTheNextStartAndChangesNothingNow |
 | REQ-MOD-08 | A modder shall check a mod headlessly with `sage mods` and `sage validate --mods`. | Must | Done | test: ARefusedMod_IsReportedWithItsReason_AndTheGameStillValidates |
 | REQ-MOD-09 | A mod template shall build a working mod. | Should | Done | test: TheTemplateMod_LoadsInAGame_AddsItsWeapon_AndPatchesThePlayer |
-| REQ-MOD-10 | The exit game shall show two conflicting mods, a reversed order, a disabled mod and a save across them. | Must | Done | test: ModsExit_ModConflictsReportsTheNameAndTheTexture |
+| REQ-MOD-10 | The exit game shall show two conflicting mods, a reversed order, a disabled mod and a save across them. | Must | Done | test: ModsExit_ModConflictsReportsTheName_AndNeitherFalchionTexture |
 | REQ-MOD-11 | A mod shall be able to ship trusted code in a collectible load context, loaded before registries seal. | Must | Not started | #396 |
 | REQ-MOD-12 | A mod shall be distributable as a hardened `.sagemod` zip (no zip-slip, size and count limits). | Must | Not started | #397 |
 | REQ-MOD-13 | Two mods shall each be able to ship the same asset path without clashing. | Must | Not started | #398 |
