@@ -179,6 +179,8 @@ public sealed class InventoryPart : IPrefabPart
     {
         public RecordRef<ItemRecord> Item;
         [Property(Min = 1)] public int Count = 1;
+        [Property(Tooltip = "What makes these unlike the rest of their kind: a name, enchantments, condition, charges; none = plain")]
+        public ItemInstance? Instance;
     }
 
     public void Apply(in PrefabPartContext ctx)
@@ -187,7 +189,7 @@ public sealed class InventoryPart : IPrefabPart
         foreach (var stack in Items)
         {
             if (stack.Item.IsEmpty) continue;
-            if (!ctx.World.Give(ctx.Entity, stack.Item, stack.Count))
+            if (!ctx.World.Give(ctx.Entity, stack.Item, stack.Instance, stack.Count))
                 ctx.Warn($"{stack.Count}x {stack.Item} did not fit");
         }
     }
@@ -205,11 +207,14 @@ public sealed class PickupPart : IPrefabPart
     public RecordRef<ItemRecord> Item;
     [Property(Min = 1, Tooltip = "How many")]
     public int Count = 1;
+    [Property(Tooltip = "What makes it unlike the rest of its kind: a name, enchantments, condition, charges; none = plain")]
+    public ItemInstance? Instance;
 
     public void Apply(in PrefabPartContext ctx)
     {
         if (Item.IsEmpty) { ctx.Error("needs an \"item\""); return; }
-        ctx.World.MakePickup(ctx.Entity, Item, Count);
+        if (ctx.World.MakePickup(ctx.Entity, Item, Count) && Instance != null && !Instance.IsPlain)
+            ctx.World.Get<Pickup>(ctx.Entity).Instance = Instance.Clone();
     }
 }
 

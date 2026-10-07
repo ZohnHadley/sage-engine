@@ -1,0 +1,358 @@
+{
+  "origin": {
+    "x": 0,
+    "z": 0
+  },
+  "entities": [
+    {
+      "id": "1bf64af0333ffa2a0ceec786a42cd365",
+      "name": "hero",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0,
+              0.004999999,
+              0
+            ],
+            "LocalRotation": [
+              0,
+              -0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:pawn": {
+          "version": 1,
+          "data": {}
+        },
+        "sage:pawn_intent": {
+          "version": 1,
+          "data": {
+            "Yaw": -0,
+            "Pitch": 0
+          }
+        },
+        "sage:character_controller": {
+          "version": 1,
+          "data": {
+            "Profile": "",
+            "Layer": 1,
+            "Velocity": [
+              0,
+              0,
+              0
+            ],
+            "Crouching": false,
+            "Mode": "Default",
+            "InWater": false,
+            "UnderwaterSeconds": 0
+          }
+        },
+        "sage:collider": {
+          "version": 1,
+          "data": {
+            "Shape": "Capsule",
+            "Size": [
+              0.35,
+              1.0999999,
+              0
+            ],
+            "Center": [
+              0,
+              0.9,
+              0
+            ],
+            "Layer": 1,
+            "IsTrigger": false,
+            "ReportContacts": false,
+            "Surface": ""
+          }
+        },
+        "sage:rigid_body": {
+          "version": 1,
+          "data": {
+            "Kind": "Kinematic",
+            "Mass": 0,
+            "Friction": 0,
+            "Restitution": 0
+          }
+        },
+        "sage:attributes": {
+          "version": 1,
+          "data": {
+            "Values": {
+              "sage:armor": 0,
+              "sage:edge": 0,
+              "sage:health": 100
+            }
+          }
+        },
+        "sage:gameplay_tags": {
+          "version": 1,
+          "data": []
+        },
+        "sage:active_effects": {
+          "version": 1,
+          "data": {
+            "Effects": [
+              {
+                "Record": "sage:keen",
+                "Source": "1bf64af0333ffa2a0ceec786a42cd365",
+                "Remaining": "Infinity",
+                "PeriodTimer": 0,
+                "Stacks": 1,
+                "Magnitude": 1
+              },
+              {
+                "Record": "sage:warded",
+                "Source": "1bf64af0333ffa2a0ceec786a42cd365",
+                "Remaining": "Infinity",
+                "PeriodTimer": 0,
+                "Stacks": 1,
+                "Magnitude": 1
+              }
+            ]
+          }
+        },
+        "sage:melee": {
+          "version": 1,
+          "data": {
+            "Attack": "sage:sword_swing",
+            "Natural": "sage:fists",
+            "Cooldown": 0
+          }
+        },
+        "sage:inventory": {
+          "version": 1,
+          "data": {
+            "Items": [
+              {
+                "Item": "sage:sword",
+                "Count": 1,
+                "Instance": null
+              },
+              {
+                "Item": "sage:sword",
+                "Count": 1,
+                "Instance": {
+                  "Id": 1,
+                  "Name": "Dawnblade",
+                  "Effects": [
+                    "sage:warded"
+                  ],
+                  "Condition": 1,
+                  "Charges": 0
+                }
+              },
+              {
+                "Item": "sage:sword",
+                "Count": 1,
+                "Instance": {
+                  "Id": 2,
+                  "Name": "Rustfang",
+                  "Effects": [],
+                  "Condition": 0.4,
+                  "Charges": 3
+                }
+              },
+              {
+                "Item": "sage:arrow",
+                "Count": 5,
+                "Instance": null
+              },
+              {
+                "Item": "sage:arrow",
+                "Count": 6,
+                "Instance": {
+                  "Id": 3,
+                  "Name": "poisoned arrow",
+                  "Effects": [],
+                  "Condition": 1,
+                  "Charges": 1
+                }
+              }
+            ],
+            "Capacity": 50
+          }
+        },
+        "sage:equipment": {
+          "version": 2,
+          "data": {
+            "Worn": [
+              {
+                "Slot": "MainHand",
+                "Item": "sage:sword",
+                "Instance": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "61eef19d1ae142cd9e0f5aa6d0c4e10b",
+      "name": "iron sword",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              4,
+              0,
+              6
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:collider": {
+          "version": 1,
+          "data": {
+            "Shape": "Capsule",
+            "Size": [
+              0.25,
+              0.01,
+              0
+            ],
+            "Center": [
+              0,
+              0.25,
+              0
+            ],
+            "Layer": 0,
+            "IsTrigger": false,
+            "ReportContacts": false,
+            "Surface": ""
+          }
+        },
+        "sage:rigid_body": {
+          "version": 1,
+          "data": {
+            "Kind": "Static",
+            "Mass": 0,
+            "Friction": 0,
+            "Restitution": 0
+          }
+        },
+        "sage:pickup": {
+          "version": 1,
+          "data": {
+            "Item": "sage:sword",
+            "Count": 1,
+            "Instance": {
+              "Id": 0,
+              "Name": "Oathkeeper",
+              "Effects": [],
+              "Condition": 1,
+              "Charges": 2
+            }
+          }
+        }
+      }
+    }
+  ],
+  "resources": {
+    "clock": {
+      "version": 1,
+      "data": {
+        "Day": 0,
+        "Hour": 12.00055555558453,
+        "Scale": 60,
+        "Sky": "",
+        "Calendar": ""
+      }
+    },
+    "entity_io": {
+      "version": 1,
+      "data": {
+        "Pending": [],
+        "Wires": []
+      }
+    },
+    "journal": {
+      "version": 1,
+      "data": {
+        "Entries": []
+      }
+    },
+    "music": {
+      "version": 1,
+      "data": {
+        "Track": "",
+        "Previous": "",
+        "Blend": 1,
+        "BlendRate": 1,
+        "Intensity": 0,
+        "Settled": true
+      }
+    },
+    "offscreen": {
+      "version": 1,
+      "data": {
+        "Minute": 720,
+        "Agents": []
+      }
+    },
+    "reputation": {
+      "version": 1,
+      "data": {
+        "Standings": []
+      }
+    },
+    "time": {
+      "version": 1,
+      "data": {
+        "Scale": 1,
+        "Paused": false,
+        "HitStopLeft": 0,
+        "Unscaled": 0.03333333507180214,
+        "Scaled": 0.03333333507180214,
+        "Carry": 0
+      }
+    },
+    "travel": {
+      "version": 1,
+      "data": {
+        "Points": []
+      }
+    },
+    "vars": {
+      "version": 1,
+      "data": {
+        "Values": {}
+      }
+    },
+    "weather": {
+      "version": 1,
+      "data": {
+        "Current": "sage:clear",
+        "Target": "sage:clear",
+        "Blend": 1,
+        "BlendRate": 1,
+        "Pattern": "",
+        "Region": "",
+        "PickedSlot": -1,
+        "Wetness": 0,
+        "Settled": true,
+        "Showing": "sage:clear"
+      }
+    }
+  }
+}

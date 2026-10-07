@@ -59,12 +59,65 @@ public sealed class ItemRecord
     public List<IItemUse> Uses = new();     // what using it does, in order (issue #28, ItemUses)
 
     public string Describe(RecordId id) => string.IsNullOrEmpty(Label) ? id.Name : Label;
+
+    // What one unit is called: its own name when an instance has one (issue #383), the record's otherwise.
+    public string Describe(RecordId id, ItemInstance? instance) =>
+        instance != null && !string.IsNullOrEmpty(instance.Name) ? instance.Name : Describe(id);
+}
+
+// One unit of an item that is not like the rest of its kind (issue #383, 16 §3.2): a sword with a name,
+// an enchanted ring, a worn helmet, a wand with charges left. **Only what differs is an instance**: a plain
+// stack of identical items stays ids and counts (`ItemStack.Instance` null), and an instance that differs
+// in nothing (IsPlain) is made plain when it goes into an inventory, so two loaves never become two kinds.
+//
+// Identical instances stack like plain items, up to the record's MaxStack (a quiver of the same poisoned
+// arrows); different ones never do. `Id` tells instances apart *within one inventory* — it is what an
+// equipped slot points at — and is given as the instance goes in, so it means nothing anywhere else.
+public sealed class ItemInstance
+{
+    [Property(Min = 0, Tooltip = "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at")]
+    public int Id;
+    [Property(Tooltip = "Its own name (a unique sword); empty = the item's label")]
+    public string Name = "";
+    [Property(Tooltip = "Enchantments: effects applied while it is equipped, on top of the item's own")]
+    public List<RecordRef<EffectRecord>> Effects = new();
+    [Property(Min = 0, Max = 1, Tooltip = "How worn it is, 1 = as made; below that, the durability rules say what it means")]
+    public float Condition = 1f;
+    [Property(Min = 0, Tooltip = "Uses left in it (a wand, a lantern's oil); 0 = none")]
+    public int Charges;
+
+    // Differs in nothing from the record: not worth being an instance.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsPlain => string.IsNullOrEmpty(Name) && (Effects == null || Effects.Count == 0) && Condition >= 1f && Charges == 0;
+
+    // The same in everything but Id: units that may share a stack.
+    public bool SameAs(ItemInstance? other)
+    {
+        if (other == null) return IsPlain;
+        if ((Name ?? "") != (other.Name ?? "") || Condition != other.Condition || Charges != other.Charges) return false;
+        int a = Effects?.Count ?? 0, b = other.Effects?.Count ?? 0;
+        if (a != b) return false;
+        for (int i = 0; i < a; i++)
+            if (Effects![i].Id != other.Effects![i].Id) return false;
+        return true;
+    }
+
+    // A copy, with no Id: what a split stack's new half or a dropped unit carries.
+    public ItemInstance Clone() => new()
+    {
+        Name = Name ?? "",
+        Effects = Effects != null ? new List<RecordRef<EffectRecord>>(Effects) : new(),
+        Condition = Condition,
+        Charges = Charges,
+    };
 }
 
 public struct ItemStack
 {
     public RecordId Item;
     public int Count;
+    // What makes these units unlike the rest of their kind (issue #383); null for a plain stack.
+    public ItemInstance? Instance;
 }
 
 // What something is carrying. `Capacity` is kilograms; 0 means "as much as it likes".
@@ -84,6 +137,8 @@ public struct EquippedItem
 {
     public string Slot;
     public RecordId Item;
+    // The instance worn (ItemInstance.Id in the same inventory), 0 for a plain one (issue #383).
+    public int Instance;
 }
 
 // What it is wearing and holding, by slot (issue #27). Version 1 had two fields, `MainHand` and
@@ -103,12 +158,21 @@ public struct Equipment : IComponent
         return default;
     }
 
+    // Which instance of it is in a slot (ItemInstance.Id; Items.WornInstance finds it), 0 for a plain one or none.
+    public readonly int InstanceIn(string slot)
+    {
+        if (Worn != null)
+            foreach (var worn in Worn)
+                if (string.Equals(worn.Slot, slot, StringComparison.OrdinalIgnoreCase)) return worn.Instance;
+        return 0;
+    }
+
     // Puts an item in a slot, or empties it (`default`).
-    internal void Set(string slot, RecordId item)
+    internal void Set(string slot, RecordId item, int instance = 0)
     {
         Worn ??= new List<EquippedItem>();
         Worn.RemoveAll(w => string.Equals(w.Slot, slot, StringComparison.OrdinalIgnoreCase));
-        if (!item.IsEmpty) Worn.Add(new EquippedItem { Slot = slot, Item = item });
+        if (!item.IsEmpty) Worn.Add(new EquippedItem { Slot = slot, Item = item, Instance = instance });
     }
 
     [Upgrade(1)]
@@ -131,6 +195,8 @@ public struct Pickup : IComponent
 {
     public RecordId Item;
     public int Count;
+    // The instance lying there (issue #383); null for plain ones.
+    public ItemInstance? Instance;
 }
 
 // Tag: the Use action does something with this. A `Pickup` is one implicitly; anything else with the
@@ -196,7 +262,17 @@ public static class Items
 
     // Puts items in. Returns false when they don't fit or the record is missing — a caller that is
     // moving items (a pickup, a trade) must not destroy the source until this says yes.
-    public static bool Give(this World world, Entity entity, RecordId item, int count = 1)
+    public static bool Give(this World world, Entity entity, RecordId item, int count = 1) =>
+        world.Give(entity, item, null, count);
+
+    // A stack as it is, instance and all (issue #383): what moving one between inventories gives.
+    public static bool Give(this World world, Entity entity, in ItemStack stack) =>
+        world.Give(entity, stack.Item, stack.Instance, stack.Count);
+
+    // Units of one instance (issue #383). A copy of `instance` goes in, so the caller's stays its own, and
+    // one that differs in nothing (IsPlain) goes in as a plain item. Identical instances share a stack up
+    // to MaxStack; different ones never do.
+    public static bool Give(this World world, Entity entity, RecordId item, ItemInstance? instance, int count = 1)
     {
         if (count <= 0 || !world.IsAlive(entity)) return false;
         var records = world.Resources.Get<RecordStore>();
@@ -213,53 +289,181 @@ public static class Items
         }
 
         ref var inventory = ref world.Get<Inventory>(entity);
-        if (inventory.Capacity > 0f && world.WeightOf(entity) + record.Weight * count > inventory.Capacity)
+        if (!Lifts(world, entity, inventory.Capacity, record, count))
         {
-            Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot carry {count}x {record.Describe(item)}: too heavy");
+            Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot carry {count}x {record.Describe(item, instance)}: too heavy");
             return false;
         }
+        if (instance != null && instance.IsPlain) instance = null;
 
         int remaining = count;
         int maxStack = Math.Max(record.MaxStack, 1);
         var items = inventory.Items ??= new List<ItemStack>();
         for (int i = 0; i < items.Count && remaining > 0; i++)
         {
-            if (items[i].Item != item || items[i].Count >= maxStack) continue;
-            int room = Math.Min(maxStack - items[i].Count, remaining);
-            items[i] = new ItemStack { Item = item, Count = items[i].Count + room };
+            var stack = items[i];
+            if (stack.Item != item || stack.Count >= maxStack || !SameKind(stack.Instance, instance)) continue;
+            int room = Math.Min(maxStack - stack.Count, remaining);
+            stack.Count += room;
+            items[i] = stack;
             remaining -= room;
         }
         while (remaining > 0)
         {
             int room = Math.Min(maxStack, remaining);
-            items.Add(new ItemStack { Item = item, Count = room });
+            ItemInstance? copy = null;
+            if (instance != null)
+            {
+                copy = instance.Clone();
+                copy.Id = NextInstanceId(items);
+            }
+            items.Add(new ItemStack { Item = item, Count = room, Instance = copy });
             remaining -= room;
         }
         return true;
     }
 
-    // Takes items out. Returns false (and takes nothing) unless the whole count is there.
+    // Takes items out. Returns false (and takes nothing) unless the whole count is there. Plain units go
+    // first (issue #383): selling "a sword" does not sell the one with a name.
     public static bool Take(this World world, Entity entity, RecordId item, int count = 1)
     {
         if (count <= 0 || world.CountOf(entity, item) < count) return false;
-
-        ref var inventory = ref world.Get<Inventory>(entity);
-        int remaining = count;
-        var items = inventory.Items;
-        for (int i = items.Count - 1; i >= 0 && remaining > 0; i--)
-        {
-            if (items[i].Item != item) continue;
-            int taken = Math.Min(items[i].Count, remaining);
-            remaining -= taken;
-            if (items[i].Count == taken) items.RemoveAt(i);
-            else items[i] = new ItemStack { Item = item, Count = items[i].Count - taken };
-        }
-
-        // Something being worn has left the inventory with it.
-        if (world.TryGet<Equipment>(entity, out var equipment) && equipment.Worn != null && world.CountOf(entity, item) == 0)
-            foreach (var worn in equipment.Worn.Where(w => w.Item == item).ToList())
-                world.Unequip(entity, worn.Slot);
+        Remove(world, entity, item, count, null);
         return true;
+    }
+
+    // Takes `count` units out of the stack at `index` in the inventory, leaving the rest of it where it was
+    // (issue #383): how a stack splits on a drop, a move or a trade. `taken` is what came out, with its
+    // instance (a copy when the stack was split). False, with nothing taken, unless the stack has that many.
+    public static bool TakeAt(this World world, Entity entity, int index, int count, out ItemStack taken)
+    {
+        taken = default;
+        if (count <= 0 || !world.TryGet<Inventory>(entity, out var inventory) || inventory.Items == null
+            || index < 0 || index >= inventory.Items.Count || inventory.Items[index].Count < count) return false;
+
+        var items = inventory.Items;
+        var stack = items[index];
+        if (stack.Count == count)
+        {
+            items.RemoveAt(index);
+            taken = stack;
+            Released(world, entity, new List<ItemStack> { stack });
+            return true;
+        }
+        var rest = stack;
+        rest.Count -= count;
+        items[index] = rest;
+        taken = new ItemStack { Item = stack.Item, Count = count, Instance = stack.Instance?.Clone() };
+        return true;
+    }
+
+    // Splits `count` units off the stack at `index` into a stack of their own, right after it (issue #383).
+    // Nothing comes or goes, so counts and weight stay; the new stack's instance is a copy with an Id of
+    // its own, and whatever was worn stays with the original. False unless the stack has more than `count`.
+    public static bool Split(this World world, Entity entity, int index, int count)
+    {
+        if (count <= 0 || !world.TryGet<Inventory>(entity, out var inventory) || inventory.Items == null
+            || index < 0 || index >= inventory.Items.Count || inventory.Items[index].Count <= count) return false;
+
+        var items = inventory.Items;
+        var stack = items[index];
+        var rest = stack;
+        rest.Count -= count;
+        items[index] = rest;
+        ItemInstance? copy = null;
+        if (stack.Instance != null)
+        {
+            copy = stack.Instance.Clone();
+            copy.Id = NextInstanceId(items);
+        }
+        items.Insert(index + 1, new ItemStack { Item = stack.Item, Count = count, Instance = copy });
+        return true;
+    }
+
+    // Moves `count` units of the stack at `index` into another inventory, instance and all (issue #383):
+    // a loot screen, a chest, a trade. False, with nothing moved, when they are not there or do not fit.
+    public static bool MoveTo(this World world, Entity from, int index, Entity to, int count)
+    {
+        if (count <= 0 || !world.IsAlive(to) || !world.TryGet<Inventory>(from, out var source) || source.Items == null
+            || index < 0 || index >= source.Items.Count || source.Items[index].Count < count) return false;
+        var item = source.Items[index].Item;
+        if (!world.TryGet<Inventory>(to, out var target) || !world.Resources.Get<RecordStore>().TryGet(item, out ItemRecord record)
+            || (from != to && !Lifts(world, to, target.Capacity, record, count))) return false;
+
+        if (!world.TakeAt(from, index, count, out var taken)) return false;
+        if (world.Give(to, in taken)) return true;
+        world.Give(from, in taken);   // it was there a moment ago, so it fits again
+        return false;
+    }
+
+    // Whether `count` more of an item keep a carrier within its capacity.
+    private static bool Lifts(World world, Entity entity, float capacity, ItemRecord record, int count) =>
+        capacity <= 0f || world.WeightOf(entity) + record.Weight * count <= capacity;
+
+    // Two stacks' instances that may share a stack: both plain, or the same in everything but Id.
+    private static bool SameKind(ItemInstance? a, ItemInstance? b) => a == null ? b == null : b != null && a.SameAs(b);
+
+    private static int NextInstanceId(List<ItemStack> items)
+    {
+        int max = 0;
+        foreach (var stack in items)
+            if (stack.Instance != null) max = Math.Max(max, stack.Instance.Id);
+        return max + 1;
+    }
+
+    // Takes `count` of an item, plain units first and then instances, each from the last stack back;
+    // `into` gets what came out. The caller has checked they are there.
+    private static void Remove(World world, Entity entity, RecordId item, int count, List<ItemStack>? into)
+    {
+        var items = world.Get<Inventory>(entity).Items;
+        List<ItemStack>? gone = null;
+        int remaining = count;
+        for (int pass = 0; pass < 2 && remaining > 0; pass++)
+            for (int i = items.Count - 1; i >= 0 && remaining > 0; i--)
+            {
+                var stack = items[i];
+                if (stack.Item != item || (stack.Instance == null) != (pass == 0)) continue;
+                int taken = Math.Min(stack.Count, remaining);
+                remaining -= taken;
+                if (stack.Count == taken)
+                {
+                    items.RemoveAt(i);
+                    (gone ??= new List<ItemStack>()).Add(stack);
+                    into?.Add(stack);
+                }
+                else
+                {
+                    var rest = stack;
+                    rest.Count -= taken;
+                    items[i] = rest;
+                    into?.Add(new ItemStack { Item = item, Count = taken, Instance = stack.Instance?.Clone() });
+                }
+            }
+        Released(world, entity, gone);
+    }
+
+    // Something being worn has left the inventory with its stack: it comes off, and its effects with it.
+    private static void Released(World world, Entity entity, List<ItemStack>? gone)
+    {
+        if (gone == null || !world.TryGet<Equipment>(entity, out var equipment) || equipment.Worn == null) return;
+        var items = world.Get<Inventory>(entity).Items;
+        foreach (var worn in equipment.Worn.ToList())
+        {
+            if (IndexOf(items, worn.Item, worn.Instance) >= 0) continue;
+            ItemInstance? instance = null;
+            foreach (var stack in gone)
+                if (stack.Item == worn.Item && stack.Instance != null && stack.Instance.Id == worn.Instance) instance = stack.Instance;
+            TakeOff(world, entity, worn, instance);
+        }
+    }
+
+    // The stack holding an item: a plain one for `instance` 0, otherwise the instance with that Id; -1 for none.
+    private static int IndexOf(List<ItemStack>? items, RecordId item, int instance)
+    {
+        if (items == null) return -1;
+        for (int i = 0; i < items.Count; i++)
+            if (items[i].Item == item && (items[i].Instance?.Id ?? 0) == instance) return i;
+        return -1;
     }
 
     // Wears or wields something already carried. Whatever was in that slot comes off first.
@@ -276,9 +480,9 @@ public static class Items
         return true;
     }
 
+    // Equips one of an item: a plain one when there is one, otherwise the first instance of it.
     public static bool Equip(this World world, Entity entity, RecordId item)
     {
-        var records = world.Resources.Get<RecordStore>();
         if (!world.CanEquip(entity, item, out string reason))
         {
             // Said once, here, rather than in each caller: the console, a screen and an AI all get the
@@ -286,10 +490,36 @@ public static class Items
             Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot equip {item.Name}: {reason}");
             return false;
         }
+        var items = world.Get<Inventory>(entity).Items;
+        int index = IndexOf(items, item, 0);
+        if (index < 0)
+            for (int i = 0; i < items.Count && index < 0; i++)
+                if (items[i].Item == item) index = i;
+        return world.EquipAt(entity, index);
+    }
 
-        records.TryGet(item, out ItemRecord record);
+    // Equips the stack at `index` in the inventory (issue #383): that very unit, so its instance's
+    // enchantments go on with the item's own effects and come off with them.
+    public static bool EquipAt(this World world, Entity entity, int index)
+    {
+        if (!world.TryGet<Inventory>(entity, out var inventory) || inventory.Items == null || index < 0 || index >= inventory.Items.Count)
+        {
+            Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot equip stack {index}: there is no such stack");
+            return false;
+        }
+        var stack = inventory.Items[index];
+        if (!world.CanEquip(entity, stack.Item, out string reason))
+        {
+            Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot equip {stack.Item.Name}: {reason}");
+            return false;
+        }
+        // An instance written straight into a component, never given: it gets its Id now.
+        if (stack.Instance != null && stack.Instance.Id == 0) stack.Instance.Id = NextInstanceId(inventory.Items);
+
+        var records = world.Resources.Get<RecordStore>();
+        records.TryGet(stack.Item, out ItemRecord record);
         world.Unequip(entity, record.Slot);
-        world.Get<Equipment>(entity).Set(record.Slot, item);
+        world.Get<Equipment>(entity).Set(record.Slot, stack.Item, stack.Instance?.Id ?? 0);
 
         // A weapon simply replaces what the wielder swings; combat asks Melee, never the inventory.
         if (!record.Attack.IsEmpty)
@@ -299,21 +529,45 @@ public static class Items
             melee.Attack = record.Attack;
         }
         foreach (var effect in record.Effects) Effects.Apply(world, entity, effect, entity);
+        if (stack.Instance?.Effects != null)
+            foreach (var effect in stack.Instance.Effects) Effects.Apply(world, entity, effect, entity);
 
-        Log.Debug(LogCat.Gameplay, $"{World.Describe(entity)} equips {record.Describe(item)}");
+        Log.Debug(LogCat.Gameplay, $"{World.Describe(entity)} equips {record.Describe(stack.Item, stack.Instance)}");
         return true;
     }
 
     public static void Unequip(this World world, Entity entity, string slot)
     {
-        if (!world.Has<Equipment>(entity)) return;
-        ref var equipment = ref world.Get<Equipment>(entity);
-        var item = equipment.In(slot);
-        if (item.IsEmpty) return;
+        if (!world.TryGet<Equipment>(entity, out var equipment) || equipment.Worn == null) return;
+        foreach (var worn in equipment.Worn)
+            if (string.Equals(worn.Slot, slot, StringComparison.OrdinalIgnoreCase))
+            {
+                TakeOff(world, entity, worn, world.InstanceOf(entity, worn.Item, worn.Instance));
+                return;
+            }
+    }
 
-        equipment.Set(slot, default);
+    // The instance worn in a slot (issue #383), or null for a plain item or an empty slot: what a screen
+    // names and what durability (#382) wears down.
+    public static ItemInstance? WornInstance(this World world, Entity entity, string slot)
+    {
+        if (!world.TryGet<Equipment>(entity, out var equipment)) return null;
+        int id = equipment.InstanceIn(slot);
+        return id == 0 ? null : world.InstanceOf(entity, equipment.In(slot), id);
+    }
+
+    private static ItemInstance? InstanceOf(this World world, Entity entity, RecordId item, int id)
+    {
+        if (id == 0 || !world.TryGet<Inventory>(entity, out var inventory)) return null;
+        int index = IndexOf(inventory.Items, item, id);
+        return index < 0 ? null : inventory.Items[index].Instance;
+    }
+
+    private static void TakeOff(World world, Entity entity, EquippedItem worn, ItemInstance? instance)
+    {
+        world.Get<Equipment>(entity).Set(worn.Slot, default);
         var records = world.Resources.Get<RecordStore>();
-        if (records.TryGet(item, out ItemRecord record))
+        if (records.TryGet(worn.Item, out ItemRecord record))
         {
             foreach (var effect in record.Effects) Effects.Remove(world, entity, effect);
             // The rounds loaded for it go back in the bag (issue #135).
@@ -325,19 +579,51 @@ public static class Items
                 melee.Attack = melee.Natural;
             }
         }
+        if (instance?.Effects != null)
+            foreach (var effect in instance.Effects) Effects.Remove(world, entity, effect);
     }
 
-    // Puts an item on the ground in front of an entity, as a Pickup someone can take again.
+    // Puts items on the ground in front of an entity, as a Pickup someone can take again. Plain units
+    // go first, as Take takes them; an instance that goes too lies in a pickup of its own. Returns the
+    // first pickup.
     public static Entity Drop(this World world, Entity entity, RecordId item, int count = 1)
     {
-        if (!world.Take(entity, item, count)) return default;
-        var records = world.Resources.Get<RecordStore>();
-        records.TryGet(item, out ItemRecord record);
+        if (count <= 0 || world.CountOf(entity, item) < count) return default;
+        var gone = new List<ItemStack>();
+        Remove(world, entity, item, count, gone);
 
+        var piles = new List<ItemStack>();
+        foreach (var stack in gone)
+        {
+            int at = piles.FindIndex(p => SameKind(p.Instance, stack.Instance));
+            if (at < 0) { piles.Add(stack); continue; }
+            var pile = piles[at];
+            pile.Count += stack.Count;
+            piles[at] = pile;
+        }
+        Entity first = default;
+        foreach (var pile in piles)
+        {
+            var dropped = InFront(world, entity, pile);
+            if (first.IsNull) first = dropped;
+        }
+        return first;
+    }
+
+    // Puts `count` units of the stack at `index` on the ground (issue #383): the stack splits, the rest
+    // stays in the bag, and the pickup carries the stack's instance.
+    public static Entity DropAt(this World world, Entity entity, int index, int count)
+    {
+        if (!world.Has<Transform>(entity) || !world.TakeAt(entity, index, count, out var taken)) return default;
+        return InFront(world, entity, taken);
+    }
+
+    private static Entity InFront(World world, Entity entity, in ItemStack stack)
+    {
         var pose = world.Get<Transform>(entity);
         float yaw = world.TryGet<PawnIntent>(entity, out var intent) ? intent.Yaw : SageMath.YawOf(pose.LocalRotation);
         var position = pose.LocalPosition + SageMath.ForwardFromYaw(yaw) * 0.8f;
-        return world.SpawnPickup(item, count, position, record);
+        return world.SpawnPickup(in stack, position);
     }
 
     // Makes an existing entity an item lying on the ground: its billboard, its Pickup and a small
@@ -371,6 +657,15 @@ public static class Items
         var entity = world.Create(Transform.At(position), record.Describe(item));
         Decorate(world, entity, item, count, record);
         world.MakePersistent(entity);   // a dropped item survives a save (phase 4i)
+        return entity;
+    }
+
+    // A stack lying on the ground, its instance (a copy) with it (issue #383).
+    public static Entity SpawnPickup(this World world, in ItemStack stack, Vector3 position)
+    {
+        var entity = world.SpawnPickup(stack.Item, stack.Count, position);
+        if (!entity.IsNull && stack.Instance != null && !stack.Instance.IsPlain)
+            world.Get<Pickup>(entity).Instance = stack.Instance.Clone();
         return entity;
     }
 
@@ -447,11 +742,11 @@ internal sealed class InteractionSystem : ISystem
 
             // The one interaction the engine knows about: picking something up.
             if (world.TryGet<Pickup>(interaction.Target, out var pickup) &&
-                world.Give(interaction.User, pickup.Item, pickup.Count))
+                world.Give(interaction.User, pickup.Item, pickup.Instance, pickup.Count))
             {
                 got = pickup.Item;
                 _records.TryGet(pickup.Item, out ItemRecord record);
-                string what = $"{(pickup.Count > 1 ? pickup.Count + "x " : "")}{record?.Describe(pickup.Item) ?? pickup.Item.Name}";
+                string what = $"{(pickup.Count > 1 ? pickup.Count + "x " : "")}{record?.Describe(pickup.Item, pickup.Instance) ?? pickup.Item.Name}";
                 Log.Info(LogCat.Gameplay, $"{World.Describe(interaction.User)} picks up {what}");
                 world.Say($"Picked up {what}", MessageKind.Good, 3f);
                 // Its wires hear it before it goes (issue #91): firing reads them now and only queues.
