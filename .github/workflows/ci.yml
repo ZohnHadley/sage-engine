@@ -241,8 +241,10 @@ jobs:
           # camera on the screen flying on the Editor context's EditorMove, a crate selected for the inspector
           # and the status bar, the layout reset and the viewport window on. EditModeTests has the edit world.
           # Then it is moved, turned, framed, duplicated, the copy deleted and all undone (#221, ViewportToolsTests).
-          SAGE_SMOKE_ARGS='-edit yard' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ent_select crate by the door\n+ed_select crate by the door\n+ed_move 3 0 2\n+ed_rotate 45\n+ed_frame\n+ed_duplicate\n+wait 1\n+ed_delete\n+ed_undo 4\n+in_axis EditorMove 0 1 1\n+wait 1\n+ed_layout\n+ed_viewport 1\n+wait 1\n+in_contexts' \
-            tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
+          # Last, `ed_panel all` brings every editor panel to the front in turn, so each draws the Sandbox (#371).
+          SAGE_SMOKE_ARGS='-edit yard' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ent_select crate by the door\n+ed_select crate by the door\n+ed_move 3 0 2\n+ed_rotate 45\n+ed_frame\n+ed_duplicate\n+wait 1\n+ed_delete\n+ed_undo 4\n+in_axis EditorMove 0 1 1\n+wait 1\n+ed_layout\n+ed_viewport 1\n+wait 1\n+in_contexts\n+ed_select crate by the door\n+ed_panel all\n+wait 5' \
+          SAGE_SMOKE_EXPECT=$'ed_panel: Outliner \\(1/[0-9]+\\)\ned_panel: showed [0-9]+ panel\\(s\\)' \
+            tools/smoke_run.sh "$host" games/Sandbox 8 Shaders Audio
           # The Sandbox's skeletal creature (issue #362): the brute in the clearing is the mannequin on its
           # `brute` graph, guarding and swinging on its upper layer; anim_debug must find it posed (18 joints).
           SAGE_SMOKE_EXPECT=$'brute \\([0-9]+\\): graph sandbox:brute, model models/mannequin.glb, pose of 18 joints\n  upper: (none|guard|attack)' \
@@ -329,6 +331,11 @@ jobs:
           # Blockout brushes (issue #61): a wall, a ramp and a pillar, a face painted, drawn by the client and played.
           SAGE_SMOKE_ARGS='-edit level' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ed_palette\n+ed_place plate 0 0.5 2 0 plate\n+ed_place door 0 1.5 -4 180 door\n+ed_set door mover.seconds 0.5\n+ed_wire plate OnStartTouch door Open\n+ed_undo 2\n+ed_redo 2\n+ed_history\n+ed_brush box 0 0 -6 6 3 0.5 sage:lit_default wall\n+ed_brush wedge 3 0 -3 2 1 2 sage:lit_default ramp\n+ed_brush cylinder -3 0 -3 1 3 1 sage:lit_default pillar\n+ed_brush_material wall south sage:unlit_default\n+ed_brush_size ramp 2 1.5 3\n+ed_brushes\n+wait 1\n+ed_play\n+wait 2\n+ed_stop\n+wait 1\n+ed_problems\n+doc_status' \
             tools/smoke_run.sh "$host" tests/games/editor 5 Shaders Audio Records Input
+          # The editor's panels and an edit saved, in the real host (issue #371): on a copy of the editor's test game,
+          # place, undo, override, wire, `ed_panel all` (every panel in front for a few frames, so one that throws
+          # crashes the run), play, stop and save, then the saved file is read back: the plate and the door, the
+          # override and the wire. EditorPanelModelTests has ed_panel's model.
+          tools/editor_smoke.sh "$host" Shaders Audio Records Input
           # The render check (issue #318): its fixed scene drawn, read back and checked by r_pixelcheck. Without
           # shaders every view is its clear colour, so only the checks of that run here; the drawing job runs the
           # rest with the Windows job's shaders. This proves the readback, the regions and the specs in the host.

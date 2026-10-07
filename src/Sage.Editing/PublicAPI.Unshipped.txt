@@ -1,8 +1,5 @@
 #nullable enable
 const Sage.Editing.AnimationPreview.TickSeconds = 0.016666668 -> float
-const Sage.Editing.ScaleGizmo.MinFactor = 0.01 -> float
-const Sage.Editing.ViewportTools.DefaultScaleStep = 0.1 -> float
-override Sage.Editing.TerrainBrush.ToString() -> string!
 Sage.Editing.AnimationPreview
 Sage.Editing.AnimationPreview.Advance(float seconds) -> void
 Sage.Editing.AnimationPreview.AnimationPreview(Sage.Simulation.Engine! engine) -> void
@@ -56,37 +53,29 @@ Sage.Editing.AnimationSubject.Graph.get -> Sage.Core.RecordId
 Sage.Editing.AnimationSubject.Graph.init -> void
 Sage.Editing.AnimationSubject.Model.get -> Sage.Core.AssetPath
 Sage.Editing.AnimationSubject.Model.init -> void
-Sage.Editing.CommandGroup
-Sage.Editing.CommandGroup.CommandGroup(string! description, System.Collections.Generic.IEnumerable<Sage.Editing.IEditorCommand!>! commands) -> void
-Sage.Editing.CommandGroup.Commands.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.IEditorCommand!>!
-Sage.Editing.CommandGroup.Description.get -> string!
-Sage.Editing.CommandGroup.Do() -> void
-Sage.Editing.CommandGroup.Undo() -> void
-Sage.Editing.EditorSelection.Add(Sage.Simulation.Placement! placement) -> void
-Sage.Editing.EditorSelection.Contains(Sage.Simulation.Placement! placement) -> bool
-Sage.Editing.EditorSelection.PlacedOf(Sage.Simulation.Entity entity) -> Sage.Simulation.Placement?
-Sage.Editing.EditorSelection.Placements.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
-Sage.Editing.EditorSelection.Select(System.Collections.Generic.IEnumerable<Sage.Simulation.Placement!>! placements) -> void
-Sage.Editing.EditorSelection.SelectPlaced(Sage.Simulation.Entity entity, bool toggle) -> void
-Sage.Editing.EditorSelection.Toggle(Sage.Simulation.Placement! placement) -> void
-Sage.Editing.GizmoDrag.Axes.get -> System.Numerics.Quaternion
-Sage.Editing.GizmoDrag.Placements.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
-Sage.Editing.GizmoDrag.Space.get -> Sage.Editing.GizmoSpace
-Sage.Editing.GizmoDrag.Update(in Sage.Editing.EditorRay ray, float grid, float angleStep, float scaleStep) -> bool
-Sage.Editing.GizmoHandle.All = 7 -> Sage.Editing.GizmoHandle
-Sage.Editing.GizmoMode.Scale = 2 -> Sage.Editing.GizmoMode
-Sage.Editing.GizmoSpace
-Sage.Editing.GizmoSpace.Local = 1 -> Sage.Editing.GizmoSpace
-Sage.Editing.GizmoSpace.World = 0 -> Sage.Editing.GizmoSpace
-Sage.Editing.PlacementFields.Pitch.get -> float
-Sage.Editing.PlacementFields.Pitch.init -> void
-Sage.Editing.PlacementFields.Roll.get -> float
-Sage.Editing.PlacementFields.Roll.init -> void
-Sage.Editing.PlacementFields.Rotation.get -> System.Numerics.Quaternion
-Sage.Editing.PlacementFields.Scale.get -> System.Numerics.Vector3
-Sage.Editing.PlacementFields.Scale.init -> void
-Sage.Editing.PlacementFields.WithRotation(System.Numerics.Quaternion rotation) -> Sage.Editing.PlacementFields
-Sage.Editing.PrefabCommands
+Sage.Editing.EntityLabelCache
+Sage.Editing.EntityLabelCache.Count.get -> int
+Sage.Editing.EntityLabelCache.EntityLabelCache() -> void
+Sage.Editing.EntityLabelCache.Label(Sage.Simulation.Entity entity) -> string!
+Sage.Editing.EntityLabelCache.Prune(System.Collections.Generic.IReadOnlyCollection<Sage.Simulation.Entity>! live) -> void
+Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
+Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
+Sage.Editing.InspectorModel.AddItem(Sage.Editing.InspectorRow! container, System.Text.Json.Nodes.JsonNode? value, out string! error, string? key = null) -> bool
+Sage.Editing.InspectorModel.Group(string! component) -> Sage.Editing.InspectorGroup?
+Sage.Editing.InspectorModel.MoveItem(Sage.Editing.InspectorRow! item, int to, out string! error) -> bool
+Sage.Editing.InspectorModel.RemoveComponent(Sage.Editing.InspectorGroup! group, out string! error) -> bool
+Sage.Editing.InspectorModel.RemoveItem(Sage.Editing.InspectorRow! item, out string! error) -> bool
+Sage.Editing.InspectorModel.TryAddItem(string! path, string! text, out string! error) -> bool
+Sage.Editing.InspectorModel.TryMoveItem(string! path, int to, out string! error) -> bool
+Sage.Editing.InspectorModel.TryRemoveItem(string! path, out string! error) -> bool
+Sage.Editing.InspectorRow.Children.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorRow!>!
+Sage.Editing.InspectorRow.Index.get -> int
+Sage.Editing.InspectorRow.Key.get -> string?
+Sage.Editing.InspectorRow.Name.get -> string!
+Sage.Editing.InspectorRow.Parent.get -> Sage.Editing.InspectorRow?
+Sage.Editing.InspectorRow.Top.get -> Sage.Editing.InspectorRow!
+Sage.Editing.LogView.Texts.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Editing.PreviewEvent
 Sage.Editing.PreviewEvent.Name.get -> string!
 Sage.Editing.PreviewEvent.Name.init -> void
@@ -158,124 +147,6 @@ Sage.Editing.PreviewSocket.PreviewSocket() -> void
 Sage.Editing.PreviewSocket.PreviewSocket(string! Name, string! Joint, System.Numerics.Vector3 Position, System.Numerics.Quaternion Rotation) -> void
 Sage.Editing.PreviewSocket.Rotation.get -> System.Numerics.Quaternion
 Sage.Editing.PreviewSocket.Rotation.init -> void
-Sage.Editing.RevertPlacement
-Sage.Editing.RevertPlacement.Description.get -> string!
-Sage.Editing.RevertPlacement.Do() -> void
-Sage.Editing.RevertPlacement.Placement.get -> Sage.Simulation.Placement!
-Sage.Editing.RevertPlacement.RevertPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
-Sage.Editing.RevertPlacement.Undo() -> void
-Sage.Editing.ScaleGizmo
-Sage.Editing.SculptChange
-Sage.Editing.SculptChange.After.get -> Sage.Simulation.SculptSector?
-Sage.Editing.SculptChange.After.init -> void
-Sage.Editing.SculptChange.Before.get -> Sage.Simulation.SculptSector?
-Sage.Editing.SculptChange.Before.init -> void
-Sage.Editing.SculptChange.Coord.get -> Sage.Simulation.SectorCoord
-Sage.Editing.SculptChange.Coord.init -> void
-Sage.Editing.SculptChange.SculptChange(Sage.Simulation.SectorCoord Coord, Sage.Simulation.SculptSector? Before, Sage.Simulation.SculptSector? After) -> void
-Sage.Editing.SetPlacements
-Sage.Editing.SetPlacements.After.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PlacementFields>!
-Sage.Editing.SetPlacements.Before.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PlacementFields>!
-Sage.Editing.SetPlacements.Description.get -> string!
-Sage.Editing.SetPlacements.Do() -> void
-Sage.Editing.SetPlacements.Placements.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
-Sage.Editing.SetPlacements.SetPlacements(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Collections.Generic.IReadOnlyList<Sage.Editing.PlacementFields>! fields) -> void
-Sage.Editing.SetPlacements.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
-Sage.Editing.SetPlacements.Undo() -> void
-Sage.Editing.TerrainBrush
-Sage.Editing.TerrainBrush.FlattenHeight -> float?
-Sage.Editing.TerrainBrush.Layer -> int
-Sage.Editing.TerrainBrush.Radius -> float
-Sage.Editing.TerrainBrush.Strength -> float
-Sage.Editing.TerrainBrush.TerrainBrush() -> void
-Sage.Editing.TerrainBrush.Tool -> Sage.Editing.TerrainTool
-Sage.Editing.TerrainCommands
-Sage.Editing.TerrainDocument
-Sage.Editing.TerrainDocument.BeginStroke() -> void
-Sage.Editing.TerrainDocument.Brush.get -> Sage.Editing.TerrainBrush!
-Sage.Editing.TerrainDocument.CanEdit.get -> bool
-Sage.Editing.TerrainDocument.Changed -> System.Action?
-Sage.Editing.TerrainDocument.Dab(System.Numerics.Vector3 at) -> bool
-Sage.Editing.TerrainDocument.Describe() -> string!
-Sage.Editing.TerrainDocument.Dirty.get -> bool
-Sage.Editing.TerrainDocument.EndStroke() -> Sage.Editing.IEditorCommand?
-Sage.Editing.TerrainDocument.Engine.get -> Sage.Simulation.Engine!
-Sage.Editing.TerrainDocument.FilePath() -> string!
-Sage.Editing.TerrainDocument.History.get -> Sage.Editing.CommandLog!
-Sage.Editing.TerrainDocument.LoadAround(System.Numerics.Vector3 at, int radius = 1) -> void
-Sage.Editing.TerrainDocument.Pick(Sage.Editing.EditorRay ray, float reach = 4000) -> System.Numerics.Vector3?
-Sage.Editing.TerrainDocument.Record.get -> Sage.Core.RecordId
-Sage.Editing.TerrainDocument.Redo() -> bool
-Sage.Editing.TerrainDocument.Reset() -> bool
-Sage.Editing.TerrainDocument.Save() -> bool
-Sage.Editing.TerrainDocument.Sculpt.get -> Sage.Simulation.TerrainSculpt!
-Sage.Editing.TerrainDocument.SculptPath.get -> string!
-Sage.Editing.TerrainDocument.SetWater(Sage.Simulation.SectorCoord coord, float? level) -> bool
-Sage.Editing.TerrainDocument.Stroke(System.Numerics.Vector3 at) -> Sage.Editing.IEditorCommand?
-Sage.Editing.TerrainDocument.Stroking.get -> bool
-Sage.Editing.TerrainDocument.Terrain.get -> Sage.Simulation.Terrain?
-Sage.Editing.TerrainDocument.TerrainDocument(Sage.Simulation.World! world) -> void
-Sage.Editing.TerrainDocument.Title.get -> string!
-Sage.Editing.TerrainDocument.Undo() -> bool
-Sage.Editing.TerrainDocument.World.get -> Sage.Simulation.World!
-Sage.Editing.TerrainStroke
-Sage.Editing.TerrainStroke.Changes.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.SculptChange!>!
-Sage.Editing.TerrainStroke.Description.get -> string!
-Sage.Editing.TerrainStroke.Do() -> void
-Sage.Editing.TerrainStroke.Undo() -> void
-Sage.Editing.TerrainTool
-Sage.Editing.TerrainTool.Flatten = 3 -> Sage.Editing.TerrainTool
-Sage.Editing.TerrainTool.Lower = 1 -> Sage.Editing.TerrainTool
-Sage.Editing.TerrainTool.Paint = 4 -> Sage.Editing.TerrainTool
-Sage.Editing.TerrainTool.Raise = 0 -> Sage.Editing.TerrainTool
-Sage.Editing.TerrainTool.Smooth = 2 -> Sage.Editing.TerrainTool
-Sage.Editing.ViewportTools.ScaleStep.get -> float
-Sage.Editing.ViewportTools.ScaleStep.set -> void
-Sage.Editing.ViewportTools.ScaleStepFactor.get -> float
-Sage.Editing.ViewportTools.Space.get -> Sage.Editing.GizmoSpace
-Sage.Editing.ViewportTools.Space.set -> void
-static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
-static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
-static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
-Sage.Editing.AnimationPreview.Opened -> System.Action?
-static Sage.Editing.EditorPicking.PlacementsInBox(Sage.Editing.EditDocument! document, in Sage.Editing.ViewportCamera camera, System.Numerics.Vector2 corner, System.Numerics.Vector2 otherCorner) -> System.Collections.Generic.List<Sage.Simulation.Placement!>!
-static Sage.Editing.GizmoDrag.Begin(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, Sage.Editing.GizmoMode mode, Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay, Sage.Editing.GizmoSpace space = Sage.Editing.GizmoSpace.World) -> Sage.Editing.GizmoDrag?
-static Sage.Editing.PrefabCommands.MakePrefab(Sage.Editing.EditDocument! document, Sage.Core.RecordId id, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, out string! error) -> Sage.Simulation.Placement?
-static Sage.Editing.PrefabCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document, System.Func<System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!>? selected = null) -> void
-static Sage.Editing.PrefabCommands.RevertAll(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, out string! error) -> bool
-static Sage.Editing.RotateGizmo.AxisOf(Sage.Editing.GizmoHandle axis, System.Numerics.Quaternion orientation) -> System.Numerics.Vector3
-static Sage.Editing.RotateGizmo.Drag(Sage.Editing.GizmoHandle axis, in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, System.Numerics.Quaternion orientation, float stepDegrees = 0) -> float?
-static Sage.Editing.RotateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation) -> Sage.Editing.GizmoHandle
-static Sage.Editing.RotateGizmo.RingPoint(Sage.Editing.GizmoHandle axis, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation, float angle) -> System.Numerics.Vector3
-static Sage.Editing.ScaleGizmo.Drag(Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, System.Numerics.Quaternion orientation, float step = 0) -> System.Numerics.Vector3?
-static Sage.Editing.ScaleGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation) -> Sage.Editing.GizmoHandle
-static Sage.Editing.ScaleGizmo.Snapped(float factor, float step) -> float
-static Sage.Editing.TerrainCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.TerrainDocument?>! document) -> void
-static Sage.Editing.TranslateGizmo.Drag(Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, System.Numerics.Quaternion orientation, float grid = 0) -> System.Numerics.Vector3?
-static Sage.Editing.TranslateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation) -> Sage.Editing.GizmoHandle
-static Sage.Editing.ViewportTools.AxesOf(Sage.Simulation.Placement! placement, Sage.Editing.GizmoSpace space) -> System.Numerics.Quaternion
-static Sage.Editing.ViewportTools.Delete(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements) -> void
-static Sage.Editing.ViewportTools.Duplicate(Sage.Editing.EditorSelection! selection, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
-static Sage.Editing.ViewportTools.MoveBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 delta) -> void
-static Sage.Editing.ViewportTools.RotateBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Quaternion turn) -> void
-static Sage.Editing.ViewportTools.ScaleBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 factors, System.Numerics.Quaternion axes) -> void
-Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
-Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
-Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
-Sage.Editing.InspectorModel.AddItem(Sage.Editing.InspectorRow! container, System.Text.Json.Nodes.JsonNode? value, out string! error, string? key = null) -> bool
-Sage.Editing.InspectorModel.Group(string! component) -> Sage.Editing.InspectorGroup?
-Sage.Editing.InspectorModel.MoveItem(Sage.Editing.InspectorRow! item, int to, out string! error) -> bool
-Sage.Editing.InspectorModel.RemoveComponent(Sage.Editing.InspectorGroup! group, out string! error) -> bool
-Sage.Editing.InspectorModel.RemoveItem(Sage.Editing.InspectorRow! item, out string! error) -> bool
-Sage.Editing.InspectorModel.TryAddItem(string! path, string! text, out string! error) -> bool
-Sage.Editing.InspectorModel.TryMoveItem(string! path, int to, out string! error) -> bool
-Sage.Editing.InspectorModel.TryRemoveItem(string! path, out string! error) -> bool
-Sage.Editing.InspectorRow.Children.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorRow!>!
-Sage.Editing.InspectorRow.Index.get -> int
-Sage.Editing.InspectorRow.Key.get -> string?
-Sage.Editing.InspectorRow.Name.get -> string!
-Sage.Editing.InspectorRow.Parent.get -> Sage.Editing.InspectorRow?
-Sage.Editing.InspectorRow.Top.get -> Sage.Editing.InspectorRow!
 Sage.Editing.SetOverrideBody
 Sage.Editing.SetOverrideBody.Body.get -> System.Text.Json.Nodes.JsonObject?
 Sage.Editing.SetOverrideBody.Description.get -> string!
@@ -285,13 +156,74 @@ Sage.Editing.SetOverrideBody.Placement.get -> Sage.Simulation.Placement!
 Sage.Editing.SetOverrideBody.Section.get -> Sage.Editing.OverrideSection
 Sage.Editing.SetOverrideBody.SetOverrideBody(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.OverrideSection section, string! id, System.Text.Json.Nodes.JsonObject? body) -> void
 Sage.Editing.SetOverrideBody.Undo() -> void
-static Sage.Editing.PrefabCommands.Overrides(Sage.Simulation.Placement! placement) -> bool
-Sage.Editing.EntityLabelCache
-Sage.Editing.EntityLabelCache.Count.get -> int
-Sage.Editing.EntityLabelCache.EntityLabelCache() -> void
-Sage.Editing.EntityLabelCache.Label(Sage.Simulation.Entity entity) -> string!
-Sage.Editing.EntityLabelCache.Prune(System.Collections.Generic.IReadOnlyCollection<Sage.Simulation.Entity>! live) -> void
-Sage.Editing.LogView.Texts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
+static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
+static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
+Sage.Editing.AnimationPreview.Opened -> System.Action?
+const Sage.Editing.ScaleGizmo.MinFactor = 0.01 -> float
+const Sage.Editing.ViewportTools.DefaultScaleStep = 0.1 -> float
+Sage.Editing.CommandGroup
+Sage.Editing.CommandGroup.CommandGroup(string! description, System.Collections.Generic.IEnumerable<Sage.Editing.IEditorCommand!>! commands) -> void
+Sage.Editing.CommandGroup.Commands.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.IEditorCommand!>!
+Sage.Editing.CommandGroup.Description.get -> string!
+Sage.Editing.CommandGroup.Do() -> void
+Sage.Editing.CommandGroup.Undo() -> void
+Sage.Editing.EditorSelection.Add(Sage.Simulation.Placement! placement) -> void
+Sage.Editing.EditorSelection.Contains(Sage.Simulation.Placement! placement) -> bool
+Sage.Editing.EditorSelection.PlacedOf(Sage.Simulation.Entity entity) -> Sage.Simulation.Placement?
+Sage.Editing.EditorSelection.Placements.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
+Sage.Editing.EditorSelection.Select(System.Collections.Generic.IEnumerable<Sage.Simulation.Placement!>! placements) -> void
+Sage.Editing.EditorSelection.SelectPlaced(Sage.Simulation.Entity entity, bool toggle) -> void
+Sage.Editing.EditorSelection.Toggle(Sage.Simulation.Placement! placement) -> void
+Sage.Editing.GizmoDrag.Axes.get -> System.Numerics.Quaternion
+Sage.Editing.GizmoDrag.Placements.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
+Sage.Editing.GizmoDrag.Space.get -> Sage.Editing.GizmoSpace
+Sage.Editing.GizmoDrag.Update(in Sage.Editing.EditorRay ray, float grid, float angleStep, float scaleStep) -> bool
+Sage.Editing.GizmoHandle.All = 7 -> Sage.Editing.GizmoHandle
+Sage.Editing.GizmoMode.Scale = 2 -> Sage.Editing.GizmoMode
+Sage.Editing.GizmoSpace
+Sage.Editing.GizmoSpace.Local = 1 -> Sage.Editing.GizmoSpace
+Sage.Editing.GizmoSpace.World = 0 -> Sage.Editing.GizmoSpace
+Sage.Editing.PlacementFields.Pitch.get -> float
+Sage.Editing.PlacementFields.Pitch.init -> void
+Sage.Editing.PlacementFields.Roll.get -> float
+Sage.Editing.PlacementFields.Roll.init -> void
+Sage.Editing.PlacementFields.Rotation.get -> System.Numerics.Quaternion
+Sage.Editing.PlacementFields.Scale.get -> System.Numerics.Vector3
+Sage.Editing.PlacementFields.Scale.init -> void
+Sage.Editing.PlacementFields.WithRotation(System.Numerics.Quaternion rotation) -> Sage.Editing.PlacementFields
+Sage.Editing.ScaleGizmo
+Sage.Editing.SetPlacements
+Sage.Editing.SetPlacements.After.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PlacementFields>!
+Sage.Editing.SetPlacements.Before.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.PlacementFields>!
+Sage.Editing.SetPlacements.Description.get -> string!
+Sage.Editing.SetPlacements.Do() -> void
+Sage.Editing.SetPlacements.Placements.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
+Sage.Editing.SetPlacements.SetPlacements(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Collections.Generic.IReadOnlyList<Sage.Editing.PlacementFields>! fields) -> void
+Sage.Editing.SetPlacements.TryMerge(Sage.Editing.IEditorCommand! next) -> bool
+Sage.Editing.SetPlacements.Undo() -> void
+Sage.Editing.ViewportTools.ScaleStep.get -> float
+Sage.Editing.ViewportTools.ScaleStep.set -> void
+Sage.Editing.ViewportTools.ScaleStepFactor.get -> float
+Sage.Editing.ViewportTools.Space.get -> Sage.Editing.GizmoSpace
+Sage.Editing.ViewportTools.Space.set -> void
+static Sage.Editing.EditorPicking.PlacementsInBox(Sage.Editing.EditDocument! document, in Sage.Editing.ViewportCamera camera, System.Numerics.Vector2 corner, System.Numerics.Vector2 otherCorner) -> System.Collections.Generic.List<Sage.Simulation.Placement!>!
+static Sage.Editing.GizmoDrag.Begin(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, Sage.Editing.GizmoMode mode, Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay, Sage.Editing.GizmoSpace space = Sage.Editing.GizmoSpace.World) -> Sage.Editing.GizmoDrag?
+static Sage.Editing.RotateGizmo.AxisOf(Sage.Editing.GizmoHandle axis, System.Numerics.Quaternion orientation) -> System.Numerics.Vector3
+static Sage.Editing.RotateGizmo.Drag(Sage.Editing.GizmoHandle axis, in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, System.Numerics.Quaternion orientation, float stepDegrees = 0) -> float?
+static Sage.Editing.RotateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation) -> Sage.Editing.GizmoHandle
+static Sage.Editing.RotateGizmo.RingPoint(Sage.Editing.GizmoHandle axis, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation, float angle) -> System.Numerics.Vector3
+static Sage.Editing.ScaleGizmo.Drag(Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, System.Numerics.Quaternion orientation, float step = 0) -> System.Numerics.Vector3?
+static Sage.Editing.ScaleGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation) -> Sage.Editing.GizmoHandle
+static Sage.Editing.ScaleGizmo.Snapped(float factor, float step) -> float
+static Sage.Editing.TranslateGizmo.Drag(Sage.Editing.GizmoHandle handle, in Sage.Editing.EditorRay startRay, in Sage.Editing.EditorRay currentRay, System.Numerics.Vector3 origin, System.Numerics.Quaternion orientation, float grid = 0) -> System.Numerics.Vector3?
+static Sage.Editing.TranslateGizmo.HitTest(in Sage.Editing.EditorRay ray, System.Numerics.Vector3 origin, float size, System.Numerics.Quaternion orientation) -> Sage.Editing.GizmoHandle
+static Sage.Editing.ViewportTools.AxesOf(Sage.Simulation.Placement! placement, Sage.Editing.GizmoSpace space) -> System.Numerics.Quaternion
+static Sage.Editing.ViewportTools.Delete(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements) -> void
+static Sage.Editing.ViewportTools.Duplicate(Sage.Editing.EditorSelection! selection, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!
+static Sage.Editing.ViewportTools.MoveBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 delta) -> void
+static Sage.Editing.ViewportTools.RotateBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Quaternion turn) -> void
+static Sage.Editing.ViewportTools.ScaleBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 factors, System.Numerics.Quaternion axes) -> void
 const Sage.Editing.AssetKinds.Font = "font" -> string!
 const Sage.Editing.AssetKinds.Map = "map" -> string!
 const Sage.Editing.AssetKinds.Mesh = "mesh" -> string!
@@ -388,49 +320,20 @@ static Sage.Editing.AssetPicking.ToRow(Sage.Editing.InspectorModel! model, Sage.
 static Sage.Editing.AssetReferences.Find(Sage.Core.VirtualFileSystem! vfs, Sage.Core.VirtualPath asset) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetReference!>!
 static Sage.Editing.AssetReferences.Scanned(Sage.Core.VirtualPath file) -> bool
 static Sage.Editing.AssetRename.Plan(Sage.Simulation.Engine! engine, Sage.Core.VirtualPath from, Sage.Core.VirtualPath to, Sage.Editing.EditDocument? document = null, Sage.Editing.RecordEditor? records = null) -> Sage.Editing.AssetRename!
-override Sage.Editing.AIGraphNode.ToString() -> string!
-Sage.Editing.AIGraph
-Sage.Editing.AIGraph.Active(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> System.Collections.Generic.IReadOnlyList<string!>!
-Sage.Editing.AIGraph.Add(string? parent, string! name, System.Text.Json.Nodes.JsonNode? body = null, int index = -1) -> bool
-Sage.Editing.AIGraph.AnyStateEdges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
-Sage.Editing.AIGraph.Document.get -> Sage.Editing.RecordDocument!
-Sage.Editing.AIGraph.Find(string! key) -> Sage.Editing.AIGraphNode?
-Sage.Editing.AIGraph.Initial.get -> string!
-Sage.Editing.AIGraph.IsTree.get -> bool
-Sage.Editing.AIGraph.Kind.get -> Sage.Editing.AIGraphKind
-Sage.Editing.AIGraph.Move(string! key, int index) -> bool
-Sage.Editing.AIGraph.Nodes.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphNode!>!
-Sage.Editing.AIGraph.Remove(string! key) -> bool
-Sage.Editing.AIGraph.Rename(string! key, string! name) -> bool
-Sage.Editing.AIGraph.Reparent(string! key, string? parent, int index = -1) -> bool
-Sage.Editing.AIGraph.Runners(Sage.Simulation.World! world) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
-Sage.Editing.AIGraphCommands
-Sage.Editing.AIGraphEdge
-Sage.Editing.AIGraphEdge.AIGraphEdge() -> void
-Sage.Editing.AIGraphEdge.AIGraphEdge(string! To, string! Label) -> void
-Sage.Editing.AIGraphEdge.Label.get -> string!
-Sage.Editing.AIGraphEdge.Label.init -> void
-Sage.Editing.AIGraphEdge.To.get -> string!
-Sage.Editing.AIGraphEdge.To.init -> void
-Sage.Editing.AIGraphKind
-Sage.Editing.AIGraphKind.Routine = 2 -> Sage.Editing.AIGraphKind
-Sage.Editing.AIGraphKind.Schedule = 1 -> Sage.Editing.AIGraphKind
-Sage.Editing.AIGraphKind.StateMachine = 0 -> Sage.Editing.AIGraphKind
-Sage.Editing.AIGraphNode
-Sage.Editing.AIGraphNode.Children.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Sage.Editing.AIGraphNode.Depth.get -> int
-Sage.Editing.AIGraphNode.Edges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
-Sage.Editing.AIGraphNode.Index.get -> int
-Sage.Editing.AIGraphNode.IsInitial.get -> bool
-Sage.Editing.AIGraphNode.IsParallel.get -> bool
-Sage.Editing.AIGraphNode.Label.get -> string!
-Sage.Editing.AIGraphNode.Name.get -> string!
-Sage.Editing.AIGraphNode.Parent.get -> string?
-Sage.Editing.AIGraphNode.Path.get -> string!
-static Sage.Editing.AIGraph.Of(Sage.Editing.RecordDocument? document) -> Sage.Editing.AIGraph?
-static Sage.Editing.AIGraph.Supports(string! type) -> bool
-static Sage.Editing.AIGraphCommands.Describe(Sage.Editing.AIGraph! graph) -> string!
-static Sage.Editing.AIGraphCommands.Register(Sage.Core.CVarRegistry! cvars, Sage.Editing.RecordEditor! records, System.Func<Sage.Simulation.World?>! world) -> void
+const Sage.Editing.PanelTour.DefaultFrames = 3 -> int
+Sage.Editing.EditorStatus
+Sage.Editing.PanelTour
+Sage.Editing.PanelTour.Add(string! title, System.Action? open = null) -> void
+Sage.Editing.PanelTour.Current.get -> string?
+Sage.Editing.PanelTour.FramesEach.get -> int
+Sage.Editing.PanelTour.FramesEach.set -> void
+Sage.Editing.PanelTour.IsTouring.get -> bool
+Sage.Editing.PanelTour.Next() -> string?
+Sage.Editing.PanelTour.PanelTour() -> void
+Sage.Editing.PanelTour.Show(string! which, out string! error) -> bool
+Sage.Editing.PanelTour.Titles.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Editing.EditorStatus.Line(Sage.Editing.EditDocument? document, Sage.Simulation.World? world, Sage.Simulation.Entity selection, System.Numerics.Vector3 camera, string? problems = null) -> string!
+static Sage.Editing.PanelTour.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.PanelTour?>! tour) -> void
 override Sage.Editing.VocabularyProblem.ToString() -> string!
 Sage.Editing.IProblemSource
 Sage.Editing.IProblemSource.Changed -> System.Action?
@@ -546,6 +449,49 @@ static Sage.Editing.VocabularyCatalog.Of(Sage.Simulation.Engine! engine, System.
 static Sage.Editing.VocabularyEditor.FieldsAt(Sage.Editing.RecordDocument! record, string! path) -> System.Collections.Generic.IReadOnlyList<(string! Name, string! Path)>!
 static Sage.Editing.VocabularyForm.ForRecord(Sage.Editing.RecordDocument! record, string! path, out string? error) -> Sage.Editing.VocabularyForm?
 static Sage.Editing.VocabularyForm.ForWire(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index, out string? error) -> Sage.Editing.VocabularyForm?
+override Sage.Editing.AIGraphNode.ToString() -> string!
+Sage.Editing.AIGraph
+Sage.Editing.AIGraph.Active(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AIGraph.Add(string? parent, string! name, System.Text.Json.Nodes.JsonNode? body = null, int index = -1) -> bool
+Sage.Editing.AIGraph.AnyStateEdges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
+Sage.Editing.AIGraph.Document.get -> Sage.Editing.RecordDocument!
+Sage.Editing.AIGraph.Find(string! key) -> Sage.Editing.AIGraphNode?
+Sage.Editing.AIGraph.Initial.get -> string!
+Sage.Editing.AIGraph.IsTree.get -> bool
+Sage.Editing.AIGraph.Kind.get -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraph.Move(string! key, int index) -> bool
+Sage.Editing.AIGraph.Nodes.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphNode!>!
+Sage.Editing.AIGraph.Remove(string! key) -> bool
+Sage.Editing.AIGraph.Rename(string! key, string! name) -> bool
+Sage.Editing.AIGraph.Reparent(string! key, string? parent, int index = -1) -> bool
+Sage.Editing.AIGraph.Runners(Sage.Simulation.World! world) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
+Sage.Editing.AIGraphCommands
+Sage.Editing.AIGraphEdge
+Sage.Editing.AIGraphEdge.AIGraphEdge() -> void
+Sage.Editing.AIGraphEdge.AIGraphEdge(string! To, string! Label) -> void
+Sage.Editing.AIGraphEdge.Label.get -> string!
+Sage.Editing.AIGraphEdge.Label.init -> void
+Sage.Editing.AIGraphEdge.To.get -> string!
+Sage.Editing.AIGraphEdge.To.init -> void
+Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.Routine = 2 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.Schedule = 1 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.StateMachine = 0 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphNode
+Sage.Editing.AIGraphNode.Children.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AIGraphNode.Depth.get -> int
+Sage.Editing.AIGraphNode.Edges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
+Sage.Editing.AIGraphNode.Index.get -> int
+Sage.Editing.AIGraphNode.IsInitial.get -> bool
+Sage.Editing.AIGraphNode.IsParallel.get -> bool
+Sage.Editing.AIGraphNode.Label.get -> string!
+Sage.Editing.AIGraphNode.Name.get -> string!
+Sage.Editing.AIGraphNode.Parent.get -> string?
+Sage.Editing.AIGraphNode.Path.get -> string!
+static Sage.Editing.AIGraph.Of(Sage.Editing.RecordDocument? document) -> Sage.Editing.AIGraph?
+static Sage.Editing.AIGraph.Supports(string! type) -> bool
+static Sage.Editing.AIGraphCommands.Describe(Sage.Editing.AIGraph! graph) -> string!
+static Sage.Editing.AIGraphCommands.Register(Sage.Core.CVarRegistry! cvars, Sage.Editing.RecordEditor! records, System.Func<Sage.Simulation.World?>! world) -> void
 const Sage.Editing.BlockoutTools.Part = "brush" -> string!
 Sage.Editing.BlockoutTools
 static Sage.Editing.BlockoutTools.Brushes(Sage.Editing.EditDocument! document) -> System.Collections.Generic.IEnumerable<Sage.Simulation.Placement!>!
@@ -568,3 +514,71 @@ static Sage.Editing.BlockoutTools.SnapSize(System.Numerics.Vector3 size, float g
 static Sage.Editing.BlockoutTools.TryGet(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, out Sage.Simulation.BlockoutBrush brush) -> bool
 static Sage.Editing.BlockoutTools.TryParseFace(string! text, out Sage.Simulation.BrushFace face) -> bool
 static Sage.Editing.BlockoutTools.TryParseShape(string! text, out Sage.Simulation.BrushShape shape) -> bool
+override Sage.Editing.TerrainBrush.ToString() -> string!
+Sage.Editing.PrefabCommands
+Sage.Editing.RevertPlacement
+Sage.Editing.RevertPlacement.Description.get -> string!
+Sage.Editing.RevertPlacement.Do() -> void
+Sage.Editing.RevertPlacement.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.RevertPlacement.RevertPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> void
+Sage.Editing.RevertPlacement.Undo() -> void
+Sage.Editing.SculptChange
+Sage.Editing.SculptChange.After.get -> Sage.Simulation.SculptSector?
+Sage.Editing.SculptChange.After.init -> void
+Sage.Editing.SculptChange.Before.get -> Sage.Simulation.SculptSector?
+Sage.Editing.SculptChange.Before.init -> void
+Sage.Editing.SculptChange.Coord.get -> Sage.Simulation.SectorCoord
+Sage.Editing.SculptChange.Coord.init -> void
+Sage.Editing.SculptChange.SculptChange(Sage.Simulation.SectorCoord Coord, Sage.Simulation.SculptSector? Before, Sage.Simulation.SculptSector? After) -> void
+Sage.Editing.TerrainBrush
+Sage.Editing.TerrainBrush.FlattenHeight -> float?
+Sage.Editing.TerrainBrush.Layer -> int
+Sage.Editing.TerrainBrush.Radius -> float
+Sage.Editing.TerrainBrush.Strength -> float
+Sage.Editing.TerrainBrush.TerrainBrush() -> void
+Sage.Editing.TerrainBrush.Tool -> Sage.Editing.TerrainTool
+Sage.Editing.TerrainCommands
+Sage.Editing.TerrainDocument
+Sage.Editing.TerrainDocument.BeginStroke() -> void
+Sage.Editing.TerrainDocument.Brush.get -> Sage.Editing.TerrainBrush!
+Sage.Editing.TerrainDocument.CanEdit.get -> bool
+Sage.Editing.TerrainDocument.Changed -> System.Action?
+Sage.Editing.TerrainDocument.Dab(System.Numerics.Vector3 at) -> bool
+Sage.Editing.TerrainDocument.Describe() -> string!
+Sage.Editing.TerrainDocument.Dirty.get -> bool
+Sage.Editing.TerrainDocument.EndStroke() -> Sage.Editing.IEditorCommand?
+Sage.Editing.TerrainDocument.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.TerrainDocument.FilePath() -> string!
+Sage.Editing.TerrainDocument.History.get -> Sage.Editing.CommandLog!
+Sage.Editing.TerrainDocument.LoadAround(System.Numerics.Vector3 at, int radius = 1) -> void
+Sage.Editing.TerrainDocument.Pick(Sage.Editing.EditorRay ray, float reach = 4000) -> System.Numerics.Vector3?
+Sage.Editing.TerrainDocument.Record.get -> Sage.Core.RecordId
+Sage.Editing.TerrainDocument.Redo() -> bool
+Sage.Editing.TerrainDocument.Reset() -> bool
+Sage.Editing.TerrainDocument.Save() -> bool
+Sage.Editing.TerrainDocument.Sculpt.get -> Sage.Simulation.TerrainSculpt!
+Sage.Editing.TerrainDocument.SculptPath.get -> string!
+Sage.Editing.TerrainDocument.SetWater(Sage.Simulation.SectorCoord coord, float? level) -> bool
+Sage.Editing.TerrainDocument.Stroke(System.Numerics.Vector3 at) -> Sage.Editing.IEditorCommand?
+Sage.Editing.TerrainDocument.Stroking.get -> bool
+Sage.Editing.TerrainDocument.Terrain.get -> Sage.Simulation.Terrain?
+Sage.Editing.TerrainDocument.TerrainDocument(Sage.Simulation.World! world) -> void
+Sage.Editing.TerrainDocument.Title.get -> string!
+Sage.Editing.TerrainDocument.Undo() -> bool
+Sage.Editing.TerrainDocument.World.get -> Sage.Simulation.World!
+Sage.Editing.TerrainStroke
+Sage.Editing.TerrainStroke.Changes.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.SculptChange!>!
+Sage.Editing.TerrainStroke.Description.get -> string!
+Sage.Editing.TerrainStroke.Do() -> void
+Sage.Editing.TerrainStroke.Undo() -> void
+Sage.Editing.TerrainTool
+Sage.Editing.TerrainTool.Flatten = 3 -> Sage.Editing.TerrainTool
+Sage.Editing.TerrainTool.Lower = 1 -> Sage.Editing.TerrainTool
+Sage.Editing.TerrainTool.Paint = 4 -> Sage.Editing.TerrainTool
+Sage.Editing.TerrainTool.Raise = 0 -> Sage.Editing.TerrainTool
+Sage.Editing.TerrainTool.Smooth = 2 -> Sage.Editing.TerrainTool
+static Sage.Editing.PrefabCommands.MakePrefab(Sage.Editing.EditDocument! document, Sage.Core.RecordId id, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, out string! error) -> Sage.Simulation.Placement?
+static Sage.Editing.PrefabCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document, System.Func<System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>!>? selected = null) -> void
+static Sage.Editing.PrefabCommands.RevertAll(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, out string! error) -> bool
+static Sage.Editing.TerrainCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.TerrainDocument?>! document) -> void
+static Sage.Editing.PrefabCommands.Overrides(Sage.Simulation.Placement! placement) -> bool
