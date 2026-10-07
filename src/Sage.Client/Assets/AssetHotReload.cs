@@ -29,7 +29,7 @@ internal sealed class AssetHotReload : IDisposable
     // HDR is tone-mapped to 8-bit.
     //
     // Models and sounds reload too (issue 4h-3): the renderer swaps a `.glb` in its mesh slot, and a
-    // `.wav` or `.ogg` stops or restarts the voices playing it. Shader *source* is `ShaderRecompiler`'s.
+    // `.wav` or `.ogg` stops or restarts the voices playing it. Shader *source* is `ShaderHotCompile`'s.
     private static readonly string[] Extensions =
     {
         ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".psd", ".hdr",   // StbImageSharp (CookedTexture.DecodeImage)
@@ -111,6 +111,11 @@ internal sealed class AssetHotReload : IDisposable
                 // most of them nothing has ever asked for.
                 if (_vfs.VirtualPathOf(disk) is not { } path) continue;
                 _batch.Add(AssetPath.Intern(path.ToString()));
+                // A mod's own asset is loaded as `mod_id:path` (issue #398), so that key is reloaded too: a mod's
+                // effect compiled by ShaderHotCompile, a texture it alone ships (issue #400). Nothing loaded under
+                // the key (any other mount's) is nothing to reload.
+                if (OwnerOf(disk) is { RecordNamespace.Length: > 0 } owner)
+                    _batch.Add(AssetPath.Intern(VirtualPath.InNamespace(owner.RecordNamespace, path).ToString()));
             }
             _changed.Clear();
         }
@@ -119,6 +124,19 @@ internal sealed class AssetHotReload : IDisposable
         foreach (var path in _batch)
             if (_content.Reload(path)) reloaded++;
         if (reloaded > 0) Log.Info(LogCat.Assets, $"{reloaded} asset(s) reloaded");
+    }
+
+    // The folder mount a file on disk is in (the innermost, as VirtualPathOf picks).
+    private FolderMount? OwnerOf(string disk)
+    {
+        string full;
+        try { full = Path.GetFullPath(disk); }
+        catch (ArgumentException) { return null; }
+        FolderMount? best = null;
+        foreach (var mount in _vfs.Mounts)
+            if (mount is FolderMount folder && full.StartsWith(folder.Root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                && (best == null || folder.Root.Length > best.Root.Length)) best = folder;
+        return best;
     }
 
     public void Dispose()

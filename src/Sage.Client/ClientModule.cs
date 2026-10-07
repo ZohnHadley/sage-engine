@@ -30,7 +30,7 @@ public sealed class ClientModule : IModule
     private CVar<bool>? _debugDraw;
     private CVar<bool>? _assetHotReload;
     private AssetHotReload? _watcher;
-    private ShaderRecompiler? _shaders;
+    private ShaderHotCompile? _shaders;
     private InputActions? _actions;
     private CVar<bool>? _particlesOn;
     private CVar<int>? _decalCeiling;
@@ -426,7 +426,7 @@ public sealed class ClientModule : IModule
         if (BuildInfo.IsDevBuild)
         {
             _watcher = new AssetHotReload(_content, ctx.Engine.Vfs);
-            _shaders = new ShaderRecompiler(ctx.Engine.Vfs);
+            _shaders = new ShaderHotCompile(ctx.Engine.Vfs, MgfxcCompiler.Instance, ShaderBuild.FindUp(System.IO.Path.Combine("engine_content", ShaderBuild.Folder), directory: true));
         }
         _actions = ctx.Get<InputActions>();   // the host provides it; screens navigate with it (13 §3)
         // Asked once, here, rather than per world: whether this machine has a device does not change
@@ -562,10 +562,10 @@ public sealed class ClientModule : IModule
 internal sealed class AssetReloadSystem : ISystem
 {
     private readonly AssetHotReload _watcher;
-    private readonly ShaderRecompiler _shaders;
+    private readonly ShaderHotCompile _shaders;
     private readonly CVar<bool> _enabled;
 
-    public AssetReloadSystem(AssetHotReload watcher, ShaderRecompiler shaders, CVar<bool> enabled)
+    public AssetReloadSystem(AssetHotReload watcher, ShaderHotCompile shaders, CVar<bool> enabled)
     {
         _watcher = watcher;
         _shaders = shaders;

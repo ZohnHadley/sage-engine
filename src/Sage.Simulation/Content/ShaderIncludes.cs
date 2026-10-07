@@ -63,6 +63,29 @@ internal static class ShaderIncludes
         return result;
     }
 
+    // `effect` and every file it reaches through includes (issue #400): what its compiled file is out of date
+    // against. Names normalised (`/`, no `..`), in the order first reached; a file `sources` lacks (an engine
+    // header a mod includes) is listed, with no includes of its own. Cycles end.
+    public static IReadOnlyList<string> Reached(IReadOnlyDictionary<string, string> sources, string effect)
+    {
+        var texts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, text) in sources) texts[Normalize(name)] = text;
+        var order = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var stack = new Stack<string>();
+        stack.Push(Normalize(effect));
+        while (stack.Count > 0)
+        {
+            string at = stack.Pop();
+            if (!seen.Add(at)) continue;
+            order.Add(at);
+            if (!texts.TryGetValue(at, out string? text)) continue;
+            var includes = Includes(text);
+            for (int i = includes.Count - 1; i >= 0; i--) stack.Push(Resolve(at, includes[i]));
+        }
+        return order;
+    }
+
     private static bool Reaches(string from, string target, Dictionary<string, List<string>> includesOf, HashSet<string> seen)
     {
         if (string.Equals(from, target, StringComparison.OrdinalIgnoreCase)) return true;

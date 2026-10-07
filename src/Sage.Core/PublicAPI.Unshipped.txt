@@ -1,6 +1,8 @@
 #nullable enable
 const Sage.Core.DropDownConsole.MaxLine = 512 -> int
 const Sage.Core.DropDownConsole.SlideSeconds = 0.18 -> float
+const Sage.Core.ModManifest.PackageExtension = ".sagemod" -> string!
+override Sage.Core.ZipMount.ToString() -> string!
 Sage.Core.AppEnvironment
 Sage.Core.AppEnvironment.AddCrashSection(string! name, System.Func<string!>! provider) -> void
 Sage.Core.AppEnvironment.Dispose() -> void
@@ -76,30 +78,6 @@ Sage.Core.Logger.SetLevel(Sage.Core.LogCat! cat, Sage.Core.LogLevel level) -> vo
 Sage.Core.Logger.SetTick(long tick) -> void
 Sage.Core.Logger.Shutdown() -> void
 Sage.Core.Logger.Stdout.get -> Sage.Core.StdoutLogSink?
-static Sage.Core.AppEnvironment.CreateForApp() -> Sage.Core.AppEnvironment!
-static Sage.Core.AppEnvironment.CreateChild(Sage.Core.AppEnvironment? parent = null) -> Sage.Core.AppEnvironment!
-static Sage.Core.AppEnvironment.Current.get -> Sage.Core.AppEnvironment!
-static Sage.Core.AppEnvironment.Process.get -> Sage.Core.AppEnvironment!
-static Sage.Core.CoreCVars.Register(Sage.Core.CVarRegistry! registry, bool ownsProcessLog, Sage.Core.AppEnvironment! environment) -> Sage.Core.CoreCVars!
-static Sage.Core.Logger.Current.get -> Sage.Core.Logger!
-Sage.Core.RecordStore.Preview(string! type, Sage.Core.RecordId id, System.Text.Json.Nodes.JsonObject! fields, out string! error) -> bool
-Sage.Core.RecordStore.Previewed -> System.Action<string!, Sage.Core.RecordId>?
-Sage.Core.RecordCheck.Ids(string! type) -> System.Collections.Generic.IEnumerable<Sage.Core.RecordId>!
-Sage.Core.ModManifest.AssemblyPaths.get -> System.Collections.Generic.IEnumerable<string!>!
-Sage.Core.ListKeyAttribute
-Sage.Core.ListKeyAttribute.Key.get -> string!
-Sage.Core.ListKeyAttribute.ListKeyAttribute(string! key) -> void
-const Sage.Core.MountLookup.OverridePrefix = '@' -> char
-Sage.Core.MountLookup
-Sage.Core.VirtualPath.IsNamespaced.get -> bool
-Sage.Core.VirtualPath.Local.get -> Sage.Core.VirtualPath
-Sage.Core.VirtualPath.Namespace.get -> string!
-static Sage.Core.MountLookup.Find(Sage.Core.VirtualPath path, string! mountNamespace, System.Func<Sage.Core.VirtualPath, bool>! exists, System.Func<System.Collections.Generic.IEnumerable<string!>!>! overrideNamespaces) -> Sage.Core.VirtualPath?
-static Sage.Core.MountLookup.OverrideOf(string! ns, Sage.Core.VirtualPath path) -> Sage.Core.VirtualPath
-static Sage.Core.MountLookup.Replaces(Sage.Core.VirtualPath path) -> (string! Namespace, Sage.Core.VirtualPath Path)?
-static Sage.Core.VirtualPath.InNamespace(string! ns, Sage.Core.VirtualPath path) -> Sage.Core.VirtualPath
-const Sage.Core.ModManifest.PackageExtension = ".sagemod" -> string!
-override Sage.Core.ZipMount.ToString() -> string!
 Sage.Core.ModManifest.IsPackage.get -> bool
 Sage.Core.ModPackage
 Sage.Core.ZipMount
@@ -114,7 +92,30 @@ Sage.Core.ZipMount.PhysicalPath(Sage.Core.VirtualPath path) -> string?
 Sage.Core.ZipMount.RecordNamespace.get -> string!
 Sage.Core.ZipMount.WritablePath(Sage.Core.VirtualPath path) -> string?
 Sage.Core.ZipMount.ZipMount(string! name, string! file, string! recordNamespace) -> void
+static Sage.Core.AppEnvironment.CreateForApp() -> Sage.Core.AppEnvironment!
+static Sage.Core.AppEnvironment.CreateChild(Sage.Core.AppEnvironment? parent = null) -> Sage.Core.AppEnvironment!
+static Sage.Core.AppEnvironment.Current.get -> Sage.Core.AppEnvironment!
+static Sage.Core.AppEnvironment.Process.get -> Sage.Core.AppEnvironment!
+static Sage.Core.CoreCVars.Register(Sage.Core.CVarRegistry! registry, bool ownsProcessLog, Sage.Core.AppEnvironment! environment) -> Sage.Core.CoreCVars!
+static Sage.Core.Logger.Current.get -> Sage.Core.Logger!
+Sage.Core.RecordStore.Preview(string! type, Sage.Core.RecordId id, System.Text.Json.Nodes.JsonObject! fields, out string! error) -> bool
+Sage.Core.RecordStore.Previewed -> System.Action<string!, Sage.Core.RecordId>?
+Sage.Core.RecordCheck.Ids(string! type) -> System.Collections.Generic.IEnumerable<Sage.Core.RecordId>!
 static Sage.Core.ModManifest.IsPackagePath(string! path) -> bool
 static Sage.Core.ModPackage.DefaultFileName(Sage.Core.ModManifest! mod) -> string!
 static Sage.Core.ModPackage.Pack(string! folder, string? output = null) -> (Sage.Core.ModManifest! Mod, int Files, string! Output)
+static Sage.Core.ModPackage.Pack(string! folder, string? output, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! generated) -> (Sage.Core.ModManifest! Mod, int Files, string! Output)
+Sage.Core.ListKeyAttribute
+Sage.Core.ListKeyAttribute.Key.get -> string!
+Sage.Core.ListKeyAttribute.ListKeyAttribute(string! key) -> void
+const Sage.Core.MountLookup.OverridePrefix = '@' -> char
+Sage.Core.MountLookup
+Sage.Core.VirtualPath.IsNamespaced.get -> bool
+Sage.Core.VirtualPath.Local.get -> Sage.Core.VirtualPath
+Sage.Core.VirtualPath.Namespace.get -> string!
+static Sage.Core.MountLookup.Find(Sage.Core.VirtualPath path, string! mountNamespace, System.Func<Sage.Core.VirtualPath, bool>! exists, System.Func<System.Collections.Generic.IEnumerable<string!>!>! overrideNamespaces) -> Sage.Core.VirtualPath?
+static Sage.Core.MountLookup.OverrideOf(string! ns, Sage.Core.VirtualPath path) -> Sage.Core.VirtualPath
+static Sage.Core.MountLookup.Replaces(Sage.Core.VirtualPath path) -> (string! Namespace, Sage.Core.VirtualPath Path)?
+static Sage.Core.VirtualPath.InNamespace(string! ns, Sage.Core.VirtualPath path) -> Sage.Core.VirtualPath
 Sage.Core.RecordWrite.Written() -> System.Text.Json.Nodes.JsonObject?
+Sage.Core.ModManifest.AssemblyPaths.get -> System.Collections.Generic.IEnumerable<string!>!
