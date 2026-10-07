@@ -8,14 +8,18 @@ using ImGuiNET;
 namespace Sage.Editor;
 
 // Entity outliner + read-only inspector for one World. Right-click an entity to delete it.
-// Uses reflection and per-entity label strings, so it allocates about 130 bytes per listed entity
-// per frame while the window is open (TODO #41): fine for a dev tool, and replaced by the generated
-// inspector metadata later (docs/design/09, 15). Collapsing the window costs nothing.
-internal sealed class EntityOutlinerWindow
+// Row labels come from `EntityLabelCache` (built once per entity, issue #374) and, while no row is
+// expanded, only the visible rows are drawn (ImGuiListClipper), so a closed-rows frame allocates nothing.
+// An expanded row still uses reflection for its fields, which allocates; it is replaced by the generated
+// inspector metadata later (docs/design/09, 15).
+internal sealed unsafe class EntityOutlinerWindow
 {
     private readonly World _world;
     private readonly Query _all;
     private readonly List<Entity> _entities = new();
+    private readonly EntityLabelCache _labels = new();
+    private readonly ImGuiListClipperPtr _clipper = new(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+    private bool _anyOpen;   // a row was expanded last frame: rows differ in height, so the clipper stands down
     private readonly ImGuiWindowFlags _flags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
     private readonly EditorSelection? _selection;
     private readonly string? _title;   // the editor's docked "Outliner" (issue #219); else "Entities (<world>)"
@@ -47,8 +51,23 @@ internal sealed class EntityOutlinerWindow
         foreach (var e in _all.Entities)
             _entities.Add(e);
 
-        foreach (var entity in _entities)
+        _labels.Prune(_entities);
+
+        // Separator + collapsed row: a uniform height, which is what the clipper needs.
+        bool clip = !_anyOpen && _entities.Count > 0;
+        int first = 0, last = _entities.Count;
+        if (clip)
         {
+            _clipper.Begin(_entities.Count, ImGui.GetTextLineHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y);
+            _clipper.Step();
+            first = _clipper.DisplayStart;
+            last = _clipper.DisplayEnd;
+        }
+        _anyOpen = false;
+
+        for (int row = first; row < last; row++)
+        {
+            var entity = _entities[row];
             if (!_world.IsAlive(entity)) continue;
             ImGui.Separator();
 
@@ -56,7 +75,7 @@ internal sealed class EntityOutlinerWindow
             var flags = ImGuiTreeNodeFlags.SpanFullWidth;
             if (_selection != null && _selection.Is(entity)) flags |= ImGuiTreeNodeFlags.Selected;
 
-            bool nodeOpen = ImGui.TreeNodeEx($"{World.Describe(entity)}##{entity.Id}", flags);
+            bool nodeOpen = ImGui.TreeNodeEx(_labels.Label(entity), flags);
             if (_selection != null && ImGui.IsItemClicked())
             {
                 // Ctrl+click adds one of the document's placements to the selection, or takes it out (#367).
@@ -81,6 +100,7 @@ internal sealed class EntityOutlinerWindow
                 continue;
             }
 
+            _anyOpen = true;
             ImGui.TextColored(new Vector4(1, 0.5f, 1, 1), $"Components: {entity.Components.Count}");
             foreach (var component in entity.Components)
             {
@@ -108,6 +128,11 @@ internal sealed class EntityOutlinerWindow
                 }
             }
             ImGui.TreePop();
+        }
+        if (clip)
+        {
+            while (_clipper.Step()) { }   // drain: ImGui wants the loop run to its end
+            _clipper.End();
         }
         ImGui.End();
     }
