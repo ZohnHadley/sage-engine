@@ -76,3 +76,4 @@ static Sage.Gameplay.Encumbrance.CarryLimitOf(this Sage.Simulation.World! world,
 static Sage.Gameplay.Quests.IsTracked(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.Track(Sage.Simulation.World! world, Sage.Core.RecordId quest, bool tracked = true) -> bool
 virtual Sage.Gameplay.QuestObjective.TryGetPlace(out System.Numerics.Vector3 at) -> bool
+Sage.Gameplay.GameplayConventionsRecord.SpeedAttribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>

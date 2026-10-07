@@ -3242,6 +3242,11 @@
           "default": false,
           "type": "boolean"
         },
+        "speedScale": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
         "inWater": {
           "description": "Its feet are in a water volume (set by the controller) (bool, default false)",
           "default": false,

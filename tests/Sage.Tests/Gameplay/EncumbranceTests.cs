@@ -153,4 +153,48 @@ public class EncumbranceTests
         Assert.Equal(0.4f, Speed(world, loaded), 3);
         Assert.Single(world.Get<ActiveEffects>(loaded).Effects, e => e.Record == Id("overloaded"));
     }
+
+    // The engine's own movement feels the burden (issue #384): gameplay_conventions name the attribute
+    // that paces a character, the overloaded level halves it, and in the same ticks the overloaded porter
+    // walks half as far as the unburdened one beside it.
+    [Fact]
+    public void AnOverweightCharacterWalksLessFarInTheSameTicks()
+    {
+        using var app = HeadlessApp.Gameplay().File("data/porter.json", Porter)
+            .File("data/conventions.json", """
+                [{ "type": "gameplay_conventions", "id": "default_conventions", "speedAttribute": "speed" }]
+                """).Boot("walk");
+        Assert.Equal(0, app.Records.ErrorCount);
+        var world = app.World;
+        var ground = world.Create(Transform.At(new Vector3(0, -0.5f, 0)), "ground");
+        world.Add(ground, Collider.Box(new Vector3(200, 1, 200)));
+
+        Entity Walker(float x, int rocks)
+        {
+            var walker = world.Create(Transform.At(new Vector3(x, 0, 0)), $"walker{x}");
+            world.AddCharacter(walker, world.Resources.Get<IPhysicsWorld>().Layers.Player);
+            world.AddAttributes(walker);
+            world.AddInventory(walker, 50f);
+            world.AddBurden(walker, new RecordRef<EncumbranceRecord>(Id("burden")));
+            if (rocks > 0) Assert.True(world.Give(walker, Id("rock"), rocks));
+            return walker;
+        }
+        var free = Walker(-5f, 0);
+        var laden = Walker(5f, 6);                                      // 60 kg of 50: overloaded, speed x0.4
+
+        for (int i = 0; i < 10; i++) world.RunFixed(1f / 60f);        // settle; the level and its pace take hold
+        float freeStart = world.Get<Transform>(free).LocalPosition.Z, ladenStart = world.Get<Transform>(laden).LocalPosition.Z;
+        for (int i = 0; i < 120; i++)
+        {
+            world.Get<PawnIntent>(free).Move = new Vector2(0, 1);
+            world.Get<PawnIntent>(laden).Move = new Vector2(0, 1);
+            world.RunFixed(1f / 60f);
+        }
+        float freeWalked = MathF.Abs(world.Get<Transform>(free).LocalPosition.Z - freeStart);
+        float ladenWalked = MathF.Abs(world.Get<Transform>(laden).LocalPosition.Z - ladenStart);
+
+        Assert.True(freeWalked > 2f, $"the free walker went {freeWalked} m");
+        Assert.InRange(ladenWalked / freeWalked, 0.3f, 0.5f);          // about 0.4, less what acceleration takes
+        Assert.Equal(0.4f, world.Get<CharacterController>(laden).SpeedScale, 3);
+    }
 }

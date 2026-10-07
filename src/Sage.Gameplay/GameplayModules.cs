@@ -119,6 +119,7 @@ public sealed class AttributesModule : IModule
         world.AddSystem(new EffectExecutionSystem(world));   // summons and dispels, after the tick (issue #28)
         world.AddSystem(new DeathRulesSystem(world));
         world.AddSystem(new DeathOutputSystem(world));       // OnDeath (issue #91)
+        world.AddSystem(new SpeedAttributeSystem(world));    // the speed attribute paces the character (issue #384)
     }
 }
 
