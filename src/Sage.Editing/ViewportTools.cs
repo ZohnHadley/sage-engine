@@ -362,6 +362,7 @@ public sealed class ViewportTools
             Log.Info(LogCat.Console, $"gizmo: {tools.Mode.ToString().ToLowerInvariant()}");
         });
 
+        BlockoutTools.Register(cvars, selection, tools);   // ed_brush* (#61): brushes snap to this grid
         return tools;
     }
 

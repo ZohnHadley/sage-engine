@@ -109,6 +109,7 @@ internal sealed class EditorLayout
         Native.igDockBuilderDockWindow(OutlinerTitle, left);
         Native.igDockBuilderDockWindow(PalettePanel.Title, left);   // a tab beside the outliner (#222)
         Native.igDockBuilderDockWindow(TerrainPanel.Title, left);   // the terrain tools (#372)
+        Native.igDockBuilderDockWindow(BrushPanel.Title, left);     // and the blockout brushes (#61)
         Native.igDockBuilderDockWindow(InspectorTitle, right);
         Native.igDockBuilderDockWindow(RecordsTitle, right);   // a tab beside the inspector
         Native.igDockBuilderDockWindow(WiringPanel.Title, right);   // a tab beside the inspector (#225)

@@ -546,3 +546,25 @@ static Sage.Editing.VocabularyCatalog.Of(Sage.Simulation.Engine! engine, System.
 static Sage.Editing.VocabularyEditor.FieldsAt(Sage.Editing.RecordDocument! record, string! path) -> System.Collections.Generic.IReadOnlyList<(string! Name, string! Path)>!
 static Sage.Editing.VocabularyForm.ForRecord(Sage.Editing.RecordDocument! record, string! path, out string? error) -> Sage.Editing.VocabularyForm?
 static Sage.Editing.VocabularyForm.ForWire(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index, out string? error) -> Sage.Editing.VocabularyForm?
+const Sage.Editing.BlockoutTools.Part = "brush" -> string!
+Sage.Editing.BlockoutTools
+static Sage.Editing.BlockoutTools.Brushes(Sage.Editing.EditDocument! document) -> System.Collections.Generic.IEnumerable<Sage.Simulation.Placement!>!
+static Sage.Editing.BlockoutTools.Describe(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> string!
+static Sage.Editing.BlockoutTools.FaceAt(Sage.Editing.EditDocument! document, in Sage.Editing.EditorRay ray) -> (Sage.Simulation.Placement! Placement, Sage.Simulation.BrushFace Face)?
+static Sage.Editing.BlockoutTools.FieldOf(Sage.Simulation.BrushFace face) -> string!
+static Sage.Editing.BlockoutTools.IsBrush(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement) -> bool
+static Sage.Editing.BlockoutTools.IsMaterial(Sage.Simulation.Engine! engine, Sage.Core.RecordId id) -> bool
+static Sage.Editing.BlockoutTools.Materials(Sage.Simulation.Engine! engine) -> System.Collections.Generic.IReadOnlyList<Sage.Core.RecordId>!
+static Sage.Editing.BlockoutTools.PaintAt(Sage.Editing.EditDocument! document, in Sage.Editing.EditorRay ray, Sage.Core.RecordId material, bool whole = false) -> (Sage.Simulation.Placement! Placement, Sage.Simulation.BrushFace Face)?
+static Sage.Editing.BlockoutTools.Place(Sage.Editing.EditDocument! document, Sage.Simulation.BrushShape shape, System.Numerics.Vector3 at, System.Numerics.Vector3 size, Sage.Core.RecordId material = default(Sage.Core.RecordId), string! name = "", float grid = 0) -> Sage.Simulation.Placement?
+static Sage.Editing.BlockoutTools.PrefabOf(Sage.Simulation.BrushShape shape) -> Sage.Core.RecordId
+static Sage.Editing.BlockoutTools.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditorSelection?>! selection, Sage.Editing.ViewportTools! tools) -> void
+static Sage.Editing.BlockoutTools.SetMaterial(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Simulation.BrushFace? face, Sage.Core.RecordId material) -> bool
+static Sage.Editing.BlockoutTools.SetShape(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Simulation.BrushShape shape, int? sides = null) -> bool
+static Sage.Editing.BlockoutTools.SetSides(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int sides) -> bool
+static Sage.Editing.BlockoutTools.SetSize(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, System.Numerics.Vector3 size, float grid = 0) -> bool
+static Sage.Editing.BlockoutTools.SnapPoint(System.Numerics.Vector3 at, float grid) -> System.Numerics.Vector3
+static Sage.Editing.BlockoutTools.SnapSize(System.Numerics.Vector3 size, float grid) -> System.Numerics.Vector3
+static Sage.Editing.BlockoutTools.TryGet(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, out Sage.Simulation.BlockoutBrush brush) -> bool
+static Sage.Editing.BlockoutTools.TryParseFace(string! text, out Sage.Simulation.BrushFace face) -> bool
+static Sage.Editing.BlockoutTools.TryParseShape(string! text, out Sage.Simulation.BrushShape shape) -> bool

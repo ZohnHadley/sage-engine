@@ -160,7 +160,7 @@ public class PrefabPartTests
         {
             ["abilities"] = "sage.gameplay.abilities", ["aim_ik"] = "sage.core", ["animator"] = "sage.core", ["attributes"] = "sage.gameplay.attributes",
             ["bone_attachment"] = "sage.core", ["foot_ik"] = "sage.gameplay.animation", ["footsteps"] = "sage.gameplay.animation", ["hand_ik"] = "sage.core", ["look_at_ik"] = "sage.core",
-            ["body"] = "sage.physics3d", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
+            ["body"] = "sage.physics3d", ["brush"] = "sage.core", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
             ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
             ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hitboxes"] = "sage.gameplay.combat", ["hop"] = "sandbox", ["orbit"] = "sandbox", ["inventory"] = "sage.gameplay.items",
             ["joint"] = "sage.physics3d", ["ladder"] = "sage.gameplay.character", ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
@@ -186,7 +186,7 @@ public class PrefabPartTests
         Assert.True(order.IndexOf("sprite") < order.IndexOf("pickup"));
         Assert.True(order.IndexOf("body") < order.IndexOf("pickup"));
         Assert.True(order.IndexOf("skinned_mesh") < order.IndexOf("animator"));
-        Assert.Equal(new[] { "abilities", "aim_ik", "attributes", "body", "bone_attachment" }, order.Take(5));
+        Assert.Equal(new[] { "abilities", "aim_ik", "attributes", "body", "bone_attachment", "brush" }, order.Take(6));
     }
 
     private static string SandboxDirectory => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
