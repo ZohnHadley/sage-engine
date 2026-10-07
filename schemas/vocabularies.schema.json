@@ -186,15 +186,17 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, command, cue, destroy, finish_quest, fire, give_item, grant_perk, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, clear_bounty, close_screen, command, commit_crime, cue, destroy, finish_quest, fire, give_item, grant_perk, hit_stop, join_faction, load_scene, log, message, music_intensity, open_screen, pass_time, pay_bounty, play_music, play_sound, promote, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
         "AddVar",
         "ApplyEffect",
         "ChangeStanding",
+        "ClearBounty",
         "CloseScreen",
         "Command",
+        "CommitCrime",
         "Cue",
         "Destroy",
         "FinishQuest",
@@ -202,14 +204,17 @@
         "GiveItem",
         "GrantPerk",
         "HitStop",
+        "JoinFaction",
         "LoadScene",
         "Log",
         "Message",
         "MusicIntensity",
         "OpenScreen",
         "PassTime",
+        "PayBounty",
         "PlayMusic",
         "PlaySound",
+        "Promote",
         "SaveGame",
         "SetStage",
         "SetTag",
@@ -225,8 +230,10 @@
         "add_var",
         "apply_effect",
         "change_standing",
+        "clear_bounty",
         "close_screen",
         "command",
+        "commit_crime",
         "cue",
         "destroy",
         "finish_quest",
@@ -234,14 +241,17 @@
         "give_item",
         "grant_perk",
         "hit_stop",
+        "join_faction",
         "load_scene",
         "log",
         "message",
         "music_intensity",
         "open_screen",
         "pass_time",
+        "pay_bounty",
         "play_music",
         "play_sound",
+        "promote",
         "save_game",
         "set_stage",
         "set_tag",
@@ -437,6 +447,43 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "clear_bounty",
+                      "ClearBounty"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: clear_bounty.",
+                    "enum": [
+                      "clear_bounty",
+                      "ClearBounty"
+                    ]
+                  },
+                  "faction": {
+                    "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'clear_bounty' (ClearBountyAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "close_screen",
                       "CloseScreen"
                     ]
@@ -498,6 +545,51 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'command' (UiCommandAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "commit_crime",
+                      "CommitCrime"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: commit_crime.",
+                    "enum": [
+                      "commit_crime",
+                      "CommitCrime"
+                    ]
+                  },
+                  "crime": {
+                    "description": "The crime. Names a crime record. (RecordRef<CrimeRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:crime"
+                      }
+                    ]
+                  },
+                  "faction": {
+                    "description": "The wronged faction; empty: the other's. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'commit_crime' (CommitCrimeAction)."
               }
             },
             {
@@ -784,6 +876,43 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "join_faction",
+                      "JoinFaction"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: join_faction.",
+                    "enum": [
+                      "join_faction",
+                      "JoinFaction"
+                    ]
+                  },
+                  "faction": {
+                    "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'join_faction' (JoinFactionAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "load_scene",
                       "LoadScene"
                     ]
@@ -1042,6 +1171,51 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "pay_bounty",
+                      "PayBounty"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: pay_bounty.",
+                    "enum": [
+                      "pay_bounty",
+                      "PayBounty"
+                    ]
+                  },
+                  "currency": {
+                    "description": "The item that is money. Names a item record. (RecordRef<ItemRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:item"
+                      }
+                    ]
+                  },
+                  "faction": {
+                    "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'pay_bounty' (PayBountyAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "play_music",
                       "PlayMusic"
                     ]
@@ -1133,6 +1307,43 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'play_sound' (PlaySoundAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "promote",
+                      "Promote"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: promote.",
+                    "enum": [
+                      "promote",
+                      "Promote"
+                    ]
+                  },
+                  "faction": {
+                    "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'promote' (PromoteAction)."
               }
             },
             {
@@ -2046,6 +2257,94 @@
         {
           "type": "object",
           "properties": {
+            "clear_bounty": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'clear_bounty' (ClearBountyAction), in shorthand."
+            },
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "clear_bounty"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ClearBounty": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'clear_bounty' (ClearBountyAction), in shorthand."
+            },
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "ClearBounty"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "all": {
               "description": "Every window at once, not only the top one. (bool, default false)",
               "default": false,
@@ -2176,6 +2475,126 @@
           },
           "required": [
             "Command"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "commit_crime": {
+              "anyOf": [
+                {
+                  "description": "The crime. Names a crime record. (RecordRef<CrimeRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:crime"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "crime": {
+                      "description": "The crime. Names a crime record. (RecordRef<CrimeRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:crime"
+                        }
+                      ]
+                    },
+                    "faction": {
+                      "description": "The wronged faction; empty: the other's. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'commit_crime' (CommitCrimeAction), in shorthand."
+            },
+            "crime": {
+              "description": "The crime. Names a crime record. (RecordRef<CrimeRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:crime"
+                }
+              ]
+            },
+            "faction": {
+              "description": "The wronged faction; empty: the other's. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "commit_crime"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "CommitCrime": {
+              "anyOf": [
+                {
+                  "description": "The crime. Names a crime record. (RecordRef<CrimeRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:crime"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "crime": {
+                      "description": "The crime. Names a crime record. (RecordRef<CrimeRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:crime"
+                        }
+                      ]
+                    },
+                    "faction": {
+                      "description": "The wronged faction; empty: the other's. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'commit_crime' (CommitCrimeAction), in shorthand."
+            },
+            "crime": {
+              "description": "The crime. Names a crime record. (RecordRef<CrimeRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:crime"
+                }
+              ]
+            },
+            "faction": {
+              "description": "The wronged faction; empty: the other's. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "CommitCrime"
           ],
           "additionalProperties": false
         },
@@ -2856,6 +3275,94 @@
         {
           "type": "object",
           "properties": {
+            "faction": {
+              "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "join_faction": {
+              "anyOf": [
+                {
+                  "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'join_faction' (JoinFactionAction), in shorthand."
+            }
+          },
+          "required": [
+            "join_faction"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "JoinFaction": {
+              "anyOf": [
+                {
+                  "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'join_faction' (JoinFactionAction), in shorthand."
+            },
+            "faction": {
+              "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "JoinFaction"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "entry": {
               "description": "Where the player arrives: a placement's name or a map entity's targetname; empty: the scene's start. (string, default \"\")",
               "default": "",
@@ -3510,6 +4017,126 @@
         {
           "type": "object",
           "properties": {
+            "currency": {
+              "description": "The item that is money. Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            },
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "pay_bounty": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "currency": {
+                      "description": "The item that is money. Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'pay_bounty' (PayBountyAction), in shorthand."
+            }
+          },
+          "required": [
+            "pay_bounty"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "PayBounty": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "currency": {
+                      "description": "The item that is money. Names a item record. (RecordRef<ItemRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:item"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'pay_bounty' (PayBountyAction), in shorthand."
+            },
+            "currency": {
+              "description": "The item that is money. Names a item record. (RecordRef<ItemRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:item"
+                }
+              ]
+            },
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "PayBounty"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "fade": {
               "description": "Seconds the crossfade takes; left out, the track's own fadeIn. Unit: s. At least 0. (float?)",
               "anyOf": [
@@ -3776,6 +4403,94 @@
           },
           "required": [
             "PlaySound"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "faction": {
+              "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "promote": {
+              "anyOf": [
+                {
+                  "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'promote' (PromoteAction), in shorthand."
+            }
+          },
+          "required": [
+            "promote"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Promote": {
+              "anyOf": [
+                {
+                  "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'promote' (PromoteAction), in shorthand."
+            },
+            "faction": {
+              "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Promote"
           ],
           "additionalProperties": false
         },
@@ -5154,7 +5869,7 @@
       ]
     },
     "ai_condition:id": {
-      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed, in_routine.",
+      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed, in_routine, target_outlaw, target_wanted.",
       "type": "string",
       "enum": [
         "CanCastAtEnemy",
@@ -5168,6 +5883,8 @@
         "ScheduleDone",
         "SeeEnemy",
         "SpellComingBack",
+        "TargetOutlaw",
+        "TargetWanted",
         "TaskFailed",
         "can_cast_at_enemy",
         "can_melee",
@@ -5180,6 +5897,8 @@
         "schedule_done",
         "see_enemy",
         "spell_coming_back",
+        "target_outlaw",
+        "target_wanted",
         "task_failed"
       ]
     },
@@ -5547,6 +6266,64 @@
                 "additionalProperties": false,
                 "description": "ai_condition 'in_routine' (PerceivedCondition)."
               }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "target_outlaw",
+                      "TargetOutlaw"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: target_outlaw.",
+                    "enum": [
+                      "target_outlaw",
+                      "TargetOutlaw"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'target_outlaw' (TargetOutlawCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "target_wanted",
+                      "TargetWanted"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: target_wanted.",
+                    "enum": [
+                      "target_wanted",
+                      "TargetWanted"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'target_wanted' (TargetWantedCondition)."
+              }
             }
           ]
         }
@@ -5642,7 +6419,7 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, anim_window, any, attribute, date_between, distance_to, entity_exists, has_item, has_perk, has_tag, in_scene, is_alive, lacks_tag, level, moon_phase, not, on_date, quest, random, season, skill, speaker, standing, time_between, var, weekday.",
+      "description": "A condition by id: all, anim_finished, anim_param, anim_window, any, attribute, bounty, date_between, distance_to, entity_exists, has_item, has_perk, has_tag, in_scene, is_alive, lacks_tag, level, moon_phase, not, on_date, quest, random, rank, season, skill, speaker, standing, time_between, var, weekday.",
       "type": "string",
       "enum": [
         "All",
@@ -5651,6 +6428,7 @@
         "AnimWindow",
         "Any",
         "Attribute",
+        "Bounty",
         "DateBetween",
         "DistanceTo",
         "EntityExists",
@@ -5666,6 +6444,7 @@
         "OnDate",
         "Quest",
         "Random",
+        "Rank",
         "Season",
         "Skill",
         "Speaker",
@@ -5679,6 +6458,7 @@
         "anim_window",
         "any",
         "attribute",
+        "bounty",
         "date_between",
         "distance_to",
         "entity_exists",
@@ -5694,6 +6474,7 @@
         "on_date",
         "quest",
         "random",
+        "rank",
         "season",
         "skill",
         "speaker",
@@ -6009,6 +6790,55 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'attribute' (AttributeCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "bounty",
+                      "Bounty"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "atLeast": {
+                    "description": "Holds when the bounty is at least this (and above 0, unless below is given) At least 0. (float, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "below": {
+                    "description": "Holds only when the bounty is below this; 0: no upper bound. At least 0. (float, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "condition": {
+                    "description": "The condition: bounty.",
+                    "enum": [
+                      "bounty",
+                      "Bounty"
+                    ]
+                  },
+                  "faction": {
+                    "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'bounty' (BountyCondition)."
               }
             },
             {
@@ -6664,6 +7494,49 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'random' (RandomCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "rank",
+                      "Rank"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "atLeast": {
+                    "description": "The least rank that holds: 0 the first. At least 0. (int, default 0)",
+                    "default": 0,
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "condition": {
+                    "description": "The condition: rank.",
+                    "enum": [
+                      "rank",
+                      "Rank"
+                    ]
+                  },
+                  "faction": {
+                    "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'rank' (RankCondition)."
               }
             },
             {
@@ -7782,6 +8655,142 @@
           },
           "required": [
             "Attribute"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "atLeast": {
+              "description": "Holds when the bounty is at least this (and above 0, unless below is given) At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "below": {
+              "description": "Holds only when the bounty is below this; 0: no upper bound. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "bounty": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "Holds when the bounty is at least this (and above 0, unless below is given) At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "below": {
+                      "description": "Holds only when the bounty is below this; 0: no upper bound. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'bounty' (BountyCondition), in shorthand."
+            },
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "bounty"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Bounty": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "Holds when the bounty is at least this (and above 0, unless below is given) At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "below": {
+                      "description": "Holds only when the bounty is below this; 0: no upper bound. At least 0. (float, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'bounty' (BountyCondition), in shorthand."
+            },
+            "atLeast": {
+              "description": "Holds when the bounty is at least this (and above 0, unless below is given) At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "below": {
+              "description": "Holds only when the bounty is below this; 0: no upper bound. At least 0. (float, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Bounty"
           ],
           "additionalProperties": false
         },
@@ -9396,6 +10405,118 @@
           },
           "required": [
             "Random"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "atLeast": {
+              "description": "The least rank that holds: 0 the first. At least 0. (int, default 0)",
+              "default": 0,
+              "type": "integer",
+              "minimum": 0
+            },
+            "faction": {
+              "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "rank": {
+              "anyOf": [
+                {
+                  "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "The least rank that holds: 0 the first. At least 0. (int, default 0)",
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'rank' (RankCondition), in shorthand."
+            }
+          },
+          "required": [
+            "rank"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Rank": {
+              "anyOf": [
+                {
+                  "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "The least rank that holds: 0 the first. At least 0. (int, default 0)",
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'rank' (RankCondition), in shorthand."
+            },
+            "atLeast": {
+              "description": "The least rank that holds: 0 the first. At least 0. (int, default 0)",
+              "default": 0,
+              "type": "integer",
+              "minimum": 0
+            },
+            "faction": {
+              "description": "The faction. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Rank"
           ],
           "additionalProperties": false
         },
@@ -11277,12 +12398,13 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_bag, rpg_dialogue, rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_perks, rpg_rest, rpg_save, rpg_shop, rpg_spellbook, rpg_spellmaker, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_crosshair, ui_mods, ui_options, ui_world.",
+      "description": "A view_model by id: rpg_bag, rpg_dialogue, rpg_equipment, rpg_factions, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_perks, rpg_rest, rpg_save, rpg_shop, rpg_spellbook, rpg_spellmaker, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_crosshair, ui_mods, ui_options, ui_world.",
       "type": "string",
       "enum": [
         "RpgBag",
         "RpgDialogue",
         "RpgEquipment",
+        "RpgFactions",
         "RpgInventory",
         "RpgJournal",
         "RpgLoad",
@@ -11308,6 +12430,7 @@
         "rpg_bag",
         "rpg_dialogue",
         "rpg_equipment",
+        "rpg_factions",
         "rpg_inventory",
         "rpg_journal",
         "rpg_load",
@@ -11434,6 +12557,35 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'rpg_equipment' (EquipmentView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_factions",
+                      "RpgFactions"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_factions.",
+                    "enum": [
+                      "rpg_factions",
+                      "RpgFactions"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_factions' (FactionsView)."
               }
             },
             {

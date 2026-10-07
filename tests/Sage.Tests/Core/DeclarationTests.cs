@@ -41,7 +41,7 @@ public class DeclarationTests
             ["hit_location"] = "sage.gameplay.combat", ["hitboxes"] = "sage.gameplay.combat",   // hit locations (#137)
             ["hitbox_budget"] = "sage.gameplay.combat",                                          // its budget (#273)
             ["spread"] = "sage.gameplay.combat", ["recoil"] = "sage.gameplay.combat", ["routine"] = "sage.gameplay.ai", ["nav_area"] = "sage.gameplay.ai",
-            ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
+            ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions", ["crime"] = "sage.gameplay.factions",
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
             ["equip_slot"] = "sage.gameplay.items", ["encumbrance"] = "sage.gameplay.items",   // slots and burden in data (#384)
@@ -71,6 +71,7 @@ public class DeclarationTests
             ["area_map"] = "sage.kits.rpg",          // a scene's map picture and fog (#349)
             ["skill"] = "sage.kits.rpg", ["levelling"] = "sage.kits.rpg",   // skills and levelling (#377)
             ["perk"] = "sage.kits.rpg",                                      // perks and traits (#381)
+            ["faction_ranks"] = "sage.kits.rpg",                             // faction ranks (#389)
             ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
             ["language"] = "sage.ui",   // a translation's direction and fonts (#345)
             ["ui_style_set"] = "sage.ui",                                                             // accessibility (#351)

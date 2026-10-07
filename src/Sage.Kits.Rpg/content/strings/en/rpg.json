@@ -24,6 +24,9 @@
   "perks": {
     "hint": "D-pad: choose    A: take    B: close"
   },
+  "factions": {
+    "hint": "D-pad: choose    A: join / rise    B: close"
+  },
   "spellmaker": {
     "name": "a name for it",
     "hint": "Type a name    D-pad: choose    A: add / change    B: close"
