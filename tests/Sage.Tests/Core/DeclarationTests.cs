@@ -43,7 +43,7 @@ public class DeclarationTests
             ["hitbox_budget"] = "sage.gameplay.combat",                                          // its budget (#273)
             ["block"] = "sage.gameplay.combat",                                                  // guards and parries (#390)
             ["spread"] = "sage.gameplay.combat", ["recoil"] = "sage.gameplay.combat", ["routine"] = "sage.gameplay.ai", ["nav_area"] = "sage.gameplay.ai",
-            ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions", ["crime"] = "sage.gameplay.factions",
+            ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["barks"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions", ["crime"] = "sage.gameplay.factions",
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
             ["equip_slot"] = "sage.gameplay.items", ["encumbrance"] = "sage.gameplay.items",   // slots and burden in data (#384)

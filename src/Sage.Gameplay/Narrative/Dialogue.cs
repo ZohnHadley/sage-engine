@@ -100,12 +100,32 @@ public sealed class DialogueNode
     public List<DialogueOption> Options = new();
 }
 
+// What a speaker says first, by condition (issue #392): the first greeting whose `requires` holds — asked
+// about the listener with the speaker as the other, as a topic's info is — is said in place of the start
+// node's line, does its `then`, and may start the conversation at another node.
+public sealed class DialogueGreeting
+{
+    [Property(Tooltip = "When this is the greeting: one condition (use all for several), asked about the listener, with the speaker as the other; none = always")]
+    public ICondition? Requires;
+    [Property(Tooltip = "What greeting does: the listener is the subject, the speaker the other")]
+    public List<IAction> Then = new();
+    [Property(Tooltip = "What the speaker says first, in place of the start node's line; empty = the node's. May be a raw @key")]
+    public string Text = "";
+    [Property(Tooltip = "The node to start at; empty = the dialogue's start")]
+    public string Goto = "";
+}
+
 [Record("dialogue", Plugin = "sage.gameplay.dialogue")]
 public sealed class DialogueRecord
 {
     public string Label = "";
     public string Start = "";                   // empty = the first node
     public List<DialogueNode> Nodes = new();
+    // Greetings by condition, first that holds (issue #392); none = the start node's line, as before.
+    public List<DialogueGreeting> Greetings = new();
+    // The topics this speaker brings up (issue #392): on their list whether or not the listener has
+    // learnt them, and learnt by asking (DialogueTopics). Morrowind's per-speaker known topics.
+    public List<RecordRef<TopicRecord>> Topics = new();
 
     public DialogueNode? Node(string id)
     {
@@ -135,6 +155,9 @@ public sealed class Conversation
     // An option with `topics: true` was picked: the screen shows the speaker's topics
     // (DialogueTopics.Available) until the next Start, Pick or Stop.
     public bool Topics;
+    // What the speaker greeted with (DialogueRecord.Greetings, issue #392), said in place of the first
+    // node's line until the conversation moves on; empty = none. As written (maybe a `@key`).
+    public string Greeting = "";
 
     public bool Running => !Record.IsEmpty;
 
@@ -143,6 +166,7 @@ public sealed class Conversation
         Record = default;
         Node = "";
         Topics = false;
+        Greeting = "";
         Speaker = default;
         Listener = default;
     }
@@ -172,11 +196,13 @@ public static class DialogueRules
             return false;
         }
 
-        var node = record.Node(record.Start);
+        var greeting = Greeting(world, record, speaker, listener);
+        string start = greeting is { Goto.Length: > 0 } ? greeting.Goto : record.Start;
+        var node = record.Node(start);
         if (node == null)
         {
-            Log.Once(LogCat.Gameplay, LogLevel.Error, $"dialogue-start:{dialogue.Record}",
-                $"{dialogue.Record} has no node '{record.Start}' to start at");
+            Log.Once(LogCat.Gameplay, LogLevel.Error, $"dialogue-start:{dialogue.Record}:{start}",
+                $"{dialogue.Record} has no node '{start}' to start at");
             return false;
         }
 
@@ -185,8 +211,39 @@ public static class DialogueRules
         conversation.Record = dialogue.Record;
         conversation.Node = node.Id;
         conversation.Topics = false;
+        conversation.Greeting = greeting?.Text ?? "";
+        if (greeting != null)
+        {
+            if (greeting.Then.Count > 0)
+            {
+                Conditions.Run(greeting.Then, new ActionContext(world, listener, speaker));
+                Quests.Check(world);
+            }
+        }
+        DialogueTopics.LearnLinks(world, listener, conversation.Greeting.Length > 0 ? conversation.Greeting : node.Text);
         world.Events.Send(new Spoke(speaker, listener, node.Id));
         return true;
+    }
+
+    // The greeting `speaker` would give `listener` (the first whose `requires` holds), doing nothing; null
+    // when its dialogue has none that holds.
+    public static DialogueGreeting? Greeting(World world, DialogueRecord record, Entity speaker, Entity listener)
+    {
+        var greetings = record.Greetings;
+        if (greetings.Count == 0) return null;
+        var context = new ConditionContext(world, listener, speaker);
+        for (int i = 0; i < greetings.Count; i++)
+            if (greetings[i] is { } greeting && Conditions.Test(greeting.Requires, in context, out _)) return greeting;
+        return null;
+    }
+
+    // What the speaker is saying now, as written: the greeting while the conversation is where it began,
+    // else the current node's line. Empty when nobody is talking.
+    public static string Line(World world)
+    {
+        if (!world.Resources.TryGet<Conversation>(out var conversation) || conversation is not { Running: true }) return "";
+        if (conversation.Greeting.Length > 0) return conversation.Greeting;
+        return Current(world)?.Text ?? "";
     }
 
     public static DialogueNode? Current(World world)
@@ -256,6 +313,8 @@ public static class DialogueRules
         }
 
         conversation.Node = next.Id;
+        conversation.Greeting = "";
+        DialogueTopics.LearnLinks(world, listener, next.Text);
         world.Events.Send(new Spoke(conversation.Speaker, listener, next.Id));
         return true;
     }

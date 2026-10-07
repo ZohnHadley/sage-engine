@@ -2141,6 +2141,168 @@
         },
         "additionalProperties": false
       }
+    },
+    "greetings": {
+      "description": "(List<DialogueGreeting>)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requires": {
+            "description": "When this is the greeting: one condition (use all for several), asked about the listener, with the speaker as the other; none = always. (ICondition)",
+            "allOf": [
+              {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            ]
+          },
+          "then": {
+            "description": "What greeting does: the listener is the subject, the speaker the other. (List<IAction>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "then+": {
+            "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "then-": {
+            "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "text": {
+            "description": "What the speaker says first, in place of the start node's line; empty = the node's. May be a raw @key. (string)",
+            "type": "string"
+          },
+          "goto": {
+            "description": "The node to start at; empty = the dialogue's start. (string)",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "greetings+": {
+      "description": "Adds to \"greetings\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requires": {
+            "description": "When this is the greeting: one condition (use all for several), asked about the listener, with the speaker as the other; none = always. (ICondition)",
+            "allOf": [
+              {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            ]
+          },
+          "then": {
+            "description": "What greeting does: the listener is the subject, the speaker the other. (List<IAction>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "then+": {
+            "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "then-": {
+            "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "text": {
+            "description": "What the speaker says first, in place of the start node's line; empty = the node's. May be a raw @key. (string)",
+            "type": "string"
+          },
+          "goto": {
+            "description": "The node to start at; empty = the dialogue's start. (string)",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "greetings-": {
+      "description": "Removes these from \"greetings\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requires": {
+            "description": "When this is the greeting: one condition (use all for several), asked about the listener, with the speaker as the other; none = always. (ICondition)",
+            "allOf": [
+              {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            ]
+          },
+          "then": {
+            "description": "What greeting does: the listener is the subject, the speaker the other. (List<IAction>)",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "then+": {
+            "description": "Adds to \"then\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "then-": {
+            "description": "Removes these from \"then\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "$ref": "vocabularies.schema.json#/definitions/action"
+            }
+          },
+          "text": {
+            "description": "What the speaker says first, in place of the start node's line; empty = the node's. May be a raw @key. (string)",
+            "type": "string"
+          },
+          "goto": {
+            "description": "The node to start at; empty = the dialogue's start. (string)",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "topics": {
+      "description": "Names a dialogue_topic record. (List<RecordRef<TopicRecord>>)",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+      }
+    },
+    "topics+": {
+      "description": "Adds to \"topics\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+      }
+    },
+    "topics-": {
+      "description": "Removes these from \"topics\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+      }
     }
   },
   "additionalProperties": false
