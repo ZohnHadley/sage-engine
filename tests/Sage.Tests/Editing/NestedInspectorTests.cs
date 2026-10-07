@@ -68,6 +68,22 @@ public class NestedInspectorTests
             .Select(e => $"{((IRecordRef)e.Children.Single(c => c.Name == "item").Value!).Id.Name}:{e.Children.Single(c => c.Name == "count").Value}"));
 
     [Fact]
+    public void AQuotedJsonObjectIsAnElementOrAWholeValueFromTheConsole()
+    {
+        var (engine, document) = Open();
+        using (engine)
+        {
+            // ed_add with a single-quoted JSON object element, then ed_set of a whole element and of the list.
+            Assert.True(engine.CVars.Execute("""ed_add trader inventory.items '{"item":"sandbox:knife","count":4}'"""));
+            Assert.Equal("bread:3 apple:2 knife:4", Carried(document));
+            Assert.True(engine.CVars.Execute("""ed_set trader inventory.items[0] '{"item":"sandbox:bread","count":9}'"""));
+            Assert.Equal("bread:9 apple:2 knife:4", Carried(document));
+            Assert.True(engine.CVars.Execute("""ed_set trader inventory.items '[{"item":"sandbox:bread","count":1}]'"""));
+            Assert.Equal("bread:1", Carried(document));
+        }
+    }
+
+    [Fact]
     public void AnNpcsInventoryListIsEditedRowByRowAndASaveKeepsIt()
     {
         var (engine, document) = Open();

@@ -112,6 +112,32 @@ public class ConsoleTests
     }
 
     [Fact]
+    public void SingleQuotes_TakeAJsonArgumentRaw()
+    {
+        Assert.Equal(new[] { "ed_set", "door", "loot", "{\"id\":\"x\"}" }, CommandLine.Tokenize("ed_set door loot '{\"id\":\"x\"}'"));
+        Assert.Equal(new[] { "a", "{\"s\":\"x; y // z\",\"n\":{\"k\":[1,2]}}", "b" }, CommandLine.Tokenize("a '{\"s\":\"x; y // z\",\"n\":{\"k\":[1,2]}}' b"));
+        Assert.Equal(new[] { "x", "it's", "C:\\dir\\f" }, CommandLine.Tokenize("x 'it\\'s' 'C:\\dir\\f'"));
+        Assert.Equal(new[] { "x", "" }, CommandLine.Tokenize("x ''"));
+        // The statement splitter keeps a raw argument whole: ';' and '//' inside it do not split or comment.
+        Assert.Equal(new[] { "a '{\"u\":\"http://h;x\"}'", "b 1" }, CommandLine.SplitStatements("a '{\"u\":\"http://h;x\"}'; b 1"));
+    }
+
+    [Fact]
+    public void SingleQuotes_OldInputsKeepTheirMeaning()
+    {
+        // A quote inside a token, or one that never closes, is an ordinary character, as it always was.
+        Assert.Equal(new[] { "echo", "don't", "stop" }, CommandLine.Tokenize("echo don't stop"));
+        Assert.Equal(new[] { "echo", "'hello", "world" }, CommandLine.Tokenize("echo 'hello world"));
+        Assert.Equal(new[] { "echo", "it's" }, CommandLine.Tokenize("echo \"it's\""));
+        Assert.Equal(new[] { "echo", "a 'b' c" }, CommandLine.Tokenize("echo \"a 'b' c\""));
+        Assert.Equal(new[] { "bind", "a b", "c" }, CommandLine.Tokenize("  bind   \"a b\"\tc  "));
+        Assert.Equal(new[] { "echo \"it's; ok\"", "x 1" }, CommandLine.SplitStatements("echo \"it's; ok\"; x 1"));
+        Assert.Equal(new[] { "echo don't", "x 1" }, CommandLine.SplitStatements("echo don't; x 1"));
+        Assert.Equal("\"'q\"", CommandLine.Quote("'q"));
+        Assert.Equal(new[] { "echo", "'q" }, CommandLine.Tokenize("echo " + CommandLine.Quote("'q")));
+    }
+
+    [Fact]
     public void Config_SaveAndExec_RoundTrip()
     {
         string path = Path.Combine(TestEnv.NewTempDir(), "config.cfg");
