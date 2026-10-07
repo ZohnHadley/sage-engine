@@ -12,6 +12,10 @@ namespace Sage.Editing;
 //   ed_set <name> <component.field> <value...>   an override (or `at`/`yaw`/`name`/`relativeTo`)
 //   ed_revert <name> <component.field>           back to the prefab's value
 //   ed_inspect <name>                            every field, its value, overridden or not, and who set it
+//   ed_add <name> <component.list> [value]       an element at the end of a list (or `<key> [value]`, a map's)
+//   ed_remove <name> <component.list[i]>         an element (or an entry) out
+//   ed_reorder <name> <component.list[i]> <to>   an element moved
+//   ed_add_component / ed_remove_component <name> <component>   one the prefab does not name, for this one
 //
 // `<name>` is a placement of the open document, by name or id; quote one with spaces ("cart lamp"). The
 // value is the rest of the line, read by the field's shape (InspectorValue): `ed_set gate at 1 2 3`.
@@ -39,6 +43,57 @@ public static class InspectorCommands
             else Log.Warn(LogCat.Console, $"ed_revert: {error}");
         });
 
+        // Lists, maps and components the prefab does not name (#368).
+        cvars.RegisterCommand("ed_add", CVarFlags.DevOnly,
+            "ed_add <placement> <component.list> [value]: add an element at the end of a list (its default, or the value); for a map, <key> [value].", a =>
+        {
+            if (a.Count < 2) { Log.Warn(LogCat.Console, "ed_add <placement> <component.list> [value]"); return; }
+            if (!Model(document, a[0], out var model)) return;
+            if (model.TryAddItem(a[1], string.Join(' ', a.Args.Skip(2)), out string error)) Log.Info(LogCat.Console, Done(model));
+            else Log.Warn(LogCat.Console, $"ed_add: {error}");
+        });
+
+        cvars.RegisterCommand("ed_remove", CVarFlags.DevOnly,
+            "ed_remove <placement> <component.list[i]>: take an element out of a list (or an entry out of a map).", a =>
+        {
+            if (a.Count < 2) { Log.Warn(LogCat.Console, "ed_remove <placement> <component.list[i]>"); return; }
+            if (!Model(document, a[0], out var model)) return;
+            if (model.TryRemoveItem(a[1], out string error)) Log.Info(LogCat.Console, Done(model));
+            else Log.Warn(LogCat.Console, $"ed_remove: {error}");
+        });
+
+        cvars.RegisterCommand("ed_reorder", CVarFlags.DevOnly,
+            "ed_reorder <placement> <component.list[i]> <to>: move an element of a list to another index.", a =>
+        {
+            if (a.Count < 3 || !int.TryParse(a[2], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int to))
+            {
+                Log.Warn(LogCat.Console, "ed_reorder <placement> <component.list[i]> <to>");
+                return;
+            }
+            if (!Model(document, a[0], out var model)) return;
+            if (model.TryMoveItem(a[1], to, out string error)) Log.Info(LogCat.Console, Done(model));
+            else Log.Warn(LogCat.Console, $"ed_reorder: {error}");
+        });
+
+        cvars.RegisterCommand("ed_add_component", CVarFlags.DevOnly,
+            "ed_add_component <placement> <component>: add a component the prefab does not name to this placement alone.", a =>
+        {
+            if (a.Count < 2) { Log.Warn(LogCat.Console, "ed_add_component <placement> <component>"); return; }
+            if (!Model(document, a[0], out var model)) return;
+            if (model.AddComponent(a[1], out string error)) Log.Info(LogCat.Console, Done(model));
+            else Log.Warn(LogCat.Console, $"ed_add_component: {error}");
+        });
+
+        cvars.RegisterCommand("ed_remove_component", CVarFlags.DevOnly,
+            "ed_remove_component <placement> <component>: take away a component this placement added.", a =>
+        {
+            if (a.Count < 2) { Log.Warn(LogCat.Console, "ed_remove_component <placement> <component>"); return; }
+            if (!Model(document, a[0], out var model)) return;
+            if (model.Group(a[1]) is not { } group) { Log.Warn(LogCat.Console, $"ed_remove_component: '{a[1]}' has no {a[1]}"); return; }
+            if (model.RemoveComponent(group, out string error)) Log.Info(LogCat.Console, Done(model));
+            else Log.Warn(LogCat.Console, $"ed_remove_component: {error}");
+        });
+
         cvars.RegisterCommand("ed_inspect", CVarFlags.DevOnly,
             "ed_inspect <placement>: its fields, which it overrides (*) and where each value came from.", a =>
         {
@@ -58,9 +113,16 @@ public static class InspectorCommands
         {
             text.Append("\n  ").Append(group);
             if (group.Note != null) text.Append("  — ").Append(group.Note);
-            foreach (var row in group.Rows) text.Append("\n    ").Append(row);
+            foreach (var row in group.Rows) Append(text, row, "\n    ");
         }
         return text.ToString();
+    }
+
+    // A row and what is inside it (a list's elements, an object's fields), indented under it.
+    private static void Append(StringBuilder text, InspectorRow row, string indent)
+    {
+        text.Append(indent).Append(row);
+        foreach (var child in row.Children) Append(text, child, indent + "  ");
     }
 
     // A typed command is a gesture of its own: the next one is a new edit, not merged into this one.
