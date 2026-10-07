@@ -34,6 +34,7 @@
             "attribute",
             "attribute_gain",
             "behaviour_tree",
+            "block",
             "calendar",
             "calendar_event",
             "cue",
@@ -250,6 +251,21 @@
           },
           "then": {
             "$ref": "behaviour_tree.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "block"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "block.schema.json"
           }
         },
         {
