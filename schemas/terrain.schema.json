@@ -105,6 +105,10 @@
           "$ref": "ids.schema.json#/definitions/record:terrain_material"
         }
       ]
+    },
+    "sculpt": {
+      "description": "The editor's sculpt and paint over the generator (a .sterrain file). Empty: terrain/<id>.sterrain, if there is one. A terrain_sculpt path. (AssetPath)",
+      "type": "string"
     }
   },
   "additionalProperties": false

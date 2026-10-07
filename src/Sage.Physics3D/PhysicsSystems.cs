@@ -423,6 +423,9 @@ internal sealed class TerrainCollisionSystem : ISystem
         var body = _space.AddMesh(entity, _vertices.AsSpan(0, side * side), _indices.AsSpan(0, n), origin);
         _world.Add(entity, body);
         _world.Add(entity, new SectorOwned { Sector = sector.Coord });   // unloading the sector takes it
+#pragma warning disable SAGE0129 // phase 4g's open world: a sculpt's refresh (#372) builds the collision again
+        entity.AddTag<TerrainBuilt>();
+#pragma warning restore SAGE0129
         Surfaces(body, heights, x0, z0, cells);
     }
 

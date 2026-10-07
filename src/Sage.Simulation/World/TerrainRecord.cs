@@ -33,6 +33,12 @@ public sealed class TerrainRecord
     public List<RecordId> Surfaces = new();
     [RecordRef("terrain_material"), Property(Tooltip = "What the ground is drawn with: layers blended by height and slope. Empty: one tiling texture")]
     public RecordId Material;
+    [AssetKind("terrain_sculpt"), Property(Tooltip = "The editor's sculpt and paint over the generator (a .sterrain file). Empty: terrain/<id>.sterrain, if there is one")]
+    public AssetPath Sculpt;
+
+    // Where a record's sculpt is: its `sculpt`, else the file the editor writes for it.
+    internal static string SculptPathOf(RecordId id, TerrainRecord record) =>
+        record.Sculpt.IsEmpty ? $"terrain/{id.Name}{TerrainSculpt.Extension}" : record.Sculpt.ToString();
 }
 
 [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world
