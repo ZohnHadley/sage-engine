@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, command, cue, destroy, finish_quest, fire, give_item, grant_perk, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, command, cue, destroy, fail_quest, finish_quest, fire, give_item, grant_perk, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -197,6 +197,7 @@
         "Command",
         "Cue",
         "Destroy",
+        "FailQuest",
         "FinishQuest",
         "Fire",
         "GiveItem",
@@ -229,6 +230,7 @@
         "command",
         "cue",
         "destroy",
+        "fail_quest",
         "finish_quest",
         "fire",
         "give_item",
@@ -574,6 +576,43 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'destroy' (DestroyAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "fail_quest",
+                      "FailQuest"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: fail_quest.",
+                    "enum": [
+                      "fail_quest",
+                      "FailQuest"
+                    ]
+                  },
+                  "quest": {
+                    "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:quest"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'fail_quest' (FailQuestAction)."
               }
             },
             {
@@ -2346,6 +2385,94 @@
           },
           "required": [
             "Destroy"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fail_quest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'fail_quest' (FailQuestAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "fail_quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "FailQuest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'fail_quest' (FailQuestAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "FailQuest"
           ],
           "additionalProperties": false
         },
@@ -6664,6 +6791,11 @@
                       "Quest"
                     ]
                   },
+                  "failed": {
+                    "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+                    "default": false,
+                    "type": "boolean"
+                  },
                   "finished": {
                     "description": "(bool, default false)",
                     "default": false,
@@ -9212,6 +9344,11 @@
               "default": "",
               "type": "string"
             },
+            "failed": {
+              "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
             "finished": {
               "description": "(bool, default false)",
               "default": false,
@@ -9265,6 +9402,11 @@
                     },
                     "notStarted": {
                       "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "failed": {
+                      "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
                       "default": false,
                       "type": "boolean"
                     }
@@ -9333,6 +9475,11 @@
                       "description": "(bool, default false)",
                       "default": false,
                       "type": "boolean"
+                    },
+                    "failed": {
+                      "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+                      "default": false,
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -9349,6 +9496,11 @@
               "description": "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished. (string, default \"\")",
               "default": "",
               "type": "string"
+            },
+            "failed": {
+              "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+              "default": false,
+              "type": "boolean"
             },
             "finished": {
               "description": "(bool, default false)",
@@ -11307,6 +11459,11 @@
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
                     "default": "",
                     "type": "string"
+                  },
+                  "volume": {
+                    "description": "Or a trigger volume's entity name: walking into it is reaching the place, and at and radius are not used. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false,
@@ -11373,6 +11530,14 @@
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
                     "default": "",
                     "type": "string"
+                  },
+                  "topic": {
+                    "description": "Or a dialogue_topic: asking about it counts (of the speaker dialogue or prefab names, or anybody) Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false,

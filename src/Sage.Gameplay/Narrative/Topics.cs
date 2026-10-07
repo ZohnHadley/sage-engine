@@ -74,6 +74,11 @@ public struct KnownTopics : IComponent
 [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // topics (#93): may change before 1.0
 public readonly record struct AvailableTopic(RecordId Topic, string Keyword);
 
+// `listener` asked `speaker` about `topic` and was answered (DialogueTopics.Ask, issue #391): what a
+// quest's `talk` objective with a `topic` counts.
+[GameEvent]
+public readonly record struct TopicAsked(Entity Speaker, Entity Listener, RecordId Topic);
+
 // The headless view model a topics screen reads (the RPG kit's is #98). The signatures were frozen on
 // issue #93 before the rest was built; change them only with that screen.
 [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // topics (#93): may change before 1.0
@@ -117,7 +122,9 @@ public static class DialogueTopics
     public static TopicInfo? Ask(World world, Entity speaker, Entity listener, RecordId topic)
     {
         var info = Answer(world, speaker, listener, topic);
-        if (info == null || info.Then.Count == 0) return info;
+        if (info == null) return null;
+        world.Events.Send(new TopicAsked(speaker, listener, topic));   // a quest's `talk` with a topic (issue #391)
+        if (info.Then.Count == 0) return info;
 
         Conditions.Run(info.Then, new ActionContext(world, listener, speaker));
         // As a node option does: an answer that took or gave something may have finished an errand.

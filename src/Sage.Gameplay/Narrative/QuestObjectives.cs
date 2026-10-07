@@ -52,6 +52,10 @@ internal sealed class HaveObjective : QuestObjective
 // Somewhere to get to: the player within `radius` of `at`, measured across the ground (a place is
 // reached whatever the terrain's height there). `at` is absolute, so it means the same place however
 // far the origin has moved (R6).
+//
+// Or, with `volume` (issue #391), the player walking into the trigger volume of that name — a room, a
+// gate, a cave mouth, shaped like the place rather than a circle round it. Walking in is a moment
+// (TriggerEntered): a player already standing inside when the stage begins has to step out and back.
 [QuestObjective("reach", Plugin = "sage.gameplay.quests")]
 internal sealed class ReachObjective : QuestObjective
 {
@@ -61,11 +65,17 @@ internal sealed class ReachObjective : QuestObjective
     public float Radius = 2f;
     [Property(Tooltip = "What the journal calls the place")]
     public string Place = "";
+    [Property(Tooltip = "Or a trigger volume's entity name: walking into it is reaching the place, and at and radius are not used")]
+    public string Volume = "";
 
-    public override bool Polls => true;
+    public override bool Polls => Volume.Length == 0;
 
     public override int Notice(World world, in QuestHappening happened)
     {
+        if (Volume.Length > 0)
+            return happened.Kind == QuestHappening.Entered && world.IsAlive(happened.Subject)
+                   && string.Equals(happened.Subject.Name, Volume, StringComparison.OrdinalIgnoreCase)
+                   && world.IsAlive(happened.Actor) && happened.Actor.Tags.Has<PlayerControlled>() ? 1 : 0;
         if (happened.Kind != QuestHappening.Polled || !world.TryGet<Transform>(happened.Actor, out var transform)) return 0;
         var position = world.Resources.TryGet<Origin>(out var origin) && origin != null
             ? origin.ToAbsolute(transform.LocalPosition) : transform.LocalPosition;
@@ -77,12 +87,14 @@ internal sealed class ReachObjective : QuestObjective
     public override bool TryGetPlace(out Vector3 at)
     {
         at = At;
-        return true;
+        return Volume.Length == 0;
     }
 }
 
 // Somebody to speak to: a conversation with a speaker of this dialogue (or from this prefab) that
-// reaches `node`, or begins when no node is named (Spoke, 16 §3.5).
+// reaches `node`, or begins when no node is named (Spoke, 16 §3.5). With `topic` (issue #391), asking
+// about that topic and being answered (TopicAsked) — by anybody, or by the speaker `dialogue` or
+// `prefab` names.
 [QuestObjective("talk", Plugin = "sage.gameplay.quests")]
 internal sealed class TalkObjective : QuestObjective
 {
@@ -92,9 +104,20 @@ internal sealed class TalkObjective : QuestObjective
     public RecordRef<PrefabRecord> Prefab;
     [Property(Tooltip = "The node the conversation must reach; empty = its first line")]
     public string Node = "";
+    [Property(Tooltip = "Or a dialogue_topic: asking about it counts (of the speaker dialogue or prefab names, or anybody)")]
+    public RecordRef<TopicRecord> Topic;
 
     public override int Notice(World world, in QuestHappening happened)
     {
+        if (!Topic.IsEmpty)
+        {
+            if (happened.Kind != QuestHappening.Asked || happened.Topic != Topic.Id) return 0;
+            if (!world.IsAlive(happened.Actor) || !happened.Actor.Tags.Has<PlayerControlled>()) return 0;
+            var asked = happened.Subject;
+            if (!Dialogue.IsEmpty && (!world.TryGet<global::Sage.Gameplay.Dialogue>(asked, out var d) || d.Record != Dialogue.Id)) return 0;
+            if (!Prefab.IsEmpty && (!world.TryGet<FromPrefab>(asked, out var p) || p.Prefab != Prefab)) return 0;
+            return 1;
+        }
         if (happened.Kind != QuestHappening.Talked) return 0;
         var speaker = happened.Subject;
         RecordId said = world.TryGet<global::Sage.Gameplay.Dialogue>(speaker, out var dialogue) ? dialogue.Record : default;
@@ -109,6 +132,8 @@ internal sealed class TalkObjective : QuestObjective
 
     public override string Describe(World world, int count)
     {
+        if (!Topic.IsEmpty)
+            return world.Records().TryGet(Topic, out TopicRecord topic) ? $"ask about {topic.KeywordOf(Topic.Id)}" : $"ask about {Topic.Id.Name}";
         if (!Dialogue.IsEmpty && world.Records().TryGet(Dialogue, out DialogueRecord record) && record.Label.Length > 0)
             return $"talk to {record.Label}";
         return $"talk to {(!Prefab.IsEmpty ? Prefab.Id.Name : Dialogue.Id.Name)}";
@@ -116,16 +141,21 @@ internal sealed class TalkObjective : QuestObjective
 }
 
 // What the quests plugin hears besides deaths (issue #28): conversations, for `talk`, and where the
-// player is, for `reach`. Cheap when nobody is on a quest that asks — one journal look per tick.
+// player is, for `reach`; since #391 topics asked, trigger volumes walked into, and every timed or
+// `failWhen` stage's clock. Cheap when nobody is on a quest that asks — one journal look per tick.
 [System("sage.quests.watch", Phase.Gameplay, After = new[] { "sage.effects.tick" })]
 internal sealed class QuestWatchSystem : ISystem
 {
     private readonly EventReader<Spoke> _spoke;
+    private readonly EventReader<TopicAsked> _asked;
+    private readonly EventReader<TriggerEntered> _entered;
     private readonly Query<Transform> _players;
 
     public QuestWatchSystem(World world)
     {
         _spoke = world.Events.Reader<Spoke>(this);
+        _asked = world.Events.Reader<TopicAsked>(this);
+        _entered = world.Events.Reader<TriggerEntered>(this);
         _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
     }
 
@@ -135,13 +165,23 @@ internal sealed class QuestWatchSystem : ISystem
         if (_spoke.HasPending)
             foreach (ref readonly var spoke in _spoke.Read())
                 Quests.Notice(world, new QuestHappening(QuestHappening.Talked, spoke.Speaker, spoke.Listener) { Node = spoke.Node });
+        if (_asked.HasPending)
+            foreach (ref readonly var asked in _asked.Read())
+                Quests.Notice(world, new QuestHappening(QuestHappening.Asked, asked.Speaker, asked.Listener) { Topic = asked.Topic });
+        if (_entered.HasPending)
+            foreach (ref readonly var entered in _entered.Read())
+                if (world.IsAlive(entered.Other) && entered.Other.Tags.Has<PlayerControlled>())
+                    Quests.Notice(world, new QuestHappening(QuestHappening.Entered, entered.Trigger, entered.Other));
 
         if (Quests.JournalOf(world) is not { Entries.Count: > 0 }) return;
         foreach (var (transforms, entities) in _players.Chunks)
             if (transforms.Span.Length > 0)
             {
-                Quests.Poll(world, entities.EntityAt(0));   // the local player; a second is a network game's question
+                var player = entities.EntityAt(0);   // the local player; a second is a network game's question
+                Quests.Poll(world, player);
+                Quests.Watch(world, player);
                 return;
             }
+        Quests.Watch(world, default);   // nobody playing: the clock still runs out
     }
 }
