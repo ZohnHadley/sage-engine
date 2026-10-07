@@ -1,13 +1,5 @@
 #nullable enable
 const Sage.Editing.AnimationPreview.TickSeconds = 0.016666668 -> float
-const Sage.Editing.AssetKinds.Font = "font" -> string!
-const Sage.Editing.AssetKinds.Map = "map" -> string!
-const Sage.Editing.AssetKinds.Mesh = "mesh" -> string!
-const Sage.Editing.AssetKinds.Shader = "shader" -> string!
-const Sage.Editing.AssetKinds.Sound = "sound" -> string!
-const Sage.Editing.AssetKinds.Texture = "texture" -> string!
-override Sage.Editing.AssetEntry.ToString() -> string!
-override Sage.Editing.AssetReference.ToString() -> string!
 Sage.Editing.AnimationPreview
 Sage.Editing.AnimationPreview.Advance(float seconds) -> void
 Sage.Editing.AnimationPreview.AnimationPreview(Sage.Simulation.Engine! engine) -> void
@@ -61,73 +53,29 @@ Sage.Editing.AnimationSubject.Graph.get -> Sage.Core.RecordId
 Sage.Editing.AnimationSubject.Graph.init -> void
 Sage.Editing.AnimationSubject.Model.get -> Sage.Core.AssetPath
 Sage.Editing.AnimationSubject.Model.init -> void
-Sage.Editing.AssetBrowser
-Sage.Editing.AssetBrowser.AssetBrowser(Sage.Simulation.Engine! engine) -> void
-Sage.Editing.AssetBrowser.Dispose() -> void
-Sage.Editing.AssetBrowser.Engine.get -> Sage.Simulation.Engine!
-Sage.Editing.AssetBrowser.Entries() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetEntry!>!
-Sage.Editing.AssetBrowser.Filtered() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetEntry!>!
-Sage.Editing.AssetBrowser.Find(Sage.Core.VirtualPath path) -> Sage.Editing.AssetEntry?
-Sage.Editing.AssetBrowser.Find(string! path) -> Sage.Editing.AssetEntry?
-Sage.Editing.AssetBrowser.Kind.get -> string!
-Sage.Editing.AssetBrowser.Kind.set -> void
-Sage.Editing.AssetBrowser.Kinds() -> System.Collections.Generic.IReadOnlyList<(string! Kind, int Count)>!
-Sage.Editing.AssetBrowser.Mount.get -> string!
-Sage.Editing.AssetBrowser.Mount.set -> void
-Sage.Editing.AssetBrowser.Mounts() -> System.Collections.Generic.IReadOnlyList<string!>!
-Sage.Editing.AssetBrowser.Refresh() -> void
-Sage.Editing.AssetBrowser.Search.get -> string!
-Sage.Editing.AssetBrowser.Search.set -> void
-Sage.Editing.AssetBrowser.Select(Sage.Core.VirtualPath? path) -> bool
-Sage.Editing.AssetBrowser.Selected.get -> Sage.Editing.AssetEntry?
-Sage.Editing.AssetCommands
-Sage.Editing.AssetEntry
-Sage.Editing.AssetEntry.AssetEntry(Sage.Core.VirtualPath Path, string! Kind, Sage.Core.IMount! Mount, System.Collections.Generic.IReadOnlyList<Sage.Core.IMount!>! Shadows) -> void
-Sage.Editing.AssetEntry.Folder.get -> string!
-Sage.Editing.AssetEntry.FromMod.get -> bool
-Sage.Editing.AssetEntry.Kind.get -> string!
-Sage.Editing.AssetEntry.Kind.init -> void
-Sage.Editing.AssetEntry.Mount.get -> Sage.Core.IMount!
-Sage.Editing.AssetEntry.Mount.init -> void
-Sage.Editing.AssetEntry.Name.get -> string!
-Sage.Editing.AssetEntry.Origin.get -> string!
-Sage.Editing.AssetEntry.Path.get -> Sage.Core.VirtualPath
-Sage.Editing.AssetEntry.Path.init -> void
-Sage.Editing.AssetEntry.Shadows.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.IMount!>!
-Sage.Editing.AssetEntry.Shadows.init -> void
-Sage.Editing.AssetEntry.Size.get -> long
-Sage.Editing.AssetKinds
-Sage.Editing.AssetPicking
-Sage.Editing.AssetReference
-Sage.Editing.AssetReference.AssetReference(Sage.Core.IMount! Mount, Sage.Core.VirtualPath File, int Line, int Column) -> void
-Sage.Editing.AssetReference.Column.get -> int
-Sage.Editing.AssetReference.Column.init -> void
-Sage.Editing.AssetReference.File.get -> Sage.Core.VirtualPath
-Sage.Editing.AssetReference.File.init -> void
-Sage.Editing.AssetReference.Line.get -> int
-Sage.Editing.AssetReference.Line.init -> void
-Sage.Editing.AssetReference.Mount.get -> Sage.Core.IMount!
-Sage.Editing.AssetReference.Mount.init -> void
-Sage.Editing.AssetReferences
-Sage.Editing.AssetRename
-Sage.Editing.AssetRename.Apply() -> bool
-Sage.Editing.AssetRename.CanApply.get -> bool
-Sage.Editing.AssetRename.From.get -> Sage.Core.VirtualPath
-Sage.Editing.AssetRename.Mount.get -> Sage.Core.IMount?
-Sage.Editing.AssetRename.Problems.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Sage.Editing.AssetRename.References.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetReference!>!
-Sage.Editing.AssetRename.Rewrites.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.VirtualPath>!
-Sage.Editing.AssetRename.To.get -> Sage.Core.VirtualPath
-Sage.Editing.AssetSlot
-Sage.Editing.AssetSlot.AssetSlot(string! Path, string! Label, string? Kind, Sage.Core.VirtualPath? Current) -> void
-Sage.Editing.AssetSlot.Current.get -> Sage.Core.VirtualPath?
-Sage.Editing.AssetSlot.Current.init -> void
-Sage.Editing.AssetSlot.Kind.get -> string?
-Sage.Editing.AssetSlot.Kind.init -> void
-Sage.Editing.AssetSlot.Label.get -> string!
-Sage.Editing.AssetSlot.Label.init -> void
-Sage.Editing.AssetSlot.Path.get -> string!
-Sage.Editing.AssetSlot.Path.init -> void
+Sage.Editing.EntityLabelCache
+Sage.Editing.EntityLabelCache.Count.get -> int
+Sage.Editing.EntityLabelCache.EntityLabelCache() -> void
+Sage.Editing.EntityLabelCache.Label(Sage.Simulation.Entity entity) -> string!
+Sage.Editing.EntityLabelCache.Prune(System.Collections.Generic.IReadOnlyCollection<Sage.Simulation.Entity>! live) -> void
+Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
+Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
+Sage.Editing.InspectorModel.AddItem(Sage.Editing.InspectorRow! container, System.Text.Json.Nodes.JsonNode? value, out string! error, string? key = null) -> bool
+Sage.Editing.InspectorModel.Group(string! component) -> Sage.Editing.InspectorGroup?
+Sage.Editing.InspectorModel.MoveItem(Sage.Editing.InspectorRow! item, int to, out string! error) -> bool
+Sage.Editing.InspectorModel.RemoveComponent(Sage.Editing.InspectorGroup! group, out string! error) -> bool
+Sage.Editing.InspectorModel.RemoveItem(Sage.Editing.InspectorRow! item, out string! error) -> bool
+Sage.Editing.InspectorModel.TryAddItem(string! path, string! text, out string! error) -> bool
+Sage.Editing.InspectorModel.TryMoveItem(string! path, int to, out string! error) -> bool
+Sage.Editing.InspectorModel.TryRemoveItem(string! path, out string! error) -> bool
+Sage.Editing.InspectorRow.Children.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorRow!>!
+Sage.Editing.InspectorRow.Index.get -> int
+Sage.Editing.InspectorRow.Key.get -> string?
+Sage.Editing.InspectorRow.Name.get -> string!
+Sage.Editing.InspectorRow.Parent.get -> Sage.Editing.InspectorRow?
+Sage.Editing.InspectorRow.Top.get -> Sage.Editing.InspectorRow!
+Sage.Editing.LogView.Texts.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Editing.PreviewEvent
 Sage.Editing.PreviewEvent.Name.get -> string!
 Sage.Editing.PreviewEvent.Name.init -> void
@@ -199,48 +147,6 @@ Sage.Editing.PreviewSocket.PreviewSocket() -> void
 Sage.Editing.PreviewSocket.PreviewSocket(string! Name, string! Joint, System.Numerics.Vector3 Position, System.Numerics.Quaternion Rotation) -> void
 Sage.Editing.PreviewSocket.Rotation.get -> System.Numerics.Quaternion
 Sage.Editing.PreviewSocket.Rotation.init -> void
-Sage.Editing.RecordDocument.Live.get -> bool
-Sage.Editing.RecordDocument.Live.set -> void
-Sage.Editing.RecordDocument.PreviewError.get -> string!
-Sage.Editing.RecordDocument.Revert() -> void
-Sage.Editing.RecordEditor.Live.get -> bool
-Sage.Editing.RecordEditor.Live.set -> void
-static readonly Sage.Editing.AssetPicking.StaticMesh -> Sage.Core.RecordId
-static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
-static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
-static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
-Sage.Editing.AnimationPreview.Opened -> System.Action?
-static Sage.Editing.AssetCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AssetBrowser?>! browser, System.Func<Sage.Editing.EditDocument?>! document, System.Func<Sage.Editing.RecordEditor?>! records) -> void
-static Sage.Editing.AssetKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
-static Sage.Editing.AssetKinds.Fits(string? fieldKind, Sage.Core.VirtualPath path) -> bool
-static Sage.Editing.AssetKinds.Of(Sage.Core.VirtualPath path) -> string?
-static Sage.Editing.AssetPicking.Place(Sage.Editing.EditDocument! document, Sage.Core.VirtualPath asset, System.Numerics.Vector3 at, float yaw, out string! error) -> Sage.Simulation.Placement?
-static Sage.Editing.AssetPicking.PlaceAt(Sage.Editing.EditDocument! document, Sage.Core.VirtualPath asset, in Sage.Editing.EditorRay ray, out string! error) -> Sage.Simulation.Placement?
-static Sage.Editing.AssetPicking.PrefabFor(Sage.Simulation.Engine! engine, Sage.Core.VirtualPath asset) -> Sage.Core.RecordId
-static Sage.Editing.AssetPicking.Slots(Sage.Editing.RecordDocument! record) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetSlot!>!
-static Sage.Editing.AssetPicking.ToPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, string! path, Sage.Core.VirtualPath asset, out string! error) -> bool
-static Sage.Editing.AssetPicking.ToRecord(Sage.Editing.RecordDocument! record, string! path, Sage.Core.VirtualPath asset, out string! error) -> bool
-static Sage.Editing.AssetPicking.ToRow(Sage.Editing.InspectorModel! model, Sage.Editing.InspectorRow! row, Sage.Core.VirtualPath asset, out string! error) -> bool
-static Sage.Editing.AssetReferences.Find(Sage.Core.VirtualFileSystem! vfs, Sage.Core.VirtualPath asset) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetReference!>!
-static Sage.Editing.AssetReferences.Scanned(Sage.Core.VirtualPath file) -> bool
-static Sage.Editing.AssetRename.Plan(Sage.Simulation.Engine! engine, Sage.Core.VirtualPath from, Sage.Core.VirtualPath to, Sage.Editing.EditDocument? document = null, Sage.Editing.RecordEditor? records = null) -> Sage.Editing.AssetRename!
-Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
-Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
-Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
-Sage.Editing.InspectorModel.AddItem(Sage.Editing.InspectorRow! container, System.Text.Json.Nodes.JsonNode? value, out string! error, string? key = null) -> bool
-Sage.Editing.InspectorModel.Group(string! component) -> Sage.Editing.InspectorGroup?
-Sage.Editing.InspectorModel.MoveItem(Sage.Editing.InspectorRow! item, int to, out string! error) -> bool
-Sage.Editing.InspectorModel.RemoveComponent(Sage.Editing.InspectorGroup! group, out string! error) -> bool
-Sage.Editing.InspectorModel.RemoveItem(Sage.Editing.InspectorRow! item, out string! error) -> bool
-Sage.Editing.InspectorModel.TryAddItem(string! path, string! text, out string! error) -> bool
-Sage.Editing.InspectorModel.TryMoveItem(string! path, int to, out string! error) -> bool
-Sage.Editing.InspectorModel.TryRemoveItem(string! path, out string! error) -> bool
-Sage.Editing.InspectorRow.Children.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorRow!>!
-Sage.Editing.InspectorRow.Index.get -> int
-Sage.Editing.InspectorRow.Key.get -> string?
-Sage.Editing.InspectorRow.Name.get -> string!
-Sage.Editing.InspectorRow.Parent.get -> Sage.Editing.InspectorRow?
-Sage.Editing.InspectorRow.Top.get -> Sage.Editing.InspectorRow!
 Sage.Editing.SetOverrideBody
 Sage.Editing.SetOverrideBody.Body.get -> System.Text.Json.Nodes.JsonObject?
 Sage.Editing.SetOverrideBody.Description.get -> string!
@@ -250,6 +156,10 @@ Sage.Editing.SetOverrideBody.Placement.get -> Sage.Simulation.Placement!
 Sage.Editing.SetOverrideBody.Section.get -> Sage.Editing.OverrideSection
 Sage.Editing.SetOverrideBody.SetOverrideBody(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.OverrideSection section, string! id, System.Text.Json.Nodes.JsonObject? body) -> void
 Sage.Editing.SetOverrideBody.Undo() -> void
+static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
+static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
+static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
+Sage.Editing.AnimationPreview.Opened -> System.Action?
 const Sage.Editing.ScaleGizmo.MinFactor = 0.01 -> float
 const Sage.Editing.ViewportTools.DefaultScaleStep = 0.1 -> float
 Sage.Editing.CommandGroup
@@ -314,3 +224,99 @@ static Sage.Editing.ViewportTools.Duplicate(Sage.Editing.EditorSelection! select
 static Sage.Editing.ViewportTools.MoveBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 delta) -> void
 static Sage.Editing.ViewportTools.RotateBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Quaternion turn) -> void
 static Sage.Editing.ViewportTools.ScaleBy(Sage.Editing.EditDocument! document, System.Collections.Generic.IReadOnlyList<Sage.Simulation.Placement!>! placements, System.Numerics.Vector3 factors, System.Numerics.Quaternion axes) -> void
+const Sage.Editing.AssetKinds.Font = "font" -> string!
+const Sage.Editing.AssetKinds.Map = "map" -> string!
+const Sage.Editing.AssetKinds.Mesh = "mesh" -> string!
+const Sage.Editing.AssetKinds.Shader = "shader" -> string!
+const Sage.Editing.AssetKinds.Sound = "sound" -> string!
+const Sage.Editing.AssetKinds.Texture = "texture" -> string!
+override Sage.Editing.AssetEntry.ToString() -> string!
+override Sage.Editing.AssetReference.ToString() -> string!
+Sage.Editing.AssetBrowser
+Sage.Editing.AssetBrowser.AssetBrowser(Sage.Simulation.Engine! engine) -> void
+Sage.Editing.AssetBrowser.Dispose() -> void
+Sage.Editing.AssetBrowser.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.AssetBrowser.Entries() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetEntry!>!
+Sage.Editing.AssetBrowser.Filtered() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetEntry!>!
+Sage.Editing.AssetBrowser.Find(Sage.Core.VirtualPath path) -> Sage.Editing.AssetEntry?
+Sage.Editing.AssetBrowser.Find(string! path) -> Sage.Editing.AssetEntry?
+Sage.Editing.AssetBrowser.Kind.get -> string!
+Sage.Editing.AssetBrowser.Kind.set -> void
+Sage.Editing.AssetBrowser.Kinds() -> System.Collections.Generic.IReadOnlyList<(string! Kind, int Count)>!
+Sage.Editing.AssetBrowser.Mount.get -> string!
+Sage.Editing.AssetBrowser.Mount.set -> void
+Sage.Editing.AssetBrowser.Mounts() -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AssetBrowser.Refresh() -> void
+Sage.Editing.AssetBrowser.Search.get -> string!
+Sage.Editing.AssetBrowser.Search.set -> void
+Sage.Editing.AssetBrowser.Select(Sage.Core.VirtualPath? path) -> bool
+Sage.Editing.AssetBrowser.Selected.get -> Sage.Editing.AssetEntry?
+Sage.Editing.AssetCommands
+Sage.Editing.AssetEntry
+Sage.Editing.AssetEntry.AssetEntry(Sage.Core.VirtualPath Path, string! Kind, Sage.Core.IMount! Mount, System.Collections.Generic.IReadOnlyList<Sage.Core.IMount!>! Shadows) -> void
+Sage.Editing.AssetEntry.Folder.get -> string!
+Sage.Editing.AssetEntry.FromMod.get -> bool
+Sage.Editing.AssetEntry.Kind.get -> string!
+Sage.Editing.AssetEntry.Kind.init -> void
+Sage.Editing.AssetEntry.Mount.get -> Sage.Core.IMount!
+Sage.Editing.AssetEntry.Mount.init -> void
+Sage.Editing.AssetEntry.Name.get -> string!
+Sage.Editing.AssetEntry.Origin.get -> string!
+Sage.Editing.AssetEntry.Path.get -> Sage.Core.VirtualPath
+Sage.Editing.AssetEntry.Path.init -> void
+Sage.Editing.AssetEntry.Shadows.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.IMount!>!
+Sage.Editing.AssetEntry.Shadows.init -> void
+Sage.Editing.AssetEntry.Size.get -> long
+Sage.Editing.AssetKinds
+Sage.Editing.AssetPicking
+Sage.Editing.AssetReference
+Sage.Editing.AssetReference.AssetReference(Sage.Core.IMount! Mount, Sage.Core.VirtualPath File, int Line, int Column) -> void
+Sage.Editing.AssetReference.Column.get -> int
+Sage.Editing.AssetReference.Column.init -> void
+Sage.Editing.AssetReference.File.get -> Sage.Core.VirtualPath
+Sage.Editing.AssetReference.File.init -> void
+Sage.Editing.AssetReference.Line.get -> int
+Sage.Editing.AssetReference.Line.init -> void
+Sage.Editing.AssetReference.Mount.get -> Sage.Core.IMount!
+Sage.Editing.AssetReference.Mount.init -> void
+Sage.Editing.AssetReferences
+Sage.Editing.AssetRename
+Sage.Editing.AssetRename.Apply() -> bool
+Sage.Editing.AssetRename.CanApply.get -> bool
+Sage.Editing.AssetRename.From.get -> Sage.Core.VirtualPath
+Sage.Editing.AssetRename.Mount.get -> Sage.Core.IMount?
+Sage.Editing.AssetRename.Problems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AssetRename.References.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetReference!>!
+Sage.Editing.AssetRename.Rewrites.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.VirtualPath>!
+Sage.Editing.AssetRename.To.get -> Sage.Core.VirtualPath
+Sage.Editing.AssetSlot
+Sage.Editing.AssetSlot.AssetSlot(string! Path, string! Label, string? Kind, Sage.Core.VirtualPath? Current) -> void
+Sage.Editing.AssetSlot.Current.get -> Sage.Core.VirtualPath?
+Sage.Editing.AssetSlot.Current.init -> void
+Sage.Editing.AssetSlot.Kind.get -> string?
+Sage.Editing.AssetSlot.Kind.init -> void
+Sage.Editing.AssetSlot.Label.get -> string!
+Sage.Editing.AssetSlot.Label.init -> void
+Sage.Editing.AssetSlot.Path.get -> string!
+Sage.Editing.AssetSlot.Path.init -> void
+Sage.Editing.RecordDocument.Live.get -> bool
+Sage.Editing.RecordDocument.Live.set -> void
+Sage.Editing.RecordDocument.PreviewError.get -> string!
+Sage.Editing.RecordDocument.Revert() -> void
+Sage.Editing.RecordEditor.Live.get -> bool
+Sage.Editing.RecordEditor.Live.set -> void
+static readonly Sage.Editing.AssetPicking.StaticMesh -> Sage.Core.RecordId
+static Sage.Editing.AssetCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AssetBrowser?>! browser, System.Func<Sage.Editing.EditDocument?>! document, System.Func<Sage.Editing.RecordEditor?>! records) -> void
+static Sage.Editing.AssetKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Editing.AssetKinds.Fits(string? fieldKind, Sage.Core.VirtualPath path) -> bool
+static Sage.Editing.AssetKinds.Of(Sage.Core.VirtualPath path) -> string?
+static Sage.Editing.AssetPicking.Place(Sage.Editing.EditDocument! document, Sage.Core.VirtualPath asset, System.Numerics.Vector3 at, float yaw, out string! error) -> Sage.Simulation.Placement?
+static Sage.Editing.AssetPicking.PlaceAt(Sage.Editing.EditDocument! document, Sage.Core.VirtualPath asset, in Sage.Editing.EditorRay ray, out string! error) -> Sage.Simulation.Placement?
+static Sage.Editing.AssetPicking.PrefabFor(Sage.Simulation.Engine! engine, Sage.Core.VirtualPath asset) -> Sage.Core.RecordId
+static Sage.Editing.AssetPicking.Slots(Sage.Editing.RecordDocument! record) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetSlot!>!
+static Sage.Editing.AssetPicking.ToPlacement(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, string! path, Sage.Core.VirtualPath asset, out string! error) -> bool
+static Sage.Editing.AssetPicking.ToRecord(Sage.Editing.RecordDocument! record, string! path, Sage.Core.VirtualPath asset, out string! error) -> bool
+static Sage.Editing.AssetPicking.ToRow(Sage.Editing.InspectorModel! model, Sage.Editing.InspectorRow! row, Sage.Core.VirtualPath asset, out string! error) -> bool
+static Sage.Editing.AssetReferences.Find(Sage.Core.VirtualFileSystem! vfs, Sage.Core.VirtualPath asset) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetReference!>!
+static Sage.Editing.AssetReferences.Scanned(Sage.Core.VirtualPath file) -> bool
+static Sage.Editing.AssetRename.Plan(Sage.Simulation.Engine! engine, Sage.Core.VirtualPath from, Sage.Core.VirtualPath to, Sage.Editing.EditDocument? document = null, Sage.Editing.RecordEditor? records = null) -> Sage.Editing.AssetRename!
