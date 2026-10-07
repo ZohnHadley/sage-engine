@@ -144,7 +144,7 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
   merely wait on a cycle through `loadAfter` still load (test: ACycleRefusesItsMembersAndNamesThemButNotInnocentBystanders);
   incompatibility with an earlier mod, either side naming the other, so the later one is out (test:
   AModIncompatibleWithAnEarlierOneIsRefusedAndTheEarlierOneStays); the wrong `game`, `gameVersion` or `sage` (test:
-  TheWrongGameGameVersionOrEngineRefusesAMod); code (test: AModThatAsksForCodeIsRefused); an id that is `sage`, the game's or
+  TheWrongGameGameVersionOrEngineRefusesAMod); `"kind": "code"` with no assemblies (test: KindCodeWithNoAssembliesIsRefused); an id that is `sage`, the game's or
   a kit's content namespace (test: AModMayNotTakeTheEnginesTheGamesOrAKitsNamespace); and a second mod with an id already
   found (test: TheSameIdTwiceRefusesTheSecond). The caller passes the kits' content namespaces as `reservedIds`.
 - **`ModList`** is `user://mods.json`, `{ "order": [...], "disabled": [...] }`, saved through a temp file and a move (test:
