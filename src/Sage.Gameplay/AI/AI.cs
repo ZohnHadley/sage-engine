@@ -178,6 +178,11 @@ public struct AIState : IComponent
     public List<AIBlackboardEntry>? Blackboard;
     internal BehaviourTreeRun? TreeRun;     // where the tree is: rebuilt (from the root) after a load or a reload
 
+    // What a combat-movement task (issue #388, CombatMovement.cs) settled on when it started: the side it
+    // steps to and the place it makes for (cover). Never saved: a loaded creature starts its task again.
+    internal sbyte MoveSide;
+    internal Vector3 MoveGoal;
+
     // Where its routine has it now (issue 4g-4, Routines.cs). Internal, so never saved: the entry is worked
     // out from the clock and the anchor found by name again after a load.
     internal int RoutineEntry;             // the entry in force, plus one; 0 is none
@@ -321,6 +326,14 @@ public sealed class AITaskRegistry
         Register("FaceNoise", new FaceNoiseTask());
         Register("MoveToNoise", new MoveToNoiseTask());
         Register("ForgetNoise", new ForgetNoiseTask());
+        // Combat movement and squads' (issue #388, CombatMovement.cs).
+        Register("Strafe", new StrafeTask());
+        Register("RetreatToRange", new RetreatToRangeTask());
+        Register("TakeCover", new TakeCoverTask());
+        Register("Flee", new FleeTask());
+        Register("HealSelf", new HealSelfTask());
+        Register("Flank", new FlankTask());
+        Register("CallForHelp", new CallForHelpTask());
     }
 
     public void Register(string name, IAITask task) => _tasks[name] = task;
@@ -341,6 +354,13 @@ public sealed class AITaskRegistry
         "movetoanchor" => MoveToAnchorTask.ArgumentName,
         "stayat" => StayAtTask.ArgumentName,
         "movetonoise" => MoveToNoiseTask.ArgumentName,
+        "strafe" => StrafeTask.ArgumentName,
+        "retreattorange" => RetreatToRangeTask.ArgumentName,
+        "takecover" => TakeCoverTask.ArgumentName,
+        "flee" => FleeTask.ArgumentName,
+        "healself" => HealSelfTask.ArgumentName,
+        "flank" => FlankTask.ArgumentName,
+        "callforhelp" => CallForHelpTask.ArgumentName,
         _ => "<argument>",
     };
 }

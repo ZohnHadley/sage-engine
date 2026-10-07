@@ -537,3 +537,24 @@ static Sage.Gameplay.AIBlackboard.Set(ref Sage.Gameplay.AIState state, string! k
 static Sage.Gameplay.AIBlackboard.Set(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! key, float value) -> bool
 static Sage.Gameplay.AIUtility.Curve(float value, float from, float to) -> float
 static Sage.Gameplay.AIUtility.Score(in Sage.Gameplay.AIPerception perception, Sage.Gameplay.AIConditions! names, float score, System.Collections.Generic.IReadOnlyList<Sage.Gameplay.AIConsideration!>! considerations) -> float
+const Sage.Gameplay.Squad.Leader = "leader" -> string!
+Sage.Gameplay.Squad
+Sage.Gameplay.Squad.IsLeader.get -> bool
+Sage.Gameplay.Squad.Name -> string!
+Sage.Gameplay.Squad.Range -> float
+Sage.Gameplay.Squad.Role -> string!
+Sage.Gameplay.Squad.Squad() -> void
+Sage.Gameplay.SquadInfo
+Sage.Gameplay.SquadInfo.CalledAt.get -> float
+Sage.Gameplay.SquadInfo.EngagedCount.get -> int
+Sage.Gameplay.SquadInfo.LastSeen.get -> System.Numerics.Vector3
+Sage.Gameplay.SquadInfo.Leader.get -> Sage.Simulation.Entity
+Sage.Gameplay.SquadInfo.Members.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
+Sage.Gameplay.SquadInfo.Name.get -> string!
+Sage.Gameplay.SquadInfo.SeenAt.get -> float
+Sage.Gameplay.SquadInfo.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.Squads
+Sage.Gameplay.Squads.All.get -> System.Collections.Generic.IEnumerable<Sage.Gameplay.SquadInfo!>!
+Sage.Gameplay.Squads.Find(string! name) -> Sage.Gameplay.SquadInfo?
+Sage.Gameplay.Squads.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.SquadInfo?
+static Sage.Gameplay.Squads.Of(Sage.Simulation.World! world) -> Sage.Gameplay.Squads!

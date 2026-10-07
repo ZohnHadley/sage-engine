@@ -1492,6 +1492,14 @@
         }
       ]
     },
+    "sage:squad": {
+      "description": "Component sage:squad (Squad).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:squad"
+        }
+      ]
+    },
     "sage:state_machine": {
       "description": "Component sage:state_machine (StateMachine).",
       "allOf": [
@@ -1697,6 +1705,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:sprite_renderer"
+        }
+      ]
+    },
+    "squad": {
+      "description": "The component sage:squad (Squad), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:squad"
         }
       ]
     },
@@ -7982,6 +7998,27 @@
       },
       "additionalProperties": false,
       "description": "Component sage:sprite_renderer (SpriteRenderer)."
+    },
+    "sage:squad": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The squad's name: creatures with the same name share a target and answer each other's calls. (string)",
+          "type": "string"
+        },
+        "role": {
+          "description": "Its role: \"leader\" goes straight in while the rest flank; any other is a game's own. (string)",
+          "type": "string"
+        },
+        "range": {
+          "description": "How near a squadmate that sees the target it must be to be told; 0 = anywhere in the world. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:squad (Squad)."
     },
     "sage:state_machine": {
       "type": "object",
