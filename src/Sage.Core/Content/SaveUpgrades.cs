@@ -75,7 +75,9 @@ public static class Upgraders
 {
     private delegate void Upgrade(ref JsonObject o);
 
-    private static readonly Dictionary<Type, SortedList<int, MethodInfo>> Cache = new();
+    // Weakly keyed (phase 9, issue #396): a code mod's types live in a collectible load context, and a static
+    // dictionary holding them would keep the mod loaded for the rest of the process.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Type, SortedList<int, MethodInfo>> Cache = new();
     private static readonly object Lock = new();
 
     // The upgraders a type declares, by the version each upgrades *from*. Throws on a malformed one:
@@ -99,7 +101,7 @@ public static class Upgraders
                     throw new InvalidOperationException($"{type.Name} has two [Upgrade({attr.FromVersion})] methods");
                 list.Add(attr.FromVersion, method);
             }
-            Cache[type] = list;
+            Cache.AddOrUpdate(type, list);
             return list;
         }
     }

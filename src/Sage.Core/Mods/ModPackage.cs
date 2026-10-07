@@ -13,6 +13,10 @@ namespace Sage.Core;
 // date, so the same folder packs to the same bytes; dot files and folders (`.git`, `.vscode`) stay out, and a
 // symbolic link or a path a mount could not take is refused rather than packed. The archive is then opened
 // as the game would open it, so what packs is what loads.
+//
+// A code mod (issue #396) packs with its built assemblies: its bin/ goes in (every configuration built, as
+// "assemblies" may name `bin/{config}/X.dll`), its obj/ (build intermediates, with the builder's own paths in
+// them) stays out, and a mod whose assemblies are not built in any configuration is refused: build it first.
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // mods (phase 9): may change before 1.0
 public static class ModPackage
 {
@@ -42,7 +46,7 @@ public static class ModPackage
 
         var files = new List<(string Relative, string Full)>();
         var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        Collect(root, root, output, files, seen);
+        Collect(root, root, output, files, seen, skipObj: mod.AsksForCode);
         foreach (var (path, from) in generated)
         {
             string relative = path.Replace('\\', '/');
@@ -59,6 +63,14 @@ public static class ModPackage
             if (!seen.ContainsKey(compiled))
                 throw new InvalidDataException($"'{relative}' has no compiled '{compiled}' beside it, and a packed mod is not compiled where it is played: " +
                                                "pack with `sage mods pack`, which compiles it");
+        }
+        foreach (string assembly in mod.Assemblies)
+        {
+            string a = assembly.Replace('\\', '/');
+            bool built = Enum.GetNames<BuildConfig>().Append(BuildInfo.ConfigurationName).Distinct()
+                .Any(config => seen.ContainsKey(a.Replace("{config}", config)));
+            if (!built)
+                throw new InvalidDataException($"{Path.Combine(root, "mod.json")}: its assembly {assembly} is not built (build the mod, then pack it)");
         }
         files.Sort((a, b) => StringComparer.Ordinal.Compare(a.Relative, b.Relative));
 
@@ -90,17 +102,18 @@ public static class ModPackage
         return (mod, files.Count, output);
     }
 
-    private static void Collect(string root, string dir, string output, List<(string, string)> files, Dictionary<string, string> seen)
+    private static void Collect(string root, string dir, string output, List<(string, string)> files, Dictionary<string, string> seen, bool skipObj)
     {
         foreach (var info in new DirectoryInfo(dir).EnumerateFileSystemInfos().OrderBy(i => i.Name, StringComparer.Ordinal))
         {
             if (info.Name.StartsWith('.')) continue;
+            if (skipObj && info is DirectoryInfo && dir == root && info.Name.Equals("obj", StringComparison.OrdinalIgnoreCase)) continue;
             string relative = Path.GetRelativePath(root, info.FullName).Replace(Path.DirectorySeparatorChar, '/');
             if (info.LinkTarget != null || (info.Attributes & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidDataException($"{info.FullName}: is a symbolic link; a packed mod holds its own files only");
             if (info is DirectoryInfo sub)
             {
-                Collect(root, sub.FullName, output, files, seen);
+                Collect(root, sub.FullName, output, files, seen, skipObj);
                 continue;
             }
             if (string.Equals(info.FullName, output, StringComparison.OrdinalIgnoreCase)

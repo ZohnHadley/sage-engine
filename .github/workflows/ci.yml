@@ -164,6 +164,11 @@ jobs:
           "$sage" validate tests/games/mods
           "$sage" validate tests/games/mods --game-mods
           "$sage" mods tests/games/mods
+          # Phase 9's code mod (issue #396): tests/games/code-mod, built by the solution, loaded beside the data
+          # mods; its rename of the trader is a conflict, and `sage mods` flags it as code.
+          "$sage" validate tests/games/mods --game-mods --mods tests/games/code-mod
+          "$sage" mods tests/games/mods --mods tests/games/code-mod | tee code-mod.log
+          grep -q "smiths_guild 1.0.0 (The Smiths' Guild)  \[contains code: not sandboxed\]" code-mod.log || { echo "::error::the code mod was not loaded or not flagged"; exit 1; }
           # Phase 10a's exit (issue #228): the editor's test game, an empty level and four prefabs.
           "$sage" validate tests/games/editor
           # The render check's scene (issue #318): a `.map` yard, a sky and a placed camera, no C#.

@@ -19,6 +19,16 @@ namespace Sage.Simulation;
 // `.sagemod` package beside those folders (issue #397, mounted as a ZipMount, never hot reloaded); the
 // same id in both is an error, and the user's copy is used. SageAppOptions.Mods names the folders instead
 // (the host's -mods and -nomods, a test, a tool). A broken mod is refused with a reason; the game boots.
+//
+// Code mods (phase 9, issue #396): a mod whose mod.json names "assemblies" has them loaded by LoadCode, at
+// Create, before any module's Init and before the first world (so before registries seal and the ECS schema
+// is built), each mod into a collectible load context of its own (ModCodeContext) that shares the engine's
+// assemblies. Its modules are added after the game's, so they run after it unless their [RequiresPlugin]
+// says otherwise, and register under their own plugin id (the mod's id, or `<mod id>.<name>`): the
+// RegistrationLedger says what a mod's code registered. A mod whose code cannot load, has no module, names a
+// plugin outside its id, or requires a plugin or an engine version this app lacks is refused like any
+// broken mod. Code is trusted and not sandboxed; it is flagged "contains code" wherever mods are listed, and
+// nothing here downloads a mod. The contexts are unloaded when the app is disposed (UnloadCode).
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (phase 4j): may change before 1.0
 public sealed class ModManager
 {
@@ -31,14 +41,18 @@ public sealed class ModManager
     private readonly List<ModManifest> _candidates;   // the readable manifests Resolve chose among
     private readonly List<RefusedMod> _unresolved;    // refused before Resolve: unreadable, or an id found twice
     private readonly List<string> _searched;          // the folders looked in (or the folders named)
+    private readonly ModList _order;                  // the order this run resolved with
+    private readonly List<RefusedMod> _codeRefused = new();     // code mods whose code could not load (LoadCode)
+    private readonly List<ModCodeContext> _code = new();        // the loaded code mods' contexts, in load order
 
     // An app with no game and no mods.
     internal static ModManager None() => new(new GameManifest { Id = "sage" }, Array.Empty<string>(), new List<ModManifest>(),
-        new List<RefusedMod>(), new List<string>(), ModLoadResult.Empty, new ModList(), listFile: null, named: false);
+        new List<RefusedMod>(), new List<string>(), ModLoadResult.Empty, new ModList(), listFile: null, named: false, order: new ModList());
 
     private ModManager(GameManifest game, IReadOnlyList<string> reserved, List<ModManifest> candidates, List<RefusedMod> unresolved,
-                       List<string> searched, ModLoadResult loaded, ModList choices, string? listFile, bool named)
+                       List<string> searched, ModLoadResult loaded, ModList choices, string? listFile, bool named, ModList order)
     {
+        _order = order;
         _game = game;
         _reserved = reserved;
         _candidates = candidates;
@@ -52,7 +66,7 @@ public sealed class ModManager
 
     // What this run loaded: the active mods in load order (the last one wins), the refused with a reason
     // each, the ones switched off, and notes. Engine.Mods is the same object.
-    public ModLoadResult Loaded { get; }
+    public ModLoadResult Loaded { get; private set; }
 
     // Every mod.json that could be read, whatever became of the mod, by id.
     public IReadOnlyList<ModManifest> Found => _candidates;
@@ -186,17 +200,154 @@ public sealed class ModManager
             choices = ModList.Load(listFile, out string? warning);
             if (warning != null) Log.Warn(LogCat.Mods, warning);
         }
-        var manager = new ModManager(manifest, reserved, candidates, unresolved, searched, ModLoadResult.Empty, choices, options.ModListFile, named);
         var order = named ? new ModList { Order = candidates.Select(m => m.Id).ToList() } : choices;
-        var loaded = manager.Resolve(candidates, order);
-        return new ModManager(manifest, reserved, candidates, unresolved, searched, loaded, choices, options.ModListFile, named);
+        var manager = new ModManager(manifest, reserved, candidates, unresolved, searched, ModLoadResult.Empty, choices, options.ModListFile, named, order);
+        manager.Loaded = manager.Resolve(candidates, order);
+        return manager;
     }
 
+    // A code mod whose code could not load stays out of this run's order and the next start's, refused with
+    // why: the next start checks it again.
     private ModLoadResult Resolve(List<ModManifest> candidates, ModList order)
     {
-        var result = ModLoadOrder.Resolve(candidates, order, _game, BuildInfo.EngineSemVersion, _reserved);
-        if (_unresolved.Count == 0) return result;
-        return new ModLoadResult(result.Active, _unresolved.Concat(result.Refused).ToList(), result.Disabled, result.Notes);
+        var broken = _codeRefused.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+        var result = ModLoadOrder.Resolve(candidates.Where(m => !broken.Contains(m.Id)), order, _game, BuildInfo.EngineSemVersion, _reserved);
+        if (_unresolved.Count == 0 && _codeRefused.Count == 0) return result;
+        return new ModLoadResult(result.Active, _unresolved.Concat(_codeRefused).Concat(result.Refused).ToList(), result.Disabled, result.Notes);
+    }
+
+    // ---- code mods (phase 9, issue #396) ----
+
+    // Whether a mod is a code mod: mod.json names assemblies.
+    public static bool ContainsCode(ModManifest mod) => mod.AsksForCode;
+
+    // The assemblies this run loaded for a mod, empty for a data mod (or one whose code was refused).
+    public IReadOnlyList<System.Reflection.Assembly> CodeOf(string id) =>
+        _code.FirstOrDefault(c => c.Mod.Id == id)?.Loaded ?? (IReadOnlyList<System.Reflection.Assembly>)Array.Empty<System.Reflection.Assembly>();
+
+    // The active code mods' load contexts, for a test to see them unload.
+    internal IReadOnlyList<ModCodeContext> CodeContexts => _code;
+
+    // Loads every active code mod's assemblies and returns their modules, for the app to add after its own
+    // (`host`: every module it has added, the game's included). A mod whose code cannot be used is refused,
+    // its context unloaded, and the order resolved again without it (a mod that needs it goes too). Called
+    // once, by SageApp.Create, before any module's Init.
+    internal IReadOnlyList<IModule> LoadCode(IReadOnlyList<IModule> host, HostKind hostKind)
+    {
+        while (true)
+        {
+            var failed = new List<RefusedMod>();
+            var loaded = new List<ModCodeContext>();
+            foreach (var mod in Loaded.Active.Where(m => m.AsksForCode))
+            {
+                var context = new ModCodeContext(mod);
+                string? why = Try(() => context.LoadAll()) ?? CheckPlugins(context, host);
+                if (why == null && EcsSchema.Built && context.EcsTypes().FirstOrDefault() is { } component)
+                    why = $"it declares ECS components or tags ({component.Name}), and this process built its component schema before the mod " +
+                          "was loaded (a second app in one process): start the game anew to load it";
+                if (why != null) { failed.Add(new RefusedMod(mod.Id, mod.Directory, why)); context.Release(); }
+                else loaded.Add(context);
+            }
+            if (failed.Count == 0) failed.AddRange(CheckRequirements(loaded, host));
+            if (failed.Count == 0)
+            {
+                _code.AddRange(loaded);
+                var modules = new List<IModule>();
+                foreach (var context in loaded)
+                {
+                    var paths = string.Join(", ", context.Mod.Assemblies);
+                    Log.Info(LogCat.Mods, $"Mod '{context.Mod.Id}' contains code ({paths}): loaded with the game's full trust, not sandboxed → " +
+                                          string.Join(", ", context.Modules.Select(m => PluginInfo.Of(m).Id)));
+                    foreach (var module in context.Modules)
+                    {
+                        if (SageApp.KindBelongs(module.Kind, hostKind)) modules.Add(module);
+                        else Log.Info(LogCat.Modules, $"{module.Name} (mod '{context.Mod.Id}') is a {module.Kind} module; a {hostKind} host doesn't load it");
+                    }
+                }
+                return modules;
+            }
+            foreach (var context in loaded) context.Release();
+            foreach (var refused in failed)
+                if (!_codeRefused.Any(r => r.Id == refused.Id)) _codeRefused.Add(refused);
+            Loaded = Resolve(_candidates, _order);
+        }
+    }
+
+    // The engine's and the mod's own words for what went wrong, or null.
+    private static string? Try(Action load)
+    {
+        try { load(); return null; }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            var inner = ex is System.Reflection.TargetInvocationException { InnerException: { } cause } ? cause : ex;
+            return ReferenceEquals(ex, inner) && inner is InvalidDataException ? inner.Message : $"its code failed to load: {inner.Message}";
+        }
+    }
+
+    // Every module of a code mod is a plugin of the mod's: [Plugin("<mod id>")] or [Plugin("<mod id>.<name>")],
+    // so what it registers is the mod's in the ledger, and no mod can stand in for the game's plugins.
+    private static string? CheckPlugins(ModCodeContext context, IReadOnlyList<IModule> host)
+    {
+        string id = context.Mod.Id;
+        foreach (var module in context.Modules)
+        {
+            var type = module.GetType();
+            if (System.Reflection.CustomAttributeExtensions.GetCustomAttribute<PluginAttribute>(type) is not { } plugin)
+                return $"its module {type.FullName} has no [Plugin(\"{id}\", version)], and a code mod's modules are plugins named for the mod";
+            try { _ = PluginInfo.Of(module); }
+            catch (FormatException ex) { return $"its module {type.FullName}: {ex.Message}"; }
+            if (!plugin.Id.Equals(id, StringComparison.Ordinal) && !plugin.Id.StartsWith(id + ".", StringComparison.Ordinal))
+                return $"its module {type.FullName} is the plugin '{plugin.Id}', and a code mod's plugins are named '{id}' or '{id}.<name>'";
+            if (host.FirstOrDefault(m => PluginInfo.Of(m).Id.Equals(plugin.Id, StringComparison.OrdinalIgnoreCase)) is { } taken)
+                return $"its plugin '{plugin.Id}' is already {taken.GetType().FullName}'s";
+            if (module is IGameModule)
+                return $"its module {type.FullName} is an IGameModule, and a game has one, its own";
+        }
+        var twice = context.Modules.GroupBy(m => PluginInfo.Of(m).Id, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
+        return twice == null ? null : $"two of its modules are the plugin '{twice.Key}'";
+    }
+
+    // [RequiresPlugin] and IModule.Dependencies of the code mods' modules, against the app's plugins and the
+    // other code mods': what would otherwise stop the boot (ModuleManager.Sort) refuses the mod instead.
+    private static List<RefusedMod> CheckRequirements(List<ModCodeContext> loaded, IReadOnlyList<IModule> host)
+    {
+        var all = host.Concat(loaded.SelectMany(c => c.Modules)).ToList();
+        var byId = new Dictionary<string, PluginInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var module in all) byId.TryAdd(PluginInfo.Of(module).Id, PluginInfo.Of(module));
+        var types = all.Select(m => m.GetType()).ToHashSet();
+        var failed = new List<RefusedMod>();
+        foreach (var context in loaded)
+        {
+            string? why = null;
+            foreach (var module in context.Modules)
+            {
+                var info = PluginInfo.Of(module);
+                foreach (var (id, range) in info.Requires)
+                {
+                    if (id.Equals(ModuleManager.EngineId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!range.Contains(BuildInfo.EngineSemVersion))
+                            why ??= $"its plugin {info.Id} needs Sage {range}, and this is Sage {BuildInfo.EngineVersion}";
+                    }
+                    else if (!byId.TryGetValue(id, out var found))
+                        why ??= $"its plugin {info.Id} requires the plugin {id} {range}, which this game does not load";
+                    else if (!range.Contains(found.Version))
+                        why ??= $"its plugin {info.Id} requires {id} {range}, and {id} {found.Version} is loaded";
+                }
+                foreach (var dependency in module.Dependencies.Where(d => !types.Contains(d)))
+                    why ??= $"its plugin {info.Id} depends on the module {dependency.Name}, which this game does not load";
+            }
+            if (why != null) failed.Add(new RefusedMod(context.Mod.Id, context.Mod.Directory, why));
+        }
+        return failed;
+    }
+
+    // Unloads the code mods' load contexts: the app is disposed, and its modules have shut down. What the
+    // contexts held is collected once nothing references the mods' types any more.
+    internal void UnloadCode()
+    {
+        foreach (var context in _code) context.Release();
+        _code.Clear();
     }
 
     // Every folder under `root` with a mod.json, and every `.sagemod` beside them (issue #397), by name. A
@@ -305,11 +456,11 @@ public sealed class ModManager
         yield return $"Active, in load order ({Loaded.Active.Count}):";
         int n = 0;
         foreach (var mod in Loaded.Active)
-            yield return $"  {++n}. {mod.Id} {mod.Version}{(mod.Name != mod.Id ? $" ({mod.Name})" : "")}  {mod.Directory}{(mod.IsPackage ? " (packed)" : "")}";
+            yield return $"  {++n}. {mod.Id} {mod.Version}{(mod.Name != mod.Id ? $" ({mod.Name})" : "")}{Code(mod)}  {mod.Directory}{(mod.IsPackage ? " (packed)" : "")}";
         if (Loaded.Disabled.Count > 0)
         {
             yield return $"Switched off ({Loaded.Disabled.Count}):";
-            foreach (var mod in Loaded.Disabled) yield return $"  {mod.Id} {mod.Version}  {mod.Directory}";
+            foreach (var mod in Loaded.Disabled) yield return $"  {mod.Id} {mod.Version}{Code(mod)}  {mod.Directory}";
         }
         if (Loaded.Refused.Count > 0)
         {
@@ -318,6 +469,11 @@ public sealed class ModManager
         }
         foreach (string note in Loaded.Notes) yield return $"Note: {note}";
     }
+
+    // The flag a code mod carries wherever mods are listed.
+    public const string ContainsCodeFlag = "[contains code: not sandboxed]";
+
+    private static string Code(ModManifest mod) => mod.AsksForCode ? "  " + ContainsCodeFlag : "";
 
     // ---- console ----
 

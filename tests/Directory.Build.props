@@ -1,5 +1,6 @@
 <Project>
   <!-- Shared settings for test projects under tests/. -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
-  <Import Project="..\build\Sage.Configurations.props" />
+  <!-- A Sage.Sdk project here (the code mod in games/code-mod, issue #396) gets the configurations from the SDK. -->
+  <Import Project="..\build\Sage.Configurations.props" Condition="'$(UsingSageSdk)' != 'true'" />
 </Project>

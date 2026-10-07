@@ -119,8 +119,9 @@ public static class ModLoadOrder
     {
         if (reserved.Contains(mod.Id))
             return $"'{mod.Id}' is the id of the engine, the game or a kit's content, so a mod may not take it";
-        if (mod.AsksForCode)
-            return "code mods are phase 9: a mod is data only for now (it names \"assemblies\" or \"kind\": \"code\")";
+        // A code mod's assemblies are loaded later, by the app (phase 9): here it only has to name some.
+        if (mod.AsksForCode && mod.Assemblies.Count == 0)
+            return "it says \"kind\": \"code\" and names no \"assemblies\", so it has no code to load";
         if (!string.IsNullOrWhiteSpace(mod.Game) && mod.Game != "*" && !string.Equals(mod.Game, game.Id, StringComparison.Ordinal))
             return $"it is for the game '{mod.Game}', and this is '{game.Id}'";
         if (!string.IsNullOrWhiteSpace(mod.GameVersion))

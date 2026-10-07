@@ -218,14 +218,14 @@ public class ModLoadOrderTests
         Assert.Contains(r.Notes, n => n.Contains("'a'") && n.Contains("gameVersion"));
     }
 
-    [Theory]
-    [InlineData("\"assemblies\": [\"A.dll\"]")]
-    [InlineData("\"kind\": \"code\"")]
-    public void AModThatAsksForCodeIsRefused(string json)
+    // Code mods (phase 9, issue #396): one that names its assemblies is ordered like any mod (the app loads its
+    // code); "kind": "code" with nothing to load is refused.
+    [Fact]
+    public void ACodeModIsOrderedLikeAnyMod_AndKindCodeWithNoAssembliesIsRefused()
     {
-        var r = ModLoadOrder.Resolve(new[] { Mod("coder", json) }, null, Game, Engine);
-        Assert.Empty(r.Active);
-        Assert.Contains("code mods are phase 9", Why(r, "coder"));
+        var r = ModLoadOrder.Resolve(new[] { Mod("coder", "\"kind\": \"code\", \"assemblies\": [\"bin/A.dll\"]"), Mod("talker", "\"kind\": \"code\"") }, null, Game, Engine);
+        Assert.Equal("coder", Order(r));
+        Assert.Contains("names no \"assemblies\"", Why(r, "talker"));
     }
 
     [Fact]

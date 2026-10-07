@@ -896,3 +896,6 @@ static Sage.Simulation.BrushPart.FacesOf(Sage.Simulation.BrushShape shape) -> Sy
 Sage.Simulation.Engine.Environment.get -> Sage.Core.AppEnvironment!
 Sage.Simulation.SageApp.Environment.get -> Sage.Core.AppEnvironment!
 Sage.Simulation.CharacterController.SpeedScale -> float
+const Sage.Simulation.ModManager.ContainsCodeFlag = "[contains code: not sandboxed]" -> string!
+static Sage.Simulation.ModManager.ContainsCode(Sage.Core.ModManifest! mod) -> bool
+Sage.Simulation.ModManager.CodeOf(string! id) -> System.Collections.Generic.IReadOnlyList<System.Reflection.Assembly!>!

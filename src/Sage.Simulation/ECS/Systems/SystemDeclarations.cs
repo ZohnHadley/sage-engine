@@ -55,6 +55,9 @@ public sealed class SystemDeclaration
     private static readonly ConcurrentDictionary<Type, SystemDeclaration?> ByType = new();
     private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<SystemDeclaration>> ByAssembly = new();
 
+    // A code mod's types and assembly are collectible (phase 9, issue #396): computed again rather than kept in
+    // the process cache, which would keep an unloaded mod alive. Asked for once per boot and world.
+
     private SystemDeclaration(Type type, SystemAttribute attribute)
     {
         Type = type;
@@ -73,20 +76,25 @@ public sealed class SystemDeclaration
     public RunCondition Condition { get; }
 
     // The declaration on `type`, or null for a system that has none (a test's probe).
-    public static SystemDeclaration? Of(Type type) => ByType.GetOrAdd(type, static t =>
-        t.GetCustomAttribute<SystemAttribute>(inherit: false) is { } a ? new SystemDeclaration(t, a) : null);
+    public static SystemDeclaration? Of(Type type) => type.IsCollectible ? Declare(type) : ByType.GetOrAdd(type, Declare);
+
+    private static SystemDeclaration? Declare(Type t) =>
+        t.GetCustomAttribute<SystemAttribute>(inherit: false) is { } a ? new SystemDeclaration(t, a) : null;
 
     // Every system `assembly` declares: from its generated table when the generator ran on it, else by
     // looking at its types — the dev fallback for an assembly built without it (the test assembly).
     // A pure function of the assembly, so it is cached for the process.
-    public static IReadOnlyList<SystemDeclaration> In(Assembly assembly) => ByAssembly.GetOrAdd(assembly, static a =>
+    public static IReadOnlyList<SystemDeclaration> In(Assembly assembly) =>
+        assembly.IsCollectible ? Declared(assembly) : ByAssembly.GetOrAdd(assembly, Declared);
+
+    private static IReadOnlyList<SystemDeclaration> Declared(Assembly a)
     {
         var generated = a.GetCustomAttributes<GeneratedRegistrationsAttribute>().ToList();
         IEnumerable<Type> types = generated.Count > 0
             ? generated.Select(g => Activator.CreateInstance(g.Type)).OfType<IGeneratedSystems>().SelectMany(g => g.Systems)
             : AllTypes(a);
         return types.Select(Of).OfType<SystemDeclaration>().ToList();
-    });
+    }
 
     private static IEnumerable<Type> AllTypes(Assembly assembly)
     {
