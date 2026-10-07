@@ -5615,14 +5615,18 @@
       ]
     },
     "ai_measure:id": {
-      "description": "An ai_measure by id: health, noise_loudness, target_distance.",
+      "description": "An ai_measure by id: health, noise_loudness, squad_engaged, squad_size, target_distance.",
       "type": "string",
       "enum": [
         "Health",
         "NoiseLoudness",
+        "SquadEngaged",
+        "SquadSize",
         "TargetDistance",
         "health",
         "noise_loudness",
+        "squad_engaged",
+        "squad_size",
         "target_distance"
       ]
     },
@@ -5699,6 +5703,64 @@
                 },
                 "additionalProperties": false,
                 "description": "ai_measure 'noise_loudness' (NoiseLoudnessMeasure)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "squad_engaged",
+                      "SquadEngaged"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_measure: squad_engaged.",
+                    "enum": [
+                      "squad_engaged",
+                      "SquadEngaged"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_measure 'squad_engaged' (SquadEngagedMeasure)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "squad_size",
+                      "SquadSize"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_measure: squad_size.",
+                    "enum": [
+                      "squad_size",
+                      "SquadSize"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_measure 'squad_size' (SquadSizeMeasure)."
               }
             },
             {
