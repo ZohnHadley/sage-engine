@@ -1,12 +1,12 @@
 # 16 · Gameplay framework
 
-> Status: built and tested for combat, attributes, items, abilities, factions, dialogue and quests; progression, economy, crime and combat reactions are not started. Owning assemblies: `Sage.Gameplay`, with the pawn and controller types in `Sage.Simulation` and the character in `Sage.Physics3D`. Design doc: [16-gameplay-framework](../../design/16-gameplay-framework.md).
+> Status: built and tested for combat, attributes, items, abilities, factions, dialogue and quests, and since phase 4f (2026-10-07) containers, loot tables, item instances, durability, slots in data, burden and merchants; crime and combat reactions are not started. Owning assemblies: `Sage.Gameplay`, with the pawn and controller types in `Sage.Simulation` and the character in `Sage.Physics3D`. Design doc: [16-gameplay-framework](../../design/16-gameplay-framework.md).
 
 ## 1. Purpose and scope
 
 The gameplay framework is the base layer of rules every action RPG or shooter needs and no genre decides: who controls what, what changes a number, how a blow lands, what an item does, who is hostile to whom, what an NPC says and what a quest watches for. It is data first: attributes, effects, attacks, abilities, items, factions, dialogue and quests are records, and what they do is one pipeline each.
 
-It deliberately does not do the following. Genre rules such as skills, levelling, the spellmaker, barter and the RPG screens are the kit's, see [17-rpg-kit](17-rpg-kit.md). The character controller, movers and joints are [08-physics](08-physics.md). AI think, perception, routines and navigation are [09-navigation-and-ai](09-navigation-and-ai.md). Animation graphs and IK are [10-animation](10-animation.md). Entity I/O, the condition and action language and state machines are [05-events-and-logic](05-events-and-logic.md). Screens are [13-ui](13-ui.md).
+It deliberately does not do the following. Genre rules such as skills, levelling, perks, the spellmaker and the RPG screens are the kit's (the base gives them `attribute_gain`), see [17-rpg-kit](17-rpg-kit.md). The character controller, movers and joints are [08-physics](08-physics.md). AI think, perception, routines and navigation are [09-navigation-and-ai](09-navigation-and-ai.md). Animation graphs and IK are [10-animation](10-animation.md). Entity I/O, the condition and action language and state machines are [05-events-and-logic](05-events-and-logic.md). Screens are [13-ui](13-ui.md).
 
 ## 2. Responsibilities
 
@@ -17,9 +17,14 @@ It deliberately does not do the following. Genre rules such as skills, levelling
 - Abilities and cues: cost, cooldown, targeting, payload and refusal reasons.
 - Items, inventory by weight, equipment slots, pickups, item uses, and the Use interaction.
 - Factions and a saved reputation, dialogue trees and topics, quests and the journal.
+- Containers and bodies to loot, with locks, keys, owners and respawn; loot tables and leveled lists (#378, #379).
+- Item instances (a name, enchantments, condition, charges), stack splitting, durability and repair (#383, #382).
+- Equipment slots from data, and burden that slows a carrier (#384).
+- Merchants: money as an item, a purse, prices by skill and standing, atomic trades and restock (#380).
+- Attributes gained on events (`attribute_gain`), the seam the kit's skills rise by (#377).
 - `gameplay_conventions`: which attribute is health, which tags mean dead, default damage type and action names.
 
-Not responsible for: skills and levelling (open, #377), containers and loot tables (#378, #379), real barter (#380), durability (#382), item instances and enchantments (#383), crime (#389), blocking and parry (#390).
+Not responsible for: skills, levelling and perks (the kit's, [17](17-rpg-kit.md)), crime (#389; `Stolen` is its seam), blocking and parry (#390).
 
 ## 3. Placement and dependencies
 
@@ -30,9 +35,9 @@ Each module is a plugin with a stable id, picked in `game.json`:
 | Plugin id | Owns |
 |---|---|
 | `sage.gameplay.character` | The character and controller (in `Sage.Physics3D`). |
-| `sage.gameplay.attributes` | `attribute`, `tag`, `effect`, `gameplay_conventions`; `attributes` and `effects` parts; the effect and death systems. |
+| `sage.gameplay.attributes` | `attribute`, `tag`, `effect`, `gameplay_conventions`, `attribute_gain`; `attributes` and `effects` parts; the effect, death, gains and speed systems; the `attribute` condition. |
 | `sage.gameplay.combat` | `damage_type`, `attack`, `spread`, `recoil`, `hit_location`, `hitboxes`; melee, reload, recoil systems. |
-| `sage.gameplay.items` | `item`, inventory, equipment, pickup, use, the interaction system. |
+| `sage.gameplay.items` | `item`, `loot_table`, `merchant`, `equip_slot`, `encumbrance`; inventory, equipment, pickup, use, containers, loot, burden and merchants; the interaction system. |
 | `sage.gameplay.abilities` | `ability`, `cue`, projectiles, the cast system. |
 | `sage.gameplay.factions` | `faction`, the `reputation` resource. |
 | `sage.gameplay.dialogue` | `dialogue`, `dialogue_topic`, known topics. |
@@ -49,30 +54,36 @@ Each module is a plugin with a stable id, picked in `game.json`:
 | `Effects`, `EffectSystem`, `Died` | `Attributes/Effects.cs` | Apply, remove, query effects; raises `Died(Victim, Killer)`. |
 | `Combat.ApplyHit`, `HitRequest`, `HitResult`, `HitContext`, `Hits` | `Combat/Combat.cs`, `Hits.cs` | The one damage path; deliveries `sweep`, `ray`, `projectile` are `hit_delivery` entries. |
 | `Ammunition`, `WeaponFired`, `DryFire` | `Combat/Ammunition.cs` | Magazines and reload. |
-| `Items` (`Give`, `Take`, `Equip`, `Unequip`, `Drop`, `SpawnPickup`), `EquipSlots`, `ItemUses`, `Used` | `Items/` | Inventory and equipment rules, item uses (`consume`, `read`, `cast`), the Use event. |
+| `Items` (`Give`, `Take`, `Equip`, `Unequip`, `Drop`, `SpawnPickup`; since #383 `TakeAt`, `Split`, `MoveTo`, `DropAt`, `EquipAt`, `WornInstance`), `ItemInstance`, `EquipSlots`, `ItemUses`, `Used` | `Items/` | Inventory and equipment rules, item instances, item uses (`consume`, `read`, `cast`, `repair`), the Use event. |
+| `Containers`, `ItemContainer`, `Stolen` | `Items/Containers.cs` | Open (lock, key, refill), `Took`, theft (#378). |
+| `LootTables.Roll`, `LootTableRecord`, `LootPart`, `Loot` | `Items/LootTables.cs` | Rolling a table into an inventory, on spawn or death (#379). |
+| `Durability`, `ItemDurability`, `ItemBreak`, `ItemBroke` | `Items/Durability.cs` | Condition, wear, breaking and repair (#382). |
+| `Encumbrance` (`AddBurden`, `CarryLimitOf`, `BurdenLevelOf`), `EquipSlotRecord` | `Items/Encumbrance.cs`, `Slots.cs` | Burden levels and slots in data (#384). |
+| `Merchants` (`Price`, `Buy`, `Sell`, `Ready`, `MoneyOf`), `TradeResult`, `TradeRefusal`, `Traded` | `Items/Merchants.cs` | Prices, atomic trades and restock (#380). |
+| `AttributeGainRecord`, `AttributeGained` | `Attributes/AttributeGains.cs` | An attribute gained on `Damaged`, `Died`, `AbilityCast` or `Used` (#377). |
 | `AbilityCasting`, `CastRefused`, `CueTriggered` | `Abilities/` | Cast, refusal reasons, cues. |
 | `Factions`, `ReputationChanged` | `Factions/Factions.cs` | Stance of a faction to another and to the player. |
 | `Quests`, `QuestChanged`, `DialogueTopics`, `Spoke` | `Narrative/` | Journal rules (since #349 `Track` and `IsTracked`, a stage's and an objective's `target`, an entry's `History`); topic answering; speech event. |
 
-Vocabularies a game extends by attribute: `hit_delivery`, `ability_delivery`, `effect_execution`, `item_use`, `quest_objective` (`kill`, `have`, `reach`, `talk`), plus the base condition and action words each plugin owns (`has_tag`, `lacks_tag`, `is_alive`, `has_item`, `standing`, `quest`, `apply_effect`, `set_tag`, `cue`, `give_item`, `change_standing`, `start_quest`, `set_stage`, `add_topic`, `speaker`).
+Vocabularies a game extends by attribute: `hit_delivery`, `ability_delivery`, `effect_execution`, `item_use`, `quest_objective` (`kill`, `have`, `reach`, `talk`), plus the base condition and action words each plugin owns (`has_tag`, `lacks_tag`, `is_alive`, `attribute`, `has_item`, `standing`, `quest`, `apply_effect`, `set_tag`, `cue`, `give_item`, `change_standing`, `start_quest`, `set_stage`, `add_topic`, `speaker`).
 
-Console: `give`, `equip`, `unequip`, `drop`, `use_item`, `cast`, `learn`, `hurt`, `god`, `rep`, `rep_set`, `quests`, `quest_start`, `quest_stage`, `cast_debug`, `combat_debug`. Cvar `g_interact_range` (2.5 m). Events: `Damaged`, `Died`, `Used`, `WeaponFired`, `DryFire`, `CastRefused`, `CueTriggered`, `ReputationChanged`, `QuestChanged`, `Spoke`.
+Console: `give`, `equip`, `unequip`, `drop`, `use_item`, `loot`, `cast`, `learn`, `hurt`, `god`, `rep`, `rep_set`, `quests`, `quest_start`, `quest_stage`, `cast_debug`, `combat_debug`. Cvar `g_interact_range` (2.5 m). Events: `Damaged`, `Died`, `Used`, `WeaponFired`, `DryFire`, `CastRefused`, `CueTriggered`, `ReputationChanged`, `QuestChanged`, `Spoke`, `Stolen`, `Traded`, `ItemBroke`, `AttributeGained`.
 
 ## 5. Data model
 
 | Kind | Ids |
 |---|---|
-| Records | `attribute`, `tag`, `effect`, `gameplay_conventions`, `damage_type`, `attack`, `spread`, `recoil`, `hit_location`, `hitboxes`, `item`, `ability`, `cue`, `faction`, `dialogue`, `dialogue_topic`, `quest` |
-| Components | `sage:attributes`, `sage:gameplay_tags`, `sage:active_effects`, `sage:melee`, `sage:weapon_state` (transient), `sage:magazine`, `sage:hitbox`, `sage:inventory`, `sage:equipment` (version 2), `sage:pickup`, `sage:abilities`, `sage:projectile`, `sage:faction`, `sage:dialogue`, `sage:known_topics`, `sage:quest_watch` |
+| Records | `attribute`, `tag`, `effect`, `gameplay_conventions`, `attribute_gain`, `damage_type`, `attack`, `spread`, `recoil`, `hit_location`, `hitboxes`, `item`, `loot_table`, `merchant`, `equip_slot`, `encumbrance`, `ability`, `cue`, `faction`, `dialogue`, `dialogue_topic`, `quest` |
+| Components | `sage:attributes`, `sage:gameplay_tags`, `sage:active_effects`, `sage:melee`, `sage:weapon_state` (transient), `sage:magazine`, `sage:hitbox`, `sage:inventory`, `sage:equipment` (version 2), `sage:pickup`, `sage:container`, `sage:loot`, `sage:burden`, `sage:merchant`, `sage:abilities`, `sage:projectile`, `sage:faction`, `sage:dialogue`, `sage:known_topics`, `sage:quest_watch` |
 | Tag | `sage:interactable` |
-| Saved resources | `journal`, `reputation`, plus `vars` and `clock` from the base |
-| Prefab parts | `attributes`, `effects`, `melee`, `hitboxes`, `inventory`, `pickup`, `abilities`, `faction`, `dialogue`, `quest_watch` |
+| Saved resources | `journal`, `reputation`, `loot_random`, plus `vars` and `clock` from the base |
+| Prefab parts | `attributes`, `effects`, `melee`, `hitboxes`, `inventory`, `pickup`, `container`, `loot`, `merchant`, `abilities`, `faction`, `dialogue`, `quest_watch` |
 
-An attribute value is saved by id and base value only; the current value is recomputed. Tags are saved by id. An item is a record and an inventory a list of ids and counts, so stacking, saving and modding are cheap; an item becomes an entity only as a `Pickup` on the ground. An attack names its `delivery`, damage, `ammo`, `magazine`, `spread`, `recoil`, `projectile`, `projectileGravity` and `projectilePierce`. `known: true` topics are everyone's and never saved.
+An attribute value is saved by id and base value only; the current value is recomputed. Tags are saved by id. An item is a record and an inventory a list of ids and counts, so stacking, saving and modding are cheap; since #383 a stack may carry an `ItemInstance` (name, enchantments, condition, charges), and only a unit that differs is one; an item becomes an entity only as a `Pickup` on the ground. An attack names its `delivery`, damage, `ammo`, `magazine`, `spread`, `recoil`, `projectile`, `projectileGravity` and `projectilePierce`. `known: true` topics are everyone's and never saved.
 
 ## 6. Lifecycle and data flow
 
-All gameplay runs in the fixed tick. Controllers write `PawnIntent` in Phase.Commands (`PlayerControlSystem`, then AI think, then `sage.combat.recoil`, which keeps the intent final). In Phase.Gameplay: `sage.combat.reload`, then `sage.combat.melee` (the attack system, which queues requests, hands landed blows to their deliveries and deals them in order), projectile and cast systems, item use, then `sage.effects.tick`, executions, and `sage.effects.deaths`, which raises `Died` once. Quest, faction and I/O bridge systems read `Died` and `Damaged` between the tick and the deaths. `sage.combat.hitboxes` runs in Phase.PrePhysics.
+All gameplay runs in the fixed tick. Controllers write `PawnIntent` in Phase.Commands (`PlayerControlSystem`, then AI think, then `sage.combat.recoil`, which keeps the intent final). In Phase.Gameplay: `sage.combat.reload`, then `sage.combat.melee` (the attack system, which queues requests, hands landed blows to their deliveries and deals them in order), projectile and cast systems, item use, then `sage.effects.tick`, executions, and `sage.effects.deaths`, which raises `Died` once. Quest, faction and I/O bridge systems read `Died` and `Damaged` between the tick and the deaths. `sage.combat.hitboxes` runs in Phase.PrePhysics. Since 4f, also in Phase.Gameplay: `sage.items.containers` and `sage.items.burden` after item use, `sage.items.loot` between the tick and the deaths (it rolls a body's table on `Died`), and `sage.attributes.gains` and `sage.attributes.speed` after the tick; a merchant restocks when it is traded with or its shop opens (`Merchants.Ready`), not in a system. Item instances, a container's stock, a burden level, a merchant's purse and the loot stream are saved (tests: `AnInstanceRoundTripsThroughASaveInThisBuild`, `AContainerRefillsRespawnHoursAfterItWasTakenFrom_AcrossASave`, `ABurdenSurvivesASave`, `LootIsDeterministicFromTheWorldSeed`).
 
 Boot: `IGameModule.CreateRules` supplies the rules; `Engine.CreateWorld` calls `OnWorldStarted` after every module has seen the world. Registration is declarative; nothing registers in `Start` or a system (SAGE0020). Save and load: the components and resources above are saved by stable id; `GameRules.OnLoaded` runs after a load; a bolt in flight, rounds loaded and known topics survive a save (tests: `ABoltSavedMidFlightStillLandsAfterTheLoad`, `ASaveWithThreeRoundsLoadedStillHasThreeAfterLoading`, `KnownTopicsSurviveSaveAndLoad`).
 
@@ -102,11 +113,11 @@ Content mistakes are load errors at their lines: an unknown vocabulary entry wit
 | REQ-GAME-12 | Quests shall watch for kills, items, reaching a place and talking, and a game may add objectives by attribute. | Must | Done | test: `ReachTalkAndAGamesObjectiveMoveAQuestAlong` |
 | REQ-GAME-13 | The Use interaction shall find the aimed or nearest usable thing and fire its I/O. | Must | Done | `src/Sage.Gameplay/Items/Items.cs` (`InteractionSystem`) |
 | REQ-GAME-14 | Quest objectives shall include timers and failure. | Should | Not started | #391 |
-| REQ-GAME-15 | Containers and corpses shall be lootable entities, with loot tables and leveled lists. | Must | Not started | #378, #379 |
-| REQ-GAME-16 | Skills and levelling, perks and traits shall be rules as data. | Must | Not started | #377, #381 |
-| REQ-GAME-17 | Shops shall move money and have merchant gold, disposition and restock. | Must | Partial: stub price rule, no money | #380 |
-| REQ-GAME-18 | Items shall have durability, condition, repair, instances, enchantments and stack splitting. | Should | Not started | #382, #383 |
-| REQ-GAME-19 | Equipment slots shall be registrable from data, and weight shall have consequences. | Could | Not started | #384 |
+| REQ-GAME-15 | Containers and corpses shall be lootable entities, with loot tables and leveled lists. | Must | Done (#378, #379) | test: AnOwnedChestOpensByUse_AndTakingFromItIsStolen, test: ALockedContainerOpensOnlyForTheKeysCarrier, test: ABodyIsAContainer_LootedByUseWithoutTheft, test: AContainerRefillsRespawnHoursAfterItWasTakenFrom_AcrossASave, test: LeveledEntriesAskTheEnginesConditions, test: ACreaturePrefabDropsItsLootTableWhenItDies, test: LootIsDeterministicFromTheWorldSeed |
+| REQ-GAME-16 | Skills and levelling, perks and traits shall be rules as data. | Must | Done (#377, #381): the base's `attribute_gain`, and the kit's `skill`, `levelling` and `perk` records (17) | test: AnAttributeGainAddsOnItsEventToWhoeverDidItWhenItsFiltersHold, test: SkillsExit_ABladeSkillRisesWithUseAndLevelsTheCharacterAcrossASave, test: APerkIsPickedAtLevelUpWhenItsPrerequisitesHoldAndAppliesItsEffects |
+| REQ-GAME-17 | Shops shall move money and have merchant gold, disposition and restock. | Must | Done (#380) | test: TraderExit_BuysSellsRefusesWithAReason_RestocksAfterADay_AndKeepsItAllAcrossASave, test: TraderExit_PricesMoveWithTheBarterAttributeAndStanding, test: TraderExit_ATradeThatCannotHappenMovesNothing |
+| REQ-GAME-18 | Items shall have durability, condition, repair, instances, enchantments and stack splitting. | Should | Done (#382, #383) | test: TwoDistinctInstancesOfOneRecordAreHeldApartAndPlainOnesStayPlain, test: EquippingAnInstanceAppliesItsEnchantmentsWithTheItemsOwnEffects, test: AStackSplitsOnDropAndThePickupGivesBackTheSameInstance, test: AGoldenSaveWithTwoDistinctInstancesLoads, test: AWeaponLosesConditionOnHitDealsLessAndBreaks, test: ARepairKitRestoresTheEquippedWeaponAndIsUsedUp |
+| REQ-GAME-19 | Equipment slots shall be registrable from data, and weight shall have consequences. | Could | Done (#384) | test: AHelmetSlotInDataIsWornWithNoCode, test: OverweightReducesAMovementAttribute, test: AnOverweightCharacterWalksLessFarInTheSameTicks |
 | REQ-GAME-20 | Combat shall have blocking, parry, knockback, hit reactions and directional attacks. | Should | Partial: directional swings and guards are built (#359: `attack_stance`, the `Block` action, `Melee.Direction`, the AI's `Block` task); what a guard or a direction does to a blow, parry, knockback and hit reactions are not | test: ADataOnlyGraphSwingsFourWays_EachLandingOnItsOwnClipsHit, test: AnAiVariesItsSwingsAndGuardsAgainstTheIncomingBlow; #390 |
 | REQ-GAME-21 | Crime, witnesses, bounty and faction ranks shall be supported. | Should | Not started | #389 |
 | REQ-GAME-22 | Dialogue shall have barks, greetings, linked topics and per-speaker known lists. | Could | Not started | #392 |
@@ -114,16 +125,7 @@ Content mistakes are load errors at their lines: an unknown vocabulary entry wit
 
 ## 10. Open work
 
-Milestone 9, progression and economy (epic #376).
-
-- #377 4f-1 Skills that rise with use or XP, and levelling (rules as data) (P1)
-- #378 4f-2 Containers and corpse looting as entities (P1)
-- #379 4f-3 Loot tables and leveled lists (P1)
-- #380 4f-4 Real shops and barter (P1)
-- #381 4f-5 Perks and traits as effects with prerequisites (P2)
-- #382 4f-6 Item durability, condition and repair (P2)
-- #383 4f-7 Item instances, enchantments and stack splitting (P2)
-- #384 4f-8 Slots registrable from data, and weight/encumbrance consequences (P3)
+Milestone 9, progression and economy (epic #376), is done (2026-10-07): #377 to #384. Left from it: armour's effects are not scaled by its condition, the kit's grid does not show condition, and there is no repair command (#382); `tests/games/weapons`' helmet could now be an item (#384); `Stolen` waits for crime (#389).
 
 Milestone 10, AI, combat and narrative depth (epic #385).
 

@@ -1,6 +1,6 @@
 # 15 · Saves
 
-> Status: built and heavily tested (format 4, four golden saves); thumbnails, compression, a background write, titled slots and a save-version report are built (#285), and the snapshot taken on the tick copies component columns, so a 10k-entity save costs the tick about 3 ms (Debug). Owning assemblies: `Sage.Simulation` (`Content`), `Sage.Core` (declarations). Design doc: [09-serialization-and-saves](../../design/09-serialization-and-saves.md).
+> Status: built and heavily tested (format 4, a golden save per format, plus the ragdoll save of #249 and the item-instance save of #383); thumbnails, compression, a background write, titled slots and a save-version report are built (#285), and the snapshot taken on the tick copies component columns, so a 10k-entity save costs the tick about 3 ms (Debug). Owning assemblies: `Sage.Simulation` (`Content`), `Sage.Core` (declarations). Design doc: [09-serialization-and-saves](../../design/09-serialization-and-saves.md).
 
 ## 1. Purpose and scope
 
@@ -88,7 +88,7 @@ Log category `Save`. `saves` lists slots with kind, time and entity count. Two p
 |---|---|---|---|---|
 | REQ-SAVE-01 | Components, tags and resources shall be saved by stable id with a version, so a C# rename loses nothing. | Must | Done | test: `ASaveIsKeyedByStableIdsWithAVersionPerEntry` |
 | REQ-SAVE-02 | Old component shapes shall load through ordered `[Upgrade]` methods; a missing upgrader shall be a named error. | Must | Done | test: `UpgradersRunInOrderFromTheSavedVersion` |
-| REQ-SAVE-03 | Every committed save format shall have a golden save that loads. | Must | Done | tests: `AGoldenSaveFromBeforeStableIdsStillLoads`, `AGoldenSaveInFormat2Loads`, `AGoldenSaveInFormat3Loads`, `AGoldenSaveInTheCurrentFormatLoads` |
+| REQ-SAVE-03 | Every committed save format shall have a golden save that loads. | Must | Done | tests: `AGoldenSaveFromBeforeStableIdsStillLoads`, `AGoldenSaveInFormat2Loads`, `AGoldenSaveInFormat3Loads`, `AGoldenSaveInTheCurrentFormatLoads`, and the format 4 save with two distinct item instances (#383) `AGoldenSaveWithTwoDistinctInstancesLoads` |
 | REQ-SAVE-04 | A load shall read everything before changing anything. | Must | Done | test: `ACorruptWorldFileLeavesEveryWorldAsItWas` |
 | REQ-SAVE-05 | Content-placed entities shall have stable ids, and destroyed ones shall stay destroyed across rebalances and reboots. | Must | Done | test: `AKilledPlacedEntityStaysDeadAcrossAReboot`, `NoPersistentIdIsDuplicated` |
 | REQ-SAVE-06 | A save shall be a diff, so a prefab or record rebalance reaches an existing save. | Must | Done | test: `AnUntouchedGoblinGetsTheRaisedPrefabHealthAndADamagedOneKeepsItsOwn` |

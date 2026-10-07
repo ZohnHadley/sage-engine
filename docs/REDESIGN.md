@@ -973,7 +973,7 @@ because it edits the live play world (`DevTools.cs:84-87`).
     `sandbox:hud` layout over `HudView`, on a layer that is drawn and never takes input
     (`UiScreenStack.OpenHud`; only the first-person hands were still drawn by hand, until #350); the journal and a
     markers-only map are the kit's `JournalView`/`MapView` (`sage:map_marker`); a main menu lists
-    `SaveSystem.Slots` and loads one; the shop is a shell over a stub price rule until 4f
+    `SaveSystem.Slots` and loads one; the shop is a shell over a stub price rule (since 4f's #380 it trades at a `merchant`)
     (docs/design/13 "As built (the HUD, journal, map, main menu and shop)").
   - *As built (issue #98, 2026-09-30).* The first consumers: the RPG kit's inventory grid (with weight
     and item footprints), equipment, loot and topics screens are records in the kit's own content
@@ -1143,8 +1143,8 @@ what the base therefore needs first:
 | First-person play (third-person optional) with viewmodels | ● | ● | ● (both) | ● | ✅ first- and third-person rigs with the V toggle, skinned arms (4a, 4d) |
 | Skeletal characters and first-person arms | billboards | ● | ● | ● | ✅ (4d); ragdolls in progress (4k) |
 | Melee **and** ranged: projectile, hitscan, ammo, reload, hit locations | ● | ●● | ● | ●● | ✅ one hit pipeline for melee, projectiles and hitscan, ammo, reload, hit locations (4e); blocking in 4r |
-| Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ◐ attributes and effects; skills and levelling in 4f |
-| Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ◐ grid with weight, equipment, loot and shop screens (4c); containers, money and loot tables in 4f |
+| Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ✅ attributes and effects; skills that rise with use, levelling and perks as records (4f) |
+| Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ✅ grid with weight, equipment, loot and shop screens (4c); containers, loot tables, item instances, durability, slots in data, burden and merchants with money (4f) |
 | Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ topics, quests, journal and factions in data (4b, 4c); barks and richer objectives in 4r |
 | Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary, nested state machines and the rest of HL1's and Source's logic set: multisource, logic_case, logic_auto, filtered triggers, spawners (4m) |
 | AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g) that paths round walls, covers sectors never visited and takes NPCs through doors (4m); hearing, behaviour trees and squads in 4r |
@@ -1195,7 +1195,7 @@ test: nothing in it may assume the Daggerfall-like. `Sage.Kits.Rpg` is the *acti
 | **4c** | **Done** (#88). **UI toolkit** (retained widgets, layout, focus and gamepad, style/layout records, localisation keys). First consumers are RPG screens: HUD, inventory **grid with weight** (S.T.A.L.K.E.R.), equipment, container/loot, shop, dialogue topics, journal, map, and a main menu with save/load | inventory, loot and dialogue screens built from records over headless view-models, with tests |
 | **4d** | **Done** (#115). **Skeletal animation** [F9–F12]: glTF skins, clips, blending, anim state machine as data, animation events replacing the `attack`/`hit`/`idle` names, **first-person arms and viewmodels**, simple IK for aiming and feet | an NPC walks, runs, aims and attacks, blended; first-person arms reload a weapon |
 | **4e** | **Done** (#132: #133–#139). The hit pipeline, projectiles, ammo, spread and recoil, hit locations, the kit and Sandbox weapons, and the exit game `tests/games/weapons` (#139). **Weapons and combat generalised**: one damage pipeline for melee, projectile and **hitscan**; ammo, magazines, reload; spread and recoil as records; hit locations (head/limbs) from colliders; armour by location; the existing melee and spells re-expressed on it | the same pipeline drives a sword, a crossbow, a pistol and a fireball, each defined by records only |
-| **4f** | **Replanned 2026-10-02 as #376 (#377–#384); see Stage B, part 2.** **RPG progression and economy (generic)**: skills that rise with use or with XP (both as rules), levelling, perks as effects; containers, loot tables, shops and barter, item "use" (§4.3 `ItemUse`), durability and weight | a Morrowind-style "use a skill, it rises" and a S.T.A.L.K.E.R.-style trader, both in data |
+| **4f** | **Done** (#376: #377–#384), 2026-10-07; see Stage B, part 2. **RPG progression and economy (generic)**: skills that rise with use or with XP (both as rules), levelling, perks as effects; containers, loot tables, shops and barter, item "use" (§4.3 `ItemUse`), durability and weight | a Morrowind-style "use a skill, it rises" and a S.T.A.L.K.E.R.-style trader, both in data |
 | **4g** | **Done** (#182: #183–#190, 4g-1 to 4g-8). Cells that go dormant with their state (save format 4), the calendar and passing time, entities streamed by sector on built-in terrain, NPC routines, load doors, interiors and fast travel, off-screen simulation, the kit's rest and travel screens with the Sandbox's crypt (4g-7), and the exit game `tests/games/open-world` (4g-8). **Open world, part 2**: entities stream by sector (not only terrain), **interior cells** with load doors, fast travel, **time of day** (sun, sky, lighting, NPC schedules), and **off-screen simulation** (A-Life-lite: coarse movement and fights for unloaded NPCs, reconciled when they stream in) | walk from an exterior into a dungeon and back; an NPC keeps its schedule across a day while you are away |
 | **4h** | **Done** (#152: #154–#160, 4h-1 to 4h-7). The pass registry, the world clock, sky records and weather on top of them, hot reload of meshes, sounds and `.fx`, sun shadows, the sky pass and exp² fog, post-processing and render scale, and the exit in the Sandbox (4h-7). **Rendering for these worlds**: render pass registry and public `RenderContext` (§4.7), sun shadows, fog, day/night lighting, post-processing; mesh, sound and `.fx` hot reload | a dusk-to-night transition with shadows in a streamed exterior |
 | **4i** | **Done** (#153). Prefab overrides and nesting, a load that cannot half-happen, reconciling loads, runtime spawns that persist, saves of what changed, quick-save and autosave, and the exit game `tests/games/saves` (#167). **Saves you can trust**: prefab overrides and nesting [F31]; runtime spawns persist; upgraders and placeholders (§4.5); quick-save and autosave | save anywhere, change a prefab and a record, load: nothing lost and nothing duplicated |
@@ -1312,6 +1312,20 @@ shows at once (test: ATexturePickedForAMaterialShowsInTheGameAtOnceAndIsUndoable
 and saved in place (test: AMovedStateIsSavedInItsNewPlace), all through the editor's commands. Left: CSG and
 vertex editing, mesh thumbnails, water drawn by the client, panel input in CI; the handoff's §1 lists each issue's
 follow-ups. Next is 4f (#376).
+
+**4f (#376) as of 2026-10-07:** #377–#384 are built (spec sheets [16](spec/subsystems/16-gameplay.md) and
+[17](spec/subsystems/17-rpg-kit.md), design 16 "As built (phase 4f: progression and economy)",
+[`history/handoff-2026-10-07-4f.md`](history/handoff-2026-10-07-4f.md)): skills that rise with use and levelling
+as the kit's records over the base's `attribute_gain` (#377), containers and bodies with locks, keys, owners,
+theft and respawn (#378), loot tables and leveled lists (#379), merchants with money, a purse, prices by barter
+and standing, and restock (#380), perks and traits (#381), item durability and repair (#382), item instances,
+enchantments and stack splitting (#383), and slots and burden in data (#384). The exit is met headlessly by two
+games with no C#: a blade skill rises with use and levels the character across a save
+(test: SkillsExit_ABladeSkillRisesWithUseAndLevelsTheCharacterAcrossASave), and a bunker trader buys, sells,
+refuses with a reason and restocks a day later across a save
+(test: TraderExit_BuysSellsRefusesWithAReason_RestocksAfterADay_AndKeepsItAllAcrossASave). Left: armour's
+effects do not scale with condition, the grid does not show condition, crime does not yet read `Stolen`; the
+handoff's §1 lists each issue's follow-ups. Next is 4r (#385).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,

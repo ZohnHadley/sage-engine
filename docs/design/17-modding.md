@@ -281,4 +281,5 @@ Phase 4j's exit: a data mod that adds a weapon and patches a trader loads, and i
   the order could then not be reversed by `mods.json`; it loads last by id instead. The placeholder is a
   runtime spawn of the mod's prefab (the cart), because an entity a mod's scene patch placed is content that
   is no longer placed once the mod is gone, and 4i drops those rather than keeping them. Phase 4f's trader
-  record is not filed, so the mods patch the NPC's `inventory` part.
+  record did not exist yet, so the mods patch the NPC's `inventory` part (since #380 a mod could patch a `merchant`
+  record's `stock` instead; the exit game still uses the stub-priced shell).

@@ -66,7 +66,7 @@ experimental by deleting the attribute, which is not an API change. The full mem
 | SAGE0125 | The retained game UI, all of `Sage.UI`, and the kit's view-models |
 | SAGE0126 | Skeletal animation: skeletons, clips, skinning, sockets and IK, animation graphs, viewmodels, clip events; since 4p root motion, additive layers and sync markers, retargeting, look-at and hand IK, directional stances and morph targets |
 | SAGE0127 | Weapons and combat: the hit pipeline, `hit_delivery`, hit locations, ammunition, spread and recoil |
-| SAGE0128 | Reserved for phase 4f |
+| SAGE0128 | Reserved for phase 4f, which took none: its API (containers, loot tables, item instances, durability, slots, burden, merchants, attribute gains, and the kit's skills and perks) is stable; the kit's `PerksView` is SAGE0125 with the other screens |
 | SAGE0129 | The open world: calendar, dormant cells, streamed scenes, routines, travel, off-screen simulation, terrain materials (#307) |
 | SAGE0130 | World clock and sky, the render pass registry, shadows (cascades, `ShadowAtlas`), fog, post effects, a material's surface fields (#410) |
 | SAGE0131 | Saves you can trust: placeholders, prefab overrides, reconciling loads, quick-save and autosave |

@@ -157,8 +157,8 @@ summary and the traceability index.
 | 13 | Game UI | UI | Widgets, layout, styles, focus and gamepad, localisation, fonts, menus and HUD. | [13](subsystems/13-ui.md) |
 | 14 | World, streaming and time | WORLD | Sectors and rebasing, cells and dormancy, interiors, travel, the calendar and clock. | [14](subsystems/14-world-and-streaming.md) |
 | 15 | Saves | SAVE | Diff saves keyed by stable ids, upgraders, reconcile on load, quick-save and autosave. | [15](subsystems/15-saves.md) |
-| 16 | Gameplay framework | GAME | Rules, pawns and controllers, attributes and effects, damage, abilities, items, factions, dialogue and quests. | [16](subsystems/16-gameplay.md) |
-| 17 | RPG kit | RPG | Skills and levelling, the RPG screens, shops, the spellmaker, Daggerfall conventions. | [17](subsystems/17-rpg-kit.md) |
+| 16 | Gameplay framework | GAME | Rules, pawns and controllers, attributes and effects, damage, abilities, items, containers and loot, merchants, factions, dialogue and quests. | [16](subsystems/16-gameplay.md) |
+| 17 | RPG kit | RPG | Skills and levelling, perks, the RPG screens, shops, the spellmaker, Daggerfall conventions. | [17](subsystems/17-rpg-kit.md) |
 | 18 | Editor | EDIT | The editing model, commands and undo, placement, inspector, wiring, play-in-editor, brushes, browsers. | [18](subsystems/18-editor.md) |
 | 19 | Modding | MOD | Mod manifests, load order, record patching, conflict reports, packed mods, code mods. | [19](subsystems/19-modding.md) |
 | 20 | Tooling and release | TOOL | The `sage` CLI, SDK and templates, analyzers, CI, packaging, versioning and release. | [20](subsystems/20-tooling-and-release.md) |
@@ -226,6 +226,6 @@ These are the owner's (REDESIGN §6). The plan works with any answer; each has a
 | 4q | Game UI and menus | 13 |
 | 4p | Animation | 10 |
 | 10b | Editor, part 2 (done) | 18 |
-| 4f | RPG progression and economy | 16, 17 |
+| 4f | RPG progression and economy (done) | 16, 17 |
 | 4r | AI, combat and narrative depth | 09, 16 |
 | 9 | Code mods and packaging | 19 |
