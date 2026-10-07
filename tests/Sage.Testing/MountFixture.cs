@@ -17,7 +17,7 @@ public sealed class MountFixture
     // Every mount made so far, in order (later wins).
     public IReadOnlyList<FolderMount> Mounts => _mounts;
 
-    public string Dir(string mount) => Path.Combine(Root, mount);
+    public string Dir(string mount) => Path.Combine(Root, mount.Replace('/', Path.DirectorySeparatorChar));
 
     public void Write(string mount, string relative, string text)
     {

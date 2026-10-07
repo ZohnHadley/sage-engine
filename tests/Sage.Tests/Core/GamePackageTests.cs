@@ -129,6 +129,53 @@ public class GamePackageTests
         Assert.False(Directory.Exists(output));
     }
 
+    // The editor for modders (issue #375): a Development host in editor/ beside the Shipping one, and the
+    // launchers that open the same game in it. The player's host at the top stays free of the editor.
+    [Fact]
+    public void WithTheEditorAPackageHasADevelopmentHostInEditorAndLaunchersOnTheSameGame()
+    {
+        string host = Host(), editorHost = Host(devTools: true), root = TestEnv.NewTempDir(), game = Game(root), output = Path.Combine(root, "out");
+
+        var result = GamePackage.Run(new PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host, EditorHostDirectory = editorHost });
+        Assert.True(result.Ok, string.Join("\n", result.Errors));
+
+        // The player's host, as without the editor: nothing of the editor outside editor/.
+        Assert.DoesNotContain(result.Files, f => !f.StartsWith(GamePackage.EditorFolder + "/", StringComparison.Ordinal) && GamePackage.IsDevTool(Path.GetFileName(f)));
+        Assert.True(File.Exists(Path.Combine(output, "Sage.Host.dll")));
+        Assert.Equal(Path.Combine(output, "game"), GameManifest.Locate(null, output));
+
+        // The editor host, as built, less the CLI; one copy of the game, which the launchers name.
+        foreach (string file in new[] { "Sage.Host.dll", "Sage.Host", "Sage.Editor.dll", "Sage.Editing.dll", "ImGui.NET.dll", "Content/data/materials.json" })
+            Assert.True(File.Exists(Path.Combine(output, "editor", file)), file);
+        Assert.False(File.Exists(Path.Combine(output, "editor", "sage.dll")));
+        Assert.False(Directory.Exists(Path.Combine(output, "editor", "game")));
+        string sh = File.ReadAllText(Path.Combine(output, "edit.sh")), cmd = File.ReadAllText(Path.Combine(output, "edit.cmd"));
+        Assert.StartsWith("#!/bin/sh", sh);
+        Assert.Contains("\"$here/editor/Sage.Host\" -game \"$here/game\" -edit \"$@\"", sh);
+        Assert.Contains("\"%~dp0editor\\Sage.Host.exe\" -game \"%~dp0game\" -edit %*", cmd);
+        Assert.Contains("edit.sh", result.Files);
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.True(File.GetUnixFileMode(Path.Combine(output, "edit.sh")).HasFlag(UnixFileMode.OtherExecute));
+            Assert.True(File.GetUnixFileMode(Path.Combine(output, "editor", "Sage.Host")).HasFlag(UnixFileMode.OtherExecute));
+        }
+    }
+
+    [Fact]
+    public void AnEditorHostWithoutTheEditorOrTheGamesOwnHostIsRefused()
+    {
+        string host = Host(), root = TestEnv.NewTempDir(), game = Game(root), output = Path.Combine(root, "out");
+
+        var shipping = GamePackage.Run(new PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host, EditorHostDirectory = Host() });
+        Assert.Contains("Sage.Editor.dll", shipping.Errors.Single());
+        Assert.False(Directory.Exists(output));
+
+        var missing = GamePackage.Run(new PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host,
+                                                           EditorHostDirectory = Path.Combine(root, "nowhere") });
+        Assert.Contains("No editor host", missing.Errors.Single());
+        Assert.False(Directory.Exists(output));
+    }
+
     [Fact]
     public void AGameNotBuiltInTheConfigurationOrAnOutputFolderInTheWayIsAnErrorThatWritesNothing()
     {
