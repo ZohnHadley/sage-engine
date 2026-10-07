@@ -184,8 +184,13 @@ public static class Combat
         var landed = Hitboxes.Resolve(in result);   // a hitbox is its owner's (issue #137)
         if (landed.Target.IsNull) return 0f;
         if (!Factions.MayHurt(world, request.Attacker, landed.Target)) return 0f;
-        var damage = new DamageInfo(request.Attacker, landed.Target, attack.DamageType, attack.Damage, landed.Point, request.Aim) { Sound = attack.Sound.Id };
-        return ApplyHit(world, in damage, in landed, attack.Effects);
+        // The weapon's condition scales the blow, and the blow wears the weapon (issue #382).
+        var records = world.Resources.Get<RecordStore>();
+        float amount = attack.Damage * Durability.DamageScale(world, request.Attacker, request.Attack, records);
+        var damage = new DamageInfo(request.Attacker, landed.Target, attack.DamageType, amount, landed.Point, request.Aim) { Sound = attack.Sound.Id };
+        float applied = ApplyHit(world, in damage, in landed, attack.Effects);
+        if (world.IsAlive(request.Attacker)) Durability.Landed(world, request.Attacker, request.Attack, records);
+        return applied;
     }
 
     // The pipeline itself: `damage` is what was asked for (who, how much, of what, which way) and
@@ -240,6 +245,7 @@ public static class Combat
         if (location != null)
             foreach (var effect in location.Effects) Effects.Apply(world, hit.Target, effect, hit.Attacker);
 
+        Durability.Hurt(world, hit.Target, records);   // what it wears takes the blow too (issue #382)
         world.Events.Send(new Damaged(hit, applied));
         return applied;
     }

@@ -152,6 +152,45 @@
       "items": {
         "$ref": "vocabularies.schema.json#/definitions/item_use"
       }
+    },
+    "durability": {
+      "description": "(ItemDurability)",
+      "type": "object",
+      "properties": {
+        "wearPerHit": {
+          "description": "Condition a weapon loses each time a blow it dealt lands; 0 = it never wears from use. Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wearWhenStruck": {
+          "description": "Condition a worn item (armour, a shield) loses each time its wearer is hurt; 0 = none. Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wornDamage": {
+          "description": "Damage multiplier at condition 0 (0 = a broken weapon does nothing); between it and full damage the scale is linear. At least 0. (float)",
+          "type": "number",
+          "minimum": 0
+        },
+        "fullDamageAt": {
+          "description": "Condition at or above which it does full damage. Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "breaks": {
+          "description": "What reaching condition 0 does: Unequip (it comes off until repaired), Remove (it is destroyed) or Keep (it stays, at the worn damage) (ItemBreak)",
+          "type": "string",
+          "enum": [
+            "Unequip",
+            "Remove",
+            "Keep"
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
