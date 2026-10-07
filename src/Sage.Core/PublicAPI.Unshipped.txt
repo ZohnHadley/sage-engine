@@ -98,3 +98,22 @@ static Sage.Core.MountLookup.Find(Sage.Core.VirtualPath path, string! mountNames
 static Sage.Core.MountLookup.OverrideOf(string! ns, Sage.Core.VirtualPath path) -> Sage.Core.VirtualPath
 static Sage.Core.MountLookup.Replaces(Sage.Core.VirtualPath path) -> (string! Namespace, Sage.Core.VirtualPath Path)?
 static Sage.Core.VirtualPath.InNamespace(string! ns, Sage.Core.VirtualPath path) -> Sage.Core.VirtualPath
+const Sage.Core.ModManifest.PackageExtension = ".sagemod" -> string!
+override Sage.Core.ZipMount.ToString() -> string!
+Sage.Core.ModManifest.IsPackage.get -> bool
+Sage.Core.ModPackage
+Sage.Core.ZipMount
+Sage.Core.ZipMount.ArchivePath.get -> string!
+Sage.Core.ZipMount.Count.get -> int
+Sage.Core.ZipMount.Dispose() -> void
+Sage.Core.ZipMount.Enumerate(Sage.Core.VirtualPath? directory, string! searchPattern, bool recursive) -> System.Collections.Generic.IEnumerable<Sage.Core.VirtualPath>!
+Sage.Core.ZipMount.Exists(Sage.Core.VirtualPath path) -> bool
+Sage.Core.ZipMount.Name.get -> string!
+Sage.Core.ZipMount.Open(Sage.Core.VirtualPath path) -> System.IO.Stream!
+Sage.Core.ZipMount.PhysicalPath(Sage.Core.VirtualPath path) -> string?
+Sage.Core.ZipMount.RecordNamespace.get -> string!
+Sage.Core.ZipMount.WritablePath(Sage.Core.VirtualPath path) -> string?
+Sage.Core.ZipMount.ZipMount(string! name, string! file, string! recordNamespace) -> void
+static Sage.Core.ModManifest.IsPackagePath(string! path) -> bool
+static Sage.Core.ModPackage.DefaultFileName(Sage.Core.ModManifest! mod) -> string!
+static Sage.Core.ModPackage.Pack(string! folder, string? output = null) -> (Sage.Core.ModManifest! Mod, int Files, string! Output)

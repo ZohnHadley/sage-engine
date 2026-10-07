@@ -50,7 +50,7 @@ public sealed class ModManifest
     public List<string> Assemblies { get; set; } = new();
     public string? Kind { get; set; }
 
-    // The mod's folder (its mount root), set by Load.
+    // The mod's folder (its mount root), or its `.sagemod` file when IsPackage; set by Load.
     public string Directory { get; private set; } = "";
 
     public SemVersion SemVersion => SemVersion.Parse(Version, $"mod '{Id}' \"version\"");
@@ -61,15 +61,42 @@ public sealed class ModManifest
     public IEnumerable<string> AssemblyPaths =>
         Assemblies.Select(a => Path.GetFullPath(Path.Combine(Directory, a.Replace("{config}", BuildInfo.ConfigurationName))));
 
+    // A packed mod (issue #397): Directory is a `.sagemod` zip, mounted as a ZipMount, rather than a folder.
+    public bool IsPackage { get; private set; }
+
+    // The file extension of a packed mod: a zip with mod.json at its root, laid out as the mod's folder is.
+    public const string PackageExtension = ".sagemod";
+
+    // Whether a path names a packed mod (an existing `.sagemod` file) rather than a mod's folder.
+    public static bool IsPackagePath(string path) =>
+        path.EndsWith(PackageExtension, StringComparison.OrdinalIgnoreCase) && File.Exists(path);
+
+    // A mod's folder, or a `.sagemod` (issue #397), whose archive is checked as its mount will be (ZipMount):
+    // one that breaks a rule is an InvalidDataException naming it.
     public static ModManifest Load(string folder)
     {
-        string path = Path.Combine(folder, "mod.json");
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"No mod.json in {Path.GetFullPath(folder)}.");
+        bool package = IsPackagePath(folder);
+        string path = package ? Path.GetFullPath(folder) + "!/mod.json" : Path.Combine(folder, "mod.json");
+        string text;
+        if (package)
+        {
+            using var zip = new ZipMount("mod", folder, "mod");
+            var json = VirtualPath.Parse("mod.json");
+            if (!zip.Exists(json))
+                throw new FileNotFoundException($"No mod.json at the root of {Path.GetFullPath(folder)}.");
+            using var reader = new StreamReader(zip.Open(json));
+            text = reader.ReadToEnd();
+        }
+        else
+        {
+            if (!File.Exists(path))
+                throw new FileNotFoundException($"No mod.json in {Path.GetFullPath(folder)}.");
+            text = File.ReadAllText(path);
+        }
         ModManifest? manifest;
         try
         {
-            manifest = JsonSerializer.Deserialize<ModManifest>(File.ReadAllText(path), new JsonSerializerOptions
+            manifest = JsonSerializer.Deserialize<ModManifest>(text, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 ReadCommentHandling = JsonCommentHandling.Skip,
@@ -92,6 +119,7 @@ public sealed class ModManifest
             throw new InvalidDataException($"{path}: {ex.Message}", ex);
         }
         manifest.Directory = Path.GetFullPath(folder);
+        manifest.IsPackage = package;
         if (manifest.Name.Length == 0) manifest.Name = manifest.Id;
         return manifest;
     }
