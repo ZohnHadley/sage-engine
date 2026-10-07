@@ -1079,7 +1079,9 @@
       "type": "string",
       "enum": [
         "kitscreens:rope",
-        "rope"
+        "lantern",
+        "rope",
+        "village:lantern"
       ]
     },
     "record:rumble": {
@@ -2691,7 +2693,9 @@
       "type": "string",
       "enum": [
         "kitscreens:rope",
-        "rope"
+        "lantern",
+        "rope",
+        "village:lantern"
       ]
     },
     "base:rumble": {

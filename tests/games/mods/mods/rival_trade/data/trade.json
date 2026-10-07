@@ -5,6 +5,16 @@
     "reach": 3.0, "radius": 0.25, "arcDegrees": 30,
     "windupTime": 0.2, "recoverTime": 0.25, "cooldown": 0.6
   },
+  // Its own falchion, drawn from its own textures/falchion.png. better_blades ships a file at that path
+  // too, and each mod's records see their own (engine issue #398): a bare asset path only this mod ships
+  // is this mod's (`rival_trade:textures/falchion.png`), so neither hides the other and there is no conflict.
+  {
+    "type": "sprite_sheet", "id": "falchion_flat", "texture": "textures/falchion.png", "directions": 1,
+    "size": [0.4, 0.8], "material": "sage:sprite_lit", "frames": [ { "rect": [0, 0, 16, 32] } ]
+  },
+  { "type": "item", "id": "falchion", "label": "rival falchion", "slot": "MainHand", "attack": "spear_thrust",
+    "sheet": "falchion_flat", "weight": 3, "value": 25 },
+  { "type": "rpg_item", "id": "falchion", "icon": "textures/falchion.png" },
   { "type": "item", "id": "spear", "label": "spear", "slot": "MainHand", "attack": "spear_thrust", "weight": 4, "value": 20 },
 
   // The same trader as better_blades patches: `items+` merges with its `items+`, and `name` is set by both

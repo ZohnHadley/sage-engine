@@ -1,7 +1,9 @@
 {
   // A second data mod for tests/games/mods (engine issue #200; docs/MODDING.md), written as if by someone
   // else: it renames the same trader (a conflict with better_blades, which the later mod wins), adds its own
-  // spear to his stock (merged, not a conflict), places a stall, and re-skins better_blades' falchion.
+  // spear to his stock (merged, not a conflict), places a stall, has a falchion of its own drawn from its own
+  // textures/falchion.png (better_blades ships one at that path too; each sees its own), and replaces the game's
+  // lantern picture on purpose (`@village/textures/lantern.png`: an override).
   // With no constraint between the two, the player's order decides, then the id: rival_trade loads last.
   "id": "rival_trade",
   "name": "Rival Trade",
