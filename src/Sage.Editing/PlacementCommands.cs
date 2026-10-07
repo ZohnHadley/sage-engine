@@ -83,19 +83,51 @@ public sealed class RemovePlacement : IEditorCommand
 }
 
 // The fields of a placement that say where it stands and what it is called: its `at`, its `yaw`, its
-// `name` and the frame `at` is in (`relativeTo`; null is the document's).
+// `name` and the frame `at` is in (`relativeTo`; null is the document's); and (issue #367) the rest of its
+// rotation, `pitch` and `roll`, and its `scale`, which a `new PlacementFields(...)` leaves at 0, 0 and 1.
 [Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
 public readonly record struct PlacementFields(Vector3 At, float Yaw, string Name, PlacementFrame? RelativeTo)
 {
+    public float Pitch { get; init; }
+    public float Roll { get; init; }
+    public Vector3 Scale { get; init; } = Vector3.One;
+
+    // Yaw, pitch and roll as one rotation (Placement.PlacementRotation's composition).
+    public Quaternion Rotation => Quaternion.CreateFromYawPitchRoll(Yaw * MathF.PI / 180f, Pitch * MathF.PI / 180f, Roll * MathF.PI / 180f);
+
+    // The same fields turned to `rotation`, as yaw, pitch and roll in degrees (SageMath.YawPitchRollOf).
+    public PlacementFields WithRotation(Quaternion rotation)
+    {
+        var angles = SageMath.YawPitchRollOf(rotation) * (180f / MathF.PI);
+        return this with { Yaw = Clean(angles.X), Pitch = Clean(angles.Y), Roll = Clean(angles.Z) };
+    }
+
     public static PlacementFields Of(Placement placement) =>
-        new(placement.At, placement.Yaw, placement.Name, placement.RelativeTo);
+        new(placement.At, placement.Yaw, placement.Name, placement.RelativeTo)
+        {
+            Pitch = placement.Pitch,
+            Roll = placement.Roll,
+            Scale = placement.Scale,
+        };
 
     internal void ApplyTo(Placement placement)
     {
         placement.At = At;
         placement.Yaw = Yaw;
+        placement.Pitch = Pitch;
+        placement.Roll = Roll;
+        placement.Scale = Scale;
         placement.Name = Name ?? "";
         placement.RelativeTo = RelativeTo;
+    }
+
+    // Angles that came back from a quaternion: what is within a thousandth of a degree of a whole one is
+    // that whole one, so turning a crate four quarter turns leaves "0", not "-0.0000153", in the file.
+    private static float Clean(float degrees)
+    {
+        float whole = MathF.Round(degrees);
+        float result = MathF.Abs(degrees - whole) < 1e-3f ? whole : degrees;
+        return ViewportTools.WrapDegrees(result) + 0f;
     }
 }
 
@@ -125,8 +157,11 @@ public sealed class SetPlacement : IEditorCommand
         {
             string what = _before.Name.Length > 0 ? _before.Name : AddPlacement.Label(Placement);
             if (_before.Name != _after.Name) return $"Rename {what} to {_after.Name}";
-            if (_before.At != _after.At && _before.Yaw == _after.Yaw) return $"Move {what}";
-            if (_before.At == _after.At && _before.Yaw != _after.Yaw) return $"Rotate {what}";
+            bool moved = _before.At != _after.At, scaled = _before.Scale != _after.Scale;
+            bool turned = _before.Yaw != _after.Yaw || _before.Pitch != _after.Pitch || _before.Roll != _after.Roll;
+            if (moved && !turned && !scaled) return $"Move {what}";
+            if (turned && !scaled) return $"Rotate {what}";
+            if (scaled && !turned) return $"Scale {what}";
             return $"Set {what}";
         }
     }

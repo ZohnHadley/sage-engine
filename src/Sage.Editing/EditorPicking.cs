@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
@@ -72,6 +73,22 @@ public static class EditorPicking
             best = new PickResult(entity, ray.At(d), d);
         }
         return best;
+    }
+
+    // Box select (issue #367): the open document's placements whose position `camera` draws inside the
+    // screen rectangle between two corners (pixels, either order), in the document's order. A placement
+    // behind the camera is never in it.
+    public static List<Placement> PlacementsInBox(EditDocument document, in ViewportCamera camera, Vector2 corner, Vector2 otherCorner)
+    {
+        var found = new List<Placement>();
+        if (!document.IsOpen) return found;
+        Vector2 min = Vector2.Min(corner, otherCorner), max = Vector2.Max(corner, otherCorner);
+        foreach (var placement in document.Placements)
+        {
+            if (camera.ToScreen(ViewportTools.OriginOf(document, placement)) is not { } at) continue;
+            if (at.X >= min.X && at.X <= max.X && at.Y >= min.Y && at.Y <= max.Y) found.Add(placement);
+        }
+        return found;
     }
 
     // Distance along the ray to the sphere's near surface (0 when the ray starts inside), or null.

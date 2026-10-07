@@ -40,7 +40,7 @@ namespace Sage.Editing;
 public sealed class InspectorModel
 {
     // The placement's own fields, as `ed_set <name> at 1 2 3` names them.
-    public static readonly IReadOnlyList<string> PlacementFieldNames = new[] { "at", "yaw", "name", "relativeTo" };
+    public static readonly IReadOnlyList<string> PlacementFieldNames = new[] { "at", "yaw", "pitch", "roll", "scale", "name", "relativeTo" };
 
     private readonly List<InspectorGroup> _groups = new();
 
@@ -331,11 +331,16 @@ public sealed class InspectorModel
     private bool SetPlacementField(FieldMetadata field, object? value, out string error)
     {
         error = "";
+        if (value is System.Numerics.Vector3 scale && field.JsonName == "scale" && !(scale.X > 0f && scale.Y > 0f && scale.Z > 0f))
+            return Fail(out error, "a scale must be above 0 on every axis");
         var fields = PlacementFields.Of(Placement!);
         fields = field.JsonName switch
         {
             "at" => fields with { At = (System.Numerics.Vector3)value! },
             "yaw" => fields with { Yaw = (float)value! },
+            "pitch" => fields with { Pitch = (float)value! },
+            "roll" => fields with { Roll = (float)value! },
+            "scale" => fields with { Scale = (System.Numerics.Vector3)value! },
             "name" => fields with { Name = (string?)value ?? "" },
             _ => fields with { RelativeTo = (PlacementFrame?)value },
         };

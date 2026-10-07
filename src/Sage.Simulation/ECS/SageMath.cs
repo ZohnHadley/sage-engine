@@ -45,6 +45,29 @@ public static class SageMath
     // The yaw an entity with this rotation faces: its local forward, in world space.
     public static float YawOf(Quaternion rotation) => YawOf(Vector3.Transform(TransformMath.Forward, rotation));
 
+    // The yaw, pitch and roll (radians, as X, Y and Z) that Quaternion.CreateFromYawPitchRoll turns back
+    // into `rotation` (issue #367: a placement's full rotation). Yaw and roll are in (-PI, PI], pitch in
+    // [-PI/2, PI/2]. Facing straight up or down, yaw and roll turn about the same axis: it is all yaw then.
+    public static Vector3 YawPitchRollOf(Quaternion rotation)
+    {
+        rotation = Quaternion.Normalize(rotation);
+        Vector3 forward = Vector3.Transform(TransformMath.Forward, rotation);
+        float pitch = MathF.Asin(Math.Clamp(forward.Y, -1f, 1f));
+        float yaw;
+        if (MathF.Abs(forward.Y) < 0.99999f) yaw = YawOf(forward);
+        else
+        {
+            // Pitched a quarter turn, the up vector lies flat where the front would be had it not tipped.
+            Vector3 up = Vector3.Transform(Vector3.UnitY, rotation);
+            yaw = YawOf(forward.Y > 0f ? -up : up);
+        }
+        // What is left once the yaw and pitch are taken back out is a turn about -Z: the roll.
+        Vector3 right = Vector3.Transform(Vector3.UnitX, rotation);
+        Vector3 unturned = Vector3.Transform(right, Quaternion.Inverse(Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0f)));
+        float roll = MathF.Atan2(unturned.Y, unturned.X);
+        return new Vector3(WrapPi(yaw), pitch, WrapPi(roll));
+    }
+
     // The yaw that looks from `from` toward `to`, ignoring height.
     public static float YawTo(Vector3 from, Vector3 to) => YawOf(to - from);
 
