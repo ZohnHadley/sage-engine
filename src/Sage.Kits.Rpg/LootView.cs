@@ -16,7 +16,6 @@ public sealed class LootView : ItemGridView
 {
     public const string TakeAllButton = "take_all";
 
-    private readonly List<(RecordId Item, int Count)> _scratch = new();
     private Entity _named;
 
     public LootView() : this(new ItemGrid(), new ItemGrid()) { }
@@ -64,26 +63,21 @@ public sealed class LootView : ItemGridView
     {
         var text = RpgText.Of(world);
         if (!world.TryGet<Inventory>(from, out var inventory) || inventory.Items == null) { Message = ""; return 0; }
-        _scratch.Clear();
-        foreach (var stack in inventory.Items)
-            if (stack.Count > 0) _scratch.Add((stack.Item, stack.Count));
+        var stacks = inventory.Items;
 
+        // Stack by stack, instance and all (issue #383): a stack that goes leaves the next one at its index.
         int taken = 0, left = 0;
         string firstLeft = "";
         var records = world.Records();
-        foreach (var (item, count) in _scratch)
+        for (int i = 0; i < stacks.Count;)
         {
-            records.TryGet(item, out ItemRecord record);
-            float weight = (record?.Weight ?? 0f) * count;
-            bool fits = world.TryGet<Inventory>(to, out var bag)
-                        && (bag.Capacity <= 0f || world.WeightOf(to) + weight <= bag.Capacity);
-            if (fits && world.Take(from, item, count))
-            {
-                if (world.Give(to, item, count)) { taken++; continue; }
-                world.Give(from, item, count);
-            }
+            var stack = stacks[i];
+            if (stack.Count <= 0) { i++; continue; }
+            if (world.MoveTo(from, i, to, stack.Count)) { taken++; Containers.Took(world, to, from, stack.Item, stack.Count); continue; }
+            records.TryGet(stack.Item, out ItemRecord record);
             left++;
-            if (firstLeft.Length == 0) firstLeft = text.Text(record?.Describe(item) ?? item.Name);
+            if (firstLeft.Length == 0) firstLeft = text.Text(record?.Describe(stack.Item, stack.Instance) ?? stack.Item.Name);
+            i++;
         }
         Message = left == 0 ? "" : text.Format("@rpg.loot.left", ("count", left), ("item", firstLeft));
         return taken;
