@@ -131,6 +131,12 @@ public sealed class ModManifest
         }
         foreach (string other in LoadAfter.Concat(LoadBefore).Concat(Incompatible))
             if (!IsNamespace(other)) throw new FormatException($"'{other}' is not a mod id (in loadAfter, loadBefore or incompatible).");
+        // A mod naming itself, or needing a mod it says it can't load with, is a mistake the load order would
+        // only make confusing (a dependency always loads first, so the incompatibility refuses it) (#401).
+        if (Dependencies.ContainsKey(Id) || LoadAfter.Contains(Id) || LoadBefore.Contains(Id) || Incompatible.Contains(Id))
+            throw new FormatException($"it names its own id '{Id}' in dependencies, loadAfter, loadBefore or incompatible.");
+        if (Dependencies.Keys.FirstOrDefault(Incompatible.Contains) is { } both)
+            throw new FormatException($"'{both}' is both a dependency and incompatible.");
         if (Kind != null && !string.Equals(Kind, "data", StringComparison.OrdinalIgnoreCase) && !string.Equals(Kind, "code", StringComparison.OrdinalIgnoreCase))
             throw new FormatException($"\"kind\" is 'data' or 'code', not '{Kind}'.");
     }

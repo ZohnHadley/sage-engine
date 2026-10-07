@@ -93,6 +93,11 @@ public readonly struct RecordWrite
     // The base the record inherited this write from; empty when it is the record's own.
     public RecordId Via { get; }
 
+    // The record as the file that made this write has it — the whole definition or patch, `patch`,
+    // `field+` and all — read back from the bytes the load kept, when asked (issue #401: the editor's
+    // conflict view shows what each mod wrote). Null for a write with no file.
+    public System.Text.Json.Nodes.JsonObject? Written() => _write.Source.File == null ? null : _write.Source.Record();
+
     public override string ToString() =>
         $"{Op.ToString().ToLowerInvariant()} {(Path.Length == 0 ? "(record)" : Path)}  {At}" + (Via.IsEmpty ? "" : $" (via base {Via})");
 }
