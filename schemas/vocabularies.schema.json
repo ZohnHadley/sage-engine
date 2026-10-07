@@ -5741,14 +5741,198 @@
         }
       ]
     },
+    "ai_measure:id": {
+      "description": "An ai_measure by id: health, noise_loudness, squad_engaged, squad_size, target_distance.",
+      "type": "string",
+      "enum": [
+        "Health",
+        "NoiseLoudness",
+        "SquadEngaged",
+        "SquadSize",
+        "TargetDistance",
+        "health",
+        "noise_loudness",
+        "squad_engaged",
+        "squad_size",
+        "target_distance"
+      ]
+    },
+    "ai_measure": {
+      "description": "An ai_measure: its id, or { \"kind\": \"<id>\", … } with its settings.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ai_measure:id"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "$ref": "#/definitions/ai_measure:id"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "health",
+                      "Health"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_measure: health.",
+                    "enum": [
+                      "health",
+                      "Health"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_measure 'health' (HealthMeasure)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "noise_loudness",
+                      "NoiseLoudness"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_measure: noise_loudness.",
+                    "enum": [
+                      "noise_loudness",
+                      "NoiseLoudness"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_measure 'noise_loudness' (NoiseLoudnessMeasure)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "squad_engaged",
+                      "SquadEngaged"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_measure: squad_engaged.",
+                    "enum": [
+                      "squad_engaged",
+                      "SquadEngaged"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_measure 'squad_engaged' (SquadEngagedMeasure)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "squad_size",
+                      "SquadSize"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_measure: squad_size.",
+                    "enum": [
+                      "squad_size",
+                      "SquadSize"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_measure 'squad_size' (SquadSizeMeasure)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "target_distance",
+                      "TargetDistance"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_measure: target_distance.",
+                    "enum": [
+                      "target_distance",
+                      "TargetDistance"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_measure 'target_distance' (TargetDistanceMeasure)."
+              }
+            }
+          ]
+        }
+      ]
+    },
     "ai_schedule_selector:id": {
-      "description": "An ai_schedule_selector by id: default, rules.",
+      "description": "An ai_schedule_selector by id: default, rules, utility.",
       "type": "string",
       "enum": [
         "Default",
         "Rules",
+        "Utility",
         "default",
-        "rules"
+        "rules",
+        "utility"
       ]
     },
     "ai_schedule_selector": {
@@ -5824,6 +6008,35 @@
                 },
                 "additionalProperties": false,
                 "description": "ai_schedule_selector 'rules' (RulesScheduleSelector)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "utility",
+                      "Utility"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_schedule_selector: utility.",
+                    "enum": [
+                      "utility",
+                      "Utility"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_schedule_selector 'utility' (UtilityScheduleSelector)."
               }
             }
           ]

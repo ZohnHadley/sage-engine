@@ -75,7 +75,7 @@
       "type": "number"
     },
     "selector": {
-      "description": "How it picks a schedule; empty = \"rules\" with rules, else \"default\". (string, default \"\")",
+      "description": "How it picks a schedule; empty = \"rules\" with rules, \"utility\" with utility options, else \"default\". (string, default \"\")",
       "default": "",
       "anyOf": [
         {
@@ -261,6 +261,747 @@
                 "$ref": "ids.schema.json#/definitions/record:ai_schedule"
               }
             ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "utility": {
+      "description": "(List<AIUtilityOption>)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "description": "The schedule it runs when it scores best. Names a ai_schedule record. (RecordRef<AIScheduleRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+              }
+            ]
+          },
+          "score": {
+            "description": "Its score before its considerations. (float)",
+            "type": "number"
+          },
+          "considerations": {
+            "description": "(List<AIConsideration>)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "considerations+": {
+            "description": "Adds to \"considerations\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "considerations-": {
+            "description": "Removes these from \"considerations\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "utility+": {
+      "description": "Adds to \"utility\": what a base or an earlier definition listed, then these.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "description": "The schedule it runs when it scores best. Names a ai_schedule record. (RecordRef<AIScheduleRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+              }
+            ]
+          },
+          "score": {
+            "description": "Its score before its considerations. (float)",
+            "type": "number"
+          },
+          "considerations": {
+            "description": "(List<AIConsideration>)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "considerations+": {
+            "description": "Adds to \"considerations\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "considerations-": {
+            "description": "Removes these from \"considerations\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "utility-": {
+      "description": "Removes these from \"utility\" (as a base or an earlier definition listed it).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "description": "The schedule it runs when it scores best. Names a ai_schedule record. (RecordRef<AIScheduleRecord>)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+              }
+            ]
+          },
+          "score": {
+            "description": "Its score before its considerations. (float)",
+            "type": "number"
+          },
+          "considerations": {
+            "description": "(List<AIConsideration>)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "considerations+": {
+            "description": "Adds to \"considerations\": what a base or an earlier definition listed, then these.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "considerations-": {
+            "description": "Removes these from \"considerations\" (as a base or an earlier definition listed it).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "description": "Conditions that must all hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when+": {
+                  "description": "Adds to \"when\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "when-": {
+                  "description": "Removes these from \"when\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless": {
+                  "description": "Conditions none of which may hold for it to count. (List<string>)",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless+": {
+                  "description": "Adds to \"unless\": what a base or an earlier definition listed, then these.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "unless-": {
+                  "description": "Removes these from \"unless\" (as a base or an earlier definition listed it).",
+                  "type": "array",
+                  "items": {
+                    "$ref": "vocabularies.schema.json#/definitions/ai_condition:id"
+                  }
+                },
+                "measure": {
+                  "description": "What it scales by (an ai_measure); empty = it adds `add` whole. (string)",
+                  "anyOf": [
+                    {
+                      "$ref": "vocabularies.schema.json#/definitions/ai_measure:id"
+                    },
+                    {
+                      "const": ""
+                    }
+                  ]
+                },
+                "from": {
+                  "description": "The measure at which it adds nothing. (float)",
+                  "type": "number"
+                },
+                "to": {
+                  "description": "The measure at which it adds all of `add` (below `from` to count more as the measure falls) (float)",
+                  "type": "number"
+                },
+                "add": {
+                  "description": "What it adds to the score, at most (negative to count against) (float)",
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "additionalProperties": false

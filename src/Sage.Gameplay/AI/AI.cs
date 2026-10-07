@@ -73,11 +73,14 @@ public sealed class AIProfileRecord
     public float TurnSpeedDegrees = 360f;
 
     // How it picks a schedule (issue #28): an `ai_schedule_selector` by id. Empty is `rules` when the
-    // profile has rules and `default` (the engine's choice, through the conventions' schedules) when not.
-    [VocabularyRef("ai_schedule_selector"), Property(Tooltip = "How it picks a schedule; empty = \"rules\" with rules, else \"default\"")]
+    // profile has rules, `utility` when it has utility options (#387) and `default` (the engine's choice,
+    // through the conventions' schedules) when neither.
+    [VocabularyRef("ai_schedule_selector"), Property(Tooltip = "How it picks a schedule; empty = \"rules\" with rules, \"utility\" with utility options, else \"default\"")]
     public string Selector = "";
     // The `rules` selector's: the first rule whose conditions hold names the schedule (AIScheduleRule).
     public List<AIScheduleRule> Rules = new();
+    // The `utility` selector's (issue #387, Utility.cs): the option scoring best runs; none above 0 is `default`.
+    public List<AIUtilityOption> Utility = new();
 
     // Its day (issue 4g-4): a `routine` record, which picks a schedule and a place by the hour whenever
     // nothing more pressing (a fight) does. An entity's own `routine` part wins over this.
@@ -140,6 +143,10 @@ public struct AIState : IComponent
     public RecordId Profile;
     [RecordRef("ai_schedule"), Property(Category = "Brain", Tooltip = "The task list it runs")]
     public RecordId Schedule;
+    // A behaviour tree it runs in place of schedules (issue #387, BehaviourTrees.cs); empty: schedules. While a
+    // tree runs, `TaskIndex` is the tree's running leaf (its node, counted depth first from the root at 0).
+    [RecordRef("behaviour_tree"), Property(Category = "Brain", Tooltip = "A behaviour tree it runs in place of schedules; empty = schedules")]
+    public RecordId Tree;
     [Property(Category = "Running", Min = 0, Tooltip = "Which task of the schedule it is on")]
     public int TaskIndex;                  // where in the schedule; bounds-checked on use
     [Transient] public ulong Conditions;   // Perceive rebuilds it wholesale every think
@@ -164,6 +171,17 @@ public struct AIState : IComponent
     [Transient] public Entity HeardSource;
     [Transient] public float HeardUntil;
     internal bool HeardNew;                 // heard since its last think: `HearNoise` on the next
+
+    // What its behaviour tree has written down (issue #387): named numbers its `set` nodes write and its
+    // `check` nodes read. Saved, so what it decided survives a load; the tree's place in itself does not.
+    [Property(Category = "Running", Tooltip = "Named numbers its behaviour tree keeps (`set` and `check` nodes)")]
+    public List<AIBlackboardEntry>? Blackboard;
+    internal BehaviourTreeRun? TreeRun;     // where the tree is: rebuilt (from the root) after a load or a reload
+
+    // What a combat-movement task (issue #388, CombatMovement.cs) settled on when it started: the side it
+    // steps to and the place it makes for (cover). Never saved: a loaded creature starts its task again.
+    internal sbyte MoveSide;
+    internal Vector3 MoveGoal;
 
     // Where its routine has it now (issue 4g-4, Routines.cs). Internal, so never saved: the entry is worked
     // out from the clock and the anchor found by name again after a load.
@@ -308,6 +326,14 @@ public sealed class AITaskRegistry
         Register("FaceNoise", new FaceNoiseTask());
         Register("MoveToNoise", new MoveToNoiseTask());
         Register("ForgetNoise", new ForgetNoiseTask());
+        // Combat movement and squads' (issue #388, CombatMovement.cs).
+        Register("Strafe", new StrafeTask());
+        Register("RetreatToRange", new RetreatToRangeTask());
+        Register("TakeCover", new TakeCoverTask());
+        Register("Flee", new FleeTask());
+        Register("HealSelf", new HealSelfTask());
+        Register("Flank", new FlankTask());
+        Register("CallForHelp", new CallForHelpTask());
     }
 
     public void Register(string name, IAITask task) => _tasks[name] = task;
@@ -328,6 +354,13 @@ public sealed class AITaskRegistry
         "movetoanchor" => MoveToAnchorTask.ArgumentName,
         "stayat" => StayAtTask.ArgumentName,
         "movetonoise" => MoveToNoiseTask.ArgumentName,
+        "strafe" => StrafeTask.ArgumentName,
+        "retreattorange" => RetreatToRangeTask.ArgumentName,
+        "takecover" => TakeCoverTask.ArgumentName,
+        "flee" => FleeTask.ArgumentName,
+        "healself" => HealSelfTask.ArgumentName,
+        "flank" => FlankTask.ArgumentName,
+        "callforhelp" => CallForHelpTask.ArgumentName,
         _ => "<argument>",
     };
 }

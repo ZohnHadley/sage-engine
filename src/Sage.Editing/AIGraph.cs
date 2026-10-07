@@ -15,6 +15,7 @@ public enum AIGraphKind
     StateMachine,   // `state_machine`: states, nested states and parallel regions; transitions are the edges
     Schedule,       // `ai_schedule`: its tasks, in order
     Routine,        // `routine`: its entries, in order
+    BehaviourTree,  // `behaviour_tree` (#387): its nodes from the root, composites and decorators holding theirs
 }
 
 // A transition, drawn as an edge: where it goes and what takes it ("on Calm", "after 3s", "when {...}").
@@ -74,8 +75,9 @@ public sealed class AIGraphNode
 // (a base assembly) needs nothing of the gameplay layer that owns schedules and routines. A routine has
 // no live node here: which entry is in force is the gameplay layer's arithmetic on the clock.
 //
-// There is no `behaviour_tree` record in the engine: an agent's decisions are a schedule chosen by
-// conditions (HL1, docs/design/16 §3.4), and level logic's are state machines; those are the AI graphs.
+// A `behaviour_tree` (issue #387) is drawn from its `root`: a composite's (`sequence`, `selector`, `utility`)
+// nodes and a decorator's one node are inside it, a node's guard is in its label, and a creature running it
+// has the task node it is on active, with every node above it.
 [Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
 public sealed class AIGraph
 {
@@ -99,6 +101,7 @@ public sealed class AIGraph
         "state_machine" => AIGraphKind.StateMachine,
         "ai_schedule" => AIGraphKind.Schedule,
         "routine" => AIGraphKind.Routine,
+        "behaviour_tree" => AIGraphKind.BehaviourTree,
         _ => null,
     };
 
@@ -110,7 +113,7 @@ public sealed class AIGraph
     public AIGraphKind Kind { get; }
 
     // Whether its nodes hold nodes (a machine's states do; a list's steps do not).
-    public bool IsTree => Kind == AIGraphKind.StateMachine;
+    public bool IsTree => Kind is AIGraphKind.StateMachine or AIGraphKind.BehaviourTree;
 
     // Every node, depth first in the order the record writes them (a parent before what is inside it).
     public IReadOnlyList<AIGraphNode> Nodes => _nodes ??= Build();
@@ -129,6 +132,9 @@ public sealed class AIGraph
             if (string.Equals(node.Path, key, StringComparison.OrdinalIgnoreCase)) return node;
         if (Kind == AIGraphKind.StateMachine)
             return Nodes.FirstOrDefault(n => string.Equals(n.Name, key, StringComparison.OrdinalIgnoreCase));
+        // A tree's node by its name (the first of that name), else by its number counted depth first.
+        if (Kind == AIGraphKind.BehaviourTree && Nodes.FirstOrDefault(n => string.Equals(n.Name, key, StringComparison.OrdinalIgnoreCase)) is { } named)
+            return named;
         string number = key.StartsWith('#') ? key[1..] : key;
         return int.TryParse(number, NumberStyles.None, CultureInfo.InvariantCulture, out int i) && i < Nodes.Count ? Nodes[i] : null;
     }
@@ -146,6 +152,9 @@ public sealed class AIGraph
                 if (Get(root, StatesKey) is JsonObject states)
                     AddStates(nodes, states, ChildPath("", KeyOf(root, StatesKey)!), null, Text(Get(root, InitialKey)), 0);
                 if (Get(root, TransitionsKey) is JsonArray any) _any = Edges(any);
+                break;
+            case AIGraphKind.BehaviourTree:
+                if (KeyOf(root, RootKey) is { } rootKey && root[rootKey] is { } top) AddTreeNode(nodes, top, ChildPath("", rootKey), null, 0, 0);
                 break;
             case AIGraphKind.Schedule:
             case AIGraphKind.Routine:
@@ -234,6 +243,7 @@ public sealed class AIGraph
     public bool Add(string? parent, string name, JsonNode? body = null, int index = -1)
     {
         if (string.IsNullOrWhiteSpace(name)) return Refuse("a new node needs a name");
+        if (Kind == AIGraphKind.BehaviourTree) return AddTreeNode(parent, name, body, index);
         var working = Clone();
         if (Kind == AIGraphKind.StateMachine)
         {
@@ -265,6 +275,7 @@ public sealed class AIGraph
     public bool Remove(string key)
     {
         if (Find(key) is not { } node) return Refuse($"no node '{key}'");
+        if (Kind == AIGraphKind.BehaviourTree) return RemoveTreeNode(node);
         var working = Clone();
         if (Kind != AIGraphKind.StateMachine)
         {
@@ -288,6 +299,7 @@ public sealed class AIGraph
     public bool Move(string key, int index)
     {
         if (Find(key) is not { } node) return Refuse($"no node '{key}'");
+        if (Kind == AIGraphKind.BehaviourTree) return MoveTreeNode(node, index);
         var working = Clone();
         if (Kind != AIGraphKind.StateMachine)
         {
@@ -313,6 +325,7 @@ public sealed class AIGraph
     // into itself or a state inside it. Lists have no parents to move between.
     public bool Reparent(string key, string? parent, int index = -1)
     {
+        if (Kind == AIGraphKind.BehaviourTree) return Refuse("a behaviour tree's node moves among its siblings with Move; to put it elsewhere, remove it and add it there");
         if (Kind != AIGraphKind.StateMachine) return Refuse($"a {Document.Type}'s steps are a list: move them with Move");
         if (Find(key) is not { } node) return Refuse($"no state '{key}'");
         AIGraphNode? to = null;
@@ -356,6 +369,14 @@ public sealed class AIGraph
                 if (list[node.Index] is JsonObject task) Put(task, "task", name);
                 else list[node.Index] = JsonValue.Create(name);
                 return Commit(working, $"Rename task #{node.Index} {node.Name} → {name}");
+            case AIGraphKind.BehaviourTree:
+                // A task node is renamed by its task (its argument stays); any other is given a `name`.
+                var at = RecordPath.Parse(node.Path)!;
+                var value = RecordPath.Get(working, at);
+                if (value is JsonValue) Replace(working, node.Path, JsonValue.Create(name));
+                else if (value is JsonObject treeNode) Put(treeNode, KeyOf(treeNode, "task") != null ? "task" : "name", name);
+                else return Refuse($"no node '{key}'");
+                return Commit(working, $"Rename {node.Name} → {name}");
             default:
                 return Refuse("a routine's entries are named by their schedule: set it in the Records panel");
         }
@@ -393,6 +414,15 @@ public sealed class AIGraph
             case AIGraphKind.Schedule:
                 if (Field(value, "taskIndex") is int task && task >= 0 && task < Nodes.Count) active.Add(Nodes[task].Path);
                 break;
+            case AIGraphKind.BehaviourTree:
+                // The running task node is `taskIndex`, counted depth first as the engine counts it; above it,
+                // every node it is inside.
+                if (Field(value, "taskStarted") is true && Field(value, "taskIndex") is int leaf && leaf >= 0 && leaf < Nodes.Count)
+                {
+                    for (var node = Nodes[leaf]; node != null; node = node.Parent == null ? null : Nodes.FirstOrDefault(n => n.Path == node.Parent))
+                        active.Insert(0, node.Path);
+                }
+                break;
         }
         return active;
     }
@@ -401,7 +431,7 @@ public sealed class AIGraph
     private string RunnerComponent => Kind switch
     {
         AIGraphKind.StateMachine => "sage:state_machine",
-        AIGraphKind.Schedule => "sage:ai_state",
+        AIGraphKind.Schedule or AIGraphKind.BehaviourTree => "sage:ai_state",
         _ => "sage:routine",
     };
 
@@ -409,6 +439,7 @@ public sealed class AIGraph
     {
         AIGraphKind.StateMachine => "machine",
         AIGraphKind.Schedule => "schedule",
+        AIGraphKind.BehaviourTree => "tree",
         _ => "id",
     };
 
@@ -417,6 +448,142 @@ public sealed class AIGraph
         foreach (var field in Metadata.Of(component.GetType()).Fields)
             if (string.Equals(field.JsonName, jsonName, StringComparison.OrdinalIgnoreCase)) return field.Get?.Invoke(component);
         return null;
+    }
+
+    // ---- Behaviour trees (#387) ------------------------------------------------------------------------
+
+    private const string RootKey = "root";
+    private static readonly string[] CompositeKeys = { "sequence", "selector", "utility" };
+    private static readonly string[] DecoratorKeys = { "invert", "succeed", "repeat", "cooldown" };
+
+    // A node and what is inside it, depth first: the order the engine numbers them in (AIState.TaskIndex).
+    private static void AddTreeNode(List<AIGraphNode> nodes, JsonNode json, string path, string? parent, int depth, int index)
+    {
+        var node = new AIGraphNode(path, TreeName(json), TreeLabel(json), depth, parent, index);
+        nodes.Add(node);
+        if (json is not JsonObject obj) return;
+        var children = new List<string>();
+        foreach (var key in CompositeKeys)
+            if (KeyOf(obj, key) is { } k && obj[k] is JsonArray list)
+            {
+                string at = ChildPath(path, k);
+                for (int i = 0; i < list.Count; i++)
+                    if (list[i] is { } child)
+                    {
+                        children.Add($"{at}[{i}]");
+                        AddTreeNode(nodes, child, $"{at}[{i}]", path, depth + 1, i);
+                    }
+            }
+        foreach (var key in DecoratorKeys)
+            if (KeyOf(obj, key) is { } k && obj[k] is { } child)
+            {
+                children.Add(ChildPath(path, k));
+                AddTreeNode(nodes, child, ChildPath(path, k), path, depth + 1, 0);
+            }
+        node.Children = children;
+    }
+
+    // What a node is called: its `name`, else its task, else what it is ("selector", "repeat", "when").
+    private static string TreeName(JsonNode json)
+    {
+        if (json is not JsonObject obj) return Text(json);
+        if (Get(obj, "name") is { } name && Text(name).Length > 0) return Text(name);
+        if (Get(obj, "task") is { } task) return Text(task);
+        return TreeKind(obj) ?? "when";
+    }
+
+    private static string? TreeKind(JsonObject obj) =>
+        CompositeKeys.Concat(DecoratorKeys).Concat(new[] { "set", "check", "task" }).FirstOrDefault(k => KeyOf(obj, k) != null);
+
+    private static string TreeLabel(JsonNode json)
+    {
+        if (json is not JsonObject obj) return Text(json);
+        string kind = TreeKind(obj) ?? "";
+        string Number(string key) => Get(obj, key) is { } n ? Text(n) : "";
+        string what = kind switch
+        {
+            "task" => string.Join("  ", new[] { Text(Get(obj, "task")) }.Concat(obj
+                .Where(kv => kv.Value is JsonValue v && v.TryGetValue(out double _) && !string.Equals(kv.Key, "score", StringComparison.OrdinalIgnoreCase))
+                .Select(kv => $"{kv.Key} {Text(kv.Value)}"))),
+            "set" => $"set {Text(Get(obj, "set"))} = {(Number("to") is { Length: > 0 } to ? to : "1")}",
+            "check" => $"check {Text(Get(obj, "check"))}" + (Number("min").Length + Number("max").Length > 0
+                ? $" {(Number("min") is { Length: > 0 } min ? min : "")}..{(Number("max") is { Length: > 0 } max ? max : "")}" : ""),
+            "repeat" => Number("times") is { Length: > 0 } times && times != "0" ? $"repeat {times} times" : "repeat",
+            "cooldown" => $"cooldown {(Number("seconds") is { Length: > 0 } s ? s : "0")}s",
+            "" => "if",
+            _ => kind,
+        };
+        string Names(string key) => Get(obj, key) is JsonArray a ? string.Join(", ", a.Select(Text)) : Get(obj, key) is { } one ? Text(one) : "";
+        var guard = new List<string>();
+        if (Names("when") is { Length: > 0 } when) guard.Add((kind.Length == 0 ? "" : "when ") + when);
+        if (Names("unless") is { Length: > 0 } unless) guard.Add("unless " + unless);
+        string label = guard.Count == 0 ? what : kind.Length == 0 ? $"if {string.Join("; ", guard)}" : $"{what}  [{string.Join("; ", guard)}]";
+        if (Number("score") is { Length: > 0 } score) label += $"  score {score}";
+        return Get(obj, "name") is { } name && Text(name).Length > 0 ? $"{Text(name)}: {label}" : label;
+    }
+
+    // The list a node is in (its parent composite's), as a path; null for the root and a decorator's node.
+    private static string? ListOf(AIGraphNode node) =>
+        node.Path.EndsWith(']') && node.Path.LastIndexOf('[') is > 0 and var open ? node.Path[..open] : null;
+
+    private bool AddTreeNode(string? parent, string name, JsonNode? body, int index)
+    {
+        var working = Clone();
+        var step = body?.DeepClone() ?? JsonValue.Create(name);
+        if (string.IsNullOrEmpty(parent))
+        {
+            if (KeyOf(working, RootKey) is not { } rootKey || working[rootKey] == null)
+            {
+                Put(working, RootKey, step);
+                return Commit(working, $"Add '{name}' as the root");
+            }
+            parent = ChildPath("", rootKey);
+        }
+        if (Find(parent) is not { } owner) return Refuse($"no node '{parent}'");
+        if (RecordPath.Get(working, RecordPath.Parse(owner.Path)!) is not JsonObject obj
+            || CompositeKeys.Select(k => KeyOf(obj, k)).FirstOrDefault(k => k != null) is not { } listKey || obj[listKey] is not JsonArray list)
+            return Refuse($"'{owner.Name}' holds no list of nodes: add inside a sequence, selector or utility");
+        if (index < 0 || index > list.Count) index = list.Count;
+        list.Insert(index, step);
+        return Commit(working, $"Add '{name}' in '{owner.Name}' at {index}");
+    }
+
+    private bool RemoveTreeNode(AIGraphNode node)
+    {
+        var working = Clone();
+        if (node.Parent == null)
+        {
+            working.Remove(KeyOf(working, RootKey)!);
+            return Commit(working, $"Remove the root, {node.Name}");
+        }
+        if (ListOf(node) is not { } listPath || RecordPath.Get(working, RecordPath.Parse(listPath)!) is not JsonArray list)
+            return Refuse($"'{node.Name}' is a decorator's one node: remove the decorator");
+        if (list.Count <= 1) return Refuse($"'{node.Name}' is the last node of its {Find(node.Parent)?.Name}: remove that instead");
+        list.RemoveAt(node.Index);
+        return Commit(working, $"Remove {node.Name} (#{node.Index} of {Find(node.Parent)?.Name})");
+    }
+
+    private bool MoveTreeNode(AIGraphNode node, int index)
+    {
+        var working = Clone();
+        if (ListOf(node) is not { } listPath || RecordPath.Get(working, RecordPath.Parse(listPath)!) is not JsonArray list)
+            return Refuse($"'{node.Name}' has no siblings to move among");
+        index = Math.Clamp(index, 0, list.Count - 1);
+        if (index == node.Index) return false;
+        var value = list[node.Index]?.DeepClone();
+        list.RemoveAt(node.Index);
+        list.Insert(index, value);
+        return Commit(working, $"Move {node.Name} #{node.Index} → #{index}");
+    }
+
+    // Puts `value` where `path` is (a string node, which has no object to change in place).
+    private static void Replace(JsonObject working, string path, JsonNode? value)
+    {
+        var parts = RecordPath.Parse(path)!;
+        var container = RecordPath.Get(working, parts.Take(parts.Count - 1));
+        var last = parts[^1];
+        if (container is JsonArray array && last.Name == null) array[last.Index] = value;
+        else if (container is JsonObject obj && last.Name != null) Put(obj, last.Name, value);
     }
 
     // ---- Helpers ------------------------------------------------------------------------------------
