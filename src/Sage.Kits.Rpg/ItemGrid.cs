@@ -402,6 +402,7 @@ public sealed class ItemGrid
             return false;
         }
 
+        Containers.Took(world, to.Owner, from.Owner, id, count);   // a chest's respawn clock, theft (issue #378)
         from.Refresh(world, from.Owner);
         to.Refresh(world, to.Owner);
         // A new stack (not one merged into a stack already there) goes where it was put down.

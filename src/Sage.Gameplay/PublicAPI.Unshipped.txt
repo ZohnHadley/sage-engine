@@ -109,3 +109,42 @@ Sage.Gameplay.LootWhen
 Sage.Gameplay.LootWhen.Death = 0 -> Sage.Gameplay.LootWhen
 Sage.Gameplay.LootWhen.Spawn = 1 -> Sage.Gameplay.LootWhen
 static Sage.Gameplay.LootTables.Roll(Sage.Simulation.World! world, Sage.Simulation.Entity into, Sage.Core.RecordId table) -> int
+Sage.Gameplay.ContainerPart
+Sage.Gameplay.ContainerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.ContainerPart.ContainerPart() -> void
+Sage.Gameplay.ContainerPart.Faction -> Sage.Core.RecordRef<Sage.Gameplay.FactionRecord!>
+Sage.Gameplay.ContainerPart.Key -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
+Sage.Gameplay.ContainerPart.Locked -> bool
+Sage.Gameplay.ContainerPart.Owner -> string!
+Sage.Gameplay.ContainerPart.Respawn -> float
+Sage.Gameplay.Containers
+Sage.Gameplay.ItemContainer
+Sage.Gameplay.ItemContainer.Faction -> Sage.Core.RecordId
+Sage.Gameplay.ItemContainer.IsOwned.get -> bool
+Sage.Gameplay.ItemContainer.ItemContainer() -> void
+Sage.Gameplay.ItemContainer.Key -> Sage.Core.RecordId
+Sage.Gameplay.ItemContainer.Locked -> bool
+Sage.Gameplay.ItemContainer.Owner -> string?
+Sage.Gameplay.ItemContainer.Respawn -> float
+Sage.Gameplay.ItemContainer.RestockAt -> double
+Sage.Gameplay.ItemContainer.Stock -> System.Collections.Generic.List<Sage.Gameplay.ItemStack>?
+Sage.Gameplay.Stolen
+Sage.Gameplay.Stolen.Count.get -> int
+Sage.Gameplay.Stolen.Count.init -> void
+Sage.Gameplay.Stolen.Faction.get -> Sage.Core.RecordId
+Sage.Gameplay.Stolen.Faction.init -> void
+Sage.Gameplay.Stolen.From.get -> Sage.Simulation.Entity
+Sage.Gameplay.Stolen.From.init -> void
+Sage.Gameplay.Stolen.Item.get -> Sage.Core.RecordId
+Sage.Gameplay.Stolen.Item.init -> void
+Sage.Gameplay.Stolen.Owner.get -> string!
+Sage.Gameplay.Stolen.Owner.init -> void
+Sage.Gameplay.Stolen.Stolen() -> void
+Sage.Gameplay.Stolen.Stolen(Sage.Simulation.Entity Thief, Sage.Simulation.Entity From, Sage.Core.RecordId Item, int Count) -> void
+Sage.Gameplay.Stolen.Thief.get -> Sage.Simulation.Entity
+Sage.Gameplay.Stolen.Thief.init -> void
+static Sage.Gameplay.Containers.IsLocked(Sage.Simulation.World! world, Sage.Simulation.Entity container) -> bool
+static Sage.Gameplay.Containers.IsTheft(Sage.Simulation.World! world, Sage.Simulation.Entity taker, Sage.Simulation.Entity container) -> bool
+static Sage.Gameplay.Containers.MakeContainer(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Gameplay.ItemContainer container = default(Sage.Gameplay.ItemContainer)) -> void
+static Sage.Gameplay.Containers.Open(Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Simulation.Entity container) -> bool
+static Sage.Gameplay.Containers.Took(Sage.Simulation.World! world, Sage.Simulation.Entity taker, Sage.Simulation.Entity container, Sage.Core.RecordId item, int count) -> void
