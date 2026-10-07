@@ -1,0 +1,30 @@
+[
+  // Blockout brushes (issue #61, docs/EDITOR.md): the boxes, wedges and cylinders a level is built from in
+  // the editor. Each is a prefab with the `brush` part; a placement of one writes its size, shape and
+  // materials as overrides of that part, and the editor's Brushes panel and `ed_brush` commands write them.
+  //
+  //   { "prefab": "sage:brush", "at": [0, 0, 0], "id": "floor",
+  //     "overrides": { "parts": { "brush": { "size": [8, 0.25, 8], "material": "game:stone" } } } }
+  //
+  // `at` is the middle of the brush's floor; yaw, pitch and roll turn it and scale multiplies its size. It
+  // becomes a static convex hull and a mesh per material, as a `.map` brush does.
+  {
+    "type": "prefab",
+    "id": "brush",
+    "name": "brush",
+    "parts": { "brush": { "shape": "Box", "size": [2, 2, 2] } }
+  },
+  {
+    // A ramp rising to its north (-Z) side.
+    "type": "prefab",
+    "id": "wedge",
+    "name": "wedge",
+    "parts": { "brush": { "shape": "Wedge", "size": [2, 1, 2] } }
+  },
+  {
+    "type": "prefab",
+    "id": "cylinder",
+    "name": "cylinder",
+    "parts": { "brush": { "shape": "Cylinder", "size": [1, 2, 1], "sides": 12 } }
+  }
+]

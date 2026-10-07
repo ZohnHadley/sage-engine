@@ -68,6 +68,14 @@
         }
       ]
     },
+    "blockout_brush": {
+      "description": "The component sage:blockout_brush (BlockoutBrush), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:blockout_brush"
+        }
+      ]
+    },
     "body_motion": {
       "description": "The component sage:body_motion (BodyMotion), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -729,6 +737,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:audio_source"
+        }
+      ]
+    },
+    "sage:blockout_brush": {
+      "description": "Component sage:blockout_brush (BlockoutBrush).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:blockout_brush"
         }
       ]
     },
@@ -2681,6 +2697,42 @@
       },
       "additionalProperties": false,
       "description": "Component sage:audio_source (AudioSource)."
+    },
+    "sage:blockout_brush": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "description": "(BrushShape, default \"Box\")",
+          "default": "Box",
+          "type": "string",
+          "enum": [
+            "Box",
+            "Wedge",
+            "Cylinder"
+          ]
+        },
+        "size": {
+          "description": "(Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "sides": {
+          "description": "(int, default 0)",
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:blockout_brush (BlockoutBrush)."
     },
     "sage:body_motion": {
       "type": "object",

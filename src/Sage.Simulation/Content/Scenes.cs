@@ -678,7 +678,10 @@ public sealed partial class Scenes
             if (placements[i].Prefab.Id.IsEmpty)
                 check.Error(path, "a placement needs a \"prefab\"");
             else
+            {
                 PrefabOverriding.Check(_engine, placements[i].Overrides, placements[i].Prefab.Id.Namespace, path + ".Overrides", check);
+                BlockoutChecks.CheckPlacement(_engine, placements[i], path, check);   // a brush's faces against its whole shape (#61)
+            }
             // A scale of 0 flattens a thing to nothing and a negative one turns it inside out (issue #367).
             var scale = placements[i].Scale;
             if (!(scale.X > 0f && scale.Y > 0f && scale.Z > 0f))

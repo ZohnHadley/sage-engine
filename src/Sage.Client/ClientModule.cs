@@ -458,6 +458,7 @@ public sealed class ClientModule : IModule
         // plugin (SageApp adds host modules after them), so what they furnish is there to look for.
         if (world.Resources.TryGet<MapLevels>(out _))
             world.AddSystem(new MapMeshSystem(world, _renderer!));
+        world.AddSystem(new BlockoutMeshSystem(world, _renderer!));   // blockout brushes (#61)
         // What the world is drawn from: its views (issue #77; ActiveCamera until camera components).
         world.AddSystem(new CameraExtract(world, _renderer!, new ViewSource(world, _renderer!, _rendererCVars!.TestView)));
         world.AddSystem(new RenderPassExtract(world, _renderer!));   // the passes' own views and items (issue 4h-1)

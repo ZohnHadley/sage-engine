@@ -80,6 +80,14 @@
         }
       ]
     },
+    "brush": {
+      "description": "Prefab part 'brush' (BrushPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/brush"
+        }
+      ]
+    },
     "calendar_event": {
       "description": "Prefab part 'calendar_event' (CalendarEventPart).",
       "allOf": [
@@ -943,6 +951,129 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'box_mesh' (BoxMeshPart)."
+    },
+    "brush": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "description": "Box, Wedge (a ramp rising to the north) or Cylinder. Category: Shape. (BrushShape, default \"Box\")",
+          "default": "Box",
+          "type": "string",
+          "enum": [
+            "Box",
+            "Wedge",
+            "Cylinder"
+          ]
+        },
+        "size": {
+          "description": "Width (X), height (Y) and depth (Z); the placement's scale multiplies it. Unit: m. At least 0. Category: Shape. (Vector3, default [2,2,2])",
+          "default": [
+            2,
+            2,
+            2
+          ],
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "sides": {
+          "description": "Cylinder only: how many faces round it. Range: 3 to 64. Category: Shape. (int, default 12)",
+          "default": 12,
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 64
+        },
+        "material": {
+          "description": "Every face's material unless the face names its own; empty = the plain lit material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "top": {
+          "description": "The top face (a wedge's slope); empty = the brush's material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "bottom": {
+          "description": "The bottom face; empty = the brush's material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "north": {
+          "description": "The face to -Z before the brush is turned (a wedge's tall end); empty = the brush's material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "south": {
+          "description": "Box only: the face to +Z before the brush is turned; empty = the brush's material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "east": {
+          "description": "Box and wedge: the face to +X before the brush is turned; empty = the brush's material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "west": {
+          "description": "Box and wedge: the face to -X before the brush is turned; empty = the brush's material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "side": {
+          "description": "Cylinder only: the faces round it; empty = the brush's material. Names a material record. Category: Materials. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:material"
+            }
+          ]
+        },
+        "textureScale": {
+          "description": "How many metres one repeat of a texture covers; textures line up across brushes. Unit: m. Range: 0.009999999776482582 to 100. Category: Materials. (float, default 1)",
+          "default": 1,
+          "type": "number",
+          "minimum": 0.009999999776482582,
+          "maximum": 100
+        },
+        "layer": {
+          "description": "Physics layer by name; empty = default. Category: Physics. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "surface": {
+          "description": "What it is made of: footsteps and impacts; empty = none. Names a physics_material record. Category: Physics. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:physics_material"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'brush' (BrushPart)."
     },
     "calendar_event": {
       "type": "object",
