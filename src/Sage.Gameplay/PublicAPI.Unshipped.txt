@@ -243,3 +243,26 @@ Sage.Gameplay.AttributeGainRecord.Items -> System.Collections.Generic.List<Sage.
 Sage.Gameplay.AttributeGainRecord.On -> Sage.Gameplay.AttributeGainEvent
 Sage.Gameplay.AttributeGainRecord.PerDamage -> float
 Sage.Gameplay.AttributeGainRecord.Wielding -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
+Sage.Gameplay.Burden
+Sage.Gameplay.Burden.Burden() -> void
+Sage.Gameplay.Burden.Level -> int
+Sage.Gameplay.Burden.Rules -> Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!>
+Sage.Gameplay.BurdenLevel
+Sage.Gameplay.BurdenLevel.BurdenLevel() -> void
+Sage.Gameplay.BurdenLevel.Effect -> Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>
+Sage.Gameplay.BurdenLevel.Load -> float
+Sage.Gameplay.Encumbrance
+Sage.Gameplay.EncumbranceRecord
+Sage.Gameplay.EncumbranceRecord.EncumbranceRecord() -> void
+Sage.Gameplay.EncumbranceRecord.Levels -> System.Collections.Generic.List<Sage.Gameplay.BurdenLevel!>!
+Sage.Gameplay.EncumbranceRecord.MaxLoad -> float
+Sage.Gameplay.EquipSlotRecord
+Sage.Gameplay.EquipSlotRecord.EquipSlotRecord() -> void
+Sage.Gameplay.EquipSlotRecord.Name -> string!
+Sage.Gameplay.EquipSlotRecord.NameOf(Sage.Core.RecordId id) -> string!
+Sage.Gameplay.EquipSlotRecord.Order -> int
+Sage.Gameplay.InventoryPart.Encumbrance -> Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!>
+static Sage.Gameplay.Encumbrance.AddBurden(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!> rules) -> void
+static Sage.Gameplay.Encumbrance.BurdenLevelOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> int
+static Sage.Gameplay.Encumbrance.CarryLimitOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> float
+Sage.Gameplay.GameplayConventionsRecord.SpeedAttribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>

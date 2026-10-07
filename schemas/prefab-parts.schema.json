@@ -1851,6 +1851,14 @@
             },
             "additionalProperties": false
           }
+        },
+        "encumbrance": {
+          "description": "What its load does to it (issue #384); empty = nothing, and Give refuses past its capacity. Names a encumbrance record. (RecordRef<EncumbranceRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:encumbrance"
+            }
+          ]
         }
       },
       "additionalProperties": false,

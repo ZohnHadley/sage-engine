@@ -895,3 +895,4 @@ Sage.Simulation.BrushShape.Wedge = 1 -> Sage.Simulation.BrushShape
 static Sage.Simulation.BrushPart.FacesOf(Sage.Simulation.BrushShape shape) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.BrushFace>!
 Sage.Simulation.Engine.Environment.get -> Sage.Core.AppEnvironment!
 Sage.Simulation.SageApp.Environment.get -> Sage.Core.AppEnvironment!
+Sage.Simulation.CharacterController.SpeedScale -> float

@@ -280,6 +280,16 @@
         "weapons:padding"
       ]
     },
+    "record:encumbrance": {
+      "description": "The id of a encumbrance record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "record:equip_slot": {
+      "description": "The id of a equip_slot record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:faction": {
       "description": "The id of a faction record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1802,6 +1812,16 @@
         "weapons:helmet",
         "weapons:padding"
       ]
+    },
+    "base:encumbrance": {
+      "description": "The id of a encumbrance record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "base:equip_slot": {
+      "description": "The id of a equip_slot record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:faction": {
       "description": "Another faction record to inherit every field from, abstract or not.",
