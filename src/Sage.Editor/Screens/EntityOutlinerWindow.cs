@@ -76,7 +76,12 @@ internal sealed unsafe class EntityOutlinerWindow
             if (_selection != null && _selection.Is(entity)) flags |= ImGuiTreeNodeFlags.Selected;
 
             bool nodeOpen = ImGui.TreeNodeEx(_labels.Label(entity), flags);
-            if (_selection != null && ImGui.IsItemClicked()) _selection.Select(entity);
+            if (_selection != null && ImGui.IsItemClicked())
+            {
+                // Ctrl+click adds one of the document's placements to the selection, or takes it out (#367).
+                if (ImGui.GetIO().KeyCtrl && _selection.Document.IsOpen && _selection.Document.PlacementOf(entity) is { } picked) _selection.Toggle(picked);
+                else _selection.Select(entity);
+            }
 
             if (ImGui.BeginPopupContextItem($"ctx_{entity.Id}"))
             {
