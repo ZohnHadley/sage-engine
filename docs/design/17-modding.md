@@ -17,7 +17,7 @@ Decision D3: **data mods + trusted C# mods**; no sandboxed scripting.
 - Modern .NET has no sandbox for loaded assemblies. Quake 3 used a VM for downloadable code for this reason (survey §1.1).
 
 ## 3. Key decisions
-- **A mod** is a folder or `.pak` under `mods/<id>/` with a `mod.json`:
+- **A mod** is a folder or a `.sagemod` zip (built in phase 9) under `mods/<id>/` with a `mod.json`:
   ```json
   { "id": "better_goblins", "name": "Better Goblins", "version": "1.2.0", "author": "…",
     "game": "sandbox", "gameVersion": ">=0.3",
@@ -63,13 +63,14 @@ public sealed class ModManager                     // Engine service, used durin
   - the conflict report + `mod_conflicts`;
   - the mod list in the save header;
   - log category `Mods`.
-- **Later:** C# mod assemblies, an in-game mod manager UI, `.pak` packaging tool, Steam Workshop, per-field conflict UI in the editor (15).
+- **Built since (phase 9, 2026-10-07):** C# mod assemblies, the `.sagemod` packaging tool (`sage mods pack`), namespaced mod assets, keyed list merge, mod shaders and the editor's per-field conflict view ("As built (phase 9)" below).
+- **Later:** a Steam Workshop implementation (the interface exists), the `sage-mod-code` template, and the "contains code" flag in the kit's mods screen.
 
 ## 14. Build steps
 1. `ModManager`: discovery, manifests, load order, mounting (with 05; F37; built in 4j-1 and 4j-3, "As built" below). *The pieces it builds on exist since migration step 5: VFS mounts with shadowing, per-mount record namespaces, the per-field patch merge and `rec_get`'s per-field origin (05 §3.6). `game.json` already has `modsDirectory`.*
 2. Conflict report (depends on the record merge reporting, 05).
 3. Save header mod list (with 09).
-4. C# mod assemblies (later).
+4. C# mod assemblies (built in phase 9, #396).
 
 ### As built (merge provenance and the conflict report, 2026-10-01 — issue 4j-2, F37)
 
@@ -127,7 +128,7 @@ Build step 2. Code: `src/Sage.Core/Content/RecordStore.cs` (the merge, `Writes`,
   Fields: `id`, `name`, `version`, `author`, `description`, `game`, `gameVersion`, `sage`, `dependencies` (`{ "id": "range" }`),
   `loadAfter`, `loadBefore`, `incompatible` (test: AManifestReadsEveryField). The id follows the namespace rules, and a
   bad id, version or range is an error naming the file (test: ABrokenManifestIsAnErrorThatSaysWhat). `assemblies` and
-  `"kind": "code"` are known only so a code mod is refused by name.
+  `"kind": "code"` were known only so a code mod could be refused by name; since #396 they load ("As built (phase 9)").
 - **`game.json` gains an optional `version`**, which `gameVersion` is checked against; a malformed one is an error
   (test: GameJsonTakesAVersionAndRejectsAMalformedOne). Without it the `gameVersion` check is skipped and
   `ModLoadResult.Notes` says so (test: WithoutAGameVersionTheCheckIsSkippedWithANote).
@@ -283,3 +284,52 @@ Phase 4j's exit: a data mod that adds a weapon and patches a trader loads, and i
   is no longer placed once the mod is gone, and 4i drops those rather than keeping them. Phase 4f's trader
   record did not exist yet, so the mods patch the NPC's `inventory` part (since #380 a mod could patch a `merchant`
   record's `stock` instead; the exit game still uses the stub-priced shell).
+
+## As built (phase 9: code mods and packaging, #395, 2026-10-07)
+
+Six issues, #396 to #401, PRs #568 to #573; the user guide is [MODDING.md](../MODDING.md) §5, §6 and §8a to §8c, which
+carries the tests. The mod model stays experimental, SAGE0132; no new SAGE id was needed.
+
+- **Keyed list merge (#399, 9-4).** `[ListKey("field")]` (`Sage.Core.ListKeyAttribute`) on a list-of-objects field
+  names the field its entries are told apart by; read by reflection (`RecordStore`, `RecordSchemas`), not the generated
+  metadata. Declared on `InventoryPart.Items` (`item`), `QuestRecord.Stages` (`id`) and `DialogueRecord.Nodes` (`id`).
+  In a patch such a list merges by key (a present key merges field by field, a new or missing key is appended);
+  `"$remove": true` in an entry removes it and `"replace": true` in any object replaces it instead of merging. A bare
+  key means the record's namespace. Definitions and `base` are unchanged. Scene and placements `place` lists are
+  deliberately not keyed, since the editor saves a level as a patch restating the whole list. Provenance is per key
+  (`parts.inventory.items[village:lantern].count`; `FieldWrite.IsUnder` treats `[` as a separator), so two mods on
+  different keys never conflict and the same key does. Every object schema gains a `replace` boolean and keyed
+  lists' entries a `$remove`.
+- **Zip mounts and `.sagemod` (#397, 9-2).** `ZipMount` (public, `IDisposable`, read-only, case-insensitive,
+  enumerating as a folder does; no physical path, so hot reload, `VirtualPathOf` and the editor skip it) with the
+  hardening of 05 §3.1 (refused at mount: `<file>: refused: <rule>`). `ModManifest.Load` takes a folder or a
+  `.sagemod` (`IsPackage`); packages are found beside mod folders, named on the command line and mounted as
+  `mods/<id>`. `sage mods pack` (`ModPackage.Pack`) writes deterministic bytes. A game and its mods load
+  identically as folders and zips (test: AGameAndItsModsLoadIdenticallyAsFoldersAndAsZips).
+- **Namespaced assets (#398, 9-3).** A bare asset path a mod ships and no non-mod mount has becomes `mod_id:path`
+  at load; `VirtualPath` takes one `ns:` prefix (`Namespace`, `Local`, `IsNamespaced`, `InNamespace`); a file at
+  `<mod>/@<ns>/<path>` replaces a namespace's file on purpose; `MountLookup` (public, SAGE0132) is the lookup
+  folder and zip mounts share. The report says "overrides" where it said "shadows". The exit game changed:
+  `rival_trade` has its own falchion and replaces the game's lantern picture, so `sage mods tests/games/mods`
+  reports one conflict, not two.
+- **Code mods (#396, 9-1).** `ModCodeContext` (`src/Sage.Simulation/App/ModCode.cs`): one collectible
+  `AssemblyLoadContext` per mod, `ModManager.LoadCode` and `UnloadCode` from `SageApp.Create` and `Dispose`; `ContainsCodeFlag`,
+  `ContainsCode(mod)`, `CodeOf(id)` and `ModsView.ModRow.ContainsCode`. Modules are `[Plugin("<id>")]` or
+  `[Plugin("<id>.<name>")]` and added last. Process caches keyed by a type no longer pin a collectible one (the
+  upgraders cache is a `ConditionalWeakTable`, `Metadata.In` and `Of` use weak tables, `SystemDeclaration` and
+  `SaveSerializer` do not cache them). Trusted, **not sandboxed**, never downloaded, flagged. A packed code mod
+  loads from its archive (`LoadFromStream`). The example is `tests/games/code-mod` (`smiths_guild`, in `Sage.sln`).
+- **Mod shaders (#400, 9-5).** `ShaderHotCompile` (`src/Sage.Simulation/Content/ShaderHotCompile.cs`) replaces the
+  client's `ShaderRecompiler`: every folder mount's `shaders/` is watched and compiled in dev builds beside its
+  source, behind `IShaderCompiler` (`MgfxcCompiler` runs `dotnet mgfxc <fx> <out> /Profile:OpenGL`). `ShaderBuild.PackMod`
+  precompiles for `sage mods pack`; `sage mods build` compiles in place. `ModPackage.Pack` refuses an effect with no
+  `.mgfxo` and has an overload taking generated files. Asset hot reload also reloads a file's `ns:path` key.
+- **Distribution aids (#401, 9-6).** `Sage.Editing.RecordConflicts.Find` makes `FieldConflict`s with
+  `FieldContribution`s (the value read back from the writing file by `RecordWrite.Written()`, SAGE0132);
+  `RecordEditor.Conflicts` caches them for the open record, the Records panel draws them and `ed_rec_conflicts`
+  prints them (design 15 §10j). `Sage.Client.IWorkshop` (`Name`, `Available`, `Installed()`, `PublishAsync`) with
+  `WorkshopItem`, `WorkshopUpload` and `WorkshopPublishResult`: an interface, no implementation, no downloads (a
+  subscription is never consent to run code). A `mod.json` that names itself, or one mod as both dependency and
+  incompatible, is a manifest error.
+- **Not done:** `sage package` still copies mounts as folders; the `sage-mod-code` template; the kit's mods screen
+  does not show the flag; the on-screen reload of a mod's `.fx` was not run (needs mgfxc on Windows or Wine and a GPU).

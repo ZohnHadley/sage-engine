@@ -1,6 +1,6 @@
 # 19 · Modding
 
-> Status: partly built. Data mods are complete and tested (phase 4j): manifests, discovery, load order, record patching, conflict reports, saves that name their mods, a mods screen, `sage mods` and a mod template. Code mods, packed mods, namespaced assets, keyed list merge and mod shaders are designed (phase 9). Owning assemblies: `Sage.Core` (`Mods/`, the merge and the report), `Sage.Simulation` (`ModManager`, save header), `Sage.UI` (`ModsView`), `Sage.Cli`. Design doc: [17-modding.md](../../design/17-modding.md); user guide: [MODDING.md](../../MODDING.md).
+> Status: built (phase 4j, then phase 9, 2026-10-07). Manifests, discovery, load order, record patching with keyed list merge, `$remove` and `replace`, conflict reports (per field, per key, per asset), saves that name their mods, a mods screen, `sage mods` (with `pack` and `build`), a mod template, `.sagemod` packages over a hardened zip mount, namespaced mod assets, mod shaders, trusted code mods and the editor's per-field conflict view. Not built: a Workshop service (an interface only), the `sage-mod-code` template, and the kit's mods screen showing the "contains code" flag. Owning assemblies: `Sage.Core` (`Mods/`, the merge and the report), `Sage.Simulation` (`ModManager`, save header), `Sage.UI` (`ModsView`), `Sage.Cli`. Design doc: [17-modding.md](../../design/17-modding.md); user guide: [MODDING.md](../../MODDING.md).
 
 ## 1. Purpose and scope
 
@@ -9,11 +9,11 @@ A Sage mod is **data**: a folder with a `mod.json`, record files, string tables 
 mounts it after its own content, so its records patch the game's the way the game's patch the engine's.
 No code and no build step are needed, and a mod never copies a record to change it.
 
-Code mods (trusted assemblies), `.sagemod` zips and shader support are phase 9. Until then a mod that names
-`assemblies` or `"kind": "code"` is refused with a reason and the game still starts.
+Phase 9 added code mods (trusted assemblies in a collectible load context, flagged, never auto-downloaded), `.sagemod`
+zips and shader support. A code mod that does not fit (no `[Plugin]` of its id, a missing dll) is refused with a reason
+and the game still starts.
 
-Not in scope: sandboxing code (.NET cannot do it, so code mods will be marked and never auto-downloaded),
-and a workshop or download service (later, behind an interface in a client project). The editor for
+Not in scope: sandboxing code (.NET cannot do it, so code mods are marked and never auto-downloaded), and a workshop or download service (`Sage.Client.IWorkshop` is the interface; no service ships). The editor for
 modders is [18](18-editor.md)'s (#375): `sage package --editor` ships it beside a Shipping game, and
 `ed_mod <id>` saves into that mod only, a game's level as a placements patch.
 
@@ -54,30 +54,32 @@ registers it: it is part of the boot path (`SageApp`), with the host options `-m
 
 | Type or command | Role |
 |---|---|
-| `ModManifest.Load(folder)` | Reads and validates `mod.json`; `AsksForCode` flags phase-9 mods |
+| `ModManifest.Load(folderOrSagemod)` | Reads and validates `mod.json` (a folder or a `.sagemod`: `IsPackage`); `AssemblyPaths` for a code mod; refuses a self-contradicting one |
 | `ModLoadOrder.Resolve(found, userList, game, engineVersion, ...)` | Returns active, refused (with reasons), disabled and notes |
 | `ModList` | The player's `{ order, disabled }`, loaded with a warning on a bad file |
-| `ModManager` | `Found`, `Next()`, `Enable`, `Disable`, `Move`, `Summary`, `ListLines`, `RestartNeeded`, `WatchManifests` |
+| `ModManager` | `Found`, `Next()`, `Enable`, `Disable`, `Move`, `Summary`, `ListLines`, `RestartNeeded`, `WatchManifests`; for code mods `LoadCode`, `UnloadCode`, `CodeOf(id)`, `ContainsCode(mod)`, `ContainsCodeFlag` |
+| `ModPackage.Pack`, `ShaderBuild.PackMod`, `ZipMount` | `sage mods pack` and `build`; the hardened read-only zip mount (`mods/<id>`) |
+| `RecordConflicts.Find` | The editor's per-field conflict view (`FieldConflict`, `FieldContribution`) |
+| `IWorkshop` (`Sage.Client`) | `Name`, `Available`, `Installed()`, `PublishAsync`: an interface only |
 | `ContentReport.Build(records, vfs)` | Per-mount additions, patches, shadows, redefinitions, and `Conflicts`; a mod mount is one named `mods/<id>` |
 | `ModsView` | Mods tab and conflicts tab, with toggle, earlier and later buttons |
 
 **Console.** `mod_list`, `mod_order`, `mod_enable <id>`, `mod_disable <id>`, `mod_move <id> <n>`,
-`mod_conflicts [mod]`, `rec_get <type> <id>`, `vfs_which <path>`, `vfs_mounts`. **CLI.** `sage mods <game>
+`mod_conflicts [mod]`, `rec_get <type> <id>`, `vfs_which <path>`, `vfs_mounts`, and in the editor `ed_rec_conflicts`. **CLI.** `sage mods <game>
 [--mods dir ...]` prints order, refusals and the report and exits 1 on a refusal or a content error; a
-conflict is a warning. **Host.** `-mods`, `-nomods`.
+conflict is a warning. `sage mods pack <mod> [--out f.sagemod] [--engine-content dir]` and `sage mods build <mod>` package a mod and compile its shaders. **Host.** `-mods`, `-nomods`.
 
 ## 5. Data model
 
 `mod.json` fields: `id` (required, the mod's record namespace: lower case letters, digits, `_`, `.`, `-`),
 `name`, `version` (SemVer, default `0.0.0`), `author`, `description`, `game`, `gameVersion`, `sage`,
-`dependencies` (id to range), `loadAfter`, `loadBefore`, `incompatible`, and `assemblies` and `kind`, which
-are known only so code mods can be refused by name. A mod id may not be `sage`, the game's id or a kit's
+`dependencies` (id to range), `loadAfter`, `loadBefore`, `incompatible`, and `kind` (`data` or `code`) with `assemblies` (a code mod's dlls, relative, inside the mod, `{config}` allowed). A mod id may not be `sage`, the game's id or a kit's
 content namespace.
 
 Record patches are `{ "type": ..., "id": ..., "patch": true, ... }`. Values replace, objects merge, lists
-replace unless written `field+` (append) or `field-` (remove entries equal to those given), `"disabled":
+replace unless written `field+` (append) or `field-` (remove entries equal to those given), a `[ListKey]` list (`inventory.items`, a quest's `stages`, a dialogue's `nodes`) merges by key, `"$remove": true` removes a keyed entry, `"replace": true` replaces an object instead of merging, `"disabled":
 true` removes the record, and `place+` on a scene adds placements. A bare id inside a mod's patch is the
-mod's own. Strings merge key by key. Assets replace by path.
+mod's own. Strings merge key by key. A mod's own assets are `mod_id:path`; `<mod>/@<ns>/<path>` replaces a namespace's file; other paths replace by path.
 
 `user://mods.json` is `{ "order": [...], "disabled": [...] }`. A save header carries `mods`, each with id and
 version.
@@ -105,9 +107,9 @@ opens and after its own buttons, so refresh allocates nothing once warm.
 Refusal reasons are specific: missing, out-of-range or disabled dependency, a cycle, `incompatible`, wrong
 game, game version or engine, a taken id, an unreadable `mod.json`, a reserved namespace, or code. Log
 category `Mods` has a summary line then a warning per refusal. A redefinition (same id without `patch`) is
-an error that names both files and applies as a patch. A patch of a record nobody defined is a skipped
-warning. Conflicts are warnings: two mods setting one field, one mod's `disabled` against another's patch,
-and two mods shipping one asset path. Two `+` on one list, and a mod changing the game or engine, are not
+an error that names both files and applies as a patch. A hostile `.sagemod` is refused with the rule it broke (`<file>: refused: <rule>`) and the rest load; a code mod's refusals are listed in MODDING §8c. A patch of a record nobody defined is a skipped
+warning. Conflicts are warnings: two mods setting one field (one keyed-list entry, reported per key), one mod's `disabled` against another's patch,
+and two mods replacing one asset (two mods shipping the same bare path are not: each has its own). Two `+` on one list, and a mod changing the game or engine, are not
 conflicts (the latter is an override). `mod_conflicts`, `mod_report.txt` and `sage mods` show the same data,
 with file and line from `rec_get`.
 
@@ -125,23 +127,22 @@ with file and line from `rec_get`.
 | REQ-MOD-08 | A modder shall check a mod headlessly with `sage mods` and `sage validate --mods`. | Must | Done | test: ARefusedMod_IsReportedWithItsReason_AndTheGameStillValidates |
 | REQ-MOD-09 | A mod template shall build a working mod. | Should | Done | test: TheTemplateMod_LoadsInAGame_AddsItsWeapon_AndPatchesThePlayer |
 | REQ-MOD-10 | The exit game shall show two conflicting mods, a reversed order, a disabled mod and a save across them. | Must | Done | test: ModsExit_ModConflictsReportsTheName_AndNeitherFalchionTexture |
-| REQ-MOD-11 | A mod shall be able to ship trusted code in a collectible load context, loaded before registries seal. | Must | Not started | #396 |
-| REQ-MOD-12 | A mod shall be distributable as a hardened `.sagemod` zip (no zip-slip, size and count limits). | Must | Not started | #397 |
-| REQ-MOD-13 | Two mods shall each be able to ship the same asset path without clashing. | Must | Not started | #398 |
-| REQ-MOD-14 | Patches shall merge keyed lists, support `$remove` and `replace`, with conflicts per key. | Must | Not started | #399 |
-| REQ-MOD-15 | Mods shall ship shaders, with compile on reload in dev builds and a precompile step. | Should | Not started | #400 |
-| REQ-MOD-16 | Mod tooling shall check dependency versions, show per-field conflicts in the editor and allow a workshop adapter. | Could | Not started | #401 |
+| REQ-MOD-11 | A mod shall be able to ship trusted code in a collectible load context, loaded before registries seal. | Must | Done (#396): modules under the mod's own plugin id, refused with a reason when they do not fit, unloaded at dispose, saves and upgraders survive | test: TheExampleCodeModAndADataModLoad_AndModConflictsReportsTheirConflict, ACompiledCodeModRunsItsInitUnderItsOwnPluginId_AfterTheGame, ACodeModWhoseModulesDoNotFitIsRefused_AndTheGameBoots, TheCodeModsContextUnloadsWhenTheAppIsDisposed, SavesSurviveRemovingTheCodeModAndPuttingItBack |
+| REQ-MOD-12 | A mod shall be distributable as a hardened `.sagemod` zip (no zip-slip, size and count limits). | Must | Done (#397) | test: AnEntryWhosePathLeavesTheArchiveIsRefusedWithTheRule, AZipBombIsRefusedByItsRatio, PackWritesASagemodThatLoads_TheSameBytesEachTime_WithoutDotFiles, AGameAndItsModsLoadIdenticallyAsFoldersAndAsZips |
+| REQ-MOD-13 | Two mods shall each be able to ship the same asset path without clashing. | Must | Done (#398): a mod's own asset is `mod_id:path`; `@ns/` replaces on purpose | test: TwoModsShippingOnePath_EachSeeTheirOwn_AndItIsNoConflict, AnAtNamespaceFolderReplacesThatNamespacesFileOnPurpose, ModsExit_EachModSeesItsOwnFalchionTexture_AndTheGamesLanternPictureIsReplacedOnPurpose |
+| REQ-MOD-14 | Patches shall merge keyed lists, support `$remove` and `replace`, with conflicts per key. | Must | Done (#399) | test: APatchChangesOneEntryOfAKeyedListByKey_WithoutRestatingTheList, DollarRemoveTakesAnEntryOutByKey_AndAgainstAnotherModsEditOfItIsAConflict, ReplaceTrueReplacesAWholeObject_ItsKeyedListsIncluded_OrTheWholeRecord, TwoModsEditingDifferentKeysOfOneList_DoNotConflict_AndTheSameKeyIsAConflictAboutThatKey, AModChangesTheTradersPriceForOneStockItem_AndAnotherModsEditOfAnotherItemIsNoConflict |
+| REQ-MOD-15 | Mods shall ship shaders, with compile on reload in dev builds and a precompile step. | Should | Done (#400), headless with a fake compiler; the on-screen reload of a mod's `.fx` needs Windows or Wine and was not run | test: ADevBuildCompilesAModsEffectsOnLoad_AndAgainWhenOneIsEdited, AFailedCompileKeepsTheCompiledFile_AndItsMessageNamesTheModsFile, PackingAModCompilesEveryEffectIntoThePackage, BuildingAModCompilesOnlyWhatIsOutOfDate_BesideItsSource |
+| REQ-MOD-16 | Mod tooling shall check dependency versions, show per-field conflicts in the editor and allow a workshop adapter. | Could | Done (#401): the checks existed and a self-contradicting `mod.json` is now an error; the conflict view is built; the Workshop is an interface only | test: OpeningAConflictedRecord_ShowsEachModsValueForEachField_AndTheWinner, AModJsonThatContradictsItselfIsAnError |
+| REQ-MOD-17 | A mod with code shall be flagged "contains code" wherever mods are listed, shall be documented as not sandboxed, and shall never be downloaded by the engine. | Must | Done (#396): `[contains code: not sandboxed]` in `mod_list`, the boot report and `sage mods`; the kit's mods screen does not show it yet | test: TheExampleCodeModAndADataModLoad_AndModConflictsReportsTheirConflict |
+| REQ-MOD-18 | `sage validate` and `sage mods` shall run a code mod and a packed one as the game would. | Should | Done (#396, #397) | test: ValidateRunsTheCodeMod, ASagemodNamedOnTheCommandLineValidates, PackedDataAndCodeModsLoad_Conflict_AndSavesSurviveTogglingThePackedCodeMod |
 
 ## 10. Open work
 
-**Milestone 11, code mods and packaging (epic #395)**
-
-- #396 9-1 Code mods: trusted assemblies in a collectible load context (P1)
-- #397 9-2 Zip mounts and `.sagemod` packages, hardened (P1)
-- #398 9-3 Namespaced mod assets (P1)
-- #399 9-4 Keyed list merge, `$remove` and `replace` in record patches (P1)
-- #400 9-5 Shader and `.fx` support in mods, and mod-side tooling (P2)
-- #401 9-6 Mod distribution aids and per-field conflict view (P3)
+**Milestone 11, code mods and packaging (epic #395): done (2026-10-07).** #396 9-1 code mods, #397 9-2 zip mounts and
+`.sagemod`, #398 9-3 namespaced assets, #399 9-4 keyed list merge, #400 9-5 mod shaders, #401 9-6 distribution aids
+(PRs #568 to #573). Left from them, with no issue yet: the `sage-mod-code` template, a Workshop implementation, the kit's
+mods screen showing the code flag, hot reload of a file under `@ns/` (it reloads the literal path), `sage package`
+writing zips, and a Windows run of the on-screen `.fx` reload.
 
 Related: #375 10b-10 (done: the editor for modders, test: AModderSavesBothTabsIntoTheModAndTheGamesLevelAsAPatch), #277 4m-3 (per-sector asset scopes), #308 4n-4 (asset scopes).
 
@@ -149,5 +150,5 @@ Related: #375 10b-10 (done: the editor for modders, test: AModderSavesBothTabsIn
 
 - [SRS](../SRS.md) §7 (REQ-QUAL-08); sheets [06 Assets](06-assets-and-content.md), [15 Saves](15-saves.md), [13 UI](13-ui.md), [20 Tooling](20-tooling-and-release.md).
 - [design/17-modding.md](../../design/17-modding.md) (the plan and the 4j build notes).
-- [MODDING.md](../../MODDING.md): §2 `mod.json`, §4 load order, §5 patches, §6 conflicts, §9 not supported.
+- [MODDING.md](../../MODDING.md): §2 `mod.json`, §4 load order, §5 patches, §6 conflicts, §8a to §8c packing, shaders and code, §9 not supported.
 - [REDESIGN.md](../../REDESIGN.md) §5 (phases 4j and 9), MAKING_A_GAME §2 (the template).

@@ -19,7 +19,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 ## 3. Concepts
 
 ### 3.1 Virtual file system
-- A **mount** is a folder or a `.pak` (a renamed zip, like Quake 3's pk3), with a priority. Later mounts **shadow** earlier ones for the same path.
+- A **mount** is a folder or a zip (a `game.json` mount naming a file, or a `.sagemod`; like Quake 3's pk3, built in #397 as `ZipMount`), with a priority. Later mounts **shadow** earlier ones for the same path.
 - **Mount order:** engine content → framework content → `game.json` mounts → mods in load order (17) → (dev only) `dev_override/`.
 - **`VirtualPath`:** forward slashes, lower-case, no leading slash: `textures/creatures/goblin.png`. Case-insensitive lookups, so Windows and Linux behave the same.
 - **Enumeration merges across mounts:** `Vfs.Enumerate("data/items", "*.json")` returns every matching file from every mount, in mount order. That's how records from all mods are found.
@@ -549,6 +549,28 @@ than as art.
 - **`RecordStore`** holds merged, validated records per type. Lookups by `RecordId` are dictionary-based. `RecordRef<T>` is a typed reference, checked against records of its type (as built: an id with a type, not yet a cached index).
 - **Hot reload** (`rec_hotreload`, `DevOnly`, default on when `developer` ≥ 1): a changed `.json` re-runs load + merge + validate for that record type, replaces entries **in place** (so `RecordRef`s stay valid), then raises `RecordsReloaded(RecordType)` (04).
 
+### 3.7 As built (phase 9: zip mounts and namespaced mod assets, #397 and #398, 2026-10-07)
+
+- **`ZipMount(name, file, recordNamespace)`** (`src/Sage.Core/Content/ZipMount.cs`, public, `IDisposable`; the engine
+  disposes mounts at `Engine.Dispose`): a zip as a read-only mount. Lookups ignore case; enumeration is in a folder
+  mount's order (OrdinalIgnoreCase) and `*` and `?` patterns ignore case; `PhysicalPath` and `WritablePath` are null, so
+  record and asset hot reload, `VirtualPathOf` and the editor skip it; each `Open` reads the entry whole, under a lock,
+  into a read-only stream. (tests: AZipReadsAsTheFolderItWasMadeFrom_CaseOrderAndPatterns, RecordHotReloadSkipsZipMounts)
+- **Hardening**, refused at mount with `InvalidDataException("<file>: refused: <rule>")`: absolute paths (`/x`, `\x`,
+  `C:x`), `..` (zip-slip), `.` and empty segments, `:` and control characters, symlink entries, two entries one path
+  ignoring case, over 200,000 entries, over 1 GiB a file, over 16 GiB in all, a ratio over 500:1 for files over 1 MiB,
+  and on read a file longer than its header says; a non-zip is "is not a zip archive, or is damaged". The limits
+  (`ZipLimits`) are internal. A `game.json` mount outside the game folder (`../shared/art`) stays allowed; the `..` rule is for
+  entries. (tests in MODDING §8a, and AGameMountThatIsAZipIsMountedUnderTheFoldersName_AndAHostileOneIsSkippedWithAnError)
+- **Namespaced mod assets.** `VirtualPath` accepts one `ns:` prefix (`Namespace`, `Local`, `IsNamespaced`, `InNamespace`);
+  `c:/x`, `a:b:c`, `:x` and `a:` are still refused (test: AVirtualPathMayNameANamespace). A bare path a mod ships and no
+  non-mod mount has is its own, `mod_id:path` (`ModAssets`); a file at `<mod>/@<ns>/<path>` replaces `ns`'s file
+  (`MountLookup.OverridePrefix`). `MountLookup` (public, SAGE0132: `Find`, `OverrideOf`, `Replaces`) is the one lookup
+  `FolderMount`, `AssemblyContentMount` and `ZipMount` share. (tests: TwoModsShippingOnePath_EachSeeTheirOwn_AndItIsNoConflict,
+  AnAtNamespaceFolderReplacesThatNamespacesFileOnPurpose) Known gap: hot reload of a file under `@ns/` reloads that literal path.
+- **Shaders.** A `.mgfxo` counts as present through its `.fx` only where the `.fx` is in a folder mount; a zip's is never compiled
+  at run time (test: AFolderModsEffectSourceMakesItsCompiledPathItsOwn_AZipsDoesNot).
+
 ### 3.6 As built (migration step 5)
 - **Code:** `src/Sage.Core/Content/` (`VirtualFileSystem.cs`, `RecordId.cs`, `RecordStore.cs`, `RecordHotReload.cs`); tests in `tests/Sage.Tests/Content/ContentTests.cs`.
 - **VFS:** folder mounts only. Priority is mount order (`Mount(IMount)` has no priority argument). The host mounts engine content (`<exe>/Content`, namespace `sage`), then the game's `game.json` mounts (namespace = game id). `user://` is `UserPaths` (02), not a VFS root yet. `VirtualPath.Parse` rejects `.`, `..` and `:`.
@@ -712,7 +734,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 ## 7. File formats
 | File | Format |
 |---|---|
-| `.pak` | zip (stored or deflate), paths inside = virtual paths |
+| zip mount | zip (stored or deflate), paths inside = virtual paths; a `.sagemod` is one |
 | `data/**/*.json` | record arrays (§3.5) |
 | `*.sheet.json` | sprite sheet: frame rects, pivot, animations, 8-direction frame groups (06, 12) |
 | `strings/<lang>/**/*.json` | localisation tables: key → text or plural forms; the file's path is the key's namespace (§3.7) |
@@ -722,7 +744,7 @@ unload: scope.Dispose() → refcounts drop → LRU cache → evict over budget
 - **When one is used.** A cooked file stands in for its loose file only when its mount is at least as high as the loose file's, so a mod's loose `wall.png` (a later mount) beats the game's cooked `wall.png.sgtex`, which was made from the file the mod replaced (§3.2: the last mount wins, cooked or not) (test: TheCookedFileStandsInForTheLooseOneInItsMountAndALaterMountsLooseFileWins). A cooked file that cannot be read, or that was cooked from a file of another length (checked only where the mount is a folder that can say so), is a warning once and the loose file is read (test: AnUnreadableOrOutOfDateCookedFileFallsBackToTheLooseOneWithAWarning). Staleness is by length, not by hash, on a folder mount; `sage cook` itself skips a file only when length and hash both match.
 - **Round trips.** A cooked mesh reads back as exactly the geometry of its `.glb` (test: ACookedMeshReadsBackAsTheGeometryOfItsGlb); a texture cooks to blocks when it can and to exact premultiplied pixels when it cannot, or when game.json's `"cook": { "compress": false }` or an `"uncompressed"` glob says so (tests: ATextureCooksToBlocksWhenItCanAndToExactPremultipliedPixelsWhenItCannot, GameJsonCookSettingsAreReadAndAMisspeltKeyIsRefused, UncompressedPatternsAreGlobsInsideAMount); block compression is exact on flat blocks and close on gradients (test: BlockCompressionIsExactOnFlatBlocksAndCloseOnGradients). A graphics device that does not sample DXT1/DXT5 gets the blocks decoded to RGBA as they load (a warning once). `sage cook` skips what is up to date (test: CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate), and `sage package` cooks (test: APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff).
 - **What it buys, measured** on the Sandbox's own models and textures: loading cooked takes about 0.05 ms against about 10 ms loose (no glTF parse, no PNG inflate, no premultiply), allocates about 322 KB against 2143 KB, and the textures take about 217 KB of GPU memory against 902 KB as RGBA; the test asserts at least twice as fast, at most half the allocation and at most a third of the memory (test: CookedAssetsLoadFasterWithLessAllocationAndTexturesTakeLessMemory). The numbers are from one machine; the test is what holds.
-- **Not built:** cooking the engine's `Content/` or a game's `mods/` (a package's mods stay loose); formats other than `.glb` and `.png`/`.jpg`/`.jpeg` (and `.tga` since #317); dropping the loose files from a package; a hash check at load (a folder mount is checked by length); `.pak` mounts (#397). Block-compressed `SetData` on a Direct3D device is untested (CI's client run is on Linux).
+- **Not built:** cooking the engine's `Content/` or a game's `mods/` (a package's mods stay loose); formats other than `.glb` and `.png`/`.jpg`/`.jpeg` (and `.tga` since #317); dropping the loose files from a package; a hash check at load (a folder mount is checked by length). (Zip mounts are built: #397, see the phase-9 note at the end of §3.) Block-compressed `SetData` on a Direct3D device is untested (CI's client run is on Linux).
 
 
 **As built (mipmaps and TGA, 2026-10-06, issue #317).** Every texture gets its mip chain: loose files when
@@ -745,7 +767,7 @@ set); an older one is refused with a warning and the `.glb` is read.
 | Missing record | a reference to it is a load error at its line; `Get<T>` of one throws in a dev build, and only Shipping hands back a placeholder record (type defaults, logged once) to keep the game running |
 | Record validation error | Record skipped, `Error` with file:line:field |
 | Non-patch redefinition | `Error` naming both files; the later one is treated as a patch |
-| Corrupt `.pak` | Mount skipped, `Error`; boot continues |
+| Corrupt or hostile zip | Mount skipped, `Error` naming the rule (`<file>: refused: <rule>`); boot continues |
 
 ### The glTF subset (as built, 2026-10-06, issue #321)
 A model is held to one table, `GltfSubset.Features` in `src/Sage.Simulation/Content/GltfSubset.cs`, which
@@ -823,7 +845,8 @@ Extensions a file may mark required and still load: `KHR_materials_unlit`, `KHR_
   - localization keys (English table only) — **built** (§3.7, issue #96).
 - **Done since:** cooked formats, a cook tool (`sage cook`, not MonoGame's builder) and texture compression (BC1/BC3), and `.ogg` sounds decoded whole (issue #302, §7, 11 §3).
 - **Done in 4n (2026-10-06):** asset scopes, release and an upload budget (#308), mipmaps and `.tga` (#317), the glTF subset (#321).
-- **Later:** `.pak` mounts (zip mounts, #397), `.uid` sidecars (if needed). (OGG streaming is built: #326, 11 "As built (OGG streaming)".)
+- **Done in phase 9 (2026-10-07):** zip mounts and `.sagemod` (#397), namespaced mod assets (#398).
+- **Later:** `.uid` sidecars (if needed), `sage package` writing zips. (OGG streaming is built: #326, 11 "As built (OGG streaming)".)
 
 ## 12. Multiplayer-later notes
 A server needs the same records and simulation assets. The mod list plus record hashes will be compared on connect (as Quake 3's `sv_pure` checks paks). Only data and asset mods may be auto-downloaded; code mods never are (17).

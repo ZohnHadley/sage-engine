@@ -195,8 +195,12 @@ public sealed class MaterialCache                           // Sage.Client
 
 > **Built in part (2026-09-23):** a compiled effect (`.mgfxo`) that changes on disk is reloaded and
 > every material rebuilt (05 "As built (asset hot reload)"), because the engine mount is the mgfxc
-> output folder. What is still missing is running `mgfxc` when the `.fx` *source* changes, and the
-> magenta error shader on a compile failure — the rest of F32.
+> output folder. *Closed in phase 9 (#400, 2026-10-07):* `ShaderHotCompile` runs `mgfxc` (behind `IShaderCompiler`) on load
+> and on every edit of a folder mount's `shaders/*.fx` (the game's and each folder mod's), writes the `.mgfxo` beside the source
+> in its own mount, keeps the last good one on an error and draws a material with none as `sage:error` (magenta). `sage mods
+> build` and `sage mods pack` compile a mod's effects ahead (MODDING §8b; tests: ADevBuildCompilesAModsEffectsOnLoad_AndAgainWhenOneIsEdited,
+> AFailedCompileKeepsTheCompiledFile_AndItsMessageNamesTheModsFile, AModsEffectThatNeverCompiled_LeavesItsMaterialsOnSageError).
+> The on-screen reload needs mgfxc (Windows or Wine) and a GPU; it was tested headless with a fake compiler, not run on screen.
 
 ## 5. Data flow
 
