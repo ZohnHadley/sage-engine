@@ -88,3 +88,4 @@ Sage.Core.RecordCheck.Ids(string! type) -> System.Collections.Generic.IEnumerabl
 Sage.Core.ListKeyAttribute
 Sage.Core.ListKeyAttribute.Key.get -> string!
 Sage.Core.ListKeyAttribute.ListKeyAttribute(string! key) -> void
+Sage.Core.RecordWrite.Written() -> System.Text.Json.Nodes.JsonObject?
