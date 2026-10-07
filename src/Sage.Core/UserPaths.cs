@@ -11,26 +11,21 @@ namespace Sage.Core;
 // Until the VFS exists (migration step 5) this is a plain directory path.
 public static class UserPaths
 {
-    private static string? _root;
+    // The current app's (AppEnvironment.Current, issue #49): the process's own outside any app.
+    public static string GameId => AppEnvironment.Current.GameId;
 
-    public static string GameId { get; private set; } = "sage";
-
-    public static string Root => _root ??= Resolve(GameId);
+    public static string Root => AppEnvironment.Current.UserRoot;
     public static string Logs => Path.Combine(Root, "logs");
     public static string ConfigFile => Path.Combine(Root, "config.cfg");
     public static string AutoexecFile => Path.Combine(Root, "autoexec.cfg");   // optional, run after config.cfg (#299)
     public static string Screenshots => Path.Combine(Root, "screenshots");
 
-    // gameId becomes the game's id from game.json once games are modules (migration step 5).
-    // overrideRoot is for tests and tools.
+    // Sets the current environment's folder: the process's, when a host calls it before making its app.
+    // gameId is the game's id from game.json; overrideRoot is for tests and tools.
     public static void Initialize(string gameId, string? overrideRoot = null)
-    {
-        GameId = gameId;
-        _root = overrideRoot ?? Resolve(gameId);
-        Directory.CreateDirectory(_root);
-    }
+        => AppEnvironment.Current.SetUserFolder(gameId, overrideRoot);
 
-    private static string Resolve(string gameId)
+    internal static string Resolve(string gameId)
     {
         if (BuildInfo.IsDevBuild)
         {

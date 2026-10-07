@@ -64,7 +64,7 @@ public ref struct LogDynamicHandler
 
     public LogDynamicHandler(int literalLength, int formattedCount, LogCat cat, LogLevel level, string key, out bool shouldAppend)
     {
-        Enabled = cat.IsEnabled(level) && LogRateLimiter.TryOnce(cat, key);
+        Enabled = cat.IsEnabled(level) && Logger.Current.TryOnce(cat, key);
         Suppressed = 0;
         shouldAppend = Enabled;
         _inner = Enabled ? new DefaultInterpolatedStringHandler(literalLength, formattedCount) : default;
@@ -73,7 +73,7 @@ public ref struct LogDynamicHandler
     public LogDynamicHandler(int literalLength, int formattedCount, LogCat cat, LogLevel level, string key, TimeSpan interval, out bool shouldAppend)
     {
         Suppressed = 0;
-        Enabled = cat.IsEnabled(level) && LogRateLimiter.TryEvery(cat, key, interval, out Suppressed);
+        Enabled = cat.IsEnabled(level) && Logger.Current.TryEvery(cat, key, interval, out Suppressed);
         shouldAppend = Enabled;
         _inner = Enabled ? new DefaultInterpolatedStringHandler(literalLength, formattedCount) : default;
     }
