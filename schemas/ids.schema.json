@@ -98,6 +98,7 @@
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
+        "practice_cut",
         "sage:default_attack",
         "sandbox:claws",
         "sandbox:crossbow_shot",
@@ -105,6 +106,7 @@
         "sandbox:sword_swing",
         "saves:bow_shot",
         "saves:sword_swing",
+        "skills:practice_cut",
         "staff_blow",
         "sword_swing",
         "weapons:crossbow_shot",
@@ -118,8 +120,13 @@
       "enum": [
         "armor",
         "armor_head",
+        "blade",
+        "blade_xp",
         "fire_resist",
         "health",
+        "level",
+        "level_progress",
+        "luck",
         "mana",
         "sage:armor",
         "sage:fire_resist",
@@ -127,8 +134,23 @@
         "sage:mana",
         "sage:stamina",
         "skeletal:armor_head",
+        "skills:blade",
+        "skills:blade_xp",
+        "skills:level",
+        "skills:level_progress",
+        "skills:luck",
+        "skills:strength",
         "stamina",
+        "strength",
         "weapons:armor_head"
+      ]
+    },
+    "record:attribute_gain": {
+      "description": "The id of a attribute_gain record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "blade_practice",
+        "skills:blade_practice"
       ]
     },
     "record:calendar": {
@@ -228,6 +250,7 @@
         "helmet",
         "kitscreens:glow",
         "lethal",
+        "level_up",
         "mend",
         "openworld:skeleton_build",
         "padding",
@@ -245,6 +268,7 @@
         "saves:goblin_build",
         "skeletal:lethal",
         "skeleton_build",
+        "skills:level_up",
         "spend_mana",
         "straw",
         "tough_hide",
@@ -381,6 +405,7 @@
         "saves:bread",
         "saves:ring",
         "saves:sword",
+        "skills:sword",
         "sword",
         "village:bread",
         "village:lantern",
@@ -395,6 +420,14 @@
       "description": "The id of a language record (none is loaded).",
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "record:levelling": {
+      "description": "The id of a levelling record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "character",
+        "skills:character"
+      ]
     },
     "record:loot_table": {
       "description": "The id of a loot_table record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -832,6 +865,9 @@
         "skeletal:tumbler",
         "skeletal:walker",
         "skeleton",
+        "skills:dummy",
+        "skills:floor",
+        "skills:player",
         "smith",
         "spot",
         "static_mesh",
@@ -967,6 +1003,7 @@
         "scriptedsequence:vault",
         "shed",
         "skeletal:yard",
+        "skills:yard",
         "topicsgame:ferry",
         "valley",
         "vault",
@@ -1042,6 +1079,14 @@
         "mannequin",
         "sandbox:arms",
         "sandbox:mannequin"
+      ]
+    },
+    "record:skill": {
+      "description": "The id of a skill record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "blade",
+        "skills:blade"
       ]
     },
     "record:sky": {
@@ -1544,6 +1589,7 @@
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
+        "practice_cut",
         "sage:default_attack",
         "sandbox:claws",
         "sandbox:crossbow_shot",
@@ -1551,6 +1597,7 @@
         "sandbox:sword_swing",
         "saves:bow_shot",
         "saves:sword_swing",
+        "skills:practice_cut",
         "staff_blow",
         "sword_swing",
         "weapons:crossbow_shot",
@@ -1564,8 +1611,13 @@
       "enum": [
         "armor",
         "armor_head",
+        "blade",
+        "blade_xp",
         "fire_resist",
         "health",
+        "level",
+        "level_progress",
+        "luck",
         "mana",
         "sage:armor",
         "sage:fire_resist",
@@ -1573,8 +1625,23 @@
         "sage:mana",
         "sage:stamina",
         "skeletal:armor_head",
+        "skills:blade",
+        "skills:blade_xp",
+        "skills:level",
+        "skills:level_progress",
+        "skills:luck",
+        "skills:strength",
         "stamina",
+        "strength",
         "weapons:armor_head"
+      ]
+    },
+    "base:attribute_gain": {
+      "description": "Another attribute_gain record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "blade_practice",
+        "skills:blade_practice"
       ]
     },
     "base:calendar": {
@@ -1674,6 +1741,7 @@
         "helmet",
         "kitscreens:glow",
         "lethal",
+        "level_up",
         "mend",
         "openworld:skeleton_build",
         "padding",
@@ -1691,6 +1759,7 @@
         "saves:goblin_build",
         "skeletal:lethal",
         "skeleton_build",
+        "skills:level_up",
         "spend_mana",
         "straw",
         "tough_hide",
@@ -1827,6 +1896,7 @@
         "saves:bread",
         "saves:ring",
         "saves:sword",
+        "skills:sword",
         "sword",
         "village:bread",
         "village:lantern",
@@ -1841,6 +1911,14 @@
       "description": "The id of a language record (none is loaded).",
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
+    "base:levelling": {
+      "description": "Another levelling record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "character",
+        "skills:character"
+      ]
     },
     "base:loot_table": {
       "description": "Another loot_table record to inherit every field from, abstract or not.",
@@ -2280,6 +2358,9 @@
         "skeletal:tumbler",
         "skeletal:walker",
         "skeleton",
+        "skills:dummy",
+        "skills:floor",
+        "skills:player",
         "smith",
         "spot",
         "static_mesh",
@@ -2415,6 +2496,7 @@
         "scriptedsequence:vault",
         "shed",
         "skeletal:yard",
+        "skills:yard",
         "topicsgame:ferry",
         "valley",
         "vault",
@@ -2490,6 +2572,14 @@
         "mannequin",
         "sandbox:arms",
         "sandbox:mannequin"
+      ]
+    },
+    "base:skill": {
+      "description": "Another skill record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "blade",
+        "skills:blade"
       ]
     },
     "base:sky": {

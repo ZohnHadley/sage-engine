@@ -35,6 +35,7 @@ public class DeclarationTests
             ["ai_profile"] = "sage.gameplay.ai", ["ai_schedule"] = "sage.gameplay.ai",
             ["attribute"] = "sage.gameplay.attributes", ["tag"] = "sage.gameplay.attributes",
             ["effect"] = "sage.gameplay.attributes", ["gameplay_conventions"] = "sage.gameplay.attributes",
+            ["attribute_gain"] = "sage.gameplay.attributes",   // "when somebody does X, add Y to their Z" (#377)
             ["movement_profile"] = "sage.gameplay.character",
             ["attack"] = "sage.gameplay.combat", ["damage_type"] = "sage.gameplay.combat",
             ["hit_location"] = "sage.gameplay.combat", ["hitboxes"] = "sage.gameplay.combat",   // hit locations (#137)
@@ -66,6 +67,7 @@ public class DeclarationTests
             ["rpg_conventions"] = "sage.kits.rpg",   // the RPG kit's, which the Sandbox names in game.json (#27)
             ["rpg_item"] = "sage.kits.rpg",          // an item's footprint on the inventory grid (#98)
             ["area_map"] = "sage.kits.rpg",          // a scene's map picture and fog (#349)
+            ["skill"] = "sage.kits.rpg", ["levelling"] = "sage.kits.rpg",   // skills and levelling (#377)
             ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
             ["language"] = "sage.ui",   // a translation's direction and fonts (#345)
             ["ui_style_set"] = "sage.ui",                                                             // accessibility (#351)

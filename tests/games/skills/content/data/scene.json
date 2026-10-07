@@ -1,0 +1,26 @@
+[
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [20, 1, 20] } } },
+
+  {
+    // The player: a sword, and the engine's attributes with this game's (skills.json).
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "melee": {},
+      "inventory": { "items": [ { "item": "sword" } ] }
+    }
+  },
+
+  // A training dummy: the engine's 100 health, against a practice sword's 1 a cut.
+  { "type": "prefab", "id": "dummy", "name": "dummy", "parts": { "character": { "layer": "enemy" }, "attributes": {} } },
+
+  {
+    "type": "scene", "id": "yard",
+    "player": { "prefab": "player", "at": [0, 0.1, 1.6] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0], "id": "floor" },
+      { "prefab": "dummy", "at": [0, 0, 0], "yaw": 180, "name": "dummy", "id": "dummy" }
+    ]
+  }
+]

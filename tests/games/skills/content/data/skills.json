@@ -1,0 +1,38 @@
+[
+  // What a character is made of here, besides the engine's health: an attribute, a skill (its rank and its
+  // use-XP are each an attribute, so they are saved and fortified like one), and a level with the points
+  // toward the next.
+  { "type": "attribute", "id": "strength", "start": 40, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "luck", "start": 40, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "blade", "start": 2, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "blade_xp", "start": 0, "min": 0 },
+  { "type": "attribute", "id": "level", "start": 1, "min": 1, "max": 50 },
+  { "type": "attribute", "id": "level_progress", "start": 0, "min": 0 },
+
+  // A practice sword: 1 a cut, so the dummy outlasts the lesson, and quick to swing.
+  {
+    "type": "attack", "id": "practice_cut", "damage": 1, "damageType": "sage:physical",
+    "reach": 2.4, "radius": 0.35, "arcDegrees": 60,
+    "windupTime": 0.1, "recoverTime": 0.1, "cooldown": 0.2
+  },
+  { "type": "item", "id": "sword", "label": "practice sword", "slot": "MainHand", "attack": "practice_cut", "weight": 2 },
+
+  // Morrowind's "use a skill, it rises": every cut that lands with a sword in hand is one use-XP of blade.
+  { "type": "attribute_gain", "id": "blade_practice", "on": "Hit", "wielding": ["sword"], "attribute": "blade_xp", "amount": 1 },
+
+  // Blade rises when its use-XP reaches rate × (1 + growth × rank): from 2 it takes 2, from 3 it takes 2.5, from
+  // 4 it takes 3. Strength governs it, and each rise is a point toward the character's level.
+  {
+    "type": "skill", "id": "blade", "rank": "blade", "experience": "blade_xp", "governing": "strength",
+    "rate": 1, "growth": 0.5, "levelling": "character", "levelPoints": 1
+  },
+
+  // Daggerfall's level by skill use: two rises and the character levels. A level raises each governing
+  // attribute by how often its skills rose since the last (one rise +1, two or more +2), and brings luck.
+  {
+    "type": "levelling", "id": "character", "level": "level", "points": "level_progress", "rate": 2,
+    "attributeBonus": [ { "rises": 1, "gain": 1 }, { "rises": 2, "gain": 2 } ],
+    "effects": ["level_up"]
+  },
+  { "type": "effect", "id": "level_up", "modifiers": [ { "attribute": "luck", "op": "Add", "value": 1 } ] }
+]
