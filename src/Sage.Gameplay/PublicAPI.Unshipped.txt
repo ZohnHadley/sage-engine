@@ -1,7 +1,42 @@
 #nullable enable
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
+Sage.Gameplay.AttackRecord.Block -> Sage.Core.RecordRef<Sage.Gameplay.BlockRecord!>
+Sage.Gameplay.AttackRecord.Cleave -> int
+Sage.Gameplay.AttackRecord.FriendlyFire -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.AttackRecord.Knockback -> float
+Sage.Gameplay.AttackRecord.KnockbackLift -> float
+Sage.Gameplay.AttackRecord.Reaction -> string!
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.AttackRecord.Stagger -> float
+Sage.Gameplay.Blocked
+Sage.Gameplay.Blocked.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.Blocked.Attack.init -> void
+Sage.Gameplay.Blocked.Attacker.get -> Sage.Simulation.Entity
+Sage.Gameplay.Blocked.Attacker.init -> void
+Sage.Gameplay.Blocked.Blocked() -> void
+Sage.Gameplay.Blocked.Blocked(Sage.Simulation.Entity Defender, Sage.Simulation.Entity Attacker, Sage.Core.RecordId Attack, Sage.Gameplay.GuardOutcome Outcome, float Stopped) -> void
+Sage.Gameplay.Blocked.Defender.get -> Sage.Simulation.Entity
+Sage.Gameplay.Blocked.Defender.init -> void
+Sage.Gameplay.Blocked.Outcome.get -> Sage.Gameplay.GuardOutcome
+Sage.Gameplay.Blocked.Outcome.init -> void
+Sage.Gameplay.Blocked.Stopped.get -> float
+Sage.Gameplay.Blocked.Stopped.init -> void
+Sage.Gameplay.BlockRecord
+Sage.Gameplay.BlockRecord.ArcDegrees -> float
+Sage.Gameplay.BlockRecord.BlockCue -> Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>
+Sage.Gameplay.BlockRecord.BlockRecord() -> void
+Sage.Gameplay.BlockRecord.BlockTrigger -> string!
+Sage.Gameplay.BlockRecord.Directional -> bool
+Sage.Gameplay.BlockRecord.GuardBreakStagger -> float
+Sage.Gameplay.BlockRecord.ParryCue -> Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>
+Sage.Gameplay.BlockRecord.ParryStagger -> float
+Sage.Gameplay.BlockRecord.ParryTrigger -> string!
+Sage.Gameplay.BlockRecord.ParryWindow -> float
+Sage.Gameplay.BlockRecord.Reduction -> float
+Sage.Gameplay.BlockRecord.Stamina -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.BlockRecord.StaminaCost -> float
+Sage.Gameplay.BlockRecord.StaminaPerDamage -> float
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
 Sage.Gameplay.Durability
@@ -10,12 +45,23 @@ Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.C
 Sage.Gameplay.EffectRecord.TickCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.Equipment.InstanceIn(string! slot) -> int
 Sage.Gameplay.EquippedItem.Instance -> int
+Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Allies = 4 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Anyone = 1 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Default = 0 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Hostile = 3 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.NotAllies = 2 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilters
 Sage.Gameplay.FootIk.LeftTilt -> float
 Sage.Gameplay.FootIk.MaxFootTilt -> float
 Sage.Gameplay.FootIk.PelvisSmoothing -> float
 Sage.Gameplay.FootIk.RightTilt -> float
 Sage.Gameplay.FootIkPart.MaxFootTilt -> float
 Sage.Gameplay.FootIkPart.PelvisSmoothing -> float
+Sage.Gameplay.GuardOutcome
+Sage.Gameplay.GuardOutcome.Blocked = 0 -> Sage.Gameplay.GuardOutcome
+Sage.Gameplay.GuardOutcome.Broken = 2 -> Sage.Gameplay.GuardOutcome
+Sage.Gameplay.GuardOutcome.Parried = 1 -> Sage.Gameplay.GuardOutcome
 Sage.Gameplay.InventoryPart.Stack.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.ItemBreak
 Sage.Gameplay.ItemBreak.Keep = 2 -> Sage.Gameplay.ItemBreak
@@ -71,10 +117,20 @@ Sage.Gameplay.HitResult.Surface.init -> void
 Sage.Gameplay.LightPart.Baked -> bool
 Sage.Gameplay.LightPart.Shadows -> bool
 Sage.Gameplay.Melee.Direction -> Sage.Simulation.AttackDirection
+Sage.Gameplay.Melee.Staggered -> float
 Sage.Gameplay.Pickup.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.PickupPart.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.QuestObjective.Target -> string!
 Sage.Gameplay.QuestStage.Target -> string!
+Sage.Gameplay.Staggered
+Sage.Gameplay.Staggered.Seconds.get -> float
+Sage.Gameplay.Staggered.Seconds.init -> void
+Sage.Gameplay.Staggered.Source.get -> Sage.Simulation.Entity
+Sage.Gameplay.Staggered.Source.init -> void
+Sage.Gameplay.Staggered.Staggered() -> void
+Sage.Gameplay.Staggered.Staggered(Sage.Simulation.Entity Target, Sage.Simulation.Entity Source, float Seconds) -> void
+Sage.Gameplay.Staggered.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.Staggered.Target.init -> void
 static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
 *REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.Footstep.Kind.get -> Sage.Gameplay.FootstepKind
@@ -98,6 +154,7 @@ static Sage.Gameplay.Durability.CanRepair(this Sage.Simulation.World! world, Sag
 static Sage.Gameplay.Durability.ConditionOf(in Sage.Gameplay.ItemStack stack) -> float
 static Sage.Gameplay.Durability.Repair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float amount, float upTo = 1) -> bool
 static Sage.Gameplay.Durability.Wear(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! slot, float amount) -> bool
+static Sage.Gameplay.FactionFilters.Allows(Sage.Simulation.World! world, Sage.Simulation.Entity source, Sage.Simulation.Entity target, Sage.Gameplay.FactionFilter filter) -> bool
 static Sage.Gameplay.Items.DropAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count) -> Sage.Simulation.Entity
 static Sage.Gameplay.Items.EquipAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index) -> bool
 static Sage.Gameplay.Items.Give(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, in Sage.Gameplay.ItemStack stack) -> bool

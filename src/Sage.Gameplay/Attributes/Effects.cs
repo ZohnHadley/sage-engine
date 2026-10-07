@@ -278,6 +278,10 @@ internal sealed class EffectSystem : ISystem
             }
         }
 
+        // And whatever hurt something during the tick itself: a periodic `damage` execution's pulse is a
+        // hit from the effect's source (issue #390), so a death by burning names the burner.
+        if (_died.Count > 0)
+            foreach (ref readonly var hit in _damage.Read()) _hits.Add(hit);
         foreach (var entity in _died.Drain()) Die(world, entity, deadTag);
     }
 

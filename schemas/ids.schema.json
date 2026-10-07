@@ -159,6 +159,11 @@
         "skills:blade_practice"
       ]
     },
+    "record:block": {
+      "description": "The id of a block record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:calendar": {
       "description": "The id of a calendar record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1723,6 +1728,11 @@
         "blade_practice",
         "skills:blade_practice"
       ]
+    },
+    "base:block": {
+      "description": "The id of a block record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:calendar": {
       "description": "Another calendar record to inherit every field from, abstract or not.",

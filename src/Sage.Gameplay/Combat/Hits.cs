@@ -249,8 +249,8 @@ public static class HitDeliveries
 
 // A swing (the engine's melee since F20, moved here from MeleeCombatSystem): a sphere of the attack's
 // `radius` swept from the eye along the aim for its `reach`, the first solid thing it touches, then an
-// arc check so a target at the edge of your vision doesn't count. One target per swing; cleaving through
-// several is a later flag. Scenery stops it and is not hurt.
+// arc check so a target at the edge of your vision doesn't count. One target per swing, or up to the
+// attack's `cleave` (issue #390). Scenery stops it and is not hurt.
 [HitDelivery("sweep", Plugin = "sage.gameplay.combat")]
 internal sealed class SweepDelivery : IHitDelivery
 {
@@ -278,6 +278,55 @@ internal sealed class SweepDelivery : IHitDelivery
         // Whatever it really struck makes its surface's noise and mark (issue #306): scenery the swing
         // stopped against, or the target it connected with — not one outside its arc.
         if (found && (connects || !Hits.CanBeHurt(world, result.Target))) Impacts.Raise(world, request.Attacker, in result);
+        if (attack.Cleave > 1) Cleave(in hit, connects ? result.Target : default, attack.Cleave - (connects ? 1 : 0));
+    }
+
+    // A cleave (issue #390): up to `more` other bodies inside the swing's reach and arc, nearest first,
+    // each with nothing solid between the eye and it — a wall still stops a greataxe. The first is the
+    // one the sweep met (`first`), already landed.
+    private static void Cleave(in HitContext hit, Entity first, int more)
+    {
+        var world = hit.World;
+        var request = hit.Request;
+        var attack = hit.Attack;
+        if (more <= 0 || !world.TryGet<Transform>(request.Attacker, out var self)) return;
+        float reach = attack.Reach + attack.Radius;
+        var near = new OverlapHit[32];   // a cleave is a rare blow: no buffer kept
+        int count = hit.Space.OverlapSphere(request.Origin, reach, near, LayerMask.All, ignore: request.Attacker);
+        var bodies = new List<(float Distance, Entity Body)>(count);
+        for (int i = 0; i < count; i++)
+        {
+            var body = near[i].Entity;
+            if (body == first || body == request.Attacker || !Connects(world, request, attack, body)) continue;
+            bool listed = false;
+            foreach (var b in bodies) if (b.Body == body) { listed = true; break; }
+            if (listed) continue;
+            var to = Centre(world, body) - request.Origin;
+            float distance = to.Length();
+            if (distance > reach + 0.5f) continue;
+            bodies.Add((distance, body));
+        }
+        bodies.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+        foreach (var (distance, body) in bodies)
+        {
+            if (more == 0) break;
+            var aim = distance > 1e-4f ? (Centre(world, body) - request.Origin) / distance : request.Aim;
+            // In plain sight: a ray to it meets it (or one of its hitboxes) before anything else.
+            if (Hits.Ray(hit.Space, request.Attacker, request.Origin, aim, distance + 0.5f, out var struck)
+                && struck.Target != body) continue;
+            var point = struck.Target == body ? struck.Point : request.Origin + aim * distance;
+            hit.Land(new HitResult(body, point, -aim, struck.Target == body ? struck.Collider : body,
+                                   struck.Target == body ? struck.Location : default) { Surface = struck.Surface });
+            hit.Debug?.Cross(point, 0.25f, DebugColour.Yellow, 0.6f);
+            more--;
+        }
+    }
+
+    // Where to aim at a body: a character's middle, else its origin.
+    private static Vector3 Centre(World world, Entity body)
+    {
+        var at = world.Get<Transform>(body).LocalPosition;
+        return world.Has<CharacterController>(body) ? at + Vector3.UnitY * 0.9f : at;
     }
 
     // Did the sweep find something this swing is allowed to hurt? A target dead ahead is the easy case;
