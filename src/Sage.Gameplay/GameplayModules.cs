@@ -223,6 +223,8 @@ public sealed class CombatModule : IModule
         var vocabularies = ctx.Engine.Vocabularies;
         _records.AddCheck<AttackRecord>((attack, check) => HitDeliveries.Check(vocabularies, attack, check));
         _records.AddCheck<HitboxesRecord>(Hitboxes.Check);   // hit locations (issue #137)
+        _records.AddCheck<AttackRecord>(BlockRecord.CheckAttack);   // cleave, knockback, stagger (issue #390)
+        _records.AddCheck<BlockRecord>(BlockRecord.Check);           // guards and parries (issue #390)
 
         // Registered here, once, rather than in the systems: systems are per world (review #57).
         _combatDebug = ctx.Engine.CVars.Register("combat_debug", false, CVarFlags.DevOnly,

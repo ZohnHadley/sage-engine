@@ -150,6 +150,29 @@ public sealed class AttackRecord
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Tooltip = "How a shot kicks the wielder's aim; empty = no kick")]
     public RecordRef<RecoilRecord> Recoil;
+
+    // ---- guards and hit reactions (issue #390; Blocking.cs) ----
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "How a fighter holding this guards (a block record); empty = it cannot block")]
+    public RecordRef<BlockRecord> Block;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 1, Tooltip = "How many bodies a sweep strikes, nearest first, within its reach and arc; 1 = the first it meets")]
+    public int Cleave = 1;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "m/s", Tooltip = "How hard a landed blow pushes a character along its direction, less what a block stopped")]
+    public float Knockback;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "m/s", Tooltip = "And how hard it pushes it up")]
+    public float KnockbackLift;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "s", Tooltip = "How long a blow that hurt staggers its victim: its swing is lost and it cannot swing or guard; 0 = no stagger")]
+    public float Stagger;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "The trigger a blow that hurt sets on its victim's animator (a flinch); empty = none")]
+    public string Reaction = "";
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "Who it may hurt, by faction: Default (a player anyone, others not their allies), Anyone, NotAllies, Hostile or Allies")]
+    public FactionFilter FriendlyFire = FactionFilter.Default;
 }
 
 // A hit that landed, for anything that reacts to one: the death seam's "who killed me", the game's
@@ -187,12 +210,20 @@ public static class Combat
     {
         var landed = Hitboxes.Resolve(in result);   // a hitbox is its owner's (issue #137)
         if (landed.Target.IsNull) return 0f;
-        if (!Factions.MayHurt(world, request.Attacker, landed.Target)) return 0f;
+        // Who it may hurt is one faction filter, the attack's `friendlyFire` (issue #390).
+        if (!FactionFilters.Allows(world, request.Attacker, landed.Target, attack.FriendlyFire)) return 0f;
         // The weapon's condition scales the blow, and the blow wears the weapon (issue #382).
         var records = world.Resources.Get<RecordStore>();
         float amount = attack.Damage * Durability.DamageScale(world, request.Attacker, request.Attack, records);
-        var damage = new DamageInfo(request.Attacker, landed.Target, attack.DamageType, amount, landed.Point, request.Aim) { Sound = attack.Sound.Id };
-        float applied = ApplyHit(world, in damage, in landed, attack.Effects);
+        // A guard facing it (issue #390): parried, blocked for what is left, or broken.
+        var guard = Guards.Resolve(world, records, in request, landed.Target, attack, amount, out float fraction);
+        float applied = 0f;
+        if (guard != GuardOutcome.Parried)
+        {
+            var damage = new DamageInfo(request.Attacker, landed.Target, attack.DamageType, amount * fraction, landed.Point, request.Aim) { Sound = attack.Sound.Id };
+            applied = ApplyHit(world, in damage, in landed, attack.Effects);
+        }
+        HitReactions.After(world, in request, landed.Target, attack, guard, fraction, applied);
         if (world.IsAlive(request.Attacker)) Durability.Landed(world, request.Attacker, request.Attack, records);
         return applied;
     }
@@ -304,6 +335,11 @@ public struct Melee : IComponent
     // The direction of the swing under way (issue #359): the fighter's AttackStance.Direction when it
     // started, kept while the stance goes on choosing the next one. None without a stance.
     [Transient] public AttackDirection Direction;
+    // Seconds it is still staggered (issue #390): a heavy blow, a parried swing or a broken guard. It
+    // cannot swing or guard until this runs out.
+    [Transient] public float Staggered;
+    // Seconds its guard has been up (AttackStanceSystem): a blow met inside its block's parryWindow is parried.
+    [Transient] internal float Guarding;
 
     public static Melee With(RecordId attack) => new() { Attack = attack, Natural = attack };
 }
@@ -371,12 +407,13 @@ internal sealed class MeleeCombatSystem : ISystem
                 if (attack == null) continue;
 
                 if (m[n].Cooldown > 0f) m[n].Cooldown = MathF.Max(0f, m[n].Cooldown - dt);
+                if (m[n].Staggered > 0f) m[n].Staggered = MathF.Max(0f, m[n].Staggered - dt);
 
                 switch (m[n].Phase)
                 {
                     case MeleePhase.Ready:
                         bool trigger = i[n].Pressed.Has(_attack) || (attack.Automatic && i[n].Held.Has(_attack));
-                        if (trigger && m[n].Cooldown <= 0f && !world.HasTag(entity, dead))
+                        if (trigger && m[n].Cooldown <= 0f && m[n].Staggered <= 0f && !world.HasTag(entity, dead))
                         {
                             // Ammunition (issue #135): an empty magazine clicks and the swing never starts; a
                             // reload in progress swallows the press. Attacks with no `ammo` are always Ok.

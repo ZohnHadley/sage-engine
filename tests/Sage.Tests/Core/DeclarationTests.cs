@@ -41,6 +41,7 @@ public class DeclarationTests
             ["attack"] = "sage.gameplay.combat", ["damage_type"] = "sage.gameplay.combat",
             ["hit_location"] = "sage.gameplay.combat", ["hitboxes"] = "sage.gameplay.combat",   // hit locations (#137)
             ["hitbox_budget"] = "sage.gameplay.combat",                                          // its budget (#273)
+            ["block"] = "sage.gameplay.combat",                                                  // guards and parries (#390)
             ["spread"] = "sage.gameplay.combat", ["recoil"] = "sage.gameplay.combat", ["routine"] = "sage.gameplay.ai", ["nav_area"] = "sage.gameplay.ai",
             ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
             ["quest"] = "sage.gameplay.quests",
