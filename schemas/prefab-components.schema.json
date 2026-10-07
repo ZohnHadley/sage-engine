@@ -268,6 +268,14 @@
         }
       ]
     },
+    "guard": {
+      "description": "The component sage:guard (Guard), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:guard"
+        }
+      ]
+    },
     "hand_ik": {
       "description": "The component sage:hand_ik (HandIk), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -500,6 +508,14 @@
         }
       ]
     },
+    "memberships": {
+      "description": "The component rpg:memberships (Memberships), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:memberships"
+        }
+      ]
+    },
     "merchant": {
       "description": "The component sage:merchant (Merchant), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -561,6 +577,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sandbox:orbit"
+        }
+      ]
+    },
+    "owned_place": {
+      "description": "The component sage:owned_place (OwnedPlace), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:owned_place"
         }
       ]
     },
@@ -721,6 +745,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/rpg:item_grid"
+        }
+      ]
+    },
+    "rpg:memberships": {
+      "description": "Component rpg:memberships (Memberships).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:memberships"
         }
       ]
     },
@@ -1004,6 +1036,14 @@
         }
       ]
     },
+    "sage:guard": {
+      "description": "Component sage:guard (Guard).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:guard"
+        }
+      ]
+    },
     "sage:hand_ik": {
       "description": "Component sage:hand_ik (HandIk).",
       "allOf": [
@@ -1273,6 +1313,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:offscreen"
+        }
+      ]
+    },
+    "sage:owned_place": {
+      "description": "Component sage:owned_place (OwnedPlace).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:owned_place"
         }
       ]
     },
@@ -1927,6 +1975,79 @@
       },
       "additionalProperties": false,
       "description": "Component rpg:item_grid (ItemGridPlacements)."
+    },
+    "rpg:memberships": {
+      "type": "object",
+      "properties": {
+        "of": {
+          "description": "The factions it has joined, and its rank in each. (List<Membership>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "faction": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "rank": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "of+": {
+          "description": "Adds to \"of\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "faction": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "rank": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "of-": {
+          "description": "Removes these from \"of\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "faction": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "rank": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component rpg:memberships (Memberships)."
     },
     "rpg:perks": {
       "type": "object",
@@ -4370,6 +4491,39 @@
       "additionalProperties": false,
       "description": "Component sage:global_transform (GlobalTransform)."
     },
+    "sage:guard": {
+      "type": "object",
+      "properties": {
+        "law": {
+          "description": "Whose bounties it enforces; empty: its own faction's. Names a faction record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        },
+        "tolerates": {
+          "description": "Bounty it lets go; it pursues anybody who owes more. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "arrests": {
+          "description": "Bounty up to which it means to arrest; above it the target is an outlaw (target_outlaw) At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "hears": {
+          "description": "How far a reported crime reaches it; 0: only what it sees. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:guard (Guard)."
+    },
     "sage:hand_ik": {
       "type": "object",
       "properties": {
@@ -6388,6 +6542,61 @@
       },
       "additionalProperties": false,
       "description": "Component sage:offscreen (Offscreen)."
+    },
+    "sage:owned_place": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "The box it covers, centred on the entity. Unit: m. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "owner": {
+          "description": "The name of the entity it belongs to. (string)",
+          "type": "string"
+        },
+        "faction": {
+          "description": "The faction it belongs to; its members come and go freely. Names a faction record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        },
+        "openFrom": {
+          "description": "The hour it opens to everybody; the same as openTo: never. Unit: h. Range: 0 to 24. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "openTo": {
+          "description": "The hour it shuts. Unit: h. Range: 0 to 24. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "crime": {
+          "description": "The crime being found in it is; empty: the Trespass crime. Names a crime record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:crime"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:owned_place (OwnedPlace)."
     },
     "sage:particle_emitter": {
       "type": "object",

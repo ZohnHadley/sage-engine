@@ -37,6 +37,7 @@
             "block",
             "calendar",
             "calendar_event",
+            "crime",
             "cue",
             "damage_type",
             "decal",
@@ -46,6 +47,7 @@
             "encumbrance",
             "equip_slot",
             "faction",
+            "faction_ranks",
             "gameplay_conventions",
             "hit_location",
             "hitbox_budget",
@@ -302,6 +304,21 @@
           "if": {
             "properties": {
               "type": {
+                "const": "crime"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "crime.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "cue"
               }
             },
@@ -431,6 +448,21 @@
           },
           "then": {
             "$ref": "faction.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "faction_ranks"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "faction_ranks.schema.json"
           }
         },
         {
