@@ -797,12 +797,12 @@ entity's pitch and roll are unchanged.
 
 ## 10r. As built: the AI graph view (#369, 2026-10-07)
 
-The engine has no behaviour-tree record: its AI graphs are state machines, schedules and routines, so that
-is what the view shows. `AIGraph` (`src/Sage.Editing/AIGraph.cs`) is the headless model, `AIGraphCommands`
+The AI graphs are state machines, schedules, routines and, since #387, behaviour trees, and that is what the
+view shows. `AIGraph` (`src/Sage.Editing/AIGraph.cs`) is the headless model, `AIGraphCommands`
 its console, and the **AI Graph** panel (`src/Sage.Editor/Tools/AIGraphPanel.cs`, a tab beside the
 inspector) draws it. It reads the record open in the Records panel (`RecordEditor.Current`) when that is a
 `state_machine` (a tree of states, nested and parallel, transitions as edges, the machine's own transitions
-under "(any)"), an `ai_schedule` (a list of tasks) or a `routine` (a list of entries).
+under "(any)"), an `ai_schedule` (a list of tasks), a `routine` (a list of entries) or, since #387, a `behaviour_tree` (below).
 
 - **Edits are commands in the record document's own history** (`ed_rec_undo`, the Records panel's Undo):
   add, remove, move among siblings, reparent (state machines only), rename. Renaming a state renames every
@@ -822,6 +822,12 @@ under "(any)"), an `ai_schedule` (a list of tasks) or a `routine` (a list of ent
 - **Console**: `ed_ai_tree`, `ed_ai_add`, `ed_ai_remove`, `ed_ai_move`, `ed_ai_reparent`, `ed_ai_rename`,
   `ed_ai_active`; a node is a state's name, a path, or a list index (`2` or `#2`).
   (test: TheConsoleAddsMovesAndUndoesANodeOfTheOpenRecord)
+- **Behaviour trees (#387).** `AIGraphKind.BehaviourTree` draws a `behaviour_tree` record as its nodes (a task with
+  its arguments, a composite, a decorator, a blackboard `set` or `check`, and any `[when ...]` guard, as in
+  `fight: MoveToTarget  distance 2  [when SeeEnemy]`); the running node and its ancestors are active, read from
+  `sage:ai_state`'s `tree` and `taskIndex` (the task node counted depth first). Add (into a composite), remove,
+  move among siblings and rename (a task node's rename changes its task, any other gets a `name`) are undoable
+  steps in the record's history; reparenting is refused. (test: ABehaviourTreeIsATreeOfNodesEditedWithUndoAndTheNodeACreatureRunsIsActive)
 
 ## 10s. As built: the conditions and actions form (#370, 2026-10-07)
 
@@ -1045,7 +1051,7 @@ modders.
   - ~~multi-document tabs~~ **done (#375, §10x)**;
   - ~~brushes and block-out geometry~~ **done (#61, §10y)**, as placements of brush prefabs;
   - ~~a behaviour-tree view and a conditions and actions editor~~ **done (#369, #370; §10r, §10s)**, an AI
-    graph view over state machines, schedules and routines, and a form over any vocabulary;
+    graph view over state machines, schedules, routines and (#387) behaviour trees, and a form over any vocabulary;
   - ~~prefab revert-all and nesting~~ **done (#372, §10u)**;
   - still later: CSG and vertex editing for brushes, mesh thumbnails, editing an `anim_graph` as a graph,
     and driving the panels' input in CI.

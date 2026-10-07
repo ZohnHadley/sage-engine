@@ -1,6 +1,6 @@
 # 09 · Navigation and AI
 
-> Status: partly built. Sight-only HL1-style AI with schedules, a navmesh baked from brushes, terrain and static colliders (with the local grid as its fallback), crowd avoidance, ground that costs or is closed to a faction, per-size navmeshes, casting, NPC routines and off-screen simulation work and are tested. Hearing, behaviour trees and squads are planned. Owning assemblies: `Sage.Gameplay` (with a seam in `Sage.Simulation`). Design docs: [16 Gameplay framework](../../design/16-gameplay-framework.md) (§3.4 and the AI status sections), [14 World streaming](../../design/14-world-streaming.md).
+> Status: partly built. Sight-only HL1-style AI with schedules, a navmesh baked from brushes, terrain and static colliders (with the local grid as its fallback), crowd avoidance, ground that costs or is closed to a faction, per-size navmeshes, casting, NPC routines and off-screen simulation work and are tested. Since phase 4r (2026-10-07) it also has hearing (noise events, investigation), behaviour trees and utility selection, combat movement and squads. Owning assemblies: `Sage.Gameplay` (with a seam in `Sage.Simulation`). Design docs: [16 Gameplay framework](../../design/16-gameplay-framework.md) (§3.4 and the AI status sections), [14 World streaming](../../design/14-world-streaming.md).
 
 ## 1. Purpose and scope
 
@@ -20,11 +20,12 @@ It deliberately does not do: combat rules, damage, abilities (the gameplay sheet
 - Plan through doors (a creature opens one and waits) and over off-mesh links (walk, jump, drop, ladder, teleport), and plan again when a blocker comes to rest in a path.
 - Steer walking creatures round each other, weigh ground by its `nav_area` (by surface, water or volume), keep a faction out of ground closed to it, and plan each body on the navmesh of its size class.
 - Remember a target that went out of sight and walk to where it was last seen.
+- Hear noises (gunshots, blows, footsteps, a squad's shout), turn toward them and investigate; choose behaviour with schedules, a behaviour tree or utility scoring; strafe, retreat, take cover, flee, heal itself and flank as a squad.
 - Ask the faction rules who is an enemy, and take whoever hurt it as a target.
 - Keep NPC routines by the hour: pick a schedule and an anchor place from the clock.
 - Simulate agents whose cell is dormant: walk toward routine anchors, settle fights, and spawn them back when their cell is live.
 
-Not responsible for: riding a lift or a moving platform, hearing, squad tactics, crime and witnesses (planned in the gameplay sheet), or editing AI (the editor sheet, [18](18-editor.md)).
+Not responsible for: riding a lift or a moving platform, crime and witnesses (the gameplay sheet's), formation shapes beyond the flank spread, or editing AI (the editor sheet, [18](18-editor.md)).
 
 ## 3. Placement and dependencies
 
@@ -45,10 +46,14 @@ Plugin ids: `sage.gameplay.ai` (declared by `AIModule`, which requires `sage.gam
 | `NavMeshChecks` (internal) | The unreachable-marker check on `map` records | `src/Sage.Gameplay/Navigation/NavMeshChecks.cs` |
 | `NavPath` | Up to six corners an agent is walking, with replan timers | same |
 | `IAITask`, `AITaskContext` | A task is `Start`/`Run` returning `AITaskStatus`; the context exposes the agent's components | `src/Sage.Gameplay/AI/AI.cs` |
-| `AITaskRegistry` | Tasks by name: `Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`, `CastSpell`, `MoveToAnchor`, `FaceAnchor`, `StayAt` | same |
+| `AITaskRegistry` | Tasks by name: `Wait`, `FaceTarget`, `MoveToTarget`, `MeleeAttack`, `CastSpell`, `MoveToAnchor`, `FaceAnchor`, `StayAt`, `FaceNoise`, `MoveToNoise`, `ForgetNoise` (#386), `Strafe`, `RetreatToRange`, `TakeCover`, `Flee`, `HealSelf`, `Flank`, `CallForHelp` (#388) | same |
 | `IAICondition`, `AIConditions` | Sensors that set a condition bit; `[AICondition("name")]` declares one | `src/Sage.Gameplay/AI/AIVocabulary.cs` |
-| `IAIScheduleSelector` | Picks a schedule from `AIScheduleChoice`; engine entries `default` and `rules` | same |
+| `IAIScheduleSelector` | Picks a schedule from `AIScheduleChoice`; engine entries `default`, `rules` and `utility` (#387) | same |
 | `Routines` | Static helpers: which routine entry holds now, anchor lookup, `RoutineTarget` | `src/Sage.Gameplay/AI/Routines.cs` |
+| `Noise`, `NoiseKind`, `Noises`, `NoiseSystem` | The `Noise` game event (source, point, radius, loudness, kind), `Noises.Make` to raise one, and the system (`sage.ai.noise`) that turns `WeaponFired`, `Damaged` and `Footstep` into noises (#386) | `src/Sage.Gameplay/AI/Hearing.cs` |
+| `BehaviourTreeRecord`, `BehaviourTreeNode`, `AIBlackboard` | The `behaviour_tree` record, its nodes and the per-creature blackboard (`[Experimental("SAGE0120")]`, #387) | `src/Sage.Gameplay/AI/BehaviourTrees.cs` |
+| `AIUtility`, `IAIMeasure`, `AIConsideration` | Utility scoring: `ai_measure` vocabulary (`health`, `target_distance`, `noise_loudness`, `squad_size`, `squad_engaged`), considerations, the `utility` selector and node | `src/Sage.Gameplay/AI/Utility.cs` |
+| `Squad`, `Squads`, `SquadInfo` | Component `sage:squad` and the world's squad blackboard, rebuilt each tick by `sage.ai.squad` (#388) | `src/Sage.Gameplay/AI/Squads.cs` |
 | `IOffscreenFight` | How an off-screen fight round is settled; engine entry `strength` | `src/Sage.Gameplay/World/Offscreen.cs` |
 | `Factions` | `Between`, `AreHostile` and the player's stance, read by AI, combat and abilities | `src/Sage.Gameplay/Factions/Factions.cs` |
 
@@ -60,20 +65,22 @@ Events: the AI reads `Damaged` (to turn on an attacker), `TimePassed` (to catch 
 
 | Declaration | Kind | Holds |
 |---|---|---|
-| `ai_profile` | Record | `SightRange`, `SightAngleDegrees`, `MemorySeconds`, `MeleeRange`, `ThinkRate`, `TurnSpeedDegrees`, `Selector`, `Rules`, `Routine` |
+| `ai_profile` | Record | `SightRange`, `SightAngleDegrees`, `MemorySeconds`, `MeleeRange`, `ThinkRate`, `TurnSpeedDegrees`, `Selector`, `Rules`, `Routine`, and since #386 `hearing`, `occludedHearing` and `interestSeconds`, since #387 `utility` |
+| `behaviour_tree` | Record | `root`: a node tree of tasks, conditions, `sequence`, `selector`, `utility`, `invert`, `succeed`, `repeat`, `cooldown`, blackboard `set` and `check` (#387) |
+| `sage:squad` | Component and `squad` prefab part | `name`, `role`, `range` (#388) |
 | `ai_schedule` | Record | `Tasks` (each an object such as `{ "task": "Wait", "seconds": 1.5 }`) and `Interrupts` (condition names) |
 | `routine` | Record | `entries`: hour window, optional `days`, `schedule`, `at` anchor (a placement's name or a `.map` targetname), optional `scene` |
 | `faction` | Record | Relations to other factions, a default stance, the player's `Standing` and thresholds, `KillCost` |
 | `nav_area` | Record | `Cost` per metre (1 is ordinary ground), `Forbidden` factions, the `Surfaces` (physics_materials) and `Water` it covers |
 | `sage:nav_area` | Component and `nav_area` prefab part | `Area` and `Size`: a box of ground that is that area, over water and surfaces |
-| `sage:ai_state` | Component | Profile, schedule, task index, target (saved); conditions, path, last seen (transient) |
+| `sage:ai_state` | Component | Profile, schedule, task index, target, tree and blackboard (saved); conditions, path, last seen, the heard point (transient) |
 | `sage:routine` | Component and `routine` prefab part | The entity's own routine, which wins over its profile's |
 | `sage:offscreen` | Component and `offscreen` prefab part | `speed`, `strength`, `corpse`, `fight`; opts an NPC into simulation |
 | `sage:faction` | Component | Which faction an entity belongs to |
 | `offscreen` | Saved resource | The table of off-screen agents and the game minute reached |
 | `reputation` | Saved resource | The player's standing with each faction |
 
-Engine conditions (the `AICondition` bits): `SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`, `CanCastAtEnemy`, `CanMelee`, `SpellComingBack`, `Casting`, `RememberEnemy` and `in_routine`.
+Engine conditions (the `AICondition` bits): `SeeEnemy`, `LostEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `TaskFailed`, `ScheduleDone`, `CanCastAtEnemy`, `CanMelee`, `SpellComingBack`, `Casting`, `RememberEnemy`, `in_routine`, `HearNoise` and `Suspicious` (#386); the factions plugin adds `target_wanted` and `target_outlaw` (#389).
 
 ## 6. Lifecycle and data flow
 
@@ -112,25 +119,20 @@ Debug tools: `ai_debug`, `nav_debug`, `nav_stats` (plans on the mesh and on the 
 | REQ-AI-07 | NPCs shall follow a data routine by the hour, resuming it after a fight and after a save. | Must | Done | test: AFightInterruptsTheRoutineAndHeGoesBackToIt, test: SavedMidWalkHeArrivesAfterALoad |
 | REQ-AI-08 | Agents in dormant cells shall keep their routines and settle fights deterministically, then reappear. | Should | Done | test: TwoHostileSquadsOffscreenFightItOutTheSameWayEveryTime |
 | REQ-AI-09 | Games shall add tasks, conditions, selectors and off-screen fight rules without engine edits. | Must | Done | `AITaskRegistry`, `[AICondition]` in `src/Sage.Gameplay/AI/AIVocabulary.cs` |
-| REQ-AI-10 | Agents shall hear noise and be alerted by it. | Must | Not started | #386 |
+| REQ-AI-10 | Agents shall hear noise and be alerted by it. | Must | Done (#386) | test: ACreatureTurnsTowardAGunshotOutOfSightAndInvestigates, ANoiseBeyondItsReachIsNotHeard, AWallMufflesANoise, HavingLookedItForgetsTheNoiseAndGoesBackToIdling, FootstepsCarryFurtherTheFasterTheWalkerGoes, AFriendsFootstepsAreNotNewsButItsShotIs |
 | REQ-AI-11 | Routes shall be planned on a navmesh built from brush floors and terrain, for interiors and long distances. | Must | Done | test: ACreatureCrossesALevelOfRoomsAndASectorBorderOnTheNavmesh, test: WithoutTheNavmeshTheSameCreatureIsStuckInTheFirstRoom, test: ALongWayAcrossASectorBorderIsPlannedAStretchAtATime, test: TerrainIsBakedAndARidgeAcrossASectorBorderIsWalkedRound, test: ValidateNamesAMarkerNothingCanWalkTo |
 | REQ-AI-12 | Paths shall handle doors, dynamic obstacles and off-mesh links. | Should | Done | test: ACreatureOpensAClosedDoorAndWalksThroughIt, test: ALockedDoorIsAWallToThePlanner, test: ACreatureDropsFromALedgeByALink, test: WithoutTheLinkTheCreatureStaysOnTheLedge, test: ACreatureReplansWhenABlockerComesToRestInItsWay, test: EachKindOfLinkIsCrossed |
-| REQ-AI-13 | A game shall be able to select behaviour with behaviour trees or utility scoring beside schedules. | Should | Not started | #387 |
-| REQ-AI-14 | Hostile groups shall move in combat (strafe, retreat, cover) and as squads. | Should | Not started | #388 |
+| REQ-AI-13 | A game shall be able to select behaviour with behaviour trees or utility scoring beside schedules. | Should | Done (#387) | test: ACreatureRunsABehaviourTreeFromDataAlone, ARunningBranchWhoseGuardStopsHoldingIsAborted, ATreeRunsOneTaskATickAndRepeatCountsItsTimes, CooldownInvertSucceedAndCheckDecorateTheirNode, AUtilityNodeSwitchesToTheChildThatComesToScoreHigher, TheUtilitySelectorRunsTheBestScoringSchedule, ABlackboardSurvivesASaveAndTheTreeStartsAgainFromTheRoot, ABehaviourTreeNamesItsMistakesAtLoad |
+| REQ-AI-14 | Hostile groups shall move in combat (strafe, retreat, cover) and as squads. | Should | Done (#388) | test: ACreatureStrafesRoundItsTarget, ARangedCreatureKeepsItsDistance, ACreatureTakesCoverBehindAWall, AWoundedCreatureRunsAndHealsItself, APackOfTwoFlanks, ACallForHelpBringsASquadmateOutOfRange, ASquadSurvivesASave |
 | REQ-AI-15 | Agents shall avoid each other and weigh terrain costs and area flags. | Could | Done | test: TwentyCreaturesConvergingInACorridorAllGetThroughRoundEachOther, test: WithoutAvoidanceTheSameCrowdWalksThroughItself, test: ACreatureTakesTheRoadRoundAFieldRatherThanTheShortWayAcrossIt, test: ThePlannerGoesRoundDearWaterAndStraightensOnlyOverCheapGround, test: BrushTexturesAndTerrainLayersAreTheAreaOfWhatTheyAreMadeOf, test: GroundClosedToAFactionIsPlannedRoundByItAndCrossedByOthers, test: AWolfChasingIntoGroundClosedToItStopsAtTheEdge, test: EachBodyPlansOnTheMeshOfItsOwnSize |
 | REQ-AI-16 | Off-screen simulation shall path round walls, cover cells never visited and handle live NPCs with far anchors. | Should | Done (#284) | test: AnAgentCrossesAWalledTownByItsGate, AMapsTargetnamesAreAnchorsAndItsBrushesWalls, ANeverVisitedSectorsNpcAppearsAtItsRoutinePosition, ALiveNpcWalksToAnAnchorThatIsOnlyInTheContent, ALiveNpcWhoseAnchorIsInAnotherSceneGoesThroughTheDoor |
-| REQ-AI-17 | Crime, witnesses, bounty and faction ranks shall be expressible as data. | Should | Not started | #389 |
+| REQ-AI-17 | Crime, witnesses, bounty and faction ranks shall be expressible as data. | Should | Done (#389) | test: StealingFromAFlaggedChestInViewOfAGuard_RaisesABountyAndThePursuit, TheBountyIsSaved_AndPayingItCallsOffTheGuards (the gameplay sheet, REQ-GAME-21; the kit's ranks, REQ-RPG-16) |
 
 ## 10. Open work
 
-Milestone 10, AI, combat and narrative depth (epic #385):
+Milestone 10, AI, combat and narrative depth (epic #385): #386 to #389 are done (2026-10-07). Left from them: no formation shapes (squads flank, they do not hold a wedge or a line), no squad-scoped numeric blackboard for a tree's `set` and `check`, no AI condition for low health or squad state (they are `ai_measure`s, read through the `utility` selector and node), a heard point of interest is one at a time, and healing out of combat is not chosen by the AI.
 
-- #386 4r-1 Hearing, noise and alerting in AI perception (P1)
-- #387 4r-2 Behaviour trees / utility selection beside schedules (P2)
-- #388 4r-3 Combat movement and squad behaviour (P2)
-- #389 4r-4 Crime, witnesses, bounty and faction ranks (P2)
-
-Related, in the editor sheet: #369 10b-4 Behaviour-tree / AI graph view, done: the AI graphs are state machines, schedules and routines, shown with the states and task an agent is in (test: WhilePlayingTheViewShowsTheStatesTheGuardIsIn).
+Related, in the editor sheet: #369 10b-4 Behaviour-tree / AI graph view, done: the AI graphs are state machines, schedules and routines, shown with the states and task an agent is in (test: WhilePlayingTheViewShowsTheStatesTheGuardIsIn); since #387 the view also draws `behaviour_tree` records (test: ABehaviourTreeIsATreeOfNodesEditedWithUndoAndTheNodeACreatureRunsIsActive).
 
 ## 11. References
 

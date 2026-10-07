@@ -227,5 +227,5 @@ These are the owner's (REDESIGN §6). The plan works with any answer; each has a
 | 4p | Animation | 10 |
 | 10b | Editor, part 2 (done) | 18 |
 | 4f | RPG progression and economy (done) | 16, 17 |
-| 4r | AI, combat and narrative depth | 09, 16 |
+| 4r | AI, combat and narrative depth (done) | 09, 16, 17 |
 | 9 | Code mods and packaging | 19 |

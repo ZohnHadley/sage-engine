@@ -1,6 +1,6 @@
 # 17 · RPG kit
 
-> Status: partly built. The Daggerfall conventions, spellmaker, readied spell and the RPG screens exist and are tested; since phase 4q (2026-10-06) also the title, pause, save, load and options screens, loot and shop reachable from play, drag and drop in the grid, the map's picture and fog, the journal's history, and default keys. Since phase 4f (2026-10-07) skills, levelling and perks are records, the shop trades with the base's merchants, and containers and bodies open the loot screen from the base's `container`. Owning assemblies: `Sage.Kits.Rpg`, `Sage.Kits.Rpg.Client`. Design doc: [16-gameplay-framework.md](../../design/16-gameplay-framework.md).
+> Status: partly built. The Daggerfall conventions, spellmaker, readied spell and the RPG screens exist and are tested; since phase 4q (2026-10-06) also the title, pause, save, load and options screens, loot and shop reachable from play, drag and drop in the grid, the map's picture and fog, the journal's history, and default keys. Since phase 4f (2026-10-07) skills, levelling and perks are records, the shop trades with the base's merchants, and containers and bodies open the loot screen from the base's `container`. Since phase 4r (2026-10-07) it has faction ranks and the `rpg:factions` screen, and its journal shows failed quests and the text as it was told. Owning assemblies: `Sage.Kits.Rpg`, `Sage.Kits.Rpg.Client`. Design doc: [16-gameplay-framework.md](../../design/16-gameplay-framework.md).
 
 ## 1. Purpose and scope
 
@@ -67,11 +67,12 @@ are SAGE0129 (MAKING_A_GAME §10b).
 | `IPriceRule`, `StubPriceRule` | What a trade costs at a trader with no `merchant` (the shell of #99); at a merchant, `ShopView` trades through the base's `Merchants` and shows `Money` and `MerchantGold` (#380) | `src/Sage.Kits.Rpg/ShopView.cs` |
 | `SkillRecord`, `LevellingRecord`, `Progression`, `Skills`, `SkillRaised`, `LevelledUp` | Skills, levels and the system that raises them (`rpg.progression`, #377) | `src/Sage.Kits.Rpg/Progression.cs` |
 | `PerkRecord`, `GrantedPerks`, `Perks`, `PerkGranted`, `PerksView` | Perks and traits, their conditions, the `grant_perk` action and the `rpg:perks` screen (#381) | `src/Sage.Kits.Rpg/Perks.cs` |
+| `FactionRankRecord`, `Memberships`, `FactionRanks`, `RankChanged`, `FactionsView` | Ladders of ranks with conditions, membership, the `rank` condition, `join_faction` and `promote`, and the `rpg:factions` screen (#389) | `src/Sage.Kits.Rpg/FactionRanks.cs` |
 | `Rest`, `RestKind` | `Can`, `EnemyNear`, `Begin`; the screen and the console share it | `src/Sage.Kits.Rpg/Rest.cs` |
 | `RpgConventions` | `Of(RecordStore)` and `Of(World)`: the game's conventions or the defaults, cached per content load | `src/Sage.Kits.Rpg/RpgConventions.cs` |
 | `PanelListView`, `ListRow`, `SpellbookView`, `BagView`, `DialogueView`, `SpellmakerView` | The list screens that were panels until #350 (`rpg:spellbook`, `rpg:bag`, `rpg:dialogue`, `rpg:spellmaker`), their rows built by `GameplayPanels` and the rules | `src/Sage.Kits.Rpg/ListViews.cs` |
 
-**Console.** `spells`, `ready <ability>`, `inv`, `rest <hours> [wait]`, `skills`, `practise <skill> [amount]` (cheat), `perks`, `perk <perk>`, `grant_perk <perk>` (cheat), plus the spellmaker's composing
+**Console.** `spells`, `ready <ability>`, `inv`, `rest <hours> [wait]`, `skills`, `practise <skill> [amount]` (cheat), `perks`, `perk <perk>`, `grant_perk <perk>` (cheat), `ranks`, `rise <faction>`, `set_rank <faction> <rank>` (cheat, #389), plus the spellmaker's composing
 commands registered by `Spellmaker.RegisterCommands`. The registry dump lists them.
 
 **Input actions.** The simulation half registers `Cast`, `Spellbook`, `Spellmaker`, `Journal` and `Rest`
@@ -82,7 +83,7 @@ commands registered by `Spellmaker.RegisterCommands`. The registry dump lists th
 **Events and I/O.** The kit raises `SkillRaised`, `LevelledUp` and `PerkGranted` (4f). It uses the base's `TimePassed`, `Travel`, ability
 queue, `AttributeGained` and merchants, and `StubPriceRule` reads `ItemRecord.Value`.
 
-**Vocabulary.** Conditions `has_perk`, `skill` (a base rank, `atLeast`) and `level` (a levelling's level, `atLeast`); the action `grant_perk` (#381).
+**Vocabulary.** Conditions `has_perk`, `skill` (a base rank, `atLeast`) and `level` (a levelling's level, `atLeast`); the action `grant_perk` (#381); the condition `rank` (`atLeast`, 0 = any member) and the actions `join_faction` and `promote` (#389). The kit now depends on the base's factions plugin.
 
 ## 5. Data model
 
@@ -95,6 +96,8 @@ queue, `AttributeGained` and merchants, and `StubPriceRule` reads `ItemRecord.Va
 | Record `LevellingRecord` | `levelling` | `level`, `points`, `rate`, `growth`, `attributeBonus` steps `{ rises, gain }`, `effects` at each level (#377). |
 | Record `PerkRecord` | `perk` | `name`, `description`, `effects`, `requires`, `cost`, `trait` (#381). |
 | Component `Progression` | `rpg:progression` | The governing attributes' rises since the last level, saved (#377). |
+| Record `FactionRankRecord` | `faction_ranks` | `faction`, `ranks`: `{ name, requires }` conditions; joining is the first rung, each promotion asks its rung's (#389). |
+| Component `Memberships` | `rpg:memberships` | `of`: `{ faction, rank }`, saved (#389). |
 | Component `GrantedPerks` | `rpg:perks` | The perks and traits a character has, saved; the `perks` prefab part gives them (#381). |
 | Saved resource `MapDiscovery` | `map_discovery` | The squares of each scene's map the player has been near (#349). |
 | Component `UseScreen` | `sage:use_screen` | The screen using the entity opens; the `use_screen` prefab part adds it and makes the thing usable (#344). |
@@ -102,7 +105,7 @@ queue, `AttributeGained` and merchants, and `StubPriceRule` reads `ItemRecord.Va
 | Component `ItemGridPlacements` | `rpg:item_grid` | Where each stack lies on its carrier's grid, saved. |
 | Component `MapMarker` | `sage:map_marker` | `label` and `style`; content writes it as `map_marker`. |
 | Saved resource `Spellbook` | `spellbook` | The drafts only, never the derived records, so a rebalanced effect still works. |
-| View-model ids | `rpg_shop`, `rpg_map`, `rpg_rest`, `rpg_journal`, `rpg_title`, `rpg_pause`, `rpg_save`, `rpg_load`, ... | Screen records `rpg:inventory`, `rpg:equipment`, `rpg:loot`, `rpg:topics`, `rpg:shop`, `rpg:journal`, `rpg:map`, `rpg:rest`, `rpg:mods`, `rpg:controls`, `rpg:options`, `rpg:title`, `rpg:pause`, `rpg:save`, `rpg:load` and `rpg:perks` (over `rpg_perks`, #381) live in the kit's `ui_screens.json`; the options screen's settings in `ui_options.json`. |
+| View-model ids | `rpg_shop`, `rpg_map`, `rpg_rest`, `rpg_journal`, `rpg_title`, `rpg_pause`, `rpg_save`, `rpg_load`, `rpg_factions`, ... | Screen records `rpg:inventory`, `rpg:equipment`, `rpg:loot`, `rpg:topics`, `rpg:shop`, `rpg:journal`, `rpg:map`, `rpg:rest`, `rpg:mods`, `rpg:controls`, `rpg:options`, `rpg:title`, `rpg:pause`, `rpg:save`, `rpg:load` and `rpg:perks` (over `rpg_perks`, #381) live in the kit's `ui_screens.json`; the options screen's settings in `ui_options.json`. |
 
 Since #349 the kit lays out the journal and the map itself. The Sandbox's own main menu of #99
 (`sandbox:main_menu`, `MainMenuView`) is still registered (`ui_open main_menu`); F10 opens the kit's pause menu.
@@ -155,8 +158,8 @@ attempt agree. Log category `Console` carries the panels printed by `spells` and
 | REQ-RPG-13 | Perks and traits shall be effects with prerequisites. | Should | Done (#381) | test: APerkIsPickedAtLevelUpWhenItsPrerequisitesHoldAndAppliesItsEffects, test: TraitsAreGrantedForNothingByAPrefabOrAnAction, test: ThePerksPanelListsWhatItHasAndWhyTheRestCannotBePicked, test: PerkMistakesAreLoadErrors |
 | REQ-RPG-14 | A main menu, pause menu and save/load slots shall exist in the kit's client half. | Must | Done: in the kit's simulation half and content (`rpg:title`, `rpg:pause`, `rpg:save`, `rpg:load`), so a headless test drives them | test: TheSandboxBootsToItsTitleAndNewGameStartsTheWorld, test: ThePauseMenuStandsTheWorldStillUntilItCloses, test: TheSaveScreenAsksBeforeOverwritingOrDeleting, test: TheLoadScreenAsksInAGameAndRefusesWhatItCannotRead |
 | REQ-RPG-15 | The inventory grid shall support drag and drop, item pictures, stack split and rotate. | Should | Done | test: AMouseDragsAnItemByItsPictureTurnsItAndDropsAStackOnTheGround, test: AGamepadTurnsSplitsAndDropsAStack |
-| REQ-RPG-16 | Crime, witnesses, bounty and faction ranks shall be provided. | Should | Not started | #389 |
-| REQ-RPG-17 | The kit's screens and combat edge cases shall have test coverage. | Should | Partial | `tests/Sage.Tests/Kits/RpgScreenTests.cs`; gaps in #394 |
+| REQ-RPG-16 | Crime, witnesses, bounty and faction ranks shall be provided. | Should | Done (#389) | test: RanksAreClimbedOneRungAtATimeWhenTheirRequirementsHold, JoiningAndPromotionComeFromDataAndAreSaved, TheFactionsScreenListsRanksAndJoins (crime and bounty: the base's, REQ-GAME-21) |
+| REQ-RPG-17 | The kit's screens and combat edge cases shall have test coverage. | Should | Done (#394): every kit screen has a headless test on the kit's own content, and the cost of hundreds of hitboxes is measured | test: TheJournalScreenListsAQuestItsStageAndProgressAndTracksIt, TheMapScreenPlacesMarkersRoundThePlayerAndItsButtonsZoomAndPan, ThePerksScreenTakesAPerkItCanAffordAndSaysWhyNotForTheRest, HundredsOfHitboxesStepWithinABudgetAndGrowLinearly; `tests/Sage.Tests/Kits/RpgScreenTests.cs` |
 
 ## 10. Open work
 
@@ -168,11 +171,7 @@ the Sandbox has no chest; the HUD's Use prompt does not say "Loot" or
 screens); a split halves a stack; the map has no wheel zoom, drag pan or pad shortcuts, its fog is
 drawn as squares, and quest targets are found by the first entity of a name.
 
-**Milestone 10, AI, combat and narrative**
-
-- #389 4r-4 Crime, witnesses, bounty and faction ranks (P2)
-- #392 4r-7 Dialogue extras: barks, greetings, hyperlinked topics (P3)
-- #394 4r-9 Tests for the kit screens and combat edge cases (P3)
+**Milestone 10, AI, combat and narrative** (#386 to #394) is done (2026-10-07). Left from it: `rpg:factions` has no default key binding, there is no jail or arrest dialogue, and the dialogue screen does not highlight a hyperlinked topic.
 
 ## 11. References
 

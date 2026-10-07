@@ -901,8 +901,8 @@ because it edits the live play world (`DevTools.cs:84-87`).
   3. record forms;
   4. problems panel;
   5. conditions and actions editor (**built**, #370, 15 §10s);
-  6. behaviour-tree view (**built** as the AI graph view over state machines, schedules and routines,
-     #369, 15 §10r; the engine has no behaviour-tree record until 4r's #387);
+  6. behaviour-tree view (**built** as the AI graph view, #369, 15 §10r, over state machines, schedules and
+     routines, and since 4r's #387 over `behaviour_tree` records too);
   7. asset browser (**built**, #366, 15 §10o);
   8. material preview (**built**, #366: the material's texture slots and the live world).
 - **Levels are built in this editor, not in TrenchBroom** (decided 2026-09-28, §6 item 8). In the edit
@@ -1142,12 +1142,12 @@ what the base therefore needs first:
 |---|---|---|---|---|---|
 | First-person play (third-person optional) with viewmodels | ● | ● | ● (both) | ● | ✅ first- and third-person rigs with the V toggle, skinned arms (4a, 4d) |
 | Skeletal characters and first-person arms | billboards | ● | ● | ● | ✅ (4d); ragdolls in progress (4k) |
-| Melee **and** ranged: projectile, hitscan, ammo, reload, hit locations | ● | ●● | ● | ●● | ✅ one hit pipeline for melee, projectiles and hitscan, ammo, reload, hit locations (4e); blocking in 4r |
+| Melee **and** ranged: projectile, hitscan, ammo, reload, hit locations | ● | ●● | ● | ●● | ✅ one hit pipeline for melee, projectiles and hitscan, ammo, reload, hit locations (4e); blocking, parry, knockback, cleave and damage over time (4r) |
 | Stats, skills, levelling, effects | ● | ○ | ●● | ○ | ✅ attributes and effects; skills that rise with use, levelling and perks as records (4f) |
 | Inventory, equipment, loot, shops, containers | ● | ○ | ● | ●● (grid, weight) | ✅ grid with weight, equipment, loot and shop screens (4c); containers, loot tables, item instances, durability, slots in data, burden and merchants with money (4f) |
-| Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ◐ topics, quests, journal and factions in data (4b, 4c); barks and richer objectives in 4r |
+| Dialogue (topics or trees), quests, journal, factions | ● | | ●● | ● | ✅ topics, quests, journal and factions in data (4b, 4c); barks, greetings, timed and failing quests, crime, bounty and faction ranks (4r) |
 | Scripted sequences, doors, lifts, triggers, logic | ● | ●● | ● | ● | ✅ entity I/O, logic entities, state machines (4b); a wider vocabulary, nested state machines and the rest of HL1's and Source's logic set: multisource, logic_case, logic_auto, filtered triggers, spawners (4m) |
-| AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g) that paths round walls, covers sectors never visited and takes NPCs through doors (4m); hearing, behaviour trees and squads in 4r |
+| AI with perception, schedules and combat; off-screen simulation | ● | ● | ● | ●● (A-Life) | ◐ schedules, routines, off-screen simulation (4g) that paths round walls, covers sectors never visited and takes NPCs through doors (4m); hearing, behaviour trees, utility scoring, combat movement and squads (4r); formations are left |
 | Big world: streamed exteriors, interior cells, travel | ●● | levels | ● | zones | ✅ entities stream by sector, interiors, load doors, fast travel (4g); the far ring, several streaming sources, followers, and interiors that stay live beside their exterior (4m); more LOD in 4n |
 | Time of day, weather, lighting, day/night | ● | | ● | ●● | ✅ clock, sky, sun shadows, fog, weather (4h); seasons, moon phases, leap years and calendar events (4m); cascaded shadows, lamp shadows, lightmaps, a moon and clouds, flickering and spot lamps, lightning, weather under roofs, wet ground and puddles, soft particles (4n) |
 | Save anywhere, robust across updates | ● | ● | ● | ● | ✅ (4i); thumbnails, compression, a background write that costs the tick about 3 ms at 10k entities, and a version report (4m) |
@@ -1234,7 +1234,7 @@ order, so `4l-1` is the first thing to build in 4l.
 | 7 | **4p** Animation | #356 | #357–#364 | Root motion, additive layers and sync markers, directional attacks, retargeting, IK extras, morph targets | an NPC walks with root motion and no foot sliding; a clip plays on a second rig |
 | 8 | **10b** Editor, part 2 | #365 | #366–#375, #61, #49 | Brushes, the asset browser, multi-select and scale, nested inspector, BT view, conditions editor, terrain tools | a designer blocks out a room, textures it, edits an AI tree and saves, without JSON |
 | 9 | **4f** RPG progression and economy | #376 | #377–#384 | Skills and levelling, containers, loot tables, shops with money, perks, durability, item instances | a skill rises with use and a trader buys, sells and restocks, in data |
-| 10 | **4r** AI, combat and narrative depth | #385 | #386–#394 | Hearing, behaviour trees, squads, crime, blocking and knockback, richer quest objectives | a creature hears a gunshot and investigates; a guard pursues a thief; a timed quest fails |
+| 10 | **4r** AI, combat and narrative depth (**done**, 2026-10-07) | #385 | #386–#394 | Hearing, behaviour trees, squads, crime, blocking and knockback, richer quest objectives | a creature hears a gunshot and investigates; a guard pursues a thief; a timed quest fails |
 | 11 | **9** Code mods and packaging | #395 | #396–#401 | Code mods, `.sagemod` packages, namespaced assets, keyed list merge, mod shaders | a packed data mod and a code mod conflict and are reported; saves survive toggling |
 
 **Why this order.** It follows the owner's rule that generic engine work comes before RPG-specific work.
@@ -1295,8 +1295,8 @@ swings and guards with the `Block` action and hit windows from clip events (#359
 foot tilt, pelvis smoothing, look-at and hand IK and sockets checked at load (#361), the Sandbox's skeletal brute and
 the editor's Animation window (#362), morph targets (#363) and sprites in `anim_debug` (#364). The exit is met
 headlessly: an NPC travels its clip's distance with its root in place (test: AnNpcTravelsTheClipsAuthoredDistance_AndItsRootStaysInPlace)
-and a clip plays on a second rig (test: SkeletonMapLetsAModelPlayAnotherRigsClips). Left: what a guard does to a blow
-(4r, #390), atlas packing for sprites, a gradient-band 2D blend; the handoff's §1 lists each issue's follow-ups. Next
+and a clip plays on a second rig (test: SkeletonMapLetsAModelPlayAnotherRigsClips). Left: ~~what a guard does to a blow
+(4r, #390)~~ (done in 4r), atlas packing for sprites, a gradient-band 2D blend; the handoff's §1 lists each issue's follow-ups. Next
 is 10b (#365).
 
 **10b (#365) as of 2026-10-07:** #366–#375, #61 and #49 are built (spec sheet [18](spec/subsystems/18-editor.md),
@@ -1326,6 +1326,20 @@ refuses with a reason and restocks a day later across a save
 (test: TraderExit_BuysSellsRefusesWithAReason_RestocksAfterADay_AndKeepsItAllAcrossASave). Left: armour's
 effects do not scale with condition, the grid does not show condition, crime does not yet read `Stolen`; the
 handoff's §1 lists each issue's follow-ups. Next is 4r (#385).
+
+**4r (#385) as of 2026-10-07:** #386–#394 are built (spec sheets [09](spec/subsystems/09-navigation-and-ai.md),
+[16](spec/subsystems/16-gameplay.md) and [17](spec/subsystems/17-rpg-kit.md), design 16 "As built (phase 4r)",
+[`history/handoff-2026-10-07-4r.md`](history/handoff-2026-10-07-4r.md)): hearing and noise events with an
+investigating creature (#386), `behaviour_tree` records and utility selection, drawn and edited in the AI Graph
+(#387), combat movement and squads (#388), crime, witnesses, bounty and guards, and the kit's faction ranks (#389),
+guards, parry, knockback, hit reactions, cleave, damage over time and one friendly-fire filter (#390), quest
+objectives for volumes and topics with timers and failure (#391), barks, greetings and linked topics (#392),
+healing and buffing creatures with bouncing and sticking projectiles (#393), and tests for the kit's screens and
+the cost of hitboxes (#394). The exit is met headlessly: a creature hears a gunshot and investigates
+(test: ACreatureTurnsTowardAGunshotOutOfSightAndInvestigates), a guard pursues a thief
+(test: StealingFromAFlaggedChestInViewOfAGuard_RaisesABountyAndThePursuit) and a timed quest fails
+(test: ATimedStageFailsWhenTheClockRunsOut). Left: formations, an arrest and jail flow, bounty decay, out-of-combat
+healing; the handoff's §1 lists each issue's follow-ups. Next is 9 (#395).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,
