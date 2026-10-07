@@ -1,5 +1,6 @@
 #nullable enable
 const Sage.Gameplay.AIScheduleSelectors.Utility = "utility" -> string!
+const Sage.Gameplay.Squad.Leader = "leader" -> string!
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AIBlackboard
 Sage.Gameplay.AIBlackboardEntry
@@ -171,6 +172,25 @@ Sage.Gameplay.Pickup.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.PickupPart.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.QuestObjective.Target -> string!
 Sage.Gameplay.QuestStage.Target -> string!
+Sage.Gameplay.Squad
+Sage.Gameplay.Squad.IsLeader.get -> bool
+Sage.Gameplay.Squad.Name -> string!
+Sage.Gameplay.Squad.Range -> float
+Sage.Gameplay.Squad.Role -> string!
+Sage.Gameplay.Squad.Squad() -> void
+Sage.Gameplay.SquadInfo
+Sage.Gameplay.SquadInfo.CalledAt.get -> float
+Sage.Gameplay.SquadInfo.EngagedCount.get -> int
+Sage.Gameplay.SquadInfo.LastSeen.get -> System.Numerics.Vector3
+Sage.Gameplay.SquadInfo.Leader.get -> Sage.Simulation.Entity
+Sage.Gameplay.SquadInfo.Members.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
+Sage.Gameplay.SquadInfo.Name.get -> string!
+Sage.Gameplay.SquadInfo.SeenAt.get -> float
+Sage.Gameplay.SquadInfo.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.Squads
+Sage.Gameplay.Squads.All.get -> System.Collections.Generic.IEnumerable<Sage.Gameplay.SquadInfo!>!
+Sage.Gameplay.Squads.Find(string! name) -> Sage.Gameplay.SquadInfo?
+Sage.Gameplay.Squads.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.SquadInfo?
 static Sage.Gameplay.AIBlackboard.Get(in Sage.Gameplay.AIState state, string! key) -> float
 static Sage.Gameplay.AIBlackboard.Get(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! key) -> float
 static Sage.Gameplay.AIBlackboard.Set(ref Sage.Gameplay.AIState state, string! key, float value) -> void
@@ -212,6 +232,7 @@ static Sage.Gameplay.Items.WornInstance(this Sage.Simulation.World! world, Sage.
 static Sage.Gameplay.Noises.Make(Sage.Simulation.World! world, Sage.Simulation.Entity source, System.Numerics.Vector3 point, float radius, float loudness = 1, Sage.Gameplay.NoiseKind kind = Sage.Gameplay.NoiseKind.Other) -> void
 static Sage.Gameplay.Quests.IsTracked(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.Track(Sage.Simulation.World! world, Sage.Core.RecordId quest, bool tracked = true) -> bool
+static Sage.Gameplay.Squads.Of(Sage.Simulation.World! world) -> Sage.Gameplay.Squads!
 virtual Sage.Gameplay.QuestObjective.TryGetPlace(out System.Numerics.Vector3 at) -> bool
 Sage.Gameplay.Loot
 Sage.Gameplay.Loot.Loot() -> void

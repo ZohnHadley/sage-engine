@@ -285,6 +285,7 @@ internal sealed class AIThinkSystem : ISystem
             {
                 s[n].LastSeen += offset;
                 s[n].Heard += offset;
+                s[n].MoveGoal += offset;   // issue #388's cover
                 s[n].Path.Rebase(offset);
             }
         }
