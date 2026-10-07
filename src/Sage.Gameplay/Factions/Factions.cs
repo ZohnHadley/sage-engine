@@ -131,6 +131,9 @@ public static class Factions
         if (viewer == other) return Stance.Ally;
         if (!world.IsAlive(viewer) || !world.IsAlive(other)) return Stance.Neutral;
 
+        // A guard is after whoever owes its law a bounty, whatever its faction thinks of them (issue #389).
+        if (Crime.Pursues(world, viewer, other)) return Stance.Hostile;
+
         var records = world.Resources.Get<RecordStore>();
         RecordId mine = FactionOf(world, viewer), theirs = FactionOf(world, other);
         RecordId player = world.Conventions().PlayerFaction;

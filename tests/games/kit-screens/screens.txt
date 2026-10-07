@@ -30,6 +30,7 @@ rpg:map           ui
 rpg:journal       ui
 rpg:bag           ui
 rpg:perks         ui
+rpg:factions      ui
 rpg:spellbook     tap   Spellbook
 rpg:spellmaker    tap   Spellmaker
 rpg:dialogue      use
