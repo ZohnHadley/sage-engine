@@ -10524,13 +10524,15 @@
       ]
     },
     "effect_execution:id": {
-      "description": "An effect_execution by id: dispel, knockback, summon, teleport.",
+      "description": "An effect_execution by id: damage, dispel, knockback, summon, teleport.",
       "type": "string",
       "enum": [
+        "Damage",
         "Dispel",
         "Knockback",
         "Summon",
         "Teleport",
+        "damage",
         "dispel",
         "knockback",
         "summon",
@@ -10554,6 +10556,49 @@
             "execution"
           ],
           "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "execution": {
+                    "enum": [
+                      "damage",
+                      "Damage"
+                    ]
+                  }
+                },
+                "required": [
+                  "execution"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "description": "Damage each application (each period of a periodic effect) deals, times the magnitude and the stacks. At least 0. (float, default 1)",
+                    "default": 1,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "damageType": {
+                    "description": "Its damage type, whose resist stands up to it; empty = the game's default (gameplay_conventions) Names a damage_type record. (RecordRef<DamageTypeRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:damage_type"
+                      }
+                    ]
+                  },
+                  "execution": {
+                    "description": "The effect_execution: damage.",
+                    "enum": [
+                      "damage",
+                      "Damage"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "effect_execution 'damage' (DamageExecution)."
+              }
+            },
             {
               "if": {
                 "properties": {
