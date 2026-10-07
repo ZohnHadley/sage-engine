@@ -24,15 +24,22 @@ public sealed class CoreCVars
     // True when the console may be opened: always in dev builds, via con_enable in Shipping.
     public bool ConsoleAvailable => BuildInfo.IsDevBuild || ConsoleEnabled.Value;
 
-    // Whether this app's log cvars configure the process's log: its default level, stdout, the file's
-    // level and the queue (issue #11). The log is one per process, so only one app may: the host's.
-    // Every other app — a test, a tool, a second app in the same process — still has the cvars (a
-    // config.cfg naming them is not an error), and setting them changes nothing outside it.
+    // Whether this app's log is the process's (issue #11): the host's app, whose `developer`,
+    // `log_file_level`, `log_keep` and `log_queue_size` configure the log file and stdout the host opened.
+    // Every other app — a test, a tool, a second app in the same process — has a log of its own
+    // (AppEnvironment, issue #49): its cvars configure that one when they are changed, and it starts at
+    // the levels of the log it was made under rather than at `developer`'s defaults.
     public bool OwnsProcessLog { get; }
 
-    private CoreCVars(CVarRegistry r, bool ownsProcessLog)
+    // The app these cvars configure: its log, its user folder (exec).
+    public AppEnvironment Environment { get; }
+
+    private Logger Logger => Environment.Logger;
+
+    private CoreCVars(CVarRegistry r, bool ownsProcessLog, AppEnvironment environment)
     {
         OwnsProcessLog = ownsProcessLog;
+        Environment = environment;
         Developer = r.Register("developer", BuildInfo.Config == BuildConfig.Debug ? 1 : 0, CVarFlags.DevOnly,
             "Developer defaults: 1 = Debug-level logs, stdout log, hot reload on; 0 = off. Each feature keeps its own cvar.", 0, 2);
         Cheats = r.Register("sv_cheats", false, CVarFlags.None,
@@ -54,34 +61,39 @@ public sealed class CoreCVars
         EventTrace = r.Register("ev_trace", "", CVarFlags.DevOnly,
             "Log every send of this game event type, or * for all. Empty = off. See `ev_stats`.");
 
-        if (!ownsProcessLog) return;
         Developer.Changed += _ => ApplyDeveloperDefaults();
-        LogKeep.Changed += _ => Log.File?.Prune(LogKeep.Value);
-        LogFileLevel.Changed += _ => { if (Log.File != null) Log.File.MinLevel = LogFileLevel.Value; };
-        LogQueueSize.Changed += _ => Log.QueueCapacity = LogQueueSize.Value;
+        LogKeep.Changed += _ => Logger.File?.Prune(LogKeep.Value);
+        LogFileLevel.Changed += _ => { if (Logger.File != null) Logger.File.MinLevel = LogFileLevel.Value; };
+        LogQueueSize.Changed += _ => Logger.QueueCapacity = LogQueueSize.Value;
+        if (!ownsProcessLog) return;
         ApplyDeveloperDefaults();
-        if (Log.File != null) Log.File.MinLevel = LogFileLevel.Value;
-        Log.QueueCapacity = LogQueueSize.Value;
+        if (Logger.File != null) Logger.File.MinLevel = LogFileLevel.Value;
+        Logger.QueueCapacity = LogQueueSize.Value;
     }
 
     // `ownsProcessLog`: see OwnsProcessLog. SageAppOptions.OwnsProcessLog passes it; the executable
-    // sets it, and nothing else should.
+    // sets it, and nothing else should. The cvars configure the current app's environment.
     public static CoreCVars Register(CVarRegistry registry, bool ownsProcessLog = false)
+        => Register(registry, ownsProcessLog, AppEnvironment.Current);
+
+    // The same, for an app's own environment (SageApp passes the one it made).
+    public static CoreCVars Register(CVarRegistry registry, bool ownsProcessLog, AppEnvironment environment)
     {
-        var core = new CoreCVars(registry, ownsProcessLog);
-        RegisterCommands(registry);
+        var core = new CoreCVars(registry, ownsProcessLog, environment);
+        RegisterCommands(registry, environment);
         return core;
     }
 
     private void ApplyDeveloperDefaults()
     {
         bool dev = BuildInfo.IsDevBuild && Developer.Value >= 1;
-        LogCat.DefaultLevel = dev ? LogLevel.Debug : LogLevel.Info;
-        if (Log.Stdout != null) Log.Stdout.Enabled = dev;
+        Logger.DefaultLevel = dev ? LogLevel.Debug : LogLevel.Info;
+        if (Logger.Stdout != null) Logger.Stdout.Enabled = dev;
     }
 
-    private static void RegisterCommands(CVarRegistry r)
+    private static void RegisterCommands(CVarRegistry r, AppEnvironment environment)
     {
+        var logger = environment.Logger;
         r.RegisterCommand("help", CVarFlags.None, "help [name]: describe a cvar or command, or list how to find things.", a =>
         {
             if (a.Count == 0)
@@ -147,7 +159,7 @@ public sealed class CoreCVars
         {
             if (a.Count == 0) { Log.Warn(LogCat.Console, "exec <file>"); return; }
             string name = a[0].EndsWith(".cfg", StringComparison.OrdinalIgnoreCase) ? a[0] : a[0] + ".cfg";
-            a.Registry.ExecFile(Path.Combine(UserPaths.Root, name), ExecSource.Config);
+            a.Registry.ExecFile(Path.Combine(environment.UserRoot, name), ExecSource.Config);
         });
 
         r.RegisterCommand("log_level", CVarFlags.None,
@@ -158,16 +170,16 @@ public sealed class CoreCVars
             if (cats.Count == 0) { Log.Warn(LogCat.Console, $"log_level: unknown category {a[0]} (see log_list)"); return; }
             if (a.Count == 1)
             {
-                foreach (var c in cats) Log.Info(LogCat.Console, $"  {c.Name}: {c.MinLevel}{(c.IsOverridden ? " (set)" : "")}");
+                foreach (var c in cats) Log.Info(LogCat.Console, $"  {c.Name}: {logger.GetLevel(c)}{(logger.IsOverridden(c) ? " (set)" : "")}");
                 return;
             }
             if (a[1].Equals("default", StringComparison.OrdinalIgnoreCase))
             {
-                foreach (var c in cats) c.ResetToDefault();
+                foreach (var c in cats) logger.ResetLevel(c);
             }
             else if (Enum.TryParse(a[1], ignoreCase: true, out LogLevel level) && Enum.IsDefined(level))
             {
-                foreach (var c in cats) c.MinLevel = level;
+                foreach (var c in cats) logger.SetLevel(c, level);
             }
             else { Log.Warn(LogCat.Console, $"log_level: unknown level {a[1]}"); return; }
             Log.Info(LogCat.Console, $"log_level {a[0]} -> {a[1]}");
@@ -176,8 +188,8 @@ public sealed class CoreCVars
         r.RegisterCommand("log_list", CVarFlags.None, "List log categories and their levels.", _ =>
         {
             foreach (var c in LogCat.All.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
-                Log.Info(LogCat.Console, $"  {c.Name,-10} {c.MinLevel}{(c.IsOverridden ? " (set)" : "")}");
-            Log.Info(LogCat.Console, $"Default: {LogCat.DefaultLevel}. Log file: {Log.File?.CurrentPath ?? "(none)"}");
+                Log.Info(LogCat.Console, $"  {c.Name,-10} {logger.GetLevel(c)}{(logger.IsOverridden(c) ? " (set)" : "")}");
+            Log.Info(LogCat.Console, $"Default: {logger.DefaultLevel}. Log file: {logger.File?.CurrentPath ?? "(none)"}");
         });
 
         r.RegisterCommand("mem", CVarFlags.None, "Show managed memory and GC statistics.", _ =>

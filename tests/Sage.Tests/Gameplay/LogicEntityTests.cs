@@ -146,7 +146,7 @@ public class LogicEntityTests
     {
         using var app = HeadlessApp.Bare().With(new PhysicsModule(), new EntityIOModule()).Boot("io");
         var world = app.World;
-        string name = TestEnv.Unique("plain");
+        string name = "plain";
         var plain = world.Create(Transform.At(Vector3.Zero), name);
         using var log = new CaptureSink();
         world.IO().FireInput(plain, "Trigger");
@@ -179,7 +179,7 @@ public class LogicEntityTests
         Assert.Equal("on", world.Get<StateMachine>(lamp).State);
 
         Assert.Equal(new[] { "sage:state_machine" }, app.Engine.Inputs.ComponentsTaking("SetState"));
-        string name = TestEnv.Unique("no machine");
+        string name = "no machine";
         using var capture = new CaptureSink();
         world.IO().FireInput(world.Create(Transform.At(Vector3.Zero), name), "SetState", "on");
         Tick(world);

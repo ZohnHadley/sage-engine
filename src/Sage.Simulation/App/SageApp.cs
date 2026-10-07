@@ -65,9 +65,12 @@ public sealed class SageAppOptions
     // in the game's namespace, like the start scene.
     public string? Title { get; init; }
 
-    // Whether `developer`, `log_file_level` and `log_queue_size` configure the process's log (issue
-    // #11). The executable's app does; a test, a tool or a second app in the same process leaves the
-    // log as the host set it (CoreCVars.OwnsProcessLog).
+    // Whether this app's log, user folder and crash sections are the process's (issue #11): the
+    // executable's app, whose `developer`, `log_file_level` and `log_queue_size` configure the log the
+    // host opened. A test, a tool or a second app in the same process gets an environment of its own
+    // instead (AppEnvironment.CreateForApp, issue #49), under the one current when it is created (beside
+    // another app, not under it): its own sinks and levels, its lines reaching that one's sinks too
+    // (CoreCVars.OwnsProcessLog).
     public bool OwnsProcessLog { get; init; }
 
     // Mods (phase 4j, issue 4j-3; ModManager). Null: found in the game's `modsDirectory` and in
@@ -112,6 +115,7 @@ public enum AppStage { Created, Registered, Configured, ContentLoaded, Started, 
 public sealed class SageApp : IDisposable
 {
     private readonly SageAppOptions _options;
+    private AppEnvironment.Scope _created;   // the environment made current by Create, until Dispose
 
     private SageApp(SageAppOptions options, Engine engine)
     {
@@ -120,6 +124,11 @@ public sealed class SageApp : IDisposable
     }
 
     public Engine Engine { get; }
+
+    // This app's log, user folder and crash report sections (issue #49). Create makes it current for the
+    // rest of the code that created the app, and each step and world tick makes it current again, so
+    // `Log`, `UserPaths` and `CrashReporter` mean this app's while it runs.
+    public AppEnvironment Environment => Engine.Environment;
     public CVarRegistry CVars => Engine.CVars;
     public GameManifest? Game => _options.Game;
     public AppStage Stage { get; private set; } = AppStage.Created;
@@ -128,9 +137,22 @@ public sealed class SageApp : IDisposable
     // module or the game assembly can't be loaded — a host reports that and stops.
     public static SageApp Create(SageAppOptions options)
     {
-        var cvars = new CVarRegistry();
-        var engine = new Engine(cvars, CoreCVars.Register(cvars, options.OwnsProcessLog));
-        var app = new SageApp(options, engine);
+        var environment = options.OwnsProcessLog ? AppEnvironment.Process : AppEnvironment.CreateForApp();
+        var created = environment.Enter();
+        SageApp app;
+        try
+        {
+            var cvars = new CVarRegistry();
+            var engine = new Engine(cvars, CoreCVars.Register(cvars, options.OwnsProcessLog, environment)) { Environment = environment };
+            app = new SageApp(options, engine) { _created = created };
+        }
+        catch
+        {
+            created.Dispose();
+            environment.Dispose();
+            throw;
+        }
+        var engineMade = app.Engine;
         try
         {
             app.MountEngine();
@@ -142,7 +164,9 @@ public sealed class SageApp : IDisposable
         }
         catch
         {
-            engine.Dispose();
+            engineMade.Dispose();
+            created.Dispose();
+            environment.Dispose();
             throw;
         }
         return app;
@@ -305,6 +329,7 @@ public sealed class SageApp : IDisposable
     // Every module's Init — registration only — then the engine's own console commands.
     public void Register()
     {
+        using var _ = Environment.Enter();
         Advance(AppStage.Created, AppStage.Registered);
         Engine.Modules.InitAll();
         Engine.Modules.RegisterCommands(CVars);
@@ -324,6 +349,7 @@ public sealed class SageApp : IDisposable
     // config.cfg, once every cvar and command a host will register exists.
     public void Configure()
     {
+        using var _ = Environment.Enter();
         Advance(AppStage.Registered, AppStage.Configured);
         CVars.CVarSeal.Seal("config.cfg was read");
         if (_options.ConfigFile is { } config && File.Exists(config))
@@ -334,6 +360,7 @@ public sealed class SageApp : IDisposable
 
     public void LoadContent()
     {
+        using var _ = Environment.Enter();
         Advance(AppStage.Configured, AppStage.ContentLoaded);
         Engine.Actions.Seal.Seal("content was loaded");
         Engine.Vocabularies.Seal("content was loaded");   // records name their entries (issue #28)
@@ -395,6 +422,7 @@ public sealed class SageApp : IDisposable
 
     public void Start()
     {
+        using var _ = Environment.Enter();
         Advance(AppStage.ContentLoaded, AppStage.Started);
         Engine.Modules.StartAll();
     }
@@ -402,6 +430,7 @@ public sealed class SageApp : IDisposable
     // Worlds can be created from Start on; the first one moves the app to Running.
     public World CreateWorld(string name)
     {
+        using var _ = Environment.Enter();
         if (Stage is not (AppStage.Started or AppStage.Running))
             throw new InvalidOperationException($"CreateWorld('{name}') needs a started app; it is {Stage}. Call Start first.");
         Stage = AppStage.Running;
@@ -413,6 +442,7 @@ public sealed class SageApp : IDisposable
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor (phase 10a)
     public World CreateEditWorld(string name, RecordId scene = default)
     {
+        using var _ = Environment.Enter();
         if (Stage is not (AppStage.Started or AppStage.Running))
             throw new InvalidOperationException($"CreateEditWorld('{name}') needs a started app; it is {Stage}. Call Start first.");
         Stage = AppStage.Running;
@@ -422,6 +452,7 @@ public sealed class SageApp : IDisposable
     // `+command` launch arguments, in order. Once, with a world up (like Source's +map).
     public void RunLaunchCommands()
     {
+        using var _ = Environment.Enter();
         if (Stage != AppStage.Running)
             throw new InvalidOperationException($"Launch commands run once a world exists; the app is {Stage}.");
         foreach (string command in _options.LaunchCommands)
@@ -449,17 +480,24 @@ public sealed class SageApp : IDisposable
 
     // Worlds first (their systems belong to modules), then modules in reverse dependency order, then
     // the archived cvars. Safe to call twice.
+    // Last, the environment Create made current is no longer, and an app's own log is flushed and closed
+    // (the process's, the host's, stays open).
     public void Dispose()
     {
         if (Stage == AppStage.Shutdown) return;
         bool registered = Stage != AppStage.Created;
         Stage = AppStage.Shutdown;
-        Engine.Dispose();
-        Engine.Modules.ShutdownAll();
-        if (registered && _options.ConfigFile is { } config)
+        using (Environment.Enter())
         {
-            try { CVars.SaveArchived(config); }
-            catch (Exception ex) { Log.Warn(LogCat.Host, $"Couldn't save {config}: {ex.Message}"); }
+            Engine.Dispose();
+            Engine.Modules.ShutdownAll();
+            if (registered && _options.ConfigFile is { } config)
+            {
+                try { CVars.SaveArchived(config); }
+                catch (Exception ex) { Log.Warn(LogCat.Host, $"Couldn't save {config}: {ex.Message}"); }
+            }
         }
+        _created.Dispose();
+        Environment.Dispose();
     }
 }
