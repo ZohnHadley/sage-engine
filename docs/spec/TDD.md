@@ -454,7 +454,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
   `ProcessWideState` or `Measurements` collections (`tests/Sage.Tests/Core/TestSupport.cs`), which disable
   parallelism.
 - **Exit games** in `tests/games/` (scene-only, camera-cut, scripted-sequence, topics, skeletal, weapons,
-  saves, open-world, mods, editor, no-plugins) are data-first games that prove a phase's exit criterion
+  saves, skills, open-world, trader, mods, editor, no-plugins) are data-first games that prove a phase's exit criterion
   headlessly; `tests/games/render-check` is the fixed scene CI's `drawing` job reads back (#318).
 - **Analyzer tests** compile small sources and expect each SAGE id; layering tests read the built
   assemblies.

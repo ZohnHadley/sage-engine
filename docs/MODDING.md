@@ -184,6 +184,12 @@ picture (`rpg_item` `icon`) or a scene a map (`area_map`); and offer a high-cont
 a `strings/<code>/` folder and a `language` record naming its direction and fonts; `loc_check` says what it
 still lacks (test: ValidateReportsWhatATranslationLacks).
 
+Phase 4f's progression and economy are records too, patched like any other: a mod can rebalance a `merchant`
+(its `markup`, `pays` or `restock`), add to the `loot_table` it restocks from with `"entries+": [...]`, put a new
+item on a creature's leveled list, lock a chest with a `container` part, add an `equip_slot` (a helmet needs no
+code), or add a `skill`, a `levelling` step or a `perk` to a game built on the RPG kit. A trader without a
+`merchant` record, like the village trader below, still sells at the kit's stub prices.
+
 Phase 10b gave modders the editor (issue #375). A game packaged with `sage package <game> --out <dir>
 --editor` has the editor beside its Shipping host, in `editor/`, and `edit.sh` / `edit.cmd` open it on the
 game. `./edit.sh [level] +ed_mod <your mod>` makes your mod's folder the only one the editor writes: a level
