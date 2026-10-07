@@ -50,6 +50,7 @@
             "item",
             "language",
             "levelling",
+            "loot_table",
             "map",
             "material",
             "mesh_lod",
@@ -484,6 +485,21 @@
           },
           "then": {
             "$ref": "levelling.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "loot_table"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "loot_table.schema.json"
           }
         },
         {

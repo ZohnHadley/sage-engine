@@ -429,6 +429,14 @@
         "skills:character"
       ]
     },
+    "record:loot_table": {
+      "description": "The id of a loot_table record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "sandbox:watcher_loot",
+        "watcher_loot"
+      ]
+    },
     "record:map": {
       "description": "The id of a map record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -1910,6 +1918,14 @@
       "enum": [
         "character",
         "skills:character"
+      ]
+    },
+    "base:loot_table": {
+      "description": "Another loot_table record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "sandbox:watcher_loot",
+        "watcher_loot"
       ]
     },
     "base:map": {
