@@ -73,7 +73,7 @@ public sealed class LootView : ItemGridView
         {
             var stack = stacks[i];
             if (stack.Count <= 0) { i++; continue; }
-            if (world.MoveTo(from, i, to, stack.Count)) { taken++; continue; }
+            if (world.MoveTo(from, i, to, stack.Count)) { taken++; Containers.Took(world, to, from, stack.Item, stack.Count); continue; }
             records.TryGet(stack.Item, out ItemRecord record);
             left++;
             if (firstLeft.Length == 0) firstLeft = text.Text(record?.Describe(stack.Item, stack.Instance) ?? stack.Item.Name);
