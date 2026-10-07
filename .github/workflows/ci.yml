@@ -328,7 +328,8 @@ jobs:
           # and the door placed, the door's speed overridden, the plate wired to it, two steps undone and
           # redone, a second of play and back, and the problems listed. Nothing is saved here, so the repository
           # stays as it was; EditorExitTests saves, and boots what it saved. Same allowances as above.
-          SAGE_SMOKE_ARGS='-edit level' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ed_palette\n+ed_place plate 0 0.5 2 0 plate\n+ed_place door 0 1.5 -4 180 door\n+ed_set door mover.seconds 0.5\n+ed_wire plate OnStartTouch door Open\n+ed_undo 2\n+ed_redo 2\n+ed_history\n+wait 1\n+ed_play\n+wait 2\n+ed_stop\n+wait 1\n+ed_problems\n+doc_status' \
+          # Blockout brushes (issue #61): a wall, a ramp and a pillar, a face painted, drawn by the client and played.
+          SAGE_SMOKE_ARGS='-edit level' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ed_palette\n+ed_place plate 0 0.5 2 0 plate\n+ed_place door 0 1.5 -4 180 door\n+ed_set door mover.seconds 0.5\n+ed_wire plate OnStartTouch door Open\n+ed_undo 2\n+ed_redo 2\n+ed_history\n+ed_brush box 0 0 -6 6 3 0.5 sage:lit_default wall\n+ed_brush wedge 3 0 -3 2 1 2 sage:lit_default ramp\n+ed_brush cylinder -3 0 -3 1 3 1 sage:lit_default pillar\n+ed_brush_material wall south sage:unlit_default\n+ed_brush_size ramp 2 1.5 3\n+ed_brushes\n+wait 1\n+ed_play\n+wait 2\n+ed_stop\n+wait 1\n+ed_problems\n+doc_status' \
             tools/smoke_run.sh "$host" tests/games/editor 5 Shaders Audio Records Input
           # The editor's panels and an edit saved, in the real host (issue #371): on a copy of the editor's test game,
           # place, undo, override, wire, `ed_panel all` (every panel in front for a few frames, so one that throws
