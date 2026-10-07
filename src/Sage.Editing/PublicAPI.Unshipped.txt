@@ -53,6 +53,23 @@ Sage.Editing.AnimationSubject.Graph.get -> Sage.Core.RecordId
 Sage.Editing.AnimationSubject.Graph.init -> void
 Sage.Editing.AnimationSubject.Model.get -> Sage.Core.AssetPath
 Sage.Editing.AnimationSubject.Model.init -> void
+Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
+Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
+Sage.Editing.InspectorModel.AddItem(Sage.Editing.InspectorRow! container, System.Text.Json.Nodes.JsonNode? value, out string! error, string? key = null) -> bool
+Sage.Editing.InspectorModel.Group(string! component) -> Sage.Editing.InspectorGroup?
+Sage.Editing.InspectorModel.MoveItem(Sage.Editing.InspectorRow! item, int to, out string! error) -> bool
+Sage.Editing.InspectorModel.RemoveComponent(Sage.Editing.InspectorGroup! group, out string! error) -> bool
+Sage.Editing.InspectorModel.RemoveItem(Sage.Editing.InspectorRow! item, out string! error) -> bool
+Sage.Editing.InspectorModel.TryAddItem(string! path, string! text, out string! error) -> bool
+Sage.Editing.InspectorModel.TryMoveItem(string! path, int to, out string! error) -> bool
+Sage.Editing.InspectorModel.TryRemoveItem(string! path, out string! error) -> bool
+Sage.Editing.InspectorRow.Children.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.InspectorRow!>!
+Sage.Editing.InspectorRow.Index.get -> int
+Sage.Editing.InspectorRow.Key.get -> string?
+Sage.Editing.InspectorRow.Name.get -> string!
+Sage.Editing.InspectorRow.Parent.get -> Sage.Editing.InspectorRow?
+Sage.Editing.InspectorRow.Top.get -> Sage.Editing.InspectorRow!
 Sage.Editing.PreviewEvent
 Sage.Editing.PreviewEvent.Name.get -> string!
 Sage.Editing.PreviewEvent.Name.init -> void
@@ -124,6 +141,15 @@ Sage.Editing.PreviewSocket.PreviewSocket() -> void
 Sage.Editing.PreviewSocket.PreviewSocket(string! Name, string! Joint, System.Numerics.Vector3 Position, System.Numerics.Quaternion Rotation) -> void
 Sage.Editing.PreviewSocket.Rotation.get -> System.Numerics.Quaternion
 Sage.Editing.PreviewSocket.Rotation.init -> void
+Sage.Editing.SetOverrideBody
+Sage.Editing.SetOverrideBody.Body.get -> System.Text.Json.Nodes.JsonObject?
+Sage.Editing.SetOverrideBody.Description.get -> string!
+Sage.Editing.SetOverrideBody.Do() -> void
+Sage.Editing.SetOverrideBody.Id.get -> string!
+Sage.Editing.SetOverrideBody.Placement.get -> Sage.Simulation.Placement!
+Sage.Editing.SetOverrideBody.Section.get -> Sage.Editing.OverrideSection
+Sage.Editing.SetOverrideBody.SetOverrideBody(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.OverrideSection section, string! id, System.Text.Json.Nodes.JsonObject? body) -> void
+Sage.Editing.SetOverrideBody.Undo() -> void
 static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
 static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
 static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
