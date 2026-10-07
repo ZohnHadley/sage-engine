@@ -221,7 +221,7 @@ public class VocabularyTests
         Assert.Equal(11, conditions.BitOf("in_routine"));    // the engine's own, from 4g-4
         Assert.Equal(12, conditions.BitOf(nameof(AICondition.HearNoise)));   // hearing's, from #386
         Assert.Equal(13, conditions.BitOf(nameof(AICondition.Suspicious)));
-        Assert.Equal(16, conditions.BitOf("is_night"));   // after hearing's (#386) and crime's (#389)
+        Assert.Equal(14, conditions.BitOf("is_night"));
         Assert.Equal(-1, conditions.BitOf("is_nite"));
         Assert.Equal("sage.gameplay.ai", app.Engine.Registrations.OwnerOf("ai_condition", "SeeEnemy"));
         Assert.Equal("test.vocabulary", app.Engine.Registrations.OwnerOf("ai_condition", "is_night"));

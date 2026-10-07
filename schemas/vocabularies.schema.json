@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, clear_bounty, close_screen, command, commit_crime, cue, destroy, finish_quest, fire, give_item, grant_perk, hit_stop, join_faction, load_scene, log, message, music_intensity, open_screen, pass_time, pay_bounty, play_music, play_sound, promote, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, clear_bounty, close_screen, command, commit_crime, cue, destroy, fail_quest, finish_quest, fire, give_item, grant_perk, hit_stop, join_faction, load_scene, log, message, music_intensity, open_screen, pass_time, pay_bounty, play_music, play_sound, promote, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -199,6 +199,7 @@
         "CommitCrime",
         "Cue",
         "Destroy",
+        "FailQuest",
         "FinishQuest",
         "Fire",
         "GiveItem",
@@ -236,6 +237,7 @@
         "commit_crime",
         "cue",
         "destroy",
+        "fail_quest",
         "finish_quest",
         "fire",
         "give_item",
@@ -666,6 +668,43 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'destroy' (DestroyAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "fail_quest",
+                      "FailQuest"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: fail_quest.",
+                    "enum": [
+                      "fail_quest",
+                      "FailQuest"
+                    ]
+                  },
+                  "quest": {
+                    "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:quest"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'fail_quest' (FailQuestAction)."
               }
             },
             {
@@ -2765,6 +2804,94 @@
           },
           "required": [
             "Destroy"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fail_quest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'fail_quest' (FailQuestAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "fail_quest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "FailQuest": {
+              "anyOf": [
+                {
+                  "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:quest"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "quest": {
+                      "description": "Names a quest record. (RecordRef<QuestRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:quest"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'fail_quest' (FailQuestAction), in shorthand."
+            },
+            "quest": {
+              "description": "Names a quest record. (RecordRef<QuestRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:quest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "FailQuest"
           ],
           "additionalProperties": false
         },
@@ -5869,13 +5996,14 @@
       ]
     },
     "ai_condition:id": {
-      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed, in_routine, target_outlaw, target_wanted.",
+      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, HearNoise, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, Suspicious, TaskFailed, in_routine, target_outlaw, target_wanted.",
       "type": "string",
       "enum": [
         "CanCastAtEnemy",
         "CanMelee",
         "Casting",
         "EnemyInMeleeRange",
+        "HearNoise",
         "InRoutine",
         "LostEnemy",
         "NoEnemy",
@@ -5883,6 +6011,7 @@
         "ScheduleDone",
         "SeeEnemy",
         "SpellComingBack",
+        "Suspicious",
         "TargetOutlaw",
         "TargetWanted",
         "TaskFailed",
@@ -5890,6 +6019,7 @@
         "can_melee",
         "casting",
         "enemy_in_melee_range",
+        "hear_noise",
         "in_routine",
         "lost_enemy",
         "no_enemy",
@@ -5897,6 +6027,7 @@
         "schedule_done",
         "see_enemy",
         "spell_coming_back",
+        "suspicious",
         "target_outlaw",
         "target_wanted",
         "task_failed"
@@ -6033,6 +6164,35 @@
                 },
                 "additionalProperties": false,
                 "description": "ai_condition 'EnemyInMeleeRange' (PerceivedCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "HearNoise",
+                      "hear_noise"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: HearNoise.",
+                    "enum": [
+                      "HearNoise",
+                      "hear_noise"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'HearNoise' (PerceivedCondition)."
               }
             },
             {
@@ -6207,6 +6367,35 @@
                 },
                 "additionalProperties": false,
                 "description": "ai_condition 'SpellComingBack' (PerceivedCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "Suspicious",
+                      "suspicious"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: Suspicious.",
+                    "enum": [
+                      "Suspicious",
+                      "suspicious"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'Suspicious' (PerceivedCondition)."
               }
             },
             {
@@ -7431,6 +7620,11 @@
                       "quest",
                       "Quest"
                     ]
+                  },
+                  "failed": {
+                    "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+                    "default": false,
+                    "type": "boolean"
                   },
                   "finished": {
                     "description": "(bool, default false)",
@@ -10159,6 +10353,11 @@
               "default": "",
               "type": "string"
             },
+            "failed": {
+              "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+              "default": false,
+              "type": "boolean"
+            },
             "finished": {
               "description": "(bool, default false)",
               "default": false,
@@ -10212,6 +10411,11 @@
                     },
                     "notStarted": {
                       "description": "(bool, default false)",
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "failed": {
+                      "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
                       "default": false,
                       "type": "boolean"
                     }
@@ -10280,6 +10484,11 @@
                       "description": "(bool, default false)",
                       "default": false,
                       "type": "boolean"
+                    },
+                    "failed": {
+                      "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+                      "default": false,
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -10296,6 +10505,11 @@
               "description": "A stage of the quest: holds at it, at any stage after it in the quest's list, and once the quest is finished. (string, default \"\")",
               "default": "",
               "type": "string"
+            },
+            "failed": {
+              "description": "Holds once the quest has failed (issue #391); finished means succeeded. (bool, default false)",
+              "default": false,
+              "type": "boolean"
             },
             "finished": {
               "description": "(bool, default false)",
@@ -12321,6 +12535,11 @@
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
                     "default": "",
                     "type": "string"
+                  },
+                  "volume": {
+                    "description": "Or a trigger volume's entity name: walking into it is reaching the place, and at and radius are not used. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false,
@@ -12387,6 +12606,14 @@
                     "description": "What the journal calls it; empty = built from its fields. (string, default \"\")",
                     "default": "",
                     "type": "string"
+                  },
+                  "topic": {
+                    "description": "Or a dialogue_topic: asking about it counts (of the speaker dialogue or prefab names, or anybody) Names a dialogue_topic record. (RecordRef<TopicRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:dialogue_topic"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false,
