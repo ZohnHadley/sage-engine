@@ -74,23 +74,25 @@ public static class ContentValidation
     {
         var report = new ValidationReport();
         using var sink = new ThreadSink(Environment.CurrentManagedThreadId);
-        // The log is asynchronous: whatever this thread logged before now may still be queued, and would
-        // reach the sink on its first flush and be counted as this run's. Drain it first. (A test that
-        // disabled a system earlier on the same xUnit thread turned up in the Sandbox's report in CI.)
-        Log.Flush();
-        Log.AddSink(sink);
-        try
+        // The run's own log (issue #49), under whatever is current: nothing logged before it, or beside it
+        // by another app in the process, is counted as this run's. Its lines still reach the outer log.
+        using var run = AppEnvironment.CreateChild();
+        run.Logger.AddSink(sink);
+        using (run.Enter())
         {
-            Boot(options, report);
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            Log.Error(LogCat.Host, $"validate: {ex.Message}");
-        }
-        finally
-        {
-            Log.Flush();
-            Log.RemoveSink(sink);
+            try
+            {
+                Boot(options, report);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Log.Error(LogCat.Host, $"validate: {ex.Message}");
+            }
+            finally
+            {
+                run.Logger.Flush();
+                run.Logger.RemoveSink(sink);
+            }
         }
         foreach (var entry in sink.Entries)
             (entry.Level >= LogLevel.Error ? report.Errors : report.Warnings).Add($"{entry.Category.Name}: {entry.Message}");

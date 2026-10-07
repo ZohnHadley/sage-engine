@@ -208,6 +208,10 @@ public sealed class Engine : IDisposable
     public BuildConfig Config => BuildInfo.Config;
     public CVarRegistry CVars { get; }
     public CoreCVars Core { get; }
+
+    // The app's log, user folder and crash sections (issue #49): worlds tick with it current. SageApp sets
+    // it to the one it made; otherwise the one current when the engine was made.
+    public AppEnvironment Environment { get; internal set; } = AppEnvironment.Current;
     public VirtualFileSystem Vfs { get; }
     public RecordStore Records { get; }
     public ModuleManager Modules { get; }

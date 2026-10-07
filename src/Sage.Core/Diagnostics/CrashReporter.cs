@@ -15,16 +15,14 @@ namespace Sage.Core;
 public static class CrashReporter
 {
     private static readonly object Lock = new();
-    private static readonly List<(string Name, Func<string> Provider)> Sections = new();
     private static bool _installed;
 
-    public static string? LastReportPath { get; private set; }
+    // The current app's last report (AppEnvironment.Current, issue #49).
+    public static string? LastReportPath => AppEnvironment.Current.LastCrashReport;
 
-    // Extra sections from other systems: "CVars" (host), "GPU" (client), later "Modules"/"Mods".
-    public static void AddSection(string name, Func<string> provider)
-    {
-        lock (Lock) Sections.Add((name, provider));
-    }
+    // Extra sections from other systems: "CVars" (host), "GPU" (client), later "Modules"/"Mods". They
+    // belong to the current app: a crash in it reports its own.
+    public static void AddSection(string name, Func<string> provider) => AppEnvironment.Current.AddCrashSection(name, provider);
 
     public static void Install()
     {
@@ -43,40 +41,40 @@ public static class CrashReporter
             Log.Error(LogCat.Core, $"Unobserved task exception: {e.Exception}");
     }
 
+    // Written for the current app: its sections, its log's tail, into its user folder.
     public static string? Write(Exception? exception, string reason)
     {
+        var app = AppEnvironment.Current;
         try
         {
-            Log.Flush(TimeSpan.FromSeconds(2));   // so the log tail below includes everything up to now
+            app.Logger.Flush(TimeSpan.FromSeconds(2));   // so the log tail below includes everything up to now
             var sb = new StringBuilder(16 * 1024);
             Section(sb, "Summary", () =>
                 $"Reason: {reason}\nTime:   {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture)}");
             if (exception != null)
                 Section(sb, "Exception", exception.ToString);
             Section(sb, "Build", () =>
-                $"Engine:  {BuildInfo.EngineVersion}\nConfig:  {BuildInfo.Config}\nGame id: {UserPaths.GameId}\n" +
+                $"Engine:  {BuildInfo.EngineVersion}\nConfig:  {BuildInfo.Config}\nGame id: {app.GameId}\n" +
                 $"Runtime: {RuntimeInformation.FrameworkDescription}");
             Section(sb, "System", SystemInfo);
 
-            (string, Func<string>)[] extra;
-            lock (Lock) extra = Sections.ToArray();
-            foreach (var (name, provider) in extra)
+            foreach (var (name, provider) in app.CrashSections())
                 Section(sb, name, provider);
 
-            Section(sb, "Log tail", LogTail);
+            Section(sb, "Log tail", () => LogTail(app.Logger));
 
-            string dir = UserPaths.Logs;
+            string dir = Path.Combine(app.UserRoot, "logs");
             Directory.CreateDirectory(dir);
             string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
             string path = Path.Combine(dir, $"crash-{stamp}.txt");
             for (int n = 2; File.Exists(path); n++)
                 path = Path.Combine(dir, $"crash-{stamp}-{n}.txt");
             File.WriteAllText(path, sb.ToString());
-            LastReportPath = path;
+            app.LastCrashReport = path;
 
             try { System.Console.Error.WriteLine($"Crash report written to {path}"); } catch { }
-            Log.Error(LogCat.Core, $"Crash report written to {path}");
-            Log.Flush(TimeSpan.FromSeconds(2));
+            app.Logger.Enqueue(LogCat.Core, LogLevel.Error, $"Crash report written to {path}", default, default, default, null, 0);
+            app.Logger.Flush(TimeSpan.FromSeconds(2));
             return path;
         }
         catch
@@ -103,10 +101,10 @@ public static class CrashReporter
                $"GC counts: gen0 {GC.CollectionCount(0)}, gen1 {GC.CollectionCount(1)}, gen2 {GC.CollectionCount(2)}";
     }
 
-    private static string LogTail()
+    private static string LogTail(Logger logger)
     {
-        var entries = new List<LogEntry>(Log.Ring.Capacity);
-        Log.Ring.Snapshot(entries);
+        var entries = new List<LogEntry>(logger.Ring.Capacity);
+        logger.Ring.Snapshot(entries);
         var sb = new StringBuilder(entries.Count * 100);
         foreach (var e in entries)
             sb.Append(LogFormatter.Format(e)).Append('\n');

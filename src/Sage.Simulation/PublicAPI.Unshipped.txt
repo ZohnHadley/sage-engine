@@ -850,3 +850,5 @@ static Sage.Simulation.AttackStances.IsBlocking(Sage.Simulation.World! world, Sa
 static Sage.Simulation.AttackStances.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Simulation.AttackDirection
 static Sage.Simulation.AttackStances.Set(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Simulation.AttackDirection direction) -> bool
 static Sage.Simulation.AttackStances.Step(ref Sage.Simulation.AttackStance stance, in Sage.Simulation.PawnIntent intent, float dt) -> void
+Sage.Simulation.Engine.Environment.get -> Sage.Core.AppEnvironment!
+Sage.Simulation.SageApp.Environment.get -> Sage.Core.AppEnvironment!

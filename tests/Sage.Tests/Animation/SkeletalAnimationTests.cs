@@ -257,7 +257,7 @@ public class SkeletalAnimationTests
     {
         var fixture = new MountFixture();
         fixture.Mount("game", "g");
-        string garbage = TestEnv.Unique("garbage").Replace(' ', '_').Replace("[", "").Replace("]", "") + ".glb";
+        string garbage = "garbage.glb";
         fixture.Write("game", "models/" + garbage, "this is not a glb");
         string unskinned = "unskinned" + Guid.NewGuid().ToString("N") + ".glb";
         SkinnedModelBuilder.Write(Path.Combine(fixture.Dir("game"), "models", unskinned), withSkin: false);

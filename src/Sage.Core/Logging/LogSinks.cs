@@ -145,15 +145,21 @@ public sealed class StdoutLogSink : ILogSink
 public sealed class RingBufferLogSink : ILogSink
 {
     private readonly object _lock = new();
-    private readonly LogEntry[] _items;
+    private readonly int _capacity;
+    private LogEntry[] _items;   // grows to the capacity as entries arrive: an app that logs little holds little
     private int _start;
     private int _count;
     private long _version;
 
-    public RingBufferLogSink(int capacity) { _items = new LogEntry[capacity]; }
+    public RingBufferLogSink(int capacity)
+    {
+        if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity), "a ring holds at least one entry");
+        _capacity = capacity;
+        _items = new LogEntry[Math.Min(capacity, 64)];
+    }
 
     public LogLevel MinLevel => LogLevel.Trace;
-    public int Capacity => _items.Length;
+    public int Capacity => _capacity;
 
     // Changes whenever an entry is added or the buffer is cleared (lets the UI skip re-copying).
     public long Version { get { lock (_lock) return _version; } }
@@ -162,6 +168,8 @@ public sealed class RingBufferLogSink : ILogSink
     {
         lock (_lock)
         {
+            if (_count == _items.Length && _items.Length < _capacity)
+                Array.Resize(ref _items, Math.Min(_capacity, _items.Length * 2));   // not wrapped yet: _start is 0
             int index = (_start + _count) % _items.Length;
             _items[index] = entry;
             if (_count < _items.Length) _count++;
