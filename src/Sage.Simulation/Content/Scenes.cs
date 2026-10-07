@@ -401,8 +401,7 @@ public sealed partial class Scenes
         for (int i = 0; i < scene.Place.Count; i++)
         {
             var placement = scene.Place[i];
-            var entity = world.SpawnWithoutId(placement.Prefab.Id, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), placement.Yaw,
-                                     placement.Overrides, $"scene {id} place[{i}]");
+            var entity = world.SpawnPlacementWithoutId(placement, world.PlacementPosition(placement, scene.Origin, scene.RelativeTo), $"scene {id} place[{i}]");
             if (entity.IsNull) continue;   // `Spawn` said why; one bad line costs that line
             if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
             PlacementWires.Attach(world, entity, placement);
@@ -606,8 +605,7 @@ public sealed partial class Scenes
         }
 
         var state = world.Resources.Get<ActiveScene>();
-        var entity = world.SpawnWithoutId(start.Prefab.Id, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), start.Yaw,
-                                 start.Overrides, $"scene {state.Id} player");
+        var entity = world.SpawnPlacementWithoutId(start, world.PlacementPosition(start, scene.Origin, scene.RelativeTo), $"scene {state.Id} player");
         if (entity.IsNull) return entity;
         if (!string.IsNullOrEmpty(start.Name)) entity.Name = start.Name;
         PlacementWires.Attach(world, entity, start);
@@ -681,6 +679,10 @@ public sealed partial class Scenes
                 check.Error(path, "a placement needs a \"prefab\"");
             else
                 PrefabOverriding.Check(_engine, placements[i].Overrides, placements[i].Prefab.Id.Namespace, path + ".Overrides", check);
+            // A scale of 0 flattens a thing to nothing and a negative one turns it inside out (issue #367).
+            var scale = placements[i].Scale;
+            if (!(scale.X > 0f && scale.Y > 0f && scale.Z > 0f))
+                check.Error(path + ".Scale", $"a scale must be above 0 on every axis, not {scale}");
             PlacementWires.Check(_engine, placements[i], path, check);
             TravelChecks.CheckPlacement(_engine, placements[i], path, check);   // a load door's scene and entry (4g-5)
         }
