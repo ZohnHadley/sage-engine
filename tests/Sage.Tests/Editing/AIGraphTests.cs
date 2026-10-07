@@ -211,7 +211,8 @@ public class AIGraphTests
         using (var log = new CaptureSink())
         {
             cvars.Execute("ed_ai_tree");
-            string tree = log.Entries.Single().Message;
+            // The capture sees every parallel test's log, so pick the tree out by its content.
+            string tree = log.Entries.Select(e => e.Message).Single(m => m.Contains("* patrol"));
             Assert.Contains("* patrol", tree);
             Assert.Contains("    search", tree);
             Assert.Contains("-> alert  on Alarm", tree);
