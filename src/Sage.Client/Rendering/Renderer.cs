@@ -149,6 +149,9 @@ public sealed partial class Renderer : IDisposable
         Materials = new MaterialCache(_device, content, engine.Records, _targets);
         _targets.Changed += Materials.Invalidate;   // a remade target: materials sampling it rebuild
         engine.Records.Reloaded += Materials.Invalidate;
+#pragma warning disable SAGE0133   // the editor's live preview (#366): a material edited in the record browser draws at once
+        engine.Records.Previewed += (type, _) => { if (type == "material") Materials.Invalidate(); };
+#pragma warning restore SAGE0133
         _post = new PostChain(engine.Records, engine.CVars, settings, Materials);
 
         // An asset changed on disk (05 §3.6, F32). Textures are held by id in the content service's table,
