@@ -297,6 +297,8 @@ public sealed class ItemsModule : IModule
         _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
             "How far the Use action reaches, in metres.", 0.5f, 10f);
         ItemUses.RegisterCommands(ctx.Engine);   // use_item (issue #28)
+        _records.AddCheck<LootTableRecord>(LootTables.Check);   // missing references, nested cycles (issue #379)
+        LootTables.RegisterCommands(ctx.Engine);                 // loot <table>
 
         // The console's way to handle things: `give` puts one in your pack, `equip` puts it in your
         // hand, and the combat log shows the difference the moment you swing. A bag screen, and the
@@ -360,6 +362,7 @@ public sealed class ItemsModule : IModule
     {
         world.Resources.Add(new InteractionState());
         world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!));
+        world.AddSystem(new LootDeathSystem(world));   // a `loot` part's table, rolled as it dies (issue #379)
     }
 }
 
