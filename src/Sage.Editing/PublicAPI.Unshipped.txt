@@ -53,6 +53,11 @@ Sage.Editing.AnimationSubject.Graph.get -> Sage.Core.RecordId
 Sage.Editing.AnimationSubject.Graph.init -> void
 Sage.Editing.AnimationSubject.Model.get -> Sage.Core.AssetPath
 Sage.Editing.AnimationSubject.Model.init -> void
+Sage.Editing.EntityLabelCache
+Sage.Editing.EntityLabelCache.Count.get -> int
+Sage.Editing.EntityLabelCache.EntityLabelCache() -> void
+Sage.Editing.EntityLabelCache.Label(Sage.Simulation.Entity entity) -> string!
+Sage.Editing.EntityLabelCache.Prune(System.Collections.Generic.IReadOnlyCollection<Sage.Simulation.Entity>! live) -> void
 Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
 Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
 Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
@@ -70,6 +75,7 @@ Sage.Editing.InspectorRow.Key.get -> string?
 Sage.Editing.InspectorRow.Name.get -> string!
 Sage.Editing.InspectorRow.Parent.get -> Sage.Editing.InspectorRow?
 Sage.Editing.InspectorRow.Top.get -> Sage.Editing.InspectorRow!
+Sage.Editing.LogView.Texts.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Editing.PreviewEvent
 Sage.Editing.PreviewEvent.Name.get -> string!
 Sage.Editing.PreviewEvent.Name.init -> void

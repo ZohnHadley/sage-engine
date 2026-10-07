@@ -8,12 +8,13 @@ namespace Sage.Editor;
 // What to show is `LogView`'s (Sage.Editing, tested headlessly); this only draws it. The console window
 // beside it shows the same ring with a search box and a prompt; this one has no prompt, and a category
 // list instead, because what an editor asks of a log is "what did Records and Editor just say".
-internal sealed class LogPanel
+internal sealed unsafe class LogPanel
 {
     public const string Title = "Log";
     private static readonly string[] LevelNames = { "Trace", "Debug", "Info", "Warn", "Error", "Fatal" };
 
     private readonly LogView _view = new(Log.Ring);
+    private readonly ImGuiListClipperPtr _clipper = new(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
     private bool _autoScroll = true;
 
     public void Draw()
@@ -48,9 +49,13 @@ internal sealed class LogPanel
         ImGui.BeginChild("lines", Vector2.Zero, ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
         bool changed = _view.Refresh();
         var lines = _view.Lines;
-        // Every line, formatted each frame, as the console window does (both allocate while open, TODO #41).
-        for (int i = 0; i < lines.Count; i++)
-            ImGui.TextColored(DevConsoleWindow.ColorFor(lines[i].Level), LogFormatter.FormatShort(lines[i]));
+        // Only the visible lines, and their text was formatted once by the view (issue #374).
+        var texts = _view.Texts;
+        _clipper.Begin(lines.Count, ImGui.GetTextLineHeightWithSpacing());
+        while (_clipper.Step())
+            for (int i = _clipper.DisplayStart; i < _clipper.DisplayEnd; i++)
+                ImGui.TextColored(DevConsoleWindow.ColorFor(lines[i].Level), texts[i]);
+        _clipper.End();
         if (changed && _autoScroll && ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 20)
             ImGui.SetScrollHereY(1.0f);
         ImGui.EndChild();
