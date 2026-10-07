@@ -95,7 +95,11 @@ public struct CharacterController : IComponent
     // On a ladder (issue #263). Not saved: a character loaded inside a ladder volume in mid-air catches it
     // again on its first tick, so a save mid-climb still loads on the ladder.
     [Transient] public bool Climbing;
-    [Transient] public bool LetGo;   // jumped off a ladder: no ladder catches it until it leaves the volume or lands
+    [Transient] public bool LetGo;
+    // What gameplay does to its pace (issue #384): walk and run speed times this. 0, the default, means 1
+    // (as the profile says), so a character nobody slows needs nothing set. Gameplay writes it every tick
+    // from the attribute gameplay_conventions names (`speedAttribute`): a heavy pack, a slowing spell.
+    [Transient] public float SpeedScale;   // jumped off a ladder: no ladder catches it until it leaves the volume or lands
 
     // Water (issue #262). InWater and UnderwaterSeconds are saved, so a load does not fire OnEnterWater
     // again or give a diver a fresh breath; the rest is derived every tick.

@@ -166,7 +166,7 @@ public sealed class MeleePart : IPrefabPart
     }
 }
 
-// "inventory": { "capacity": 40, "items": [ { "item": "bread", "count": 3 } ] }
+// "inventory": { "capacity": 40, "items": [ { "item": "bread", "count": 3 } ], "encumbrance": "burden" }
 [PrefabPart("inventory", Plugin = "sage.gameplay.items")]
 public sealed class InventoryPart : IPrefabPart
 {
@@ -174,6 +174,8 @@ public sealed class InventoryPart : IPrefabPart
     public float Capacity;
     [Property(Tooltip = "What it starts with")]
     public List<Stack> Items = new();
+    [Property(Tooltip = "What its load does to it (issue #384); empty = nothing, and Give refuses past its capacity")]
+    public RecordRef<EncumbranceRecord> Encumbrance;
 
     public sealed class Stack
     {
@@ -186,6 +188,7 @@ public sealed class InventoryPart : IPrefabPart
     public void Apply(in PrefabPartContext ctx)
     {
         ctx.World.AddInventory(ctx.Entity, Capacity);
+        if (!Encumbrance.IsEmpty) ctx.World.AddBurden(ctx.Entity, Encumbrance);   // first, so what it starts with may go past capacity
         foreach (var stack in Items)
         {
             if (stack.Item.IsEmpty) continue;

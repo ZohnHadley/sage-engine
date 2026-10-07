@@ -124,6 +124,7 @@ public sealed class AttributesModule : IModule
         world.AddSystem(new EffectExecutionSystem(world));   // summons and dispels, after the tick (issue #28)
         world.AddSystem(new DeathRulesSystem(world));
         world.AddSystem(new DeathOutputSystem(world));       // OnDeath (issue #91)
+        world.AddSystem(new SpeedAttributeSystem(world));    // the speed attribute paces the character (issue #384)
         world.AddSystem(new AttributeGainSystem(world, _gains!));   // attribute_gain (issue #377)
     }
 }
@@ -281,7 +282,8 @@ public sealed class ItemsModule : IModule
     public IReadOnlyList<Type> Dependencies => new[] { typeof(AttributesModule), typeof(CombatModule) };
 
     // Where things are worn (issue #27): none in the base. A kit or a game registers its own in Init
-    // (the RPG kit's two hands), and items are checked against them as content loads.
+    // (the RPG kit's two hands) or writes equip_slot records (#384), and items are checked against them
+    // as content loads.
     public EquipSlots Slots { get; } = new();
 
     public void Init(ModuleContext ctx)
@@ -291,13 +293,10 @@ public sealed class ItemsModule : IModule
         _actions = ctx.Engine.Actions;
         _actions.Register("Use", ActionKind.Button);
         ctx.Provide(Slots);
-        _records.AddCheck<ItemRecord>((item, check) =>
-        {
-            if (item.Slot.Length == 0 || Slots.Find(item.Slot) != null) return;
-            check.Error(nameof(ItemRecord.Slot), $"no equipment slot '{item.Slot}'" + (Slots.Names.Count == 0
-                ? " (this game registers none: a kit or the game's module registers them in Init, EquipSlots.Register)"
-                : Spelling.Suggest(item.Slot, Slots.Names)));
-        });
+        // Slots in data (equip_slot records, issue #384) join the registered ones after every load.
+        _records.AddCheck<ItemRecord>(Slots.Check);
+        var records = _records;
+        _records.Reloaded += () => Slots.SetData(EquipSlots.InData(records));
         ctx.Engine.Outputs.Declare("OnUse", "Something used this entity (the Use action).");
 
         _interactRange = ctx.Engine.CVars.Register("g_interact_range", 2.5f, CVarFlags.None,
@@ -368,6 +367,7 @@ public sealed class ItemsModule : IModule
     {
         world.Resources.Add(new InteractionState());
         world.AddSystem(new InteractionSystem(world, _records!, _actions!, _interactRange!));
+        world.AddSystem(new BurdenSystem(world, _records!));   // weight with consequences (issue #384)
         world.AddSystem(new ContainerSystem(world));   // chests and bodies (issue #378)
         world.AddSystem(new LootDeathSystem(world));   // a `loot` part's table, rolled as it dies (issue #379)
     }

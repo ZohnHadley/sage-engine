@@ -68,6 +68,14 @@
         }
       ]
     },
+    "speedAttribute": {
+      "description": "The attribute that scales a character's walk and run speed (1 = as its movement profile says): what a heavy pack or a slowing spell lowers; empty = nothing does (issue #384) Names a attribute record. Category: Attributes. (RecordRef<AttributeRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:attribute"
+        }
+      ]
+    },
     "damageType": {
       "description": "The damage type of a hit that names none. Names a damage_type record. Category: Combat. (RecordRef<DamageTypeRecord>)",
       "allOf": [

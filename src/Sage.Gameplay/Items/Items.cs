@@ -23,13 +23,14 @@ namespace Sage.Gameplay;
 
 // The slots items may name (ItemRecord.Slot), registered in Init by a kit or a game and checked as
 // content loads: an item for a slot nobody has is a load error, not a sword that cannot be drawn.
-public sealed class EquipSlots
+public sealed partial class EquipSlots
 {
     private readonly List<string> _names = new();
+    private readonly List<string> _all = new();    // those, then the equip_slot records' (Slots.cs, issue #384)
 
     public RegistrationSeal Seal { get; } = new("equipment slot", "items that name it were checked without it");
 
-    public IReadOnlyList<string> Names => _names;
+    public IReadOnlyList<string> Names => _all;
 
     public void Register(string name)
     {
@@ -37,10 +38,11 @@ public sealed class EquipSlots
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An equipment slot needs a name.", nameof(name));
         if (Find(name) != null) throw new InvalidOperationException($"The equipment slot '{name}' is already registered.");
         _names.Add(name);
+        _all.Insert(_names.Count - 1, name);
     }
 
     // The registered spelling of a slot, found ignoring case; null for one nobody registered.
-    public string? Find(string name) => _names.FirstOrDefault(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+    public string? Find(string name) => _all.FirstOrDefault(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
 }
 
 [Record("item", Plugin = "sage.gameplay.items")]
@@ -289,7 +291,7 @@ public static class Items
         }
 
         ref var inventory = ref world.Get<Inventory>(entity);
-        if (!Lifts(world, entity, inventory.Capacity, record, count))
+        if (!Lifts(world, entity, world.CarryLimitOf(entity), record, count))   // its capacity, or past it with encumbrance rules (#384)
         {
             Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot carry {count}x {record.Describe(item, instance)}: too heavy");
             return false;
@@ -388,7 +390,7 @@ public static class Items
             || index < 0 || index >= source.Items.Count || source.Items[index].Count < count) return false;
         var item = source.Items[index].Item;
         if (!world.TryGet<Inventory>(to, out var target) || !world.Resources.Get<RecordStore>().TryGet(item, out ItemRecord record)
-            || (from != to && !Lifts(world, to, target.Capacity, record, count))) return false;
+            || (from != to && !Lifts(world, to, world.CarryLimitOf(to), record, count))) return false;
 
         if (!world.TakeAt(from, index, count, out var taken)) return false;
         if (world.Give(to, in taken)) return true;
