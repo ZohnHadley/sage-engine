@@ -37,6 +37,7 @@
         "chase",
         "hold_ground",
         "idle",
+        "investigate",
         "keep_routine",
         "keep_to_routine",
         "melee_attack",
@@ -45,6 +46,7 @@
         "sage:chase",
         "sage:hold_ground",
         "sage:idle",
+        "sage:investigate",
         "sage:melee_attack",
         "sandbox:keep_routine"
       ]
@@ -1607,6 +1609,7 @@
         "chase",
         "hold_ground",
         "idle",
+        "investigate",
         "keep_routine",
         "keep_to_routine",
         "melee_attack",
@@ -1615,6 +1618,7 @@
         "sage:chase",
         "sage:hold_ground",
         "sage:idle",
+        "sage:investigate",
         "sage:melee_attack",
         "sandbox:keep_routine"
       ]

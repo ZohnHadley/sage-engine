@@ -5154,13 +5154,14 @@
       ]
     },
     "ai_condition:id": {
-      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, TaskFailed, in_routine.",
+      "description": "An ai_condition by id: CanCastAtEnemy, CanMelee, Casting, EnemyInMeleeRange, HearNoise, LostEnemy, NoEnemy, RememberEnemy, ScheduleDone, SeeEnemy, SpellComingBack, Suspicious, TaskFailed, in_routine.",
       "type": "string",
       "enum": [
         "CanCastAtEnemy",
         "CanMelee",
         "Casting",
         "EnemyInMeleeRange",
+        "HearNoise",
         "InRoutine",
         "LostEnemy",
         "NoEnemy",
@@ -5168,11 +5169,13 @@
         "ScheduleDone",
         "SeeEnemy",
         "SpellComingBack",
+        "Suspicious",
         "TaskFailed",
         "can_cast_at_enemy",
         "can_melee",
         "casting",
         "enemy_in_melee_range",
+        "hear_noise",
         "in_routine",
         "lost_enemy",
         "no_enemy",
@@ -5180,6 +5183,7 @@
         "schedule_done",
         "see_enemy",
         "spell_coming_back",
+        "suspicious",
         "task_failed"
       ]
     },
@@ -5314,6 +5318,35 @@
                 },
                 "additionalProperties": false,
                 "description": "ai_condition 'EnemyInMeleeRange' (PerceivedCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "HearNoise",
+                      "hear_noise"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: HearNoise.",
+                    "enum": [
+                      "HearNoise",
+                      "hear_noise"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'HearNoise' (PerceivedCondition)."
               }
             },
             {
@@ -5488,6 +5521,35 @@
                 },
                 "additionalProperties": false,
                 "description": "ai_condition 'SpellComingBack' (PerceivedCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "Suspicious",
+                      "suspicious"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "description": "The ai_condition: Suspicious.",
+                    "enum": [
+                      "Suspicious",
+                      "suspicious"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "ai_condition 'Suspicious' (PerceivedCondition)."
               }
             },
             {

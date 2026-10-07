@@ -2386,6 +2386,33 @@
           "description": "Not saved. (float, default 0)",
           "default": 0,
           "type": "number"
+        },
+        "heard": {
+          "description": "Not saved. (Vector3, default [0,0,0])",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "heardLoudness": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "heardSource": {
+          "description": "Not saved. (Entity)"
+        },
+        "heardUntil": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
         }
       },
       "additionalProperties": false,

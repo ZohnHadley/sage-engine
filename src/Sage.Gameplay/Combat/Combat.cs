@@ -138,6 +138,10 @@ public sealed class AttackRecord
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Min = 0, Unit = "shots/s", Tooltip = "Shots a second (replaces cooldown when above 0)")]
     public float RateOfFire;
+    // How far it is heard when it leaves the weapon (issue #386): metres; negative is the conventions'
+    // `noise` for its delivery (a gunshot, a swing), 0 is silent (a suppressed pistol, a blowgun).
+    [Property(Min = -1, Unit = "m", Tooltip = "How far its firing is heard; -1 = the conventions' for its delivery, 0 = silent")]
+    public float NoiseRadius = -1f;
 
     // ---- spread and recoil (issue #136; Spread.cs) — last, so parallel additions above merge cleanly ----
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]

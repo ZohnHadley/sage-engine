@@ -588,6 +588,7 @@ public sealed class AIModule : IModule
         // movement that reads it, which cost every creature a tick of lag (review #48) — and is now
         // a contract the engine checks rather than a comment (03 §3.5).
         world.AddSystem(new AIThinkSystem(world, _records!, AITasks, _actions!));
+        world.AddSystem(new NoiseSystem(world, _records!));   // shots, blows and steps are heard (issue #386)
         // One navigation per world, like the physics space: the grid holds origin-space positions, and
         // two worlds do not share an origin (R6, and the lesson of the audio mixer in 11 §3).
         world.Resources.Add(new Navigation

@@ -353,3 +353,50 @@ static Sage.Gameplay.Merchants.Price(Sage.Simulation.World! world, Sage.Simulati
 static Sage.Gameplay.Merchants.Ready(Sage.Simulation.World! world, Sage.Simulation.Entity merchant) -> bool
 static Sage.Gameplay.Merchants.RecordOf(Sage.Simulation.World! world, Sage.Simulation.Entity merchant) -> Sage.Gameplay.MerchantRecord?
 static Sage.Gameplay.Merchants.Sell(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant, int index, int count) -> Sage.Gameplay.TradeResult
+Sage.Gameplay.AICondition.HearNoise = 4096 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.Suspicious = 8192 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AIProfileRecord.Hearing -> float
+Sage.Gameplay.AIProfileRecord.InterestSeconds -> float
+Sage.Gameplay.AIProfileRecord.OccludedHearing -> float
+Sage.Gameplay.AIScheduleConventions.Investigate -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIState.Heard -> System.Numerics.Vector3
+Sage.Gameplay.AIState.HeardLoudness -> float
+Sage.Gameplay.AIState.HeardSource -> Sage.Simulation.Entity
+Sage.Gameplay.AIState.HeardUntil -> float
+Sage.Gameplay.AttackRecord.NoiseRadius -> float
+Sage.Gameplay.GameplayConventionsRecord.Noise -> Sage.Gameplay.NoiseConventions!
+Sage.Gameplay.Noise
+Sage.Gameplay.Noise.Kind.get -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.Noise.Kind.init -> void
+Sage.Gameplay.Noise.Loudness.get -> float
+Sage.Gameplay.Noise.Loudness.init -> void
+Sage.Gameplay.Noise.LoudnessAt(float distance, float scale = 1) -> float
+Sage.Gameplay.Noise.Noise() -> void
+Sage.Gameplay.Noise.Noise(Sage.Simulation.Entity Source, System.Numerics.Vector3 Point, float Radius, float Loudness) -> void
+Sage.Gameplay.Noise.Point.get -> System.Numerics.Vector3
+Sage.Gameplay.Noise.Point.init -> void
+Sage.Gameplay.Noise.Radius.get -> float
+Sage.Gameplay.Noise.Radius.init -> void
+Sage.Gameplay.Noise.Source.get -> Sage.Simulation.Entity
+Sage.Gameplay.Noise.Source.init -> void
+Sage.Gameplay.NoiseConventions
+Sage.Gameplay.NoiseConventions.FootstepLoudness -> float
+Sage.Gameplay.NoiseConventions.FootstepMaxScale -> float
+Sage.Gameplay.NoiseConventions.FootstepRadius -> float
+Sage.Gameplay.NoiseConventions.GunshotLoudness -> float
+Sage.Gameplay.NoiseConventions.GunshotRadius -> float
+Sage.Gameplay.NoiseConventions.HitLoudness -> float
+Sage.Gameplay.NoiseConventions.HitRadius -> float
+Sage.Gameplay.NoiseConventions.LandLoudness -> float
+Sage.Gameplay.NoiseConventions.LandRadius -> float
+Sage.Gameplay.NoiseConventions.NoiseConventions() -> void
+Sage.Gameplay.NoiseConventions.SwingLoudness -> float
+Sage.Gameplay.NoiseConventions.SwingRadius -> float
+Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Alert = 4 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Footstep = 1 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Impact = 3 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Other = 0 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Weapon = 2 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.Noises
+static Sage.Gameplay.Noises.Make(Sage.Simulation.World! world, Sage.Simulation.Entity source, System.Numerics.Vector3 point, float radius, float loudness = 1, Sage.Gameplay.NoiseKind kind = Sage.Gameplay.NoiseKind.Other) -> void
