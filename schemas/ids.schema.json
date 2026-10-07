@@ -118,6 +118,8 @@
       "enum": [
         "armor",
         "armor_head",
+        "barter",
+        "bunker:barter",
         "fire_resist",
         "health",
         "mana",
@@ -260,9 +262,11 @@
       "enum": [
         "bandits",
         "beasts",
+        "bunker:loners",
         "firebugs",
         "guards",
         "hermits",
+        "loners",
         "openworld:bandits",
         "openworld:guards",
         "openworld:villagers",
@@ -349,18 +353,29 @@
       "description": "The id of a item record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "ak74",
         "arrow",
         "bolt",
         "bow",
         "bread",
+        "bunker:ak74",
+        "bunker:flesh_eye",
+        "bunker:jellyfish",
+        "bunker:medkit",
+        "bunker:pistol",
+        "bunker:rubles",
+        "bunker:sausage",
         "crossbow",
         "dagger",
+        "flesh_eye",
         "hammer",
+        "jellyfish",
         "kitscreens:bread",
         "kitscreens:dagger",
         "kitscreens:lantern",
         "kitscreens:rope",
         "lantern",
+        "medkit",
         "openworld:hammer",
         "openworld:sword",
         "pelt",
@@ -370,12 +385,14 @@
         "practice_sword",
         "ring",
         "rope",
+        "rubles",
         "sandbox:bolt",
         "sandbox:crossbow",
         "sandbox:pelt",
         "sandbox:pistol",
         "sandbox:pistol_rounds",
         "sandbox:practice_sword",
+        "sausage",
         "saves:arrow",
         "saves:bow",
         "saves:bread",
@@ -400,6 +417,8 @@
       "description": "The id of a loot_table record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "bunker:bunker_stock",
+        "bunker_stock",
         "sandbox:watcher_loot",
         "watcher_loot"
       ]
@@ -514,6 +533,14 @@
         "weapons:dummy_helmeted",
         "weapons:floor",
         "wood"
+      ]
+    },
+    "record:merchant": {
+      "description": "The id of a merchant record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "bunker:trader",
+        "trader"
       ]
     },
     "record:mesh_lod": {
@@ -635,6 +662,9 @@
         "brick_wall",
         "brush",
         "brute",
+        "bunker:floor",
+        "bunker:player",
+        "bunker:trader",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -942,6 +972,8 @@
       "description": "The id of a scene record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "bunker",
+        "bunker:bunker",
         "cameracut:courtyard",
         "camp",
         "courtyard",
@@ -1564,6 +1596,8 @@
       "enum": [
         "armor",
         "armor_head",
+        "barter",
+        "bunker:barter",
         "fire_resist",
         "health",
         "mana",
@@ -1706,9 +1740,11 @@
       "enum": [
         "bandits",
         "beasts",
+        "bunker:loners",
         "firebugs",
         "guards",
         "hermits",
+        "loners",
         "openworld:bandits",
         "openworld:guards",
         "openworld:villagers",
@@ -1795,18 +1831,29 @@
       "description": "Another item record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "ak74",
         "arrow",
         "bolt",
         "bow",
         "bread",
+        "bunker:ak74",
+        "bunker:flesh_eye",
+        "bunker:jellyfish",
+        "bunker:medkit",
+        "bunker:pistol",
+        "bunker:rubles",
+        "bunker:sausage",
         "crossbow",
         "dagger",
+        "flesh_eye",
         "hammer",
+        "jellyfish",
         "kitscreens:bread",
         "kitscreens:dagger",
         "kitscreens:lantern",
         "kitscreens:rope",
         "lantern",
+        "medkit",
         "openworld:hammer",
         "openworld:sword",
         "pelt",
@@ -1816,12 +1863,14 @@
         "practice_sword",
         "ring",
         "rope",
+        "rubles",
         "sandbox:bolt",
         "sandbox:crossbow",
         "sandbox:pelt",
         "sandbox:pistol",
         "sandbox:pistol_rounds",
         "sandbox:practice_sword",
+        "sausage",
         "saves:arrow",
         "saves:bow",
         "saves:bread",
@@ -1846,6 +1895,8 @@
       "description": "Another loot_table record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "bunker:bunker_stock",
+        "bunker_stock",
         "sandbox:watcher_loot",
         "watcher_loot"
       ]
@@ -1960,6 +2011,14 @@
         "weapons:dummy_helmeted",
         "weapons:floor",
         "wood"
+      ]
+    },
+    "base:merchant": {
+      "description": "Another merchant record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "bunker:trader",
+        "trader"
       ]
     },
     "base:mesh_lod": {
@@ -2081,6 +2140,9 @@
         "brick_wall",
         "brush",
         "brute",
+        "bunker:floor",
+        "bunker:player",
+        "bunker:trader",
         "bunny",
         "cameracut:beacon",
         "cameracut:crate",
@@ -2390,6 +2452,8 @@
       "description": "Another scene record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "bunker",
+        "bunker:bunker",
         "cameracut:courtyard",
         "camp",
         "courtyard",

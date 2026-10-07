@@ -377,6 +377,22 @@
         }
       ]
     },
+    "merchant": {
+      "description": "Prefab part 'merchant' (MerchantPart). A bare value is its \"record\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/merchant"
+        },
+        {
+          "description": "The merchant record: currency, purse, prices, what they buy, restock. Names a merchant record. (RecordRef<MerchantRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:merchant"
+            }
+          ]
+        }
+      ]
+    },
     "mover": {
       "description": "Prefab part 'mover' (MoverPart).",
       "allOf": [
@@ -2489,6 +2505,21 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'melee' (MeleePart)."
+    },
+    "merchant": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "The merchant record: currency, purse, prices, what they buy, restock. Names a merchant record. (RecordRef<MerchantRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:merchant"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'merchant' (MerchantPart)."
     },
     "mover": {
       "type": "object",

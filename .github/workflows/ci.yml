@@ -155,6 +155,8 @@ jobs:
           "$sage" validate tests/games/saves
           "$sage" validate tests/games/saves --mounts tests/games/saves/rebalance=rebalance
           "$sage" validate tests/games/open-world
+          # Phase 4f's trader (issue #380): a merchant record, rubles as an item, a loot table for his goods, no C#.
+          "$sage" validate tests/games/trader
           # Phase 4j's exit (issue #200): the village alone, then with the two mods in its own mods/ folder,
           # and `sage mods` (the load order and the conflict report; exits 1 on a refused mod or an error,
           # a conflict is a warning).
@@ -174,11 +176,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/trader --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/trader --out schemas' and commit the result"
             exit 1
           fi
 
@@ -319,6 +321,10 @@ jobs:
           # table listed. Same allowances as above.
           SAGE_SMOKE_COMMANDS=$'+wait 2\n+sv_cheats 1\n+ent_fire player Travel "crypt crypt_in"\n+wait 2\n+time_pass 26\n+wait 1\n+ent_fire way_out Travel\n+wait 2\n+offscreen_status' \
             tools/smoke_run.sh "$host" tests/games/open-world 4 Shaders Audio Records Input
+          # Phase 4f's trader (issue #380): a bunker trader who buys and sells for rubles, in data; his shop opened
+          # on him and closed (TraderExitTests plays it headlessly). Same allowances as above.
+          SAGE_SMOKE_COMMANDS=$'+wait 1\n+ui_open rpg:shop Sidorovich\n+wait 2\n+ui_close all' \
+            tools/smoke_run.sh "$host" tests/games/trader 3 Shaders Audio Records Input
           # Phase 4j's exit (issue #200): a village whose two data mods the host finds in its mods/ folder and
           # mounts after it; mod_list and mod_conflicts print the order and the report (ModsExitTests plays it
           # headlessly). Same allowances as above.

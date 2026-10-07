@@ -44,6 +44,7 @@ public class DeclarationTests
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
             ["loot_table"] = "sage.gameplay.items",   // loot tables and leveled lists (#379)
+            ["merchant"] = "sage.gameplay.items",     // shops and barter (#380)
             ["map"] = "sage.maps",
             ["physics_layers"] = "sage.physics3d",
             ["physics_material"] = "sage.physics3d",   // issue #270
