@@ -55,7 +55,8 @@ public sealed class ItemRecord
     public RecordRef<AttackRecord> Attack;   // a weapon's swing: equipping puts this in Melee
     public List<RecordRef<EffectRecord>> Effects = new();  // applied while it is equipped, removed when it comes off
     public float Weight = 1f;               // kg, against the carrier's capacity
-    public int Value;                       // gold; shops are later
+    public int Value;                       // what it is worth in money: a merchant's prices start here (issue #380)
+    public string Category = "";            // what kind of thing it is: what a merchant's `buys` names (issue #380)
     public int MaxStack = 1;                // > 1 for arrows, potions and the like
     public RecordRef<SoundRecord> Sound;     // picking it up (11 §3, F4)
     public List<IItemUse> Uses = new();     // what using it does, in order (issue #28, ItemUses)

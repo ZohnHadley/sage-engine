@@ -304,6 +304,7 @@ public sealed class ItemsModule : IModule
         ItemUses.RegisterCommands(ctx.Engine);   // use_item (issue #28)
         _records.AddCheck<LootTableRecord>(LootTables.Check);   // missing references, nested cycles (issue #379)
         LootTables.RegisterCommands(ctx.Engine);                 // loot <table>
+        _records.AddCheck<MerchantRecord>(Merchants.Check);      // a currency, sane prices (issue #380)
 
         // The console's way to handle things: `give` puts one in your pack, `equip` puts it in your
         // hand, and the combat log shows the difference the moment you swing. A bag screen, and the

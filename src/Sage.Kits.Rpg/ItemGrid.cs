@@ -359,7 +359,14 @@ public sealed class ItemGrid
         Transfer(world, item, to, x, y, item.Rotated, out reason);
 
     // The same, put down turned on its side or not (issue #346).
-    public static bool Transfer(World world, GridItem item, ItemGrid to, int x, int y, bool rotated, out string reason)
+    public static bool Transfer(World world, GridItem item, ItemGrid to, int x, int y, bool rotated, out string reason) =>
+        Transfer(world, item, to, x, y, rotated, null, out reason);
+
+    // Moves `count` of the stack at `index` of `from`'s inventory into `to`'s, or says why not: what a
+    // transfer does once its own checks pass. The default is Items.MoveTo; a shop trades (issue #380).
+    internal delegate bool StackMover(World world, Entity from, int index, Entity to, int count, out string reason);
+
+    internal static bool Transfer(World world, GridItem item, ItemGrid to, int x, int y, bool rotated, StackMover? mover, out string reason)
     {
         var from = item.Grid;
         var text = RpgText.Of(world);
@@ -395,7 +402,11 @@ public sealed class ItemGrid
             return false;
         }
         // The stack itself, instance and all (issue #383), not "this many of the item".
-        if (!world.MoveTo(from.Owner, at, to.Owner, count))
+        if (mover != null)
+        {
+            if (!mover(world, from.Owner, at, to.Owner, count, out reason)) return false;
+        }
+        else if (!world.MoveTo(from.Owner, at, to.Owner, count))
         {
             reason = text.Format("@rpg.grid.too_heavy", ("item", item.Label), ("weight", Tenths(item.Weight)),
                                  ("total", Tenths(now + item.Weight)), ("capacity", Tenths(inventory.Capacity)));
@@ -413,7 +424,7 @@ public sealed class ItemGrid
     }
 
     // Where a stack of this grid is in its owner's inventory, or -1 when it is not there as shown.
-    private int StackOf(World world, GridItem item)
+    internal int StackOf(World world, GridItem item)
     {
         int index = Items.IndexOf(item);
         if (item.Grid != this || index < 0 || !world.TryGet<Inventory>(Owner, out var inventory) || inventory.Items == null) return -1;
