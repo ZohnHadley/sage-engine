@@ -1,6 +1,19 @@
 #nullable enable
 const Sage.Core.DropDownConsole.MaxLine = 512 -> int
 const Sage.Core.DropDownConsole.SlideSeconds = 0.18 -> float
+Sage.Core.AppEnvironment
+Sage.Core.AppEnvironment.AddCrashSection(string! name, System.Func<string!>! provider) -> void
+Sage.Core.AppEnvironment.Dispose() -> void
+Sage.Core.AppEnvironment.Enter() -> Sage.Core.AppEnvironment.Scope
+Sage.Core.AppEnvironment.GameId.get -> string!
+Sage.Core.AppEnvironment.IsProcess.get -> bool
+Sage.Core.AppEnvironment.LastCrashReport.get -> string?
+Sage.Core.AppEnvironment.Logger.get -> Sage.Core.Logger!
+Sage.Core.AppEnvironment.Scope
+Sage.Core.AppEnvironment.Scope.Dispose() -> void
+Sage.Core.AppEnvironment.Scope.Scope() -> void
+Sage.Core.AppEnvironment.SetUserFolder(string! gameId, string? overrideRoot = null) -> void
+Sage.Core.AppEnvironment.UserRoot.get -> string!
 Sage.Core.ConsoleNavKey
 Sage.Core.ConsoleNavKey.Down = 1 -> Sage.Core.ConsoleNavKey
 Sage.Core.ConsoleNavKey.End = 5 -> Sage.Core.ConsoleNavKey
@@ -11,6 +24,7 @@ Sage.Core.ConsoleNavKey.PageUp = 7 -> Sage.Core.ConsoleNavKey
 Sage.Core.ConsoleNavKey.Right = 3 -> Sage.Core.ConsoleNavKey
 Sage.Core.ConsoleNavKey.Tab = 6 -> Sage.Core.ConsoleNavKey
 Sage.Core.ConsoleNavKey.Up = 0 -> Sage.Core.ConsoleNavKey
+Sage.Core.CoreCVars.Environment.get -> Sage.Core.AppEnvironment!
 Sage.Core.DropDownConsole
 Sage.Core.DropDownConsole.Candidates.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Core.DropDownConsole.Caret.get -> int
@@ -38,3 +52,33 @@ Sage.Core.DropDownConsole.Update(float seconds) -> void
 Sage.Core.CVarRegistry.Version.get -> int
 Sage.Core.GameManifest.Title.get -> string?
 Sage.Core.GameManifest.Title.set -> void
+Sage.Core.Logger
+Sage.Core.Logger.AddSink(Sage.Core.ILogSink! sink) -> void
+Sage.Core.Logger.DefaultLevel.get -> Sage.Core.LogLevel
+Sage.Core.Logger.DefaultLevel.set -> void
+Sage.Core.Logger.Dispose() -> void
+Sage.Core.Logger.DroppedCount.get -> long
+Sage.Core.Logger.File.get -> Sage.Core.FileLogSink?
+Sage.Core.Logger.Flush() -> void
+Sage.Core.Logger.Flush(System.TimeSpan timeout) -> bool
+Sage.Core.Logger.GetLevel(Sage.Core.LogCat! cat) -> Sage.Core.LogLevel
+Sage.Core.Logger.Initialize(Sage.Core.LogOptions! options) -> void
+Sage.Core.Logger.IsEnabled(Sage.Core.LogCat! cat, Sage.Core.LogLevel level) -> bool
+Sage.Core.Logger.IsOverridden(Sage.Core.LogCat! cat) -> bool
+Sage.Core.Logger.Logger(Sage.Core.Logger? parent = null) -> void
+Sage.Core.Logger.QueueCapacity.get -> int
+Sage.Core.Logger.QueueCapacity.set -> void
+Sage.Core.Logger.RemoveSink(Sage.Core.ILogSink! sink) -> void
+Sage.Core.Logger.ResetLevel(Sage.Core.LogCat! cat) -> void
+Sage.Core.Logger.Ring.get -> Sage.Core.RingBufferLogSink!
+Sage.Core.Logger.SetFrame(long frame) -> void
+Sage.Core.Logger.SetLevel(Sage.Core.LogCat! cat, Sage.Core.LogLevel level) -> void
+Sage.Core.Logger.SetTick(long tick) -> void
+Sage.Core.Logger.Shutdown() -> void
+Sage.Core.Logger.Stdout.get -> Sage.Core.StdoutLogSink?
+static Sage.Core.AppEnvironment.CreateForApp() -> Sage.Core.AppEnvironment!
+static Sage.Core.AppEnvironment.CreateChild(Sage.Core.AppEnvironment? parent = null) -> Sage.Core.AppEnvironment!
+static Sage.Core.AppEnvironment.Current.get -> Sage.Core.AppEnvironment!
+static Sage.Core.AppEnvironment.Process.get -> Sage.Core.AppEnvironment!
+static Sage.Core.CoreCVars.Register(Sage.Core.CVarRegistry! registry, bool ownsProcessLog, Sage.Core.AppEnvironment! environment) -> Sage.Core.CoreCVars!
+static Sage.Core.Logger.Current.get -> Sage.Core.Logger!

@@ -436,6 +436,7 @@ public sealed class World : IDisposable
     // always did, while a slowed or hit-stopped one keeps a press for its next step.
     public void RunFixed(float dt, Action<World>? beforeStep)
     {
+        using var app = Engine?.Environment.Enter() ?? default;   // this app's log, even beside another app (#49)
         var time = WorldTime.Of(this);
         if (time.Paused != _pauseSignalled)
         {
@@ -528,6 +529,7 @@ public sealed class World : IDisposable
     // its last step and its next.
     public void RunFrame(float dt, float alpha, double realTime = 0)
     {
+        using var app = Engine?.Environment.Enter() ?? default;
         if (Resources.TryGet<WorldTime>(out var time) && time != null) alpha = time.Alpha(alpha);
         var frame = new FrameTime(++_frame, dt, alpha, realTime);
         _messages.Advance(dt);               // messages age in display time, not ticks (13 §3)

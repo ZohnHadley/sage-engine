@@ -178,27 +178,37 @@ public class ConsoleTests
     }
 
     // Only the app that owns the process's log configures it (issue #11): a test, a tool or a second
-    // app in the same process creates its cvars and leaves the log as the host set it.
+    // app in the same process has a log of its own (issue #49), starting at the levels of the log it was
+    // made under, and its cvars change that one, never the process's.
     [Fact]
     public void AnAppThatDoesNotOwnTheLogLeavesItAlone()
     {
-        var before = LogCat.DefaultLevel;
+        var process = AppEnvironment.Process.Logger;
+        var before = process.DefaultLevel;
         try
         {
-            LogCat.DefaultLevel = LogLevel.Warn;   // what "the host" chose
-            using var app = SageApp.Create(new SageAppOptions());
-            Assert.False(app.Engine.Core.OwnsProcessLog);
-            Assert.Equal(LogLevel.Warn, LogCat.DefaultLevel);
+            process.DefaultLevel = LogLevel.Warn;   // what "the host" chose
+            using (var app = SageApp.Create(new SageAppOptions()))
+            {
+                Assert.False(app.Engine.Core.OwnsProcessLog);
+                Assert.NotSame(process, app.Environment.Logger);
+                Assert.Equal(LogLevel.Warn, app.Environment.Logger.DefaultLevel);   // started where the host's is
+                Assert.Same(app.Environment, AppEnvironment.Current);               // current, for the code that made it
 
-            app.Engine.Core.Developer.Value = 1;
-            app.Engine.Core.Developer.Value = 0;
-            Assert.Equal(LogLevel.Warn, LogCat.DefaultLevel);
+                app.Engine.Core.Developer.Value = 0;
+                Assert.Equal(LogLevel.Info, app.Environment.Logger.DefaultLevel);   // its own log follows its cvars
+                app.Engine.Core.Developer.Value = 1;
+                Assert.Equal(LogLevel.Debug, app.Environment.Logger.DefaultLevel);
+                Assert.Equal(LogLevel.Warn, process.DefaultLevel);                  // the process's doesn't
+            }
+            Assert.True(AppEnvironment.Current.IsProcess);   // disposed: no longer current
 
             using var host = SageApp.Create(new SageAppOptions { OwnsProcessLog = true });
             Assert.True(host.Engine.Core.OwnsProcessLog);
-            Assert.NotEqual(LogLevel.Warn, LogCat.DefaultLevel);   // the owner applies its developer defaults
+            Assert.Same(AppEnvironment.Process, host.Environment);
+            Assert.NotEqual(LogLevel.Warn, process.DefaultLevel);   // the owner applies its developer defaults
         }
-        finally { LogCat.DefaultLevel = before; }
+        finally { process.DefaultLevel = before; }
     }
 
     // ---- `wait` and the deferred queue (02 §4.2) -------------------------------------------------

@@ -44,7 +44,7 @@ public class DiagnosticsTests
     {
         CrashReporter.AddSection("Test section", () => "section body");
         CrashReporter.AddSection("Broken section", () => throw new InvalidOperationException("nope"));
-        Log.Warn(LogCat.Core, TestEnv.Unique("line in the tail"));
+        Log.Warn(LogCat.Core, "line in the tail");
 
         string? path = CrashReporter.Write(new InvalidOperationException("outer", new ArgumentException("inner")), "test crash");
 
