@@ -10672,15 +10672,17 @@
       ]
     },
     "item_use:id": {
-      "description": "An item_use by id: cast, consume, read.",
+      "description": "An item_use by id: cast, consume, read, repair.",
       "type": "string",
       "enum": [
         "Cast",
         "Consume",
         "Read",
+        "Repair",
         "cast",
         "consume",
-        "read"
+        "read",
+        "repair"
       ]
     },
     "item_use": {
@@ -10827,6 +10829,54 @@
                 },
                 "additionalProperties": false,
                 "description": "item_use 'read' (ReadUse)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "use": {
+                    "enum": [
+                      "repair",
+                      "Repair"
+                    ]
+                  }
+                },
+                "required": [
+                  "use"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "description": "Condition it puts back. Range: 0 to 1. (float, default 0.25)",
+                    "default": 0.25,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "slot": {
+                    "description": "The equipment slot whose item it mends; empty = the most worn thing equipped, else the most worn thing carried. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "upTo": {
+                    "description": "The best condition it can bring something to (a field kit is not a smith) Range: 0 to 1. (float, default 1)",
+                    "default": 1,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "use": {
+                    "description": "The item_use: repair.",
+                    "enum": [
+                      "repair",
+                      "Repair"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "item_use 'repair' (RepairUse)."
               }
             }
           ]
