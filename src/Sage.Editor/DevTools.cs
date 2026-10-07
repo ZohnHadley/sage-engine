@@ -255,6 +255,9 @@ public sealed class DevTools : IDisposable
         _panels.Add(ProblemsPanel.Title);
         _panels.Add(AssetsPanel.Title);
         _panels.Add(AudioPanel.Title);
+        _panels.Add(AIGraphPanel.Title);      // #369
+        _panels.Add(VocabularyPanel.Title);   // #370
+        _panels.Add(BrushPanel.Title);        // #61
         _panels.Add(EditorLayout.ConsoleTitle, () => { if (!_console.IsOpen) _console.Toggle(); });
         _panels.Add(ViewportTitle, () => _viewport.Value = true);
         _panels.Add(VisualLogWindow.Title, _visualLog.Open);
