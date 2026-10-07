@@ -116,6 +116,8 @@ internal sealed class QuestCondition : ICondition
     public bool Active;
     public bool Finished;
     public bool NotStarted;
+    [Property(Tooltip = "Holds once the quest has failed (issue #391); finished means succeeded")]
+    public bool Failed;
 
     public bool Test(in ConditionContext c, out string why)
     {
@@ -124,6 +126,7 @@ internal sealed class QuestCondition : ICondition
         bool ok = true;
         if (NotStarted) ok = Quests.IsNotStarted(c.World, Quest);
         else if (Finished) ok = Quests.IsFinished(c.World, Quest);
+        else if (Failed) ok = Quests.IsFailed(c.World, Quest);
         else if (Active) ok = Quests.IsActive(c.World, Quest);
         if (ok && Stage.Length > 0)
             ok = Quests.StageOf(c.World, Quest) == Stage && Quests.IsActive(c.World, Quest);
@@ -216,6 +219,19 @@ internal sealed class FinishQuestAction : IAction
     public void Run(in ActionContext c)
     {
         if (!Quest.IsEmpty) Quests.Finish(c.World, Quest);
+    }
+}
+
+// Failed: out of time, the one to save is dead, the secret told (issue #391). To the stage's `fail`
+// stage when it names one, else over where it stands.
+[Action("fail_quest", Plugin = "sage.gameplay.quests")]
+internal sealed class FailQuestAction : IAction
+{
+    [EntryValue] public RecordRef<QuestRecord> Quest;
+
+    public void Run(in ActionContext c)
+    {
+        if (!Quest.IsEmpty) Quests.Fail(c.World, Quest);
     }
 }
 

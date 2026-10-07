@@ -62,6 +62,7 @@ Sage.Kits.Rpg.ItemGrid.Rotate(Sage.Simulation.World! world, Sage.Kits.Rpg.GridIt
 Sage.Kits.Rpg.ItemGrid.Split(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, out string! reason) -> bool
 Sage.Kits.Rpg.ItemGridView.Dragging.get -> bool
 Sage.Kits.Rpg.ItemGridView.HeldTurned.get -> bool
+Sage.Kits.Rpg.JournalView.Line.Failed.get -> bool
 Sage.Kits.Rpg.LevelledUp
 Sage.Kits.Rpg.LevelledUp.Entity.get -> Sage.Simulation.Entity
 Sage.Kits.Rpg.LevelledUp.Entity.init -> void

@@ -1,0 +1,298 @@
+{
+  "origin": {
+    "x": 0,
+    "z": 0
+  },
+  "entities": [
+    {
+      "id": "a188bc45c1ce281f939332d6c1fb1d88",
+      "name": "pilgrim",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              -2,
+              0,
+              0
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "1bf64af0333ffa2a0ceec786a42cd365",
+      "name": "hero",
+      "components": {
+        "sage:transform": {
+          "version": 1,
+          "data": {
+            "LocalPosition": [
+              0,
+              0.004999999,
+              0
+            ],
+            "LocalRotation": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "LocalScale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "sage:pawn": {
+          "version": 1,
+          "data": {}
+        },
+        "sage:pawn_intent": {
+          "version": 1,
+          "data": {
+            "Yaw": 0,
+            "Pitch": 0
+          }
+        },
+        "sage:character_controller": {
+          "version": 1,
+          "data": {
+            "Profile": "",
+            "Layer": 1,
+            "Velocity": [
+              0,
+              0,
+              0
+            ],
+            "Crouching": false,
+            "Mode": "Default",
+            "InWater": false,
+            "UnderwaterSeconds": 0
+          }
+        },
+        "sage:collider": {
+          "version": 1,
+          "data": {
+            "Shape": "Capsule",
+            "Size": [
+              0.35,
+              1.0999999,
+              0
+            ],
+            "Center": [
+              0,
+              0.9,
+              0
+            ],
+            "Layer": 1,
+            "IsTrigger": false,
+            "ReportContacts": false,
+            "Surface": ""
+          }
+        },
+        "sage:rigid_body": {
+          "version": 1,
+          "data": {
+            "Kind": "Kinematic",
+            "Mass": 0,
+            "Friction": 0,
+            "Restitution": 0
+          }
+        },
+        "sage:attributes": {
+          "version": 1,
+          "data": {
+            "Values": {
+              "sage:health": 100
+            }
+          }
+        },
+        "sage:gameplay_tags": {
+          "version": 1,
+          "data": []
+        },
+        "sage:active_effects": {
+          "version": 1,
+          "data": {
+            "Effects": []
+          }
+        },
+        "sage:inventory": {
+          "version": 1,
+          "data": {
+            "Items": [
+              {
+                "Item": "sage:sealed_letter",
+                "Count": 1,
+                "Instance": null
+              }
+            ],
+            "Capacity": 50
+          }
+        },
+        "sage:equipment": {
+          "version": 2,
+          "data": {
+            "Worn": null
+          }
+        }
+      },
+      "tags": [
+        "sage:player_controlled"
+      ]
+    }
+  ],
+  "resources": {
+    "clock": {
+      "version": 1,
+      "data": {
+        "Day": 0,
+        "Hour": 14.00055555558453,
+        "Scale": 60,
+        "Sky": "",
+        "Calendar": ""
+      }
+    },
+    "entity_io": {
+      "version": 1,
+      "data": {
+        "Pending": [],
+        "Wires": []
+      }
+    },
+    "journal": {
+      "version": 1,
+      "data": {
+        "Entries": [
+          {
+            "Quest": "sage:gate",
+            "Stage": "go",
+            "Finished": false,
+            "Progress": [],
+            "History": [],
+            "Tracked": true,
+            "Failed": false,
+            "Deadline": 0,
+            "Told": [
+              "Get through the north gate."
+            ]
+          },
+          {
+            "Quest": "sage:rumor",
+            "Stage": "ask",
+            "Finished": false,
+            "Progress": [],
+            "History": [],
+            "Tracked": true,
+            "Failed": false,
+            "Deadline": 0,
+            "Told": [
+              "Ask the ferryman about the bridge."
+            ]
+          },
+          {
+            "Quest": "sage:courier",
+            "Stage": "run",
+            "Finished": false,
+            "Progress": [],
+            "History": [],
+            "Tracked": true,
+            "Failed": false,
+            "Deadline": 18,
+            "Told": [
+              "The abbot wants this letter by dusk."
+            ]
+          },
+          {
+            "Quest": "sage:escort",
+            "Stage": "guard",
+            "Finished": false,
+            "Progress": [],
+            "History": [],
+            "Tracked": true,
+            "Failed": false,
+            "Deadline": 0,
+            "Told": [
+              "See the pilgrim safely to the shrine."
+            ]
+          }
+        ]
+      }
+    },
+    "music": {
+      "version": 1,
+      "data": {
+        "Track": "",
+        "Previous": "",
+        "Blend": 1,
+        "BlendRate": 1,
+        "Intensity": 0,
+        "Settled": true
+      }
+    },
+    "offscreen": {
+      "version": 1,
+      "data": {
+        "Minute": 840,
+        "Agents": []
+      }
+    },
+    "reputation": {
+      "version": 1,
+      "data": {
+        "Standings": []
+      }
+    },
+    "time": {
+      "version": 1,
+      "data": {
+        "Scale": 1,
+        "Paused": false,
+        "HitStopLeft": 0,
+        "Unscaled": 0.03333333507180214,
+        "Scaled": 0.03333333507180214,
+        "Carry": 0
+      }
+    },
+    "travel": {
+      "version": 1,
+      "data": {
+        "Points": []
+      }
+    },
+    "vars": {
+      "version": 1,
+      "data": {
+        "Values": {}
+      }
+    },
+    "weather": {
+      "version": 1,
+      "data": {
+        "Current": "sage:clear",
+        "Target": "sage:clear",
+        "Blend": 1,
+        "BlendRate": 1,
+        "Pattern": "",
+        "Region": "",
+        "PickedSlot": -1,
+        "Wetness": 0,
+        "Settled": true,
+        "Showing": "sage:clear"
+      }
+    }
+  }
+}

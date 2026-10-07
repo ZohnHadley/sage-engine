@@ -19,6 +19,9 @@ namespace Sage.Kits.Rpg;
 // the story so far. A quest's line says whether it is `tracked` (a map marks its targets); activating an
 // unfinished quest's line tracks it or stops. The kit's layout is `rpg:journal`.
 //
+// Text at the time (issue #391): a stage's line is what the journal said when the stage was reached
+// (Journal.Entry.Told), not what its record says now; a failed quest's line is `failed` as well as `done`.
+//
 // Refresh reads the journal every frame and rebuilds its lines only when what they say changed (a quest
 // started, moved on or finished, an objective counted), reusing them, so an open journal allocates nothing.
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0125", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the RPG screens (#99): SAGE0125, as Sage.UI
@@ -41,6 +44,9 @@ public sealed class JournalView : IViewModel
 
         // A stage the quest has moved on from, or the one a finished quest ended at (issue #349).
         public bool Past { get; internal set; }
+
+        // On a finished quest's line: it ended failed (issue #391).
+        public bool Failed { get; internal set; }
 
         // On a quest's line: the player tracks it (issue #349).
         public bool Tracked { get; internal set; }
@@ -85,19 +91,21 @@ public sealed class JournalView : IViewModel
             quest.Text = record.Label.Length > 0 ? record.Label : entry.Quest.Name;
             quest.Quest = true;
             quest.Done = entry.Finished;
+            quest.Failed = entry.Failed;
             quest.Tracked = entry.Tracked && !entry.Finished;
             quest.QuestId = entry.Quest;
 
             // The story so far: each stage it moved on from, and the one a finished quest ended at.
-            foreach (var past in entry.History) AddPast(ref used, record, entry.Quest, past);
-            if (entry.Finished) AddPast(ref used, record, entry.Quest, entry.Stage);
+            for (int i = 0; i < entry.History.Count; i++) AddPast(ref used, Told(record, entry, i), entry.Quest);
+            if (entry.Finished) AddPast(ref used, Told(record, entry, entry.History.Count), entry.Quest);
 
             var stage = record.Stage(entry.Stage);
             if (entry.Finished || stage == null) continue;
-            if (stage.Text.Length > 0)
+            string told = Told(record, entry, entry.History.Count);
+            if (told.Length > 0)
             {
                 var line = Next(ref used);
-                line.Text = stage.Text;
+                line.Text = told;
                 line.Stage = true;
                 line.QuestId = entry.Quest;
             }
@@ -122,11 +130,20 @@ public sealed class JournalView : IViewModel
         return Quests.Track(world, line.QuestId, !Quests.IsTracked(world, line.QuestId));
     }
 
-    private void AddPast(ref int used, QuestRecord record, RecordId quest, string id)
+    // What the journal said at the `index`th stage reached (History's, then the current one): as told then,
+    // or — for a save from before #391 — what the record says now.
+    private static string Told(QuestRecord record, Journal.Entry entry, int index)
     {
-        if (record.Stage(id) is not { Text.Length: > 0 } stage) return;
+        if (index < entry.Told.Count) return entry.Told[index];
+        string id = index < entry.History.Count ? entry.History[index] : entry.Stage;
+        return record.Stage(id)?.Text ?? "";
+    }
+
+    private void AddPast(ref int used, string text, RecordId quest)
+    {
+        if (text.Length == 0) return;
         var line = Next(ref used);
-        line.Text = stage.Text;
+        line.Text = text;
         line.Past = true;
         line.QuestId = quest;
     }
@@ -137,7 +154,7 @@ public sealed class JournalView : IViewModel
         if (used == _pool.Count) _pool.Add(new Line());
         var line = _pool[used++];
         line.Text = line.Progress = "";
-        line.Quest = line.Stage = line.Objective = line.Done = line.Past = line.Tracked = false;
+        line.Quest = line.Stage = line.Objective = line.Done = line.Past = line.Tracked = line.Failed = false;
         line.QuestId = default;
         Lines.Add(line);
         return line;
@@ -154,7 +171,8 @@ public sealed class JournalView : IViewModel
             hash = hash * 31 + entry.Quest.GetHashCode();
             hash = hash * 31 + (entry.Stage?.GetHashCode() ?? 0);
             hash = hash * 31 + (entry.Finished ? 1 : 2) + (entry.Tracked ? 4 : 0);
-            hash = hash * 31 + entry.History.Count;
+            hash = hash * 31 + entry.History.Count + (entry.Failed ? 8 : 0);
+            hash = hash * 31 + entry.Told.Count;
             if (entry.Finished || !records.TryGet(entry.Quest, out QuestRecord record)) continue;
             var stage = record.Stage(entry.Stage ?? "");
             if (stage == null) continue;

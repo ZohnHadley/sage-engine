@@ -41,7 +41,8 @@
     "gone": "{item} is not there any more.",
     "no_room_to_turn": "There is no room to turn {item} there.",
     "cannot_split": "{item} cannot be split.",
-    "cannot_drop": "{item} cannot be dropped here."
+    "cannot_drop": "{item} cannot be dropped here.",
+    "quest_item": "{item} is needed for a quest."
   },
   "loot": {
     "title": "{who}",

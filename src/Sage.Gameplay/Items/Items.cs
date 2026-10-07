@@ -61,6 +61,8 @@ public sealed class ItemRecord
     public RecordRef<SoundRecord> Sound;     // picking it up (11 §3, F4)
     public List<IItemUse> Uses = new();     // what using it does, in order (issue #28, ItemUses)
     public ItemDurability Durability = new(); // how it wears, what wear costs, what breaking does (issue #382); the default never wears
+    [Property(Tooltip = "A quest item: it cannot be dropped or sold, only given or taken by the story (issue #391)")]
+    public bool QuestItem;
 
     public string Describe(RecordId id) => string.IsNullOrEmpty(Label) ? id.Name : Label;
 
@@ -600,12 +602,25 @@ public static class Items
             foreach (var effect in instance.Effects) Effects.Remove(world, entity, effect);
     }
 
+    // Whether an item may leave its carrier's hands by being dropped or sold (issue #391): not a quest item,
+    // which only the story gives and takes (`take_item`, a conversation's `takeItem`).
+    public static bool CanDrop(this World world, RecordId item, out string why)
+    {
+        if (world.Records().TryGet(item, out ItemRecord record) && record.QuestItem)
+        {
+            why = $"{record.Describe(item)} is needed for a quest";
+            return false;
+        }
+        why = "";
+        return true;
+    }
+
     // Puts items on the ground in front of an entity, as a Pickup someone can take again. Plain units
     // go first, as Take takes them; an instance that goes too lies in a pickup of its own. Returns the
     // first pickup.
     public static Entity Drop(this World world, Entity entity, RecordId item, int count = 1)
     {
-        if (count <= 0 || world.CountOf(entity, item) < count) return default;
+        if (count <= 0 || world.CountOf(entity, item) < count || !world.CanDrop(item, out _)) return default;
         var gone = new List<ItemStack>();
         Remove(world, entity, item, count, gone);
 
@@ -631,7 +646,10 @@ public static class Items
     // stays in the bag, and the pickup carries the stack's instance.
     public static Entity DropAt(this World world, Entity entity, int index, int count)
     {
-        if (!world.Has<Transform>(entity) || !world.TakeAt(entity, index, count, out var taken)) return default;
+        if (!world.Has<Transform>(entity)) return default;
+        if (world.TryGet<Inventory>(entity, out var inventory) && inventory.Items is { } items && index >= 0 && index < items.Count
+            && !world.CanDrop(items[index].Item, out _)) return default;
+        if (!world.TakeAt(entity, index, count, out var taken)) return default;
         return InFront(world, entity, taken);
     }
 
