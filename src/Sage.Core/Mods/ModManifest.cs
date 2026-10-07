@@ -57,7 +57,8 @@ public sealed class ModManifest
 
     public bool AsksForCode => Assemblies.Count > 0 || string.Equals(Kind, "code", StringComparison.OrdinalIgnoreCase);
 
-    // Where the assemblies are: full paths under the mod's folder, with {config} the build configuration.
+    // Where the assemblies are: full paths under the mod's folder, with {config} the build configuration. A
+    // packed mod's are inside its archive instead, and are read from there (ModCodeContext).
     public IEnumerable<string> AssemblyPaths =>
         Assemblies.Select(a => Path.GetFullPath(Path.Combine(Directory, a.Replace("{config}", BuildInfo.ConfigurationName))));
 

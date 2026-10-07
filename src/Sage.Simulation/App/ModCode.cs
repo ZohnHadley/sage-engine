@@ -16,14 +16,50 @@ namespace Sage.Simulation;
 //
 // A code mod is trusted code, not sandboxed: .NET has no sandbox for a loaded assembly (17 §2), so a mod's
 // code can do whatever the game can. It is never downloaded by the engine; the player installs it.
+//
+// A packed mod (a `.sagemod`, issue #397) keeps its assemblies in the archive: they are read through a
+// ZipMount of the package (held until Release, as a dependency may be resolved late) and loaded from memory
+// with LoadFromStream, each with its .pdb when the archive has one; the mod's other dlls are found in the
+// archive's folders the same way. The paths are the manifest's, already checked (relative, inside the mod,
+// `.dll`: ModManifest.Validate), and the archive's entries are checked when it is opened (ZipMount).
 internal sealed class ModCodeContext : AssemblyLoadContext
 {
-    private readonly List<string> _folders;
+    private readonly List<string> _folders;     // where the mod's assemblies are: full folders, or the archive's folders ("" its root)
+    private ZipMount? _package;
 
     public ModCodeContext(ModManifest mod) : base($"mod:{mod.Id}", isCollectible: true)
     {
         Mod = mod;
-        _folders = mod.AssemblyPaths.Select(p => Path.GetDirectoryName(p)!).Distinct(StringComparer.Ordinal).ToList();
+        _folders = mod.IsPackage
+            ? Entries(mod).Select(e => e.Contains('/') ? e[..e.LastIndexOf('/')] : "").Distinct(StringComparer.Ordinal).ToList()
+            : mod.AssemblyPaths.Select(p => Path.GetDirectoryName(p)!).Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    // A packed mod's assemblies, as paths inside its archive: {config} the build configuration, '/' separated.
+    private static IEnumerable<string> Entries(ModManifest mod) =>
+        mod.Assemblies.Select(a => a.Replace("{config}", BuildInfo.ConfigurationName).Replace('\\', '/').TrimStart('/'));
+
+    private ZipMount Package => _package ??= new ZipMount($"mod-code:{Mod.Id}", Mod.Directory, Mod.Id);
+
+    // The entry a path inside the package names, or null: exactly that path, never another namespace's `@ns/`.
+    private VirtualPath? Entry(string relative)
+    {
+        VirtualPath path;
+        try { path = VirtualPath.Parse($"{Mod.Id}:{relative}"); }
+        catch (ArgumentException) { return null; }
+        return Package.Exists(path) ? path : null;
+    }
+
+    private Assembly LoadFromPackage(VirtualPath dll)
+    {
+        using var image = Package.Open(dll);
+        var symbols = VirtualPath.Parse(dll.Value[..^4] + ".pdb");
+        if (Package.Exists(symbols))
+        {
+            using var stream = Package.Open(symbols);
+            return LoadFromStream(image, stream);
+        }
+        return LoadFromStream(image);
     }
 
     public ModManifest Mod { get; }
@@ -39,6 +75,12 @@ internal sealed class ModCodeContext : AssemblyLoadContext
     protected override Assembly? Load(AssemblyName name)
     {
         if (IsShared(name)) return null;
+        if (Mod.IsPackage)
+        {
+            foreach (string folder in _folders)
+                if (Entry(folder.Length == 0 ? name.Name + ".dll" : $"{folder}/{name.Name}.dll") is { } dll) return LoadFromPackage(dll);
+            return null;
+        }
         foreach (string folder in _folders)
         {
             string path = Path.Combine(folder, name.Name + ".dll");
@@ -56,6 +98,29 @@ internal sealed class ModCodeContext : AssemblyLoadContext
     // is the mod's code or a type the engine does not have.
     public void LoadAll()
     {
+        if (Mod.IsPackage) LoadPackaged();
+        else LoadFolder();
+        if (Modules.Count == 0)
+            throw new InvalidDataException($"its assemblies ({string.Join(", ", Loaded.Select(a => a.GetName().Name))}) have no public IModule class, so its code would never run");
+    }
+
+    private void LoadPackaged()
+    {
+        try { _ = Package; }
+        catch (InvalidDataException ex) { throw new InvalidDataException($"its package can't be opened: {ex.Message}", ex); }
+        foreach (string relative in Entries(Mod))
+        {
+            if (Entry(relative) is not { } dll)
+                throw new InvalidDataException($"its assembly {relative} is not in its package (build the mod, then pack it: {Mod.Directory})");
+            Assembly assembly;
+            try { assembly = LoadFromPackage(dll); }
+            catch (BadImageFormatException ex) { throw new InvalidDataException($"its assembly {relative} is not a .NET assembly: {ex.Message}", ex); }
+            Add(assembly, relative);
+        }
+    }
+
+    private void LoadFolder()
+    {
         foreach (string path in Mod.AssemblyPaths)
         {
             string relative = Path.GetRelativePath(Mod.Directory, path).Replace('\\', '/');
@@ -64,13 +129,16 @@ internal sealed class ModCodeContext : AssemblyLoadContext
             Assembly assembly;
             try { assembly = LoadFromAssemblyPath(path); }
             catch (BadImageFormatException ex) { throw new InvalidDataException($"its assembly {relative} is not a .NET assembly: {ex.Message}", ex); }
-            if (IsShared(assembly.GetName()))
-                throw new InvalidDataException($"its assembly {relative} is named {assembly.GetName().Name}, which is the engine's or the host's");
-            Loaded.Add(assembly);
-            Modules.AddRange(ModuleManager.ModulesIn(assembly, $"mod '{Mod.Id}'"));
+            Add(assembly, relative);
         }
-        if (Modules.Count == 0)
-            throw new InvalidDataException($"its assemblies ({string.Join(", ", Loaded.Select(a => a.GetName().Name))}) have no public IModule class, so its code would never run");
+    }
+
+    private void Add(Assembly assembly, string relative)
+    {
+        if (IsShared(assembly.GetName()))
+            throw new InvalidDataException($"its assembly {relative} is named {assembly.GetName().Name}, which is the engine's or the host's");
+        Loaded.Add(assembly);
+        Modules.AddRange(ModuleManager.ModulesIn(assembly, $"mod '{Mod.Id}'"));
     }
 
     // Lets go of the mod's assemblies and modules, then unloads. Lists of them kept in the context's own fields
@@ -79,6 +147,8 @@ internal sealed class ModCodeContext : AssemblyLoadContext
     {
         Loaded.Clear();
         Modules.Clear();
+        _package?.Dispose();
+        _package = null;
         Unload();
     }
 

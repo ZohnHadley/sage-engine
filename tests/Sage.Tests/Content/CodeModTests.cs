@@ -130,6 +130,105 @@ public class CodeModTests : IDisposable
         Assert.Contains("The guild has 3 commission(s)", Assert.Single(Run(back, "guild_commission 0")));
     }
 
+    // The phase's exit criterion (#395): the data mods and the code mod, each packed as a `.sagemod`, load
+    // together; the code mod's assembly is read from its archive into its own collectible context and runs; the
+    // trader they all rename is reported per key by `mod_conflicts`; each data mod sees its own falchion
+    // texture; and a save made with the packed code mod survives removing it and putting it back.
+    [Fact]
+    public void PackedDataAndCodeModsLoad_Conflict_AndSavesSurviveTogglingThePackedCodeMod()
+    {
+        string packs = Path.Combine(_root, "packs");
+        string Pack(string folder) =>
+            ModPackage.Pack(folder, Path.Combine(packs, Path.GetFileName(folder) + ModManifest.PackageExtension)).Output;
+        string blades = Pack(BetterBlades), rival = Pack(Path.Combine(ModsGame, "mods", "rival_trade")), guild = Pack(SmithsGuild);
+
+        // The code mod's package holds its built assembly, and not its build intermediates.
+        using (var zip = System.IO.Compression.ZipFile.OpenRead(guild))
+        {
+            Assert.Contains(zip.Entries, e => e.FullName == $"bin/{BuildInfo.ConfigurationName}/SmithsGuild.dll");
+            Assert.DoesNotContain(zip.Entries, e => e.FullName.StartsWith("obj/", StringComparison.Ordinal));
+        }
+
+        string saves = TestEnv.NewTempDir();
+        using (var with = BootVillage(saves, blades, rival, guild))
+        {
+            Assert.Equal(new[] { "better_blades", "rival_trade", "smiths_guild" }, with.Engine.Mods.Active.Select(m => m.Id));
+            Assert.All(with.Engine.Mods.Active, m => Assert.True(m.IsPackage));
+            Assert.Empty(with.Engine.Mods.Refused);
+
+            var assembly = Assert.Single(with.Engine.ModManager.CodeOf("smiths_guild"));
+            Assert.True(AssemblyLoadContext.GetLoadContext(assembly)!.IsCollectible);
+            Assert.Equal("", assembly.Location);   // from the archive, not from a file
+            Assert.Equal("smiths_guild", with.Engine.Registrations.OwnerOf("command", "guild_commission"));
+            Assert.True(with.Records.Exists("guild_order", new RecordId("smiths_guild", "falchion_order")));
+
+            Assert.Equal("The Smiths' Guild forge", TraderName(with));
+            Assert.Contains(Run(with, "mod_conflicts"),
+                l => l.Contains("prefab village:trader name: better_blades, rival_trade, smiths_guild; smiths_guild won"));
+
+            foreach (string mod in new[] { "better_blades", "rival_trade" })
+            {
+                using var stream = with.Vfs.Open(VirtualPath.Parse($"{mod}:textures/falchion.png"));
+                using var bytes = new MemoryStream();
+                stream.CopyTo(bytes);
+                Assert.Equal(File.ReadAllBytes(Path.Combine(ModsGame, "mods", mod, "textures", "falchion.png")), bytes.ToArray());
+            }
+
+            Assert.Contains("The guild has 3 commission(s)", Assert.Single(Run(with, "guild_commission 3")));
+            Assert.True(with.Engine.Saves.Save("guild"));
+        }
+
+        using (var without = BootVillage(saves, blades, rival))
+        {
+            var slot = Assert.Single(without.Engine.Saves.Slots);
+            Assert.Contains("mod 'smiths_guild' 1.0.0 is not active", slot.Mismatches);
+            Assert.True(without.Engine.Saves.Load("guild"));
+            NpcLocomotionTests.Step(without.World, 2);
+            Assert.NotEqual("The Smiths' Guild forge", TraderName(without));
+            Assert.False(without.CVars.Execute("guild_commission"));
+            Assert.True(without.Engine.Saves.Save("guild_again"));
+        }
+
+        using var back = BootVillage(saves, blades, rival, guild);
+        Assert.True(back.Engine.Saves.Load("guild_again"));
+        NpcLocomotionTests.Step(back.World, 2);
+        Assert.Contains("The guild has 3 commission(s)", Assert.Single(Run(back, "guild_commission 0")));
+    }
+
+    // A packed code mod's dependencies come from its archive too: its module's assembly references a helper
+    // dll beside it in the package, which the mod's context loads from there. One whose assembly is not in
+    // its archive is refused, saying so, and the game boots; a code mod that was never built does not pack.
+    [Fact]
+    public void APackedCodeModLoadsItsOtherDllsFromItsArchive_AndOneWithoutItsAssemblyIsRefused()
+    {
+        string game = NewGame();
+        string helperName = "Helper" + Guid.NewGuid().ToString("N")[..10];
+        var helper = CSharpCompilation.Create(helperName,
+            new[] { CSharpSyntaxTree.ParseText("public static class Greeting { public static string Word => \"hello from the archive\"; }") },
+            References.Value, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var helperImage = new MemoryStream();
+        Assert.True(helper.Emit(helperImage).Success);
+        string folder = CodeMod("packed", Module("packed", body: """ctx.Engine.CVars.RegisterCommand("greet", CVarFlags.None, "", _ => Log.Info(LogCat.Console, Greeting.Word));"""),
+                                extraReferences: new[] { MetadataReference.CreateFromImage(helperImage.ToArray()) });
+        File.WriteAllBytes(Path.Combine(folder, "bin", helperName + ".dll"), helperImage.ToArray());
+        string packed = ModPackage.Pack(folder, Path.Combine(_root, "packs", "packed.sagemod")).Output;
+
+        string unbuilt = CodeMod("unbuilt", "", build: false);
+        var ex = Assert.Throws<InvalidDataException>(() => ModPackage.Pack(unbuilt, Path.Combine(_root, "packs", "nope.sagemod")));
+        Assert.Contains("is not built", ex.Message);
+        string bare = Path.Combine(_root, "packs", "unbuilt.sagemod");      // packed by hand, without the dll
+        using (var zip = System.IO.Compression.ZipFile.Open(bare, System.IO.Compression.ZipArchiveMode.Create))
+        using (var writer = new StreamWriter(zip.CreateEntry("mod.json").Open()))
+            writer.Write(File.ReadAllText(Path.Combine(unbuilt, "mod.json")));
+
+        using var app = HeadlessApp.ForGame(game).WithMods(packed, bare).Boot();
+        Assert.Equal(new[] { "packed" }, app.Engine.Mods.Active.Select(m => m.Id));
+        Assert.Contains("is not in its package", Why(app, "unbuilt"));
+        var context = AssemblyLoadContext.GetLoadContext(Assert.Single(app.Engine.ModManager.CodeOf("packed")))!;
+        Assert.Contains("hello from the archive", Assert.Single(Run(app, "greet")));
+        Assert.Contains(context.Assemblies, a => a.GetName().Name == helperName);
+    }
+
     // The mod's saved resource at version 1 (`Orders`) is brought to version 2 (`Commissions`) by the mod's own
     // [Upgrade] method, found in its collectible assembly.
     [Fact]
@@ -191,7 +290,7 @@ public class CodeModTests : IDisposable
 
     // A code mod `id` in `<root>/mods/<id>`: `source` compiled to bin/<Name>.dll (a name of its own per test),
     // named in mod.json, and a data file that renames the game's rock.
-    private string CodeMod(string id, string source, string extra = "", bool build = true)
+    private string CodeMod(string id, string source, string extra = "", bool build = true, MetadataReference[]? extraReferences = null)
     {
         string dir = Path.Combine(_root, "mods", id);
         Directory.CreateDirectory(Path.Combine(dir, "data"));
@@ -201,7 +300,7 @@ public class CodeModTests : IDisposable
         File.WriteAllText(Path.Combine(dir, "data", "rock.json"), $$"""[ { "type": "prefab", "id": "modtest:rock", "patch": true, "name": "{{id}} rock" } ]""");
         if (!build) return dir;
         var compilation = CSharpCompilation.Create(name, new[] { CSharpSyntaxTree.ParseText("using Sage.Core; using Sage.Simulation;\n" + source) },
-            References.Value, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            References.Value.Concat(extraReferences ?? Array.Empty<MetadataReference>()), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         Directory.CreateDirectory(Path.Combine(dir, "bin"));
         var result = compilation.Emit(Path.Combine(dir, "bin", name + ".dll"));
         Assert.True(result.Success, string.Join("\n", result.Diagnostics));
