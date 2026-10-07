@@ -57,6 +57,7 @@ public sealed class ItemRecord
     public int MaxStack = 1;                // > 1 for arrows, potions and the like
     public RecordRef<SoundRecord> Sound;     // picking it up (11 §3, F4)
     public List<IItemUse> Uses = new();     // what using it does, in order (issue #28, ItemUses)
+    public ItemDurability Durability = new(); // how it wears, what wear costs, what breaking does (issue #382); the default never wears
 
     public string Describe(RecordId id) => string.IsNullOrEmpty(Label) ? id.Name : Label;
 
@@ -476,6 +477,7 @@ public static class Items
         if (record.Slot.Length == 0) { reason = "not something you can wear or wield"; return false; }
         if (!world.Has<Equipment>(entity)) { reason = "nothing to hold it with"; return false; }
         if (world.CountOf(entity, item) == 0) { reason = "you are not carrying it"; return false; }
+        if (Usable(world.Get<Inventory>(entity).Items, item, record) < 0) { reason = "it is broken"; return false; }
         reason = "";
         return true;
     }
@@ -490,12 +492,19 @@ public static class Items
             Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot equip {item.Name}: {reason}");
             return false;
         }
-        var items = world.Get<Inventory>(entity).Items;
+        var records = world.Resources.Get<RecordStore>();
+        return world.EquipAt(entity, Usable(world.Get<Inventory>(entity).Items, item, records.Get<ItemRecord>(item)));
+    }
+
+    // The unit of an item to equip: a plain one when there is one, otherwise the first instance of it not
+    // broken (issue #382); -1 for none.
+    private static int Usable(List<ItemStack> items, RecordId item, ItemRecord record)
+    {
         int index = IndexOf(items, item, 0);
         if (index < 0)
             for (int i = 0; i < items.Count && index < 0; i++)
-                if (items[i].Item == item) index = i;
-        return world.EquipAt(entity, index);
+                if (items[i].Item == item && !record.Durability.IsBroken(Durability.ConditionOf(items[i]))) index = i;
+        return index;
     }
 
     // Equips the stack at `index` in the inventory (issue #383): that very unit, so its instance's
@@ -513,11 +522,16 @@ public static class Items
             Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot equip {stack.Item.Name}: {reason}");
             return false;
         }
+        var records = world.Resources.Get<RecordStore>();
+        records.TryGet(stack.Item, out ItemRecord record);
+        if (record.Durability.IsBroken(Durability.ConditionOf(stack)))   // until it is repaired (issue #382)
+        {
+            Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot equip {record.Describe(stack.Item, stack.Instance)}: it is broken");
+            return false;
+        }
         // An instance written straight into a component, never given: it gets its Id now.
         if (stack.Instance != null && stack.Instance.Id == 0) stack.Instance.Id = NextInstanceId(inventory.Items);
 
-        var records = world.Resources.Get<RecordStore>();
-        records.TryGet(stack.Item, out ItemRecord record);
         world.Unequip(entity, record.Slot);
         world.Get<Equipment>(entity).Set(record.Slot, stack.Item, stack.Instance?.Id ?? 0);
 

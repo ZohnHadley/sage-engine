@@ -4,6 +4,7 @@ Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
+Sage.Gameplay.Durability
 Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.TickCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
@@ -16,6 +17,30 @@ Sage.Gameplay.FootIk.RightTilt -> float
 Sage.Gameplay.FootIkPart.MaxFootTilt -> float
 Sage.Gameplay.FootIkPart.PelvisSmoothing -> float
 Sage.Gameplay.InventoryPart.Stack.Instance -> Sage.Gameplay.ItemInstance?
+Sage.Gameplay.ItemBreak
+Sage.Gameplay.ItemBreak.Keep = 2 -> Sage.Gameplay.ItemBreak
+Sage.Gameplay.ItemBreak.Remove = 1 -> Sage.Gameplay.ItemBreak
+Sage.Gameplay.ItemBreak.Unequip = 0 -> Sage.Gameplay.ItemBreak
+Sage.Gameplay.ItemBroke
+Sage.Gameplay.ItemBroke.Item.get -> Sage.Core.RecordId
+Sage.Gameplay.ItemBroke.Item.init -> void
+Sage.Gameplay.ItemBroke.ItemBroke() -> void
+Sage.Gameplay.ItemBroke.ItemBroke(Sage.Simulation.Entity Owner, Sage.Core.RecordId Item, string! Slot, bool Removed) -> void
+Sage.Gameplay.ItemBroke.Owner.get -> Sage.Simulation.Entity
+Sage.Gameplay.ItemBroke.Owner.init -> void
+Sage.Gameplay.ItemBroke.Removed.get -> bool
+Sage.Gameplay.ItemBroke.Removed.init -> void
+Sage.Gameplay.ItemBroke.Slot.get -> string!
+Sage.Gameplay.ItemBroke.Slot.init -> void
+Sage.Gameplay.ItemDurability
+Sage.Gameplay.ItemDurability.Breaks -> Sage.Gameplay.ItemBreak
+Sage.Gameplay.ItemDurability.DamageScale(float condition) -> float
+Sage.Gameplay.ItemDurability.FullDamageAt -> float
+Sage.Gameplay.ItemDurability.IsBroken(float condition) -> bool
+Sage.Gameplay.ItemDurability.ItemDurability() -> void
+Sage.Gameplay.ItemDurability.WearPerHit -> float
+Sage.Gameplay.ItemDurability.WearWhenStruck -> float
+Sage.Gameplay.ItemDurability.WornDamage -> float
 Sage.Gameplay.ItemInstance
 Sage.Gameplay.ItemInstance.Charges -> int
 Sage.Gameplay.ItemInstance.Clone() -> Sage.Gameplay.ItemInstance!
@@ -27,6 +52,7 @@ Sage.Gameplay.ItemInstance.ItemInstance() -> void
 Sage.Gameplay.ItemInstance.Name -> string!
 Sage.Gameplay.ItemInstance.SameAs(Sage.Gameplay.ItemInstance? other) -> bool
 Sage.Gameplay.ItemRecord.Describe(Sage.Core.RecordId id, Sage.Gameplay.ItemInstance? instance) -> string!
+Sage.Gameplay.ItemRecord.Durability -> Sage.Gameplay.ItemDurability!
 Sage.Gameplay.ItemStack.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.Journal.Entry.History.get -> System.Collections.Generic.List<string!>!
 Sage.Gameplay.Journal.Entry.History.set -> void
@@ -68,6 +94,10 @@ Sage.Gameplay.FootstepsPart.Right -> string!
 Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>
 Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
 Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
+static Sage.Gameplay.Durability.CanRepair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float upTo = 1) -> bool
+static Sage.Gameplay.Durability.ConditionOf(in Sage.Gameplay.ItemStack stack) -> float
+static Sage.Gameplay.Durability.Repair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float amount, float upTo = 1) -> bool
+static Sage.Gameplay.Durability.Wear(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! slot, float amount) -> bool
 static Sage.Gameplay.Items.DropAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count) -> Sage.Simulation.Entity
 static Sage.Gameplay.Items.EquipAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index) -> bool
 static Sage.Gameplay.Items.Give(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, in Sage.Gameplay.ItemStack stack) -> bool
