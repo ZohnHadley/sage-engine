@@ -34,6 +34,7 @@
             "attribute",
             "attribute_gain",
             "barks",
+            "behaviour_tree",
             "block",
             "calendar",
             "calendar_event",
@@ -251,6 +252,21 @@
           },
           "then": {
             "$ref": "barks.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "behaviour_tree"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "behaviour_tree.schema.json"
           }
         },
         {

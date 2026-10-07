@@ -169,6 +169,14 @@
         "watcher_barks"
       ]
     },
+    "record:behaviour_tree": {
+      "description": "The id of a behaviour_tree record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "sandbox:sentry",
+        "sentry"
+      ]
+    },
     "record:block": {
       "description": "The id of a block record (none is loaded).",
       "type": "string",
@@ -900,6 +908,7 @@
         "sandbox:player",
         "sandbox:road_sign",
         "sandbox:rounds_pickup",
+        "sandbox:sentry",
         "sandbox:smith",
         "sandbox:spot",
         "sandbox:sword_pickup",
@@ -1749,6 +1758,14 @@
         "watcher_barks"
       ]
     },
+    "base:behaviour_tree": {
+      "description": "Another behaviour_tree record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "sandbox:sentry",
+        "sentry"
+      ]
+    },
     "base:block": {
       "description": "The id of a block record (none is loaded).",
       "type": "string",
@@ -2482,6 +2499,7 @@
         "sandbox:player",
         "sandbox:road_sign",
         "sandbox:rounds_pickup",
+        "sandbox:sentry",
         "sandbox:smith",
         "sandbox:spot",
         "sandbox:sword_pickup",
