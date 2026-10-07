@@ -28,8 +28,8 @@
   <!-- Experimental API (docs/MAKING_A_GAME.md §10b): the whole assembly is SAGE0133 while phase 10a
        builds on it; it uses its own types freely, and scenes and placements (SAGE0121) and saves'
        overrides (SAGE0131) are what it edits, with who wrote them (SAGE0132); a play session asks which scene
-       the edit world is in (SAGE0129); the animation preview runs graphs and samples clips (SAGE0126, #362). -->
+       the edit world is in (SAGE0129); the animation preview runs graphs and samples clips (SAGE0126, #362); the AI graph view asks which states a machine is in (SAGE0124, #369). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0133;SAGE0123;SAGE0121;SAGE0131;SAGE0132;SAGE0129;SAGE0126</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0133;SAGE0123;SAGE0121;SAGE0131;SAGE0132;SAGE0129;SAGE0126;SAGE0124</NoWarn>
   </PropertyGroup>
 </Project>

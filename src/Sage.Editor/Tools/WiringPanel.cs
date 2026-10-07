@@ -37,6 +37,9 @@ internal sealed class WiringPanel
         selection.Changed += OnSelectionChanged;
     }
 
+    // Opens the conditions form on a wire's `requires` (issue #370; DevTools sets it).
+    public Action<Placement, int>? EditRequires { get; set; }
+
     // The next click picks a target, so the gizmo leaves it alone.
     public bool IsPicking => _picking;
 
@@ -106,7 +109,8 @@ internal sealed class WiringPanel
             bool valueDone = ImGui.IsItemDeactivatedAfterEdit();
             ImGui.SameLine();
             if (ImGui.SmallButton("remove")) remove = i;
-            if (wire.Requires != null) ImGui.TextDisabled($"requires {wire.Requires.GetType().Name}");
+            ImGui.SameLine();
+            if (ImGui.SmallButton(wire.Requires != null ? "requires *" : "requires")) EditRequires?.Invoke(placement, i);   // the conditions form (#370)
 
             if (changed) { _edit = wire; _editing = (placement, i); }
             if ((delayDone || valueDone) && _edit != null)

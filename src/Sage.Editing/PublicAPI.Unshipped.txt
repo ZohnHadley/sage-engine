@@ -334,3 +334,161 @@ Sage.Editing.PanelTour.Show(string! which, out string! error) -> bool
 Sage.Editing.PanelTour.Titles.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Sage.Editing.EditorStatus.Line(Sage.Editing.EditDocument? document, Sage.Simulation.World? world, Sage.Simulation.Entity selection, System.Numerics.Vector3 camera, string? problems = null) -> string!
 static Sage.Editing.PanelTour.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.PanelTour?>! tour) -> void
+override Sage.Editing.VocabularyProblem.ToString() -> string!
+Sage.Editing.IProblemSource
+Sage.Editing.IProblemSource.Changed -> System.Action?
+Sage.Editing.IProblemSource.Problems() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.Problem!>!
+Sage.Editing.IVocabularySlot
+Sage.Editing.IVocabularySlot.Changed -> System.Action?
+Sage.Editing.IVocabularySlot.File.get -> string!
+Sage.Editing.IVocabularySlot.IsOpen.get -> bool
+Sage.Editing.IVocabularySlot.Label.get -> string!
+Sage.Editing.IVocabularySlot.Namespace.get -> string!
+Sage.Editing.IVocabularySlot.Placement.get -> Sage.Simulation.Placement?
+Sage.Editing.IVocabularySlot.Read() -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.IVocabularySlot.Record.get -> Sage.Core.RecordId
+Sage.Editing.IVocabularySlot.Write(System.Text.Json.Nodes.JsonNode? value, out string? error) -> bool
+Sage.Editing.ProblemList.Add(Sage.Editing.IProblemSource! source) -> void
+Sage.Editing.VocabularyCatalog
+Sage.Editing.VocabularyChoice
+Sage.Editing.VocabularyChoice.Entry.get -> Sage.Core.VocabularyEntry!
+Sage.Editing.VocabularyChoice.Entry.init -> void
+Sage.Editing.VocabularyChoice.Id.get -> string!
+Sage.Editing.VocabularyChoice.Owner.get -> string!
+Sage.Editing.VocabularyChoice.Parameter(string! name) -> Sage.Editing.VocabularyParameter?
+Sage.Editing.VocabularyChoice.Parameters.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyParameter!>!
+Sage.Editing.VocabularyChoice.Parameters.init -> void
+Sage.Editing.VocabularyChoice.Vocabulary.get -> Sage.Core.Vocabulary!
+Sage.Editing.VocabularyChoice.Vocabulary.init -> void
+Sage.Editing.VocabularyChoice.VocabularyChoice(Sage.Core.Vocabulary! Vocabulary, Sage.Core.VocabularyEntry! Entry, System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyParameter!>! Parameters) -> void
+Sage.Editing.VocabularyEditor
+Sage.Editing.VocabularyEditor.Changed -> System.Action?
+Sage.Editing.VocabularyEditor.Close() -> void
+Sage.Editing.VocabularyEditor.Current.get -> Sage.Editing.VocabularyForm?
+Sage.Editing.VocabularyEditor.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.VocabularyEditor.Open(Sage.Editing.VocabularyForm! form) -> void
+Sage.Editing.VocabularyEditor.OpenRecord(Sage.Editing.RecordDocument! record, string! path, out string? error) -> bool
+Sage.Editing.VocabularyEditor.OpenRecord(string! path, out string? error) -> bool
+Sage.Editing.VocabularyEditor.OpenWire(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index, out string? error) -> bool
+Sage.Editing.VocabularyEditor.Problems() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.Problem!>!
+Sage.Editing.VocabularyEditor.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditDocument?>! document) -> void
+Sage.Editing.VocabularyEditor.VocabularyEditor(Sage.Simulation.Engine! engine, Sage.Editing.RecordEditor? records = null) -> void
+Sage.Editing.VocabularyForm
+Sage.Editing.VocabularyForm.Add(string! listPath, string! id, out string? error) -> bool
+Sage.Editing.VocabularyForm.Choices(string! path = "", string! search = "") -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyChoice!>!
+Sage.Editing.VocabularyForm.Choose(string! path, string! id, out string? error) -> bool
+Sage.Editing.VocabularyForm.Clear(out string? error) -> bool
+Sage.Editing.VocabularyForm.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.VocabularyForm.Label.get -> string!
+Sage.Editing.VocabularyForm.Lines() -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.VocabularyForm.Many.get -> bool
+Sage.Editing.VocabularyForm.Problems() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.Problem!>!
+Sage.Editing.VocabularyForm.Remove(string! path, out string? error) -> bool
+Sage.Editing.VocabularyForm.Rows() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyRow!>!
+Sage.Editing.VocabularyForm.SetParameter(string! path, string! name, string! text, out string? error) -> bool
+Sage.Editing.VocabularyForm.SetParameter(string! path, string! name, System.Text.Json.Nodes.JsonNode? value, out string? error) -> bool
+Sage.Editing.VocabularyForm.Slot.get -> Sage.Editing.IVocabularySlot!
+Sage.Editing.VocabularyForm.Validate() -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyProblem>!
+Sage.Editing.VocabularyForm.Value.get -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.VocabularyForm.Vocabulary.get -> Sage.Core.Vocabulary!
+Sage.Editing.VocabularyForm.VocabularyAt(string! path) -> Sage.Core.Vocabulary?
+Sage.Editing.VocabularyForm.VocabularyForm(Sage.Simulation.Engine! engine, Sage.Editing.IVocabularySlot! slot, Sage.Core.Vocabulary! vocabulary, bool many) -> void
+Sage.Editing.VocabularyParameter
+Sage.Editing.VocabularyParameter.Default.get -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.VocabularyParameter.Default.init -> void
+Sage.Editing.VocabularyParameter.Describe() -> string!
+Sage.Editing.VocabularyParameter.Field.get -> Sage.Core.FieldMetadata!
+Sage.Editing.VocabularyParameter.Field.init -> void
+Sage.Editing.VocabularyParameter.IsValue.get -> bool
+Sage.Editing.VocabularyParameter.IsValue.init -> void
+Sage.Editing.VocabularyParameter.Name.get -> string!
+Sage.Editing.VocabularyParameter.Nested.get -> Sage.Core.Vocabulary?
+Sage.Editing.VocabularyParameter.Nested.init -> void
+Sage.Editing.VocabularyParameter.NestedList.get -> bool
+Sage.Editing.VocabularyParameter.NestedList.init -> void
+Sage.Editing.VocabularyParameter.VocabularyParameter(Sage.Core.FieldMetadata! Field, bool IsValue, Sage.Core.Vocabulary? Nested, bool NestedList, System.Text.Json.Nodes.JsonNode? Default) -> void
+Sage.Editing.VocabularyProblem
+Sage.Editing.VocabularyProblem.Message.get -> string!
+Sage.Editing.VocabularyProblem.Message.init -> void
+Sage.Editing.VocabularyProblem.Path.get -> string!
+Sage.Editing.VocabularyProblem.Path.init -> void
+Sage.Editing.VocabularyProblem.VocabularyProblem() -> void
+Sage.Editing.VocabularyProblem.VocabularyProblem(string! Path, string! Message) -> void
+Sage.Editing.VocabularyRow
+Sage.Editing.VocabularyRow.Depth.get -> int
+Sage.Editing.VocabularyRow.Depth.init -> void
+Sage.Editing.VocabularyRow.Entry.get -> Sage.Editing.VocabularyChoice?
+Sage.Editing.VocabularyRow.Entry.init -> void
+Sage.Editing.VocabularyRow.Id.get -> string!
+Sage.Editing.VocabularyRow.Id.init -> void
+Sage.Editing.VocabularyRow.Path.get -> string!
+Sage.Editing.VocabularyRow.Path.init -> void
+Sage.Editing.VocabularyRow.Problems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.VocabularyRow.Problems.init -> void
+Sage.Editing.VocabularyRow.Settings.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularySetting!>!
+Sage.Editing.VocabularyRow.Settings.init -> void
+Sage.Editing.VocabularyRow.Vocabulary.get -> Sage.Core.Vocabulary!
+Sage.Editing.VocabularyRow.Vocabulary.init -> void
+Sage.Editing.VocabularyRow.VocabularyRow(string! Path, int Depth, Sage.Core.Vocabulary! Vocabulary, string! Id, Sage.Editing.VocabularyChoice? Entry, System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularySetting!>! Settings, System.Collections.Generic.IReadOnlyList<string!>! Problems) -> void
+Sage.Editing.VocabularySetting
+Sage.Editing.VocabularySetting.IsSet.get -> bool
+Sage.Editing.VocabularySetting.Parameter.get -> Sage.Editing.VocabularyParameter!
+Sage.Editing.VocabularySetting.Parameter.init -> void
+Sage.Editing.VocabularySetting.Path.get -> string!
+Sage.Editing.VocabularySetting.Path.init -> void
+Sage.Editing.VocabularySetting.Text.get -> string!
+Sage.Editing.VocabularySetting.Value.get -> System.Text.Json.Nodes.JsonNode?
+Sage.Editing.VocabularySetting.Value.init -> void
+Sage.Editing.VocabularySetting.VocabularySetting(Sage.Editing.VocabularyParameter! Parameter, string! Path, System.Text.Json.Nodes.JsonNode? Value) -> void
+static Sage.Editing.VocabularyCatalog.All(Sage.Simulation.Engine! engine) -> System.Collections.Generic.IReadOnlyList<Sage.Core.Vocabulary!>!
+static Sage.Editing.VocabularyCatalog.Entries(Sage.Simulation.Engine! engine, Sage.Core.Vocabulary! vocabulary, string! search = "") -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyChoice!>!
+static Sage.Editing.VocabularyCatalog.Entry(Sage.Simulation.Engine! engine, Sage.Core.Vocabulary! vocabulary, string! id) -> Sage.Editing.VocabularyChoice?
+static Sage.Editing.VocabularyCatalog.Named(Sage.Simulation.Engine! engine, string! name) -> Sage.Core.Vocabulary?
+static Sage.Editing.VocabularyCatalog.Of(Sage.Simulation.Engine! engine, Sage.Core.FieldMetadata? field, out bool many) -> Sage.Core.Vocabulary?
+static Sage.Editing.VocabularyCatalog.Of(Sage.Simulation.Engine! engine, System.Type! type, out bool many) -> Sage.Core.Vocabulary?
+static Sage.Editing.VocabularyEditor.FieldsAt(Sage.Editing.RecordDocument! record, string! path) -> System.Collections.Generic.IReadOnlyList<(string! Name, string! Path)>!
+static Sage.Editing.VocabularyForm.ForRecord(Sage.Editing.RecordDocument! record, string! path, out string? error) -> Sage.Editing.VocabularyForm?
+static Sage.Editing.VocabularyForm.ForWire(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, int index, out string? error) -> Sage.Editing.VocabularyForm?
+override Sage.Editing.AIGraphNode.ToString() -> string!
+Sage.Editing.AIGraph
+Sage.Editing.AIGraph.Active(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AIGraph.Add(string? parent, string! name, System.Text.Json.Nodes.JsonNode? body = null, int index = -1) -> bool
+Sage.Editing.AIGraph.AnyStateEdges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
+Sage.Editing.AIGraph.Document.get -> Sage.Editing.RecordDocument!
+Sage.Editing.AIGraph.Find(string! key) -> Sage.Editing.AIGraphNode?
+Sage.Editing.AIGraph.Initial.get -> string!
+Sage.Editing.AIGraph.IsTree.get -> bool
+Sage.Editing.AIGraph.Kind.get -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraph.Move(string! key, int index) -> bool
+Sage.Editing.AIGraph.Nodes.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphNode!>!
+Sage.Editing.AIGraph.Remove(string! key) -> bool
+Sage.Editing.AIGraph.Rename(string! key, string! name) -> bool
+Sage.Editing.AIGraph.Reparent(string! key, string? parent, int index = -1) -> bool
+Sage.Editing.AIGraph.Runners(Sage.Simulation.World! world) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
+Sage.Editing.AIGraphCommands
+Sage.Editing.AIGraphEdge
+Sage.Editing.AIGraphEdge.AIGraphEdge() -> void
+Sage.Editing.AIGraphEdge.AIGraphEdge(string! To, string! Label) -> void
+Sage.Editing.AIGraphEdge.Label.get -> string!
+Sage.Editing.AIGraphEdge.Label.init -> void
+Sage.Editing.AIGraphEdge.To.get -> string!
+Sage.Editing.AIGraphEdge.To.init -> void
+Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.Routine = 2 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.Schedule = 1 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.StateMachine = 0 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphNode
+Sage.Editing.AIGraphNode.Children.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AIGraphNode.Depth.get -> int
+Sage.Editing.AIGraphNode.Edges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
+Sage.Editing.AIGraphNode.Index.get -> int
+Sage.Editing.AIGraphNode.IsInitial.get -> bool
+Sage.Editing.AIGraphNode.IsParallel.get -> bool
+Sage.Editing.AIGraphNode.Label.get -> string!
+Sage.Editing.AIGraphNode.Name.get -> string!
+Sage.Editing.AIGraphNode.Parent.get -> string?
+Sage.Editing.AIGraphNode.Path.get -> string!
+static Sage.Editing.AIGraph.Of(Sage.Editing.RecordDocument? document) -> Sage.Editing.AIGraph?
+static Sage.Editing.AIGraph.Supports(string! type) -> bool
+static Sage.Editing.AIGraphCommands.Describe(Sage.Editing.AIGraph! graph) -> string!
+static Sage.Editing.AIGraphCommands.Register(Sage.Core.CVarRegistry! cvars, Sage.Editing.RecordEditor! records, System.Func<Sage.Simulation.World?>! world) -> void
