@@ -164,6 +164,14 @@
         }
       ]
     },
+    "container": {
+      "description": "The component sage:container (ItemContainer), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:container"
+        }
+      ]
+    },
     "dialogue": {
       "description": "The component sage:dialogue (Dialogue), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -433,6 +441,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:look_at_ik"
+        }
+      ]
+    },
+    "loot": {
+      "description": "The component sage:loot (Loot), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:loot"
         }
       ]
     },
@@ -844,6 +860,14 @@
         }
       ]
     },
+    "sage:container": {
+      "description": "Component sage:container (ItemContainer).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:container"
+        }
+      ]
+    },
     "sage:dialogue": {
       "description": "Component sage:dialogue (Dialogue).",
       "allOf": [
@@ -1097,6 +1121,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:look_at_ik"
+        }
+      ]
+    },
+    "sage:loot": {
+      "description": "Component sage:loot (Loot).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:loot"
         }
       ]
     },
@@ -3361,6 +3393,115 @@
       "additionalProperties": false,
       "description": "Component sage:collider_part (ColliderPart)."
     },
+    "sage:container": {
+      "type": "object",
+      "properties": {
+        "locked": {
+          "description": "Shut until someone carrying the key uses it. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "key": {
+          "description": "The item that unlocks it; empty: nothing does (yet) Names a item record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:item"
+            }
+          ]
+        },
+        "respawn": {
+          "description": "Game hours after it was first taken from until it refills; 0 = never. Unit: h. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "owner": {
+          "description": "The name of the entity it belongs to; taking from it is theft. (string)",
+          "type": "string"
+        },
+        "faction": {
+          "description": "The faction it belongs to; taking from it is theft, except for its members. Names a faction record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        },
+        "stock": {
+          "description": "(List<ItemStack>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "stock+": {
+          "description": "Adds to \"stock\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "stock-": {
+          "description": "Removes these from \"stock\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "restockAt": {
+          "description": "(double, default 0)",
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:container (ItemContainer)."
+    },
     "sage:dialogue": {
       "type": "object",
       "properties": {
@@ -4792,6 +4933,26 @@
       },
       "additionalProperties": false,
       "description": "Component sage:look_at_ik (LookAtIk)."
+    },
+    "sage:loot": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "description": "The loot table rolled into its inventory when it dies. Names a loot_table record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:loot_table"
+            }
+          ]
+        },
+        "rolled": {
+          "description": "It has been rolled. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:loot (Loot)."
     },
     "sage:magazine": {
       "type": "object",

@@ -50,6 +50,7 @@
             "input_map",
             "item",
             "language",
+            "loot_table",
             "map",
             "material",
             "mesh_lod",
@@ -483,6 +484,21 @@
           },
           "then": {
             "$ref": "language.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "loot_table"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "loot_table.schema.json"
           }
         },
         {

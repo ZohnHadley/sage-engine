@@ -44,6 +44,7 @@ public class DeclarationTests
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
             ["equip_slot"] = "sage.gameplay.items", ["encumbrance"] = "sage.gameplay.items",   // slots and burden in data (#384)
+            ["loot_table"] = "sage.gameplay.items",   // loot tables and leveled lists (#379)
             ["map"] = "sage.maps",
             ["physics_layers"] = "sage.physics3d",
             ["physics_material"] = "sage.physics3d",   // issue #270
