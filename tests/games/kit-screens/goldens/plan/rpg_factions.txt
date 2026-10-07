@@ -1,0 +1,14 @@
+# rpg:factions: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
+# backdrop #00000096, focus on row
+rect 400,197.75 480x324.5 #141414e0 @window
+border 400,197.75 480x324.5 #5a4a30ff width 1 @window
+text 408,207.75 72x13.5 #f0e0b0ff scale 1.5 "Factions" @title
+pushclip 408,229.25 464x240 @page
+rect 408,229.25 464x11 #00000000>#5a4a30ff @row
+text 430,230.25 48x9 #787882ff scale 1 "Ferrymen" @name
+text 724,230.25 144x9 #787882ff scale 1 "not a member, standing 0" @detail
+text 430,242.25 72x9 #e0d8c8ff scale 1 "Lamplighters" @name
+text 724,242.25 144x9 #a0afc8ff scale 1 "not a member, standing 0" @detail
+popclip 0,0 0x0 @page
+text 408,475.25 156x9 #e07050ff scale 1 "Oar: they do not trust you" @reason
+text 408,505.25 258x9 #908878ff scale 1 "D-pad: choose    A: join / rise    B: close" @hint
