@@ -51,6 +51,22 @@
         }
       ]
     },
+    "barks": {
+      "description": "Prefab part 'barks' (BarksPart). A bare value is its \"id\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/barks"
+        },
+        {
+          "description": "The barks record it says lines from. Names a barks record. (RecordRef<BarkRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:barks"
+            }
+          ]
+        }
+      ]
+    },
     "body": {
       "description": "Prefab part 'body' (BodyPart).",
       "allOf": [
@@ -868,6 +884,21 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'audio' (AudioPart)."
+    },
+    "barks": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The barks record it says lines from. Names a barks record. (RecordRef<BarkRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:barks"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'barks' (BarksPart)."
     },
     "body": {
       "type": "object",

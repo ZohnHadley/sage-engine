@@ -624,3 +624,53 @@ static Sage.Gameplay.Crime.Pay(Sage.Simulation.World! world, Sage.Simulation.Ent
 static Sage.Gameplay.Crime.Pursues(Sage.Simulation.World! world, Sage.Simulation.Entity guard, Sage.Simulation.Entity other) -> bool
 static Sage.Gameplay.Crime.Reports(Sage.Simulation.World! world, Sage.Simulation.Entity witness, Sage.Core.RecordId wronged) -> bool
 static Sage.Gameplay.Crime.SetBounty(Sage.Simulation.World! world, Sage.Core.RecordId faction, float value) -> void
+const Sage.Gameplay.DialogueBarks.Alert = "alert" -> string!
+const Sage.Gameplay.DialogueBarks.Hurt = "hurt" -> string!
+const Sage.Gameplay.DialogueBarks.Idle = "idle" -> string!
+const Sage.Gameplay.DialogueBarks.Lost = "lost" -> string!
+Sage.Gameplay.Barked
+Sage.Gameplay.Barked.Barked() -> void
+Sage.Gameplay.Barked.Barked(Sage.Simulation.Entity Speaker, Sage.Simulation.Entity Target, string! Occasion, string! Text) -> void
+Sage.Gameplay.Barked.Occasion.get -> string!
+Sage.Gameplay.Barked.Occasion.init -> void
+Sage.Gameplay.Barked.Speaker.get -> Sage.Simulation.Entity
+Sage.Gameplay.Barked.Speaker.init -> void
+Sage.Gameplay.Barked.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.Barked.Target.init -> void
+Sage.Gameplay.Barked.Text.get -> string!
+Sage.Gameplay.Barked.Text.init -> void
+Sage.Gameplay.BarkLine
+Sage.Gameplay.BarkLine.BarkLine() -> void
+Sage.Gameplay.BarkLine.On -> string!
+Sage.Gameplay.BarkLine.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.BarkLine.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.BarkLine.Text -> string!
+Sage.Gameplay.BarkRecord
+Sage.Gameplay.BarkRecord.BarkRecord() -> void
+Sage.Gameplay.BarkRecord.Cooldown -> float
+Sage.Gameplay.BarkRecord.IdleSeconds -> float
+Sage.Gameplay.BarkRecord.Lines -> System.Collections.Generic.List<Sage.Gameplay.BarkLine!>!
+Sage.Gameplay.BarkRecord.Range -> float
+Sage.Gameplay.BarkRecord.Speaker -> string!
+Sage.Gameplay.Barks
+Sage.Gameplay.Barks.Barks() -> void
+Sage.Gameplay.Barks.Record -> Sage.Core.RecordId
+Sage.Gameplay.BarksPart
+Sage.Gameplay.BarksPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.BarksPart.BarksPart() -> void
+Sage.Gameplay.BarksPart.Id -> Sage.Core.RecordRef<Sage.Gameplay.BarkRecord!>
+Sage.Gameplay.Conversation.Greeting -> string!
+Sage.Gameplay.DialogueBarks
+Sage.Gameplay.DialogueGreeting
+Sage.Gameplay.DialogueGreeting.DialogueGreeting() -> void
+Sage.Gameplay.DialogueGreeting.Goto -> string!
+Sage.Gameplay.DialogueGreeting.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.DialogueGreeting.Text -> string!
+Sage.Gameplay.DialogueGreeting.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Gameplay.DialogueRecord.Greetings -> System.Collections.Generic.List<Sage.Gameplay.DialogueGreeting!>!
+Sage.Gameplay.DialogueRecord.Topics -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.TopicRecord!>>!
+Sage.Gameplay.TopicRecord.Linked -> bool
+static Sage.Gameplay.DialogueBarks.Bark(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, string! occasion, Sage.Simulation.Entity target = default(Sage.Simulation.Entity)) -> bool
+static Sage.Gameplay.DialogueRules.Greeting(Sage.Simulation.World! world, Sage.Gameplay.DialogueRecord! record, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener) -> Sage.Gameplay.DialogueGreeting?
+static Sage.Gameplay.DialogueRules.Line(Sage.Simulation.World! world) -> string!
+static Sage.Gameplay.DialogueTopics.LearnLinks(Sage.Simulation.World! world, Sage.Simulation.Entity listener, string! text) -> int

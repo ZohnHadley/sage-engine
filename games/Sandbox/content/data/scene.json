@@ -112,8 +112,22 @@
       // What its body gives up (issue #344): Use on a dead watcher opens the RPG kit's loot screen.
       "inventory": { "items": [ { "item": "pelt" } ] },
       // And what else it was carrying, rolled from the world's seed as it dies (issue #379).
-      "loot": "watcher_loot"
+      "loot": "watcher_loot",
+      // Lines said without a window (issue #392): a shout when it sees you, a mutter when it loses you.
+      "barks": "watcher_barks"
     }
+  },
+  {
+    // What a watcher says (issue #392): `alert` when its AI takes a target, `lost` when it has none again,
+    // `hurt` when struck; one the hermits have taken to (you helped them) is warier of you.
+    "type": "barks", "id": "watcher_barks", "speaker": "Watcher", "cooldown": 4,
+    "lines": [
+      { "on": "alert", "requires": { "quest": "thin_the_wood", "finished": true }, "text": "The hermit's hound! Get it!" },
+      { "on": "alert", "text": "Intruder in the wood!" },
+      { "on": "alert", "text": "There! By the trees!" },
+      { "on": "lost", "text": "Gone to ground..." },
+      { "on": "hurt", "text": "Rrrgh!" }
+    ]
   },
   {
     // The two that don't: an animated billboard with the Sandbox's own `hop` part on it, which is
@@ -182,6 +196,12 @@
     "id": "hermit_talk",
     "label": "the hermit",
     "start": "greet",
+    // Greetings by what the hermits think of you (issue #392): the first that holds is said in place of
+    // the first node's line.
+    "greetings": [
+      { "requires": { "standing": "hermits", "min": 40 }, "text": "Ah, my friend. Sit, if you like." },
+      { "requires": { "standing": "hermits", "max": -20 }, "text": "You again. Say what you came to say." }
+    ],
     "nodes": [
       {
         "id": "greet",

@@ -271,6 +271,7 @@ public sealed class DialogueView : PanelListView
     {
         if (!world.Resources.TryGet<Conversation>(out var conversation) || conversation is not { Running: true }) return 0;
         int hash = Fold(Fold(13, conversation.Record.GetHashCode()), StringComparer.Ordinal.GetHashCode(conversation.Node));
+        hash = Fold(hash, StringComparer.Ordinal.GetHashCode(conversation.Greeting));
         if (DialogueRules.Current(world) is not { } node) return hash;
         foreach (var option in node.Options)
             hash = Fold(hash, DialogueRules.CanPick(world, conversation.Listener, option, out _) ? 1 : 2);
@@ -288,7 +289,9 @@ public sealed class DialogueView : PanelListView
 
         var conversation = world.Resources.Get<Conversation>();
         string who = world.IsAlive(conversation.Speaker) ? World.Describe(conversation.Speaker) : "";
-        panel.Begin(node.Text.Length > 0 ? node.Text : who, subject);
+        // The speaker's greeting while the conversation is where it began (issue #392), else the node's line.
+        string line = DialogueRules.Line(world);
+        panel.Begin(line.Length > 0 ? line : who, subject);
         for (int i = 0; i < node.Options.Count; i++)
         {
             var option = node.Options[i];
