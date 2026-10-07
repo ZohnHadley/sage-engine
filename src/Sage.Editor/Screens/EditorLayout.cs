@@ -112,6 +112,7 @@ internal sealed class EditorLayout
         Native.igDockBuilderDockWindow(InspectorTitle, right);
         Native.igDockBuilderDockWindow(RecordsTitle, right);   // a tab beside the inspector
         Native.igDockBuilderDockWindow(WiringPanel.Title, right);   // a tab beside the inspector (#225)
+        Native.igDockBuilderDockWindow(VocabularyPanel.Title, right);   // the conditions form (#370)
         Native.igDockBuilderDockWindow(AnimationPanel.Title, right);   // the animation preview (#362)
         Native.igDockBuilderDockWindow(AIGraphPanel.Title, right);   // the AI graph view (#369)
         Native.igDockBuilderDockWindow(LogPanel.Title, bottom);

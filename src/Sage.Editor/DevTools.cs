@@ -78,6 +78,8 @@ public sealed class DevTools : IDisposable
     private AnimationPanel? _animationPanel;
     private TerrainDocument? _terrain;        // the terrain tools (#372): ed_sculpt, ed_paint, ed_water, and their panel
     private TerrainPanel? _terrainPanel;
+    private readonly VocabularyEditor _vocab;       // the conditions and actions form (#370): ed_vocab*
+    private readonly VocabularyPanel _vocabPanel;
     private AIGraphPanel? _aiGraph;   // the AI graph view (#369): ed_ai_*, and its panel
     private readonly AssetBrowser _assetBrowser;   // the asset browser (#366): ed_assets*, and its panel
     private readonly Thumbnails _thumbnails;
@@ -95,6 +97,9 @@ public sealed class DevTools : IDisposable
         _console = new DevConsoleWindow(cvars, engine.Core,
             () => engine.Records.TypeNames.SelectMany(t => engine.Records.Ids(t)).Select(i => i.ToString()));
         _records = new RecordsPanel(new RecordEditor(engine));
+        _vocab = new VocabularyEditor(engine, _records.Editor);
+        _vocabPanel = new VocabularyPanel(_vocab);
+        _records.EditField = (record, path) => Report(_vocab.OpenRecord(record, path, out var error), error);
         _assetBrowser = new AssetBrowser(engine);
         _thumbnails = new Thumbnails(_gui, () => _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Content);
         _records.Thumbnails = _thumbnails;
@@ -186,13 +191,22 @@ public sealed class DevTools : IDisposable
         _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
         if (_menu != null) _menu.Editing = true;
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
-        _wiring = new WiringPanel(_selection!, _pickable);
+        _wiring = new WiringPanel(_selection!, _pickable)
+        {
+            EditRequires = (placement, index) =>
+            {
+                string? error = "no document is open";
+                Report(_document is { } doc && _vocab.OpenWire(doc, placement, index, out error), error);
+            },
+        };
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
         _terrainPanel = new TerrainPanel(() => _terrain, ViewportRay, () => _camera.Position.ToNumerics());   // #372
         _assets = new AssetsPanel(_assetBrowser, _thumbnails, () => _document, _records.Editor,
             () => _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Content, ViewportRay, entity => _selection?.SelectPlaced(entity));
         _problems?.Dispose();
-        _problems = new ProblemsPanel(new ProblemList(_engine, _document), _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
+        var problems = new ProblemList(_engine, _document);
+        problems.Add(_vocab);   // the conditions form's checks, live (#370)
+        _problems = new ProblemsPanel(problems, _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
         // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
@@ -213,6 +227,13 @@ public sealed class DevTools : IDisposable
         if (!target.Document.IsEmpty) _document.Open(target.Document);
         Log.Info(LogCat.Editor, $"Editing '{_world.Name}': scene {(target.Scene.IsEmpty ? "(none)" : target.Scene.ToString())}, " +
                                 $"document {(_document.IsOpen ? _document.Title : "(none: File > New or doc_open)")}");
+    }
+
+    // A panel's button that opens the conditions form, and the form's tab brought forward.
+    private static void Report(bool opened, string? error)
+    {
+        if (opened) ImGuiNET.ImGui.SetWindowFocus(VocabularyPanel.Title);
+        else if (error != null) Log.Warn(LogCat.Editor, error);
     }
 
     // The status bar's line: the document, whether it is saved, and the selection.
@@ -253,6 +274,7 @@ public sealed class DevTools : IDisposable
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
         TerrainCommands.Register(cvars, () => _terrain);   // ed_sculpt, ed_paint, ed_water, ed_terrain_* (#372)
         PrefabCommands.Register(cvars, () => _document, () => _selection?.Placements ?? Array.Empty<Placement>());   // ed_revert_all, ed_make_prefab (#372)
+        _vocab.Register(cvars, () => _document);   // ed_vocab* (#370)
         AIGraphCommands.Register(cvars, _records.Editor, () => _play?.World ?? _world);   // ed_ai_* (#369)
         AssetCommands.Register(cvars, () => _assetBrowser, () => _document, () => _records.Editor);   // ed_assets, ed_asset_* (#366)
 
@@ -371,6 +393,7 @@ public sealed class DevTools : IDisposable
         _assets?.Draw();
         _playBar?.DrawButton();
         _wiring?.Draw();
+        _vocabPanel.Draw();
         if (_world != null) _wiring?.DrawLines(_world);
         _log.Draw();
         _problems?.Draw();

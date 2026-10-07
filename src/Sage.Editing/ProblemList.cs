@@ -22,6 +22,14 @@ public sealed record Problem(ProblemSeverity Severity, string File, int Line, st
 [Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
 public sealed record ProblemGroup(string File, IReadOnlyList<Problem> Problems);
 
+// Something else the problems panel lists, checked live (issue #370: the conditions form's value).
+[Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
+public interface IProblemSource
+{
+    IReadOnlyList<Problem> Problems();
+    event Action? Changed;
+}
+
 // The editor's problems panel, without the drawing (issue #227, 15 §10c): what is wrong with the content
 // and the open document, grouped by file.
 //
@@ -42,6 +50,7 @@ public sealed class ProblemList : IDisposable
     private readonly List<Problem> _content = new();
     private readonly List<Problem> _doc = new();
     private readonly List<Problem> _all = new();
+    private readonly List<IProblemSource> _sources = new();
     private List<ProblemGroup> _groups = new();
 
     public ProblemList(Engine engine, EditDocument? document = null)
@@ -57,6 +66,16 @@ public sealed class ProblemList : IDisposable
     {
         _engine.Records.Reloaded -= OnReloaded;
         if (_document != null) _document.Changed -= OnDocumentChanged;
+        foreach (var source in _sources) source.Changed -= Rebuild;
+        _sources.Clear();
+    }
+
+    // Lists what `source` finds too, read again whenever it changes (issue #370).
+    public void Add(IProblemSource source)
+    {
+        _sources.Add(source);
+        source.Changed += Rebuild;
+        Rebuild();
     }
 
     public IReadOnlyList<Problem> Problems => _all;
@@ -113,11 +132,16 @@ public sealed class ProblemList : IDisposable
             if (p.Id.Length > 0 && places.Where((_, j) => j != self).Any(o => string.Equals(o.Id, p.Id, StringComparison.OrdinalIgnoreCase)))
                 Add(ProblemSeverity.Error, $"placement '{label}': id '{p.Id}' is used twice, so a save cannot tell them apart");
 
-            foreach (var wire in p.Outputs)
+            for (int w = 0; w < p.Outputs.Count; w++)
             {
+                var wire = p.Outputs[w];
                 if (wire.Target.Length == 0) Add(ProblemSeverity.Warning, $"placement '{label}': a wire from {wire.Output} has no target");
                 else if (wire.Target[0] != '!' && doc.Find(wire.Target) == null)
                     Add(ProblemSeverity.Warning, $"placement '{label}': wire {wire.Output} -> {wire.Target}.{wire.Input}: no placement called '{wire.Target}' in {doc.Id}");
+                // What its `requires` names (issue #370): a record that is not there, a number out of range.
+                if (VocabularyForm.RequiresField.Get!(wire) != null && VocabularyForm.ForWire(doc, p, w, out _) is { } form)
+                    foreach (var problem in form.Validate())
+                        Add(ProblemSeverity.Error, $"placement '{label}': wire {w + 1} ({wire.Output} -> {wire.Target}.{wire.Input}) requires: {problem}");
             }
 
             void Add(ProblemSeverity severity, string text) =>
@@ -134,6 +158,7 @@ public sealed class ProblemList : IDisposable
         var open = _document is { IsOpen: true } ? _document.Id : default;
         _all.AddRange(open.IsEmpty ? _content : _content.Where(p => p.Record != open));
         _all.AddRange(_doc);
+        foreach (var source in _sources) _all.AddRange(source.Problems());
         Errors = _all.Count(p => p.Severity == ProblemSeverity.Error);
         Warnings = _all.Count - Errors;
         _groups = _all.GroupBy(p => p.File, StringComparer.Ordinal)
