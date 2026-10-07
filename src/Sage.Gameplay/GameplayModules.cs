@@ -67,6 +67,7 @@ public static class GameplayModules
 public sealed class AttributesModule : IModule
 {
     private RecordStore? _records;
+    private AttributeGainRules? _gains;
 
     // Attribute and tag ids, shared by every world.
     public GameplayRegistries Registries { get; } = new();
@@ -81,6 +82,10 @@ public sealed class AttributesModule : IModule
         // registered, and by the time content loads everybody has.
         var actions = ctx.Engine.Actions;
         _records.AddCheck<GameplayConventionsRecord>((conventions, check) => GameplayConventions.CheckActions(actions, conventions, check));
+
+        // "When somebody does X, add Y to their Z" (issue #377): the attribute_gain records, found again on a reload.
+        _records.AddCheck<AttributeGainRecord>(AttributeGainRecord.Check);
+        _gains = new AttributeGainRules(_records);
 
         // ApplyEffect and OnDeath (issue #91): a level wires to effects and deaths like to a door.
         BridgeIO.RegisterAttributes(ctx.Engine);
@@ -120,6 +125,7 @@ public sealed class AttributesModule : IModule
         world.AddSystem(new DeathRulesSystem(world));
         world.AddSystem(new DeathOutputSystem(world));       // OnDeath (issue #91)
         world.AddSystem(new SpeedAttributeSystem(world));    // the speed attribute paces the character (issue #384)
+        world.AddSystem(new AttributeGainSystem(world, _gains!));   // attribute_gain (issue #377)
     }
 }
 
