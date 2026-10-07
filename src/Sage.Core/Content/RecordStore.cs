@@ -324,6 +324,50 @@ public sealed class RecordStore
         Load(_vfs);
     }
 
+    // Raised after `Preview` changed a record in memory: its type and id.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's live preview (#366)
+    public event Action<string, RecordId>? Previewed;
+
+    // The editor's live preview (issue #366, docs/design/15 §10): one loaded record built again from
+    // `fields` — a record document's working copy, the shape `RawJson` hands out — and copied into the
+    // instance the game already holds, so what holds it sees the change now. **No file is touched**: the
+    // next Load or Reload builds the record from its files again, which is how a preview is taken back.
+    // Not checked like a load (the record's checks, its references): that is what a save's reload does.
+    // False, with why, when the type is unknown, the record is not loaded, or `fields` do not build into
+    // it; the record is then left as it was.
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's live preview (#366)
+    public bool Preview(string type, RecordId id, JsonObject fields, out string error)
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+        error = "";
+        if (!_typesByName.TryGetValue(type, out var clr)) { error = $"'{type}' is not a record type"; return false; }
+        if (!_records.TryGetValue((type, id), out var existing) || _runtime.ContainsKey((type, id)))
+        {
+            error = $"no {type} '{id}' was loaded from a file";
+            return false;
+        }
+
+        var copy = (JsonObject)fields.DeepClone();
+        foreach (string meta in MetaKeys) copy.Remove(meta);
+        var unknown = JsonMembers.Find(copy, clr, _json);
+        if (unknown.Count > 0) { error = $"{type} {id}: {unknown[0].Message}"; return false; }
+
+        object? value;
+        RecordParseContext.Namespace = id.Namespace;
+        try { value = copy.Deserialize(clr, _json); }
+        catch (Exception ex) when (ex is JsonException or FormatException or InvalidOperationException or NotSupportedException or ArgumentException)
+        {
+            error = $"{type} {id}: {WithoutPosition(ex.Message)}";
+            return false;
+        }
+        finally { RecordParseContext.Namespace = null; }
+        if (value == null || value.GetType() != existing.GetType()) { error = $"{type} {id}: does not build"; return false; }
+
+        CopyInto(value, existing);
+        Previewed?.Invoke(type, id);
+        return true;
+    }
+
     private Dictionary<(string, RecordId), RawRecord> ReadAndMerge(VirtualFileSystem vfs)
     {
         var raw = new Dictionary<(string, RecordId), RawRecord>();
