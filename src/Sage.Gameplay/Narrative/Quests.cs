@@ -76,8 +76,13 @@ public readonly record struct QuestHappening(string Kind, Entity Subject, Entity
     public const string Killed = "killed";     // Subject died; Actor killed it (Died)
     public const string Talked = "talked";     // Subject said Node to Actor (Spoke)
     public const string Polled = "polled";     // every tick, Subject = Actor = the player
+    public const string Entered = "entered";   // Actor walked into the trigger volume Subject (TriggerEntered, issue #391)
+    public const string Asked = "asked";       // Actor asked Subject about Topic and was answered (TopicAsked, issue #391)
 
     public string Node { get; init; } = "";
+
+    // The dialogue_topic asked about, on an `asked` happening.
+    public RecordId Topic { get; init; }
 }
 
 public sealed class QuestStage
@@ -93,6 +98,19 @@ public sealed class QuestStage
     // is not this: it has no objectives, no `next`, and something outside finishes it (a conversation
     // with `finishQuest`, a trigger, a command).
     public bool Done;
+
+    // Timed stages and failure (issue #391). A stage with a time limit fails when the world's clock passes
+    // it; one with `failWhen` fails the moment that condition holds (asked every tick, about the player).
+    // Failing goes to `fail` — a stage of its own, usually marked `failed`, whose text says what went
+    // wrong — or, when it names none, ends the quest failed where it stands.
+    [Property(Min = 0, Unit = "h", Tooltip = "Game hours the stage may take before it fails; 0 = no limit")]
+    public float TimeLimit;
+    [Property(Tooltip = "Fails the stage the moment this holds, asked about the player (one condition; use all for several)")]
+    public ICondition? FailWhen;
+    [Property(Tooltip = "The stage failing goes to; empty = the quest ends failed at this one")]
+    public string Fail = "";
+    [Property(Tooltip = "Reaching this stage ends the quest failed")]
+    public bool Failed;
 }
 
 [Record("quest", Plugin = "sage.gameplay.quests")]
@@ -130,6 +148,18 @@ public sealed class Journal
 
         // The player follows it: a map marks its targets (issue #349). Starting a quest tracks it.
         public bool Tracked { get; set; }
+
+        // It ended badly (issue #391): a `failed` stage was reached, time ran out or `failWhen` held with
+        // nowhere to go. Finished is true too — a failed quest is over — but IsFinished says "succeeded".
+        public bool Failed { get; set; }
+
+        // When the current stage runs out, on the world clock's total hours (WorldClock.Elapsed); 0 = untimed.
+        public double Deadline { get; set; }
+
+        // What the journal said at each stage as it was reached (issue #391): History's stages, then the
+        // current one. Kept as written then, so a mod that rewrites a stage's text later does not rewrite
+        // what the player was told. A save from before it has none, and the journal reads the record.
+        public List<string> Told { get; set; } = new();
     }
 
     public List<Entry> Entries { get; set; } = new();
@@ -144,7 +174,11 @@ public sealed class Journal
 
 // A quest started, moved on, or finished — for a HUD to say so and a game to react.
 [GameEvent]
-public readonly record struct QuestChanged(RecordId Quest, string Stage, bool Finished);
+public readonly record struct QuestChanged(RecordId Quest, string Stage, bool Finished)
+{
+    // It ended failed (issue #391); Finished is true with it.
+    public bool Failed { get; init; }
+}
 
 public static class Quests
 {
@@ -169,8 +203,10 @@ public static class Quests
             return false;
         }
 
-        journal.Entries.Add(new Journal.Entry { Quest = quest, Stage = stage.Id, Tracked = true });
-        world.Events.Send(new QuestChanged(quest, stage.Id, false));
+        var entry = new Journal.Entry { Quest = quest, Stage = stage.Id, Tracked = true };
+        journal.Entries.Add(entry);
+        Entered(world, entry, stage);
+        world.Events.Send(new QuestChanged(quest, stage.Id, entry.Finished) { Failed = entry.Failed });
         Log.Info(LogCat.Gameplay, $"Quest started: {(record.Label.Length > 0 ? record.Label : quest.Name)}");
         Check(world, quest);        // a stage whose objectives are already met does not sit there
         return true;
@@ -194,13 +230,96 @@ public static class Quests
             return false;
         }
 
-        if (entry.Stage != next.Id) entry.History.Add(entry.Stage);
+        if (entry.Stage != next.Id)
+        {
+            // A save from before #391 told nothing: what the record says now is the best it can remember.
+            for (int i = entry.Told.Count; i <= entry.History.Count; i++)
+                entry.Told.Add(record.Stage(i < entry.History.Count ? entry.History[i] : entry.Stage)?.Text ?? "");
+            entry.History.Add(entry.Stage);
+        }
         entry.Stage = next.Id;
         entry.Progress.Clear();
         entry.Finished = next.Done && next.Objectives.Count == 0;
-        world.Events.Send(new QuestChanged(quest, entry.Stage, entry.Finished));
+        Entered(world, entry, next);
+        world.Events.Send(new QuestChanged(quest, entry.Stage, entry.Finished) { Failed = entry.Failed });
+        if (entry.Failed) Log.Info(LogCat.Gameplay, $"Quest failed: {(record.Label.Length > 0 ? record.Label : quest.Name)}");
         Check(world, quest);
         return true;
+    }
+
+    // What reaching a stage writes down (issue #391): its text as it is now (one line per stage reached,
+    // History's then the current one's; a stage set again is told again), its deadline, and whether it
+    // ends the quest failed.
+    private static void Entered(World world, Journal.Entry entry, QuestStage stage)
+    {
+        if (entry.Told.Count > entry.History.Count) entry.Told.RemoveRange(entry.History.Count, entry.Told.Count - entry.History.Count);
+        while (entry.Told.Count < entry.History.Count) entry.Told.Add("");
+        entry.Told.Add(stage.Text);
+        entry.Deadline = stage.TimeLimit > 0f ? WorldClock.Of(world).Elapsed + stage.TimeLimit : 0.0;
+        if (stage.Failed)
+        {
+            entry.Finished = true;
+            entry.Failed = true;
+        }
+    }
+
+    // Fails it (issue #391): what running out of time and `failWhen` do, and what a `fail_quest` action
+    // does. The stage's `fail` stage when it names one, which is where the journal says what went wrong;
+    // else the quest ends failed where it stands. False when it is not on the go.
+    public static bool Fail(World world, RecordId quest)
+    {
+        var entry = JournalOf(world)?.Of(quest);
+        if (entry == null || entry.Finished) return false;
+        var records = world.Resources.Get<RecordStore>();
+        var record = records.TryGet(quest, out QuestRecord found) ? found : null;
+        var stage = record?.Stage(entry.Stage);
+        // A `fail` stage not itself marked `failed` carries on — a second chance — which is the content's call.
+        if (stage is { Fail.Length: > 0 } && record!.Stage(stage.Fail) is { } next && next.Id != entry.Stage)
+            return SetStage(world, quest, next.Id);
+
+        entry.Finished = true;
+        entry.Failed = true;
+        entry.Deadline = 0.0;
+        world.Events.Send(new QuestChanged(quest, entry.Stage, true) { Failed = true });
+        Log.Info(LogCat.Gameplay, $"Quest failed: {(record != null && record.Label.Length > 0 ? record.Label : quest.Name)}");
+        return true;
+    }
+
+    public static bool IsFailed(World world, RecordId quest) => JournalOf(world)?.Of(quest)?.Failed == true;
+
+    // Game hours left on the current stage's time limit, or null when it has none (or the quest is over).
+    public static double? HoursLeft(World world, RecordId quest)
+    {
+        var entry = JournalOf(world)?.Of(quest);
+        if (entry == null || entry.Finished || entry.Deadline <= 0.0) return null;
+        return Math.Max(entry.Deadline - WorldClock.Of(world).Elapsed, 0.0);
+    }
+
+    // The timers and `failWhen`s of every stage on the go (issue #391), asked every tick by
+    // QuestWatchSystem with the player. A timed stage loaded from a save made before it had a deadline
+    // starts its clock now.
+    internal static void Watch(World world, Entity player)
+    {
+        if (JournalOf(world) is not { Entries.Count: > 0 } journal) return;
+        var records = world.Resources.Get<RecordStore>();
+        for (int e = 0; e < journal.Entries.Count; e++)
+        {
+            var entry = journal.Entries[e];
+            if (entry.Finished || !records.TryGet(entry.Quest, out QuestRecord record)) continue;
+            var stage = record.Stage(entry.Stage);
+            if (stage == null) continue;
+
+            bool fail = false;
+            if (stage.TimeLimit > 0f)
+            {
+                double now = WorldClock.Of(world).Elapsed;
+                if (entry.Deadline <= 0.0) entry.Deadline = now + stage.TimeLimit;
+                else if (now >= entry.Deadline) fail = true;
+            }
+            if (!fail && stage.FailWhen != null)
+                fail = Conditions.Test(stage.FailWhen, new ConditionContext(world, player, default), out _);
+            if (fail) Fail(world, entry.Quest);
+        }
     }
 
     // Ends it, wherever it had got to. What a conversation does when the errand is reported: the quest
@@ -236,7 +355,8 @@ public static class Quests
         return entry != null && !entry.Finished;
     }
 
-    public static bool IsFinished(World world, RecordId quest) => JournalOf(world)?.Of(quest)?.Finished == true;
+    // Finished and not failed: done, as the player meant it (a failed quest is over, but not this).
+    public static bool IsFinished(World world, RecordId quest) => JournalOf(world)?.Of(quest) is { Finished: true, Failed: false };
 
     // Never started: not in the journal, or no journal at all.
     public static bool IsNotStarted(World world, RecordId quest) => JournalOf(world)?.Of(quest) == null;
@@ -251,7 +371,7 @@ public static class Quests
     {
         var entry = JournalOf(world)?.Of(quest);
         if (entry == null) return false;
-        if (entry.Finished) return true;
+        if (entry.Finished && !entry.Failed) return true;
         if (!world.Resources.Get<RecordStore>().TryGet(quest, out QuestRecord record)) return false;
         int at = -1, wanted = -1;
         for (int i = 0; i < record.Stages.Count; i++)

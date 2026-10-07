@@ -191,6 +191,11 @@
         }
       },
       "additionalProperties": false
+    },
+    "questItem": {
+      "description": "A quest item: it cannot be dropped or sold, only given or taken by the story (issue #391) (bool, default false)",
+      "default": false,
+      "type": "boolean"
     }
   },
   "additionalProperties": false

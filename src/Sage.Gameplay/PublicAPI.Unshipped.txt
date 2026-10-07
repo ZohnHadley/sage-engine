@@ -1,4 +1,7 @@
 #nullable enable
+const Sage.Gameplay.BridgeIO.OnQuestFailed = "OnQuestFailed" -> string!
+const Sage.Gameplay.QuestHappening.Asked = "asked" -> string!
+const Sage.Gameplay.QuestHappening.Entered = "entered" -> string!
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
@@ -53,9 +56,16 @@ Sage.Gameplay.ItemInstance.Name -> string!
 Sage.Gameplay.ItemInstance.SameAs(Sage.Gameplay.ItemInstance? other) -> bool
 Sage.Gameplay.ItemRecord.Describe(Sage.Core.RecordId id, Sage.Gameplay.ItemInstance? instance) -> string!
 Sage.Gameplay.ItemRecord.Durability -> Sage.Gameplay.ItemDurability!
+Sage.Gameplay.ItemRecord.QuestItem -> bool
 Sage.Gameplay.ItemStack.Instance -> Sage.Gameplay.ItemInstance?
+Sage.Gameplay.Journal.Entry.Deadline.get -> double
+Sage.Gameplay.Journal.Entry.Deadline.set -> void
+Sage.Gameplay.Journal.Entry.Failed.get -> bool
+Sage.Gameplay.Journal.Entry.Failed.set -> void
 Sage.Gameplay.Journal.Entry.History.get -> System.Collections.Generic.List<string!>!
 Sage.Gameplay.Journal.Entry.History.set -> void
+Sage.Gameplay.Journal.Entry.Told.get -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.Journal.Entry.Told.set -> void
 Sage.Gameplay.Journal.Entry.Tracked.get -> bool
 Sage.Gameplay.Journal.Entry.Tracked.set -> void
 Sage.Gameplay.LightPart.Cone -> float
@@ -73,8 +83,25 @@ Sage.Gameplay.LightPart.Shadows -> bool
 Sage.Gameplay.Melee.Direction -> Sage.Simulation.AttackDirection
 Sage.Gameplay.Pickup.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.PickupPart.Instance -> Sage.Gameplay.ItemInstance?
+Sage.Gameplay.QuestChanged.Failed.get -> bool
+Sage.Gameplay.QuestChanged.Failed.init -> void
+Sage.Gameplay.QuestHappening.Topic.get -> Sage.Core.RecordId
+Sage.Gameplay.QuestHappening.Topic.init -> void
 Sage.Gameplay.QuestObjective.Target -> string!
+Sage.Gameplay.QuestStage.Fail -> string!
+Sage.Gameplay.QuestStage.Failed -> bool
+Sage.Gameplay.QuestStage.FailWhen -> Sage.Simulation.ICondition?
 Sage.Gameplay.QuestStage.Target -> string!
+Sage.Gameplay.QuestStage.TimeLimit -> float
+Sage.Gameplay.TopicAsked
+Sage.Gameplay.TopicAsked.Listener.get -> Sage.Simulation.Entity
+Sage.Gameplay.TopicAsked.Listener.init -> void
+Sage.Gameplay.TopicAsked.Speaker.get -> Sage.Simulation.Entity
+Sage.Gameplay.TopicAsked.Speaker.init -> void
+Sage.Gameplay.TopicAsked.Topic.get -> Sage.Core.RecordId
+Sage.Gameplay.TopicAsked.Topic.init -> void
+Sage.Gameplay.TopicAsked.TopicAsked() -> void
+Sage.Gameplay.TopicAsked.TopicAsked(Sage.Simulation.Entity Speaker, Sage.Simulation.Entity Listener, Sage.Core.RecordId Topic) -> void
 static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
 *REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.Footstep.Kind.get -> Sage.Gameplay.FootstepKind
@@ -98,6 +125,7 @@ static Sage.Gameplay.Durability.CanRepair(this Sage.Simulation.World! world, Sag
 static Sage.Gameplay.Durability.ConditionOf(in Sage.Gameplay.ItemStack stack) -> float
 static Sage.Gameplay.Durability.Repair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float amount, float upTo = 1) -> bool
 static Sage.Gameplay.Durability.Wear(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! slot, float amount) -> bool
+static Sage.Gameplay.Items.CanDrop(this Sage.Simulation.World! world, Sage.Core.RecordId item, out string! why) -> bool
 static Sage.Gameplay.Items.DropAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count) -> Sage.Simulation.Entity
 static Sage.Gameplay.Items.EquipAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index) -> bool
 static Sage.Gameplay.Items.Give(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, in Sage.Gameplay.ItemStack stack) -> bool
@@ -107,6 +135,9 @@ static Sage.Gameplay.Items.SpawnPickup(this Sage.Simulation.World! world, in Sag
 static Sage.Gameplay.Items.Split(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count) -> bool
 static Sage.Gameplay.Items.TakeAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count, out Sage.Gameplay.ItemStack taken) -> bool
 static Sage.Gameplay.Items.WornInstance(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! slot) -> Sage.Gameplay.ItemInstance?
+static Sage.Gameplay.Quests.Fail(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
+static Sage.Gameplay.Quests.HoursLeft(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> double?
+static Sage.Gameplay.Quests.IsFailed(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.IsTracked(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.Track(Sage.Simulation.World! world, Sage.Core.RecordId quest, bool tracked = true) -> bool
 virtual Sage.Gameplay.QuestObjective.TryGetPlace(out System.Numerics.Vector3 at) -> bool
