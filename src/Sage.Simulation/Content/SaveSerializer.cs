@@ -45,13 +45,15 @@ internal sealed class SaveSerializer
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, bool> Transient = new();
 
     public static bool IsTransient(Type type) =>
-        Transient.GetOrAdd(type, static t => t.GetCustomAttribute<TransientAttribute>() != null);
+        type.IsCollectible ? type.GetCustomAttribute<TransientAttribute>() != null   // a code mod's: never kept (#396)
+                           : Transient.GetOrAdd(type, static t => t.GetCustomAttribute<TransientAttribute>() != null);
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, bool> Placement = new();
 
     // A component type whose values derive from where the entity was placed (`[FromPlacement]`, 4m-4).
     public static bool IsFromPlacement(Type type) =>
-        Placement.GetOrAdd(type, static t => t.GetCustomAttribute<FromPlacementAttribute>() != null);
+        type.IsCollectible ? type.GetCustomAttribute<FromPlacementAttribute>() != null
+                           : Placement.GetOrAdd(type, static t => t.GetCustomAttribute<FromPlacementAttribute>() != null);
 
     private static bool Contains(IReadOnlyList<string> ids, string id)
     {

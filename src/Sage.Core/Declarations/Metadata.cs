@@ -214,17 +214,26 @@ public static class Metadata
     private static readonly ConcurrentDictionary<Assembly, IReadOnlyDictionary<Type, TypeMetadata>> ByAssembly = new();
     private static readonly ConcurrentDictionary<Type, TypeMetadata> Undeclared = new();
 
+    // A code mod's assembly is collectible (phase 9, issue #396): its tables are kept weakly, so the process
+    // cache never keeps an unloaded mod alive.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Assembly, IReadOnlyDictionary<Type, TypeMetadata>> CollectibleByAssembly = new();
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Type, TypeMetadata> CollectibleUndeclared = new();
+
     // The metadata of a type: its declaration's, from the generated table (or by reflection for an
     // assembly built without the generator); for a type that declares nothing — one of Friflo's own
     // components, a test's probe — by reflection, with Kind Other.
     public static TypeMetadata Of(Type type)
     {
         if (In(type.Assembly).TryGetValue(type, out var declared)) return declared;
-        return Undeclared.GetOrAdd(type, static t => Reflect(t, DeclarationKind.Other, t.Name));
+        return type.IsCollectible ? CollectibleUndeclared.GetValue(type, static t => Reflect(t, DeclarationKind.Other, t.Name))
+                                  : Undeclared.GetOrAdd(type, static t => Reflect(t, DeclarationKind.Other, t.Name));
     }
 
     // Every declaration an assembly makes.
-    public static IReadOnlyDictionary<Type, TypeMetadata> In(Assembly assembly) => ByAssembly.GetOrAdd(assembly, static a =>
+    public static IReadOnlyDictionary<Type, TypeMetadata> In(Assembly assembly) =>
+        assembly.IsCollectible ? CollectibleByAssembly.GetValue(assembly, Table) : ByAssembly.GetOrAdd(assembly, Table);
+
+    private static IReadOnlyDictionary<Type, TypeMetadata> Table(Assembly a)
     {
         var table = new Dictionary<Type, TypeMetadata>();
         if (a.GetCustomAttribute<GeneratedMetadataAttribute>() is { } generated)
@@ -237,7 +246,7 @@ public static class Metadata
             if (DeclarationOf(type) is { } d)
                 table[type] = Reflect(type, d.Kind, d.Id);
         return table;
-    });
+    }
 
     // The kind and id a type is declared with, read off its attribute.
     public static (DeclarationKind Kind, string Id)? DeclarationOf(Type type)

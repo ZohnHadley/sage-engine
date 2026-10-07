@@ -14,10 +14,13 @@ namespace Sage.Core;
 //     "sage": ">=0.1",                                     // the engine versions it was made for
 //     "dependencies": { "other_mod": "^1.0" },             // mods that must be active, loaded before it
 //     "loadAfter": ["x"], "loadBefore": ["y"],             // order, when those mods are there
-//     "incompatible": ["z"]                                // refused when one of these is loaded before it
+//     "incompatible": ["z"],                               // refused when one of these is loaded before it
+//     "kind": "code", "assemblies": ["bin/{config}/Smiths.dll"]   // a code mod (phase 9, issue #396)
 //   }
-// Read as strictly as game.json: an unknown key is an error. "assemblies" and "kind" are known only so a
-// code mod can be refused by name (ModLoadOrder): code mods are phase 9.
+// Read as strictly as game.json: an unknown key is an error. A code mod names its assemblies, relative to its
+// folder and inside it ({config} is the build configuration, as in game.json); they are loaded into a
+// collectible load context of the mod's own (Sage.Simulation's ModCodeContext). Code is trusted, not
+// sandboxed, and is flagged "contains code" wherever mods are listed.
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0132", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // data mods (phase 4j): may change before 1.0
 public sealed class ModManifest
 {
@@ -41,7 +44,9 @@ public sealed class ModManifest
     public List<string> LoadBefore { get; set; } = new();
     public List<string> Incompatible { get; set; } = new();
 
-    // Not supported in phase 4j: a mod that names either is refused with "code mods are phase 9".
+    // A code mod's assemblies (phase 9, issue #396), relative to the mod's folder. "kind": "code" says the
+    // same; "kind": "code" with no assemblies is refused (ModLoadOrder), and assemblies with "kind": "data"
+    // are an error.
     public List<string> Assemblies { get; set; } = new();
     public string? Kind { get; set; }
 
@@ -51,6 +56,10 @@ public sealed class ModManifest
     public SemVersion SemVersion => SemVersion.Parse(Version, $"mod '{Id}' \"version\"");
 
     public bool AsksForCode => Assemblies.Count > 0 || string.Equals(Kind, "code", StringComparison.OrdinalIgnoreCase);
+
+    // Where the assemblies are: full paths under the mod's folder, with {config} the build configuration.
+    public IEnumerable<string> AssemblyPaths =>
+        Assemblies.Select(a => Path.GetFullPath(Path.Combine(Directory, a.Replace("{config}", BuildInfo.ConfigurationName))));
 
     public static ModManifest Load(string folder)
     {
@@ -105,6 +114,17 @@ public sealed class ModManifest
             if (!IsNamespace(other)) throw new FormatException($"'{other}' is not a mod id (in loadAfter, loadBefore or incompatible).");
         if (Kind != null && !string.Equals(Kind, "data", StringComparison.OrdinalIgnoreCase) && !string.Equals(Kind, "code", StringComparison.OrdinalIgnoreCase))
             throw new FormatException($"\"kind\" is 'data' or 'code', not '{Kind}'.");
+        if (Assemblies.Count > 0 && string.Equals(Kind, "data", StringComparison.OrdinalIgnoreCase))
+            throw new FormatException("\"kind\" is 'data', and \"assemblies\" names code: say \"kind\": \"code\", or name no assemblies.");
+        // Inside the mod's folder, always: no rooted path, no way out with "..".
+        foreach (string assembly in Assemblies)
+        {
+            string a = assembly.Replace('\\', '/');
+            if (a.Length == 0 || Path.IsPathRooted(assembly) || a.StartsWith('/') || a.Contains(':') || a.Split('/').Any(part => part == ".."))
+                throw new FormatException($"\"assemblies\" names '{assembly}': an assembly is a path inside the mod's folder (no rooted path, no '..').");
+            if (!a.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                throw new FormatException($"\"assemblies\" names '{assembly}', which is not a .dll.");
+        }
     }
 
     private static bool IsNamespace(string s)

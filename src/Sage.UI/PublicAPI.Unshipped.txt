@@ -627,3 +627,4 @@ Sage.UI.UiNode.Include -> Sage.Core.RecordRef<Sage.UI.UiLayoutRecord!>
 Sage.UI.UiNode.Params -> System.Collections.Generic.Dictionary<string!, string!>!
 Sage.UI.UiNode.Scope -> string!
 Sage.UI.Localisation.Languages.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.UI.ModsView.ModRow.ContainsCode.get -> bool

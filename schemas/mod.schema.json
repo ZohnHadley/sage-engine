@@ -69,11 +69,11 @@
       "items": {
         "type": "string"
       },
-      "description": "Code mods are phase 9: naming an assembly refuses the mod."
+      "description": "A code mod's assemblies, paths inside the mod's folder ({config} is the build configuration): \"bin/{config}/MyMod.dll\". Trusted code, loaded with the game's full trust and not sandboxed."
     },
     "kind": {
       "type": "string",
-      "description": "\"data\" (the only kind that loads). \"code\" refuses the mod: code mods are phase 9."
+      "description": "\"data\", or \"code\" for a mod that names \"assemblies\" (flagged \"contains code\" wherever mods are listed)."
     }
   },
   "additionalProperties": false,

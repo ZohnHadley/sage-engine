@@ -943,8 +943,9 @@ internal static class ManifestSchemas
             ["loadAfter"] = Strings("Mod ids this one loads after, when they are there."),
             ["loadBefore"] = Strings("Mod ids this one loads before, when they are there."),
             ["incompatible"] = Strings("Mod ids that refuse this mod when one is loaded before it."),
-            ["assemblies"] = Strings("Code mods are phase 9: naming an assembly refuses the mod."),
-            ["kind"] = Str("\"data\" (the only kind that loads). \"code\" refuses the mod: code mods are phase 9."),
+            ["assemblies"] = Strings("A code mod's assemblies, paths inside the mod's folder ({config} is the build configuration): " +
+                                     "\"bin/{config}/MyMod.dll\". Trusted code, loaded with the game's full trust and not sandboxed."),
+            ["kind"] = Str("\"data\", or \"code\" for a mod that names \"assemblies\" (flagged \"contains code\" wherever mods are listed)."),
         });
         schema["required"] = new JsonArray("id");
         return schema;

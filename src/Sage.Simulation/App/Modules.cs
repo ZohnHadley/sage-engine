@@ -299,7 +299,7 @@ public sealed class ModuleManager
 
     // One of every public IModule in an assembly. An IGameModule is left out: a game has one, in the
     // assembly game.json names in "assembly".
-    private static List<IModule> ModulesIn(Assembly assembly, string from) =>
+    internal static List<IModule> ModulesIn(Assembly assembly, string from) =>
         Reflecting(assembly, () => ModulesInCore(assembly, from));
 
     private static List<IModule> ModulesInCore(Assembly assembly, string from)
