@@ -130,7 +130,7 @@ Milestone 10, AI, combat and narrative depth (epic #385):
 - #388 4r-3 Combat movement and squad behaviour (P2)
 - #389 4r-4 Crime, witnesses, bounty and faction ranks (P2)
 
-Related, in the editor sheet: #369 10b-4 Behaviour-tree / AI graph view (P2).
+Related, in the editor sheet: #369 10b-4 Behaviour-tree / AI graph view, done: the AI graphs are state machines, schedules and routines, shown with the states and task an agent is in (test: WhilePlayingTheViewShowsTheStatesTheGuardIsIn).
 
 ## 11. References
 

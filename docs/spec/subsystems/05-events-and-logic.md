@@ -173,7 +173,7 @@ Measured: tests assert zero managed allocation per tick for evaluation (test: Ev
 
 ## 10. Open work
 
-Milestone 10b, Editor part 2: #370 10b-5 Conditions and actions editor, and a `requires` form (P2), which is the editor side of REQ-LOGIC-18.
+Milestone 10b, Editor part 2: ~~#370 10b-5 Conditions and actions editor, and a `requires` form~~ done, the editor side of REQ-LOGIC-18: a form over any vocabulary, writing the long form, one undo step per edit (sheet [18](18-editor.md), test: AWiresRequiresIsAuthoredFromTheFormEachEditOneUndo).
 
 ## 11. References
 

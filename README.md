@@ -66,9 +66,9 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices; written in the background, optionally compressed, with a thumbnail and a title |
 | Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2374 headless tests | <!-- counts -->
 
-What is deliberately **not** here yet: code mods, the editor's brushes and asset
-browser (its first half, phase 10a, is a mode of the dev host: [`docs/EDITOR.md`](docs/EDITOR.md)), and
-multiplayer. The roadmap in [`TODO.md`](TODO.md) says
+What is deliberately **not** here yet: code mods and multiplayer. The level editor (phases 10a and 10b)
+is a mode of the dev host, with brushes, terrain tools and an asset browser ([`docs/EDITOR.md`](docs/EDITOR.md)),
+and can be packaged beside a Shipping game for modders. The roadmap in [`TODO.md`](TODO.md) says
 where each one sits, and [`docs/REDESIGN.md`](docs/REDESIGN.md) is the plan for what comes next.
 
 ## Running it
@@ -294,7 +294,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `src/Sage.UI` | Retained game-UI widgets, layout, focus and screen records on the simulation, headless (issue #95). **No MonoGame**; the client draws its render plan |
 | `src/Sage.Kits.Rpg`, `src/Sage.Kits.Rpg.Client` | The action-RPG kit (issue #27), *not* part of the base: the readied spell, the spellmaker, two hands, the bag, spellbook, journal and conversation screens. A game opts in with `"kits": ["sage.kits.rpg"]` in `game.json` (MAKING_A_GAME §2) |
 | `src/Sage.Client` | Rendering, input devices, assets, sprite batching — the MonoGame half |
-| `src/Sage.Editing` | The editor's model, headless (phase 10a): documents, the command log and undo, picking and gizmo maths, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, problems, and their `ed_*`/`doc_*` commands. **No MonoGame.** |
+| `src/Sage.Editing` | The editor's model, headless (phases 10a and 10b): documents in tabs, the command log and undo, picking and gizmo maths, several selected, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, problems, the asset browser, brushes, terrain tools, the AI graph view and the conditions form, and their `ed_*`/`doc_*` commands. **No MonoGame.** |
 | `src/Sage.Editor` | Dev camera, console window, the editor's panels (`-edit`, [`docs/EDITOR.md`](docs/EDITOR.md)), stat overlay (ImGui): they draw `Sage.Editing` |
 | `src/Sage.Host` | The executable: boot sequence and the main loop |
 | `src/Sage.Cli` | `sage`, the headless command line: `sage validate <game> [--mods <dir>] [--game-mods]` checks a game's content (and its mods') and exits non-zero on errors; `sage mods <game>` prints the mods' load order, the refused ones and the conflicts; `sage schema <game>` writes the JSON Schemas record files are edited with; `sage package <game> --out <dir>` writes a folder a player runs (cooked, `sage cook`); `sage new <template>` and `sage run <game>` make and start games and mods (`dotnet new` and `dotnet run` with the short names) |
@@ -349,10 +349,11 @@ dotnet run --project src/Sage.Host -c Development -- -game games/Hello
 
 ## Levels
 
-> **Changing:** levels will be built in Sage's own editor rather than TrenchBroom (decided 2026-09-28,
-> `docs/REDESIGN.md` §4.6 and §6 item 8). Its first half is built (phase 10a): `-edit` places, tunes and
-> wires prefabs, plays and saves ([`docs/EDITOR.md`](docs/EDITOR.md)). Brushes are 10b's, so what follows
-> is how rooms are drawn today, and the `.map` importer stays until the editor replaces it.
+> **Changing:** levels are built in Sage's own editor rather than TrenchBroom (decided 2026-09-28,
+> `docs/REDESIGN.md` §4.6 and §6 item 8). Phases 10a and 10b are built: `-edit` places, tunes and wires
+> prefabs, blocks out rooms from brushes (boxes, wedges and cylinders), sculpts terrain, plays and saves
+> ([`docs/EDITOR.md`](docs/EDITOR.md)). Its brushes have no CSG yet, so what follows, the `.map`
+> importer, stays as a path in for detailed interiors.
 
 Interiors are **brushes**, and the editor is [TrenchBroom](https://trenchbroom.github.io/): the engine
 reads the `.map` files it writes (standard, Valve 220 and Quake 2/3 dialects) and turns each brush into

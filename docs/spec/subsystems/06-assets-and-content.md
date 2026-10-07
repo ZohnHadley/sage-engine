@@ -149,7 +149,7 @@ Milestone R1, Tooling and the first release (epic #292):
 
 - ~~#302 R1-10 Cooked asset formats and a cook step for Shipping (P3)~~ done. Left from it: no WAV-to-OGG step (an `.ogg` streams since #326), mipmaps came with #317, `Content/` and a game's `mods/` are not cooked, loose files stay in a package, staleness on a folder mount is by length only, and only `.glb`, `.png`, `.jpg`, `.jpeg` and (since #317) `.tga` are cooked.
 
-Milestone 10b, Editor part 2: #366 10b-1 Asset browser and material preview (P1).
+Milestone 10b, Editor part 2: ~~#366 10b-1 Asset browser and material preview~~ done: `RecordStore.Preview` applies a record's edit before a save, and `AssetRename` moves one of the game's assets and rewrites what names it (sheet [18](18-editor.md), tests: APreviewThatDoesNotBuildLeavesTheRecordAsItWasAndAReloadTakesAPreviewBack, RenamingAnAssetMovesItAndItsCookedFileAndRewritesWhatNamesIt).
 
 ## 11. References
 

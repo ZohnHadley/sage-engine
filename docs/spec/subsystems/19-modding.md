@@ -13,8 +13,9 @@ Code mods (trusted assemblies), `.sagemod` zips and shader support are phase 9. 
 `assemblies` or `"kind": "code"` is refused with a reason and the game still starts.
 
 Not in scope: sandboxing code (.NET cannot do it, so code mods will be marked and never auto-downloaded),
-a workshop or download service (later, behind an interface in a client project), and the editor for modders
-(10b, [18](18-editor.md)).
+and a workshop or download service (later, behind an interface in a client project). The editor for
+modders is [18](18-editor.md)'s (#375): `sage package --editor` ships it beside a Shipping game, and
+`ed_mod <id>` saves into that mod only, a game's level as a placements patch.
 
 ## 2. Responsibilities
 
@@ -142,7 +143,7 @@ with file and line from `rec_get`.
 - #400 9-5 Shader and `.fx` support in mods, and mod-side tooling (P2)
 - #401 9-6 Mod distribution aids and per-field conflict view (P3)
 
-Related: #375 10b-10 (standalone editor for modders), #277 4m-3 (per-sector asset scopes), #308 4n-4 (asset scopes).
+Related: #375 10b-10 (done: the editor for modders, test: AModderSavesBothTabsIntoTheModAndTheGamesLevelAsAPatch), #277 4m-3 (per-sector asset scopes), #308 4n-4 (asset scopes).
 
 ## 11. References
 

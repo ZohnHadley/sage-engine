@@ -184,6 +184,16 @@ picture (`rpg_item` `icon`) or a scene a map (`area_map`); and offer a high-cont
 a `strings/<code>/` folder and a `language` record naming its direction and fonts; `loc_check` says what it
 still lacks (test: ValidateReportsWhatATranslationLacks).
 
+Phase 10b gave modders the editor (issue #375). A game packaged with `sage package <game> --out <dir>
+--editor` has the editor beside its Shipping host, in `editor/`, and `edit.sh` / `edit.cmd` open it on the
+game. `./edit.sh [level] +ed_mod <your mod>` makes your mod's folder the only one the editor writes: a level
+your mod defines saves in place, a new level is made in your mod, and the game's own level is saved as a
+`"patch": true` placements record in `<your mod>/data/patches/placements_<namespace>_<name>.json`, holding
+its whole list of placements (ids and record names in full), which the loader applies over the game's like
+any other patch. The game's files are never written ([EDITOR.md](EDITOR.md) §8; test:
+AModderSavesBothTabsIntoTheModAndTheGamesLevelAsAPatch). A brush is a placement too, so a mod can add walls to
+a level with `place+` (test: AModAddsBrushesToALevelByPatchingItsDocument).
+
 ## 6. Conflicts and the report
 
 When two mods change the same thing, the later wins and the game tells you. A **conflict** is:

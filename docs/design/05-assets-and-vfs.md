@@ -32,7 +32,7 @@ Not in scope: what the renderer does with a texture (06), effect compilation det
 ### 3.2 Asset identity
 - **Identity = `VirtualPath`.** A mod replaces the goblin texture by shipping the same path. No manifest is needed (Quake/Source behaviour).
 - **`AssetPath`** is an interned `VirtualPath` (an `int` into a global path table). It's cheap to store in components and compare, and it doesn't load anything (03 §10).
-- **Renames** are handled by the editor's refactor command (15), which rewrites references in records, prefabs and maps. If renames become painful, add Godot-4-style `.uid` sidecar files later: a stable id per asset that resolves to its current path. References stay path-based either way.
+- **Renames** are handled by the editor's refactor command (15), which rewrites references in records, prefabs and maps. If renames become painful, add Godot-4-style `.uid` sidecar files later: a stable id per asset that resolves to its current path. References stay path-based either way. *As built (2026-10-07, issue #366):* `AssetRename` (15 §10o) moves one of the game's own assets and its cooked file, and rewrites every quoted occurrence of the path in the game's `.json` and `.map` files, comments kept; an asset of the engine, a kit or a mod, or one a file outside the game names, is refused (tests: RenamingAnAssetMovesItAndItsCookedFileAndRewritesWhatNamesIt, ARenameIsRefusedWhenTheAssetOrAReferenceIsNotTheGamesOrSomethingIsUnsaved).
 
 ### 3.3 Handles, scopes and lifetime
 - **`AssetRef<T>`** is a small struct (slot index + generation) pointing at a loaded (or loading) asset. It is **not** ref-counted by itself; copying it is free.

@@ -495,7 +495,7 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | D3 | C# game modules, data mods and trusted C# mods; no sandboxed scripting | Under review (REDESIGN §4.3, §6 item 1) |
 | D4 | Friflo.Engine.ECS behind Sage's own types | Built (#25, SAGE0050) |
 | D5 | BepuPhysics v2 plus own kinematic character controller | Built |
-| D6, D7 | In-engine editor as a separate host mode around a document model; `.map` import until editor brushes | 10a built; brushes #61 |
+| D6, D7 | In-engine editor as a separate host mode around a document model; `.map` import beside editor brushes | 10a and 10b built; brushes #61, terrain tools #372, the editor beside a Shipping game for modders #375 |
 | D8 | Own game UI on `Sage.UI`; ImGui for dev tools only | Built; the legacy stack retired with #350 |
 | D9 | MIT licence | Decided (ARCHITECTURE §8; REDESIGN §6 item 5 predates it) |
 | D10, D11 | Runtime PNG/glTF/WAV loaders, no MGCB; glTF over FBX | Built |
@@ -522,4 +522,4 @@ Detail: [subsystems/02-core-services.md](subsystems/02-core-services.md).
 | Default `AssemblyLoadContext` for game and kit assemblies | Code mods cannot be unloaded or isolated. | 9, #396. |
 | No archive mounts | A game ships as a folder (`sage package`, #293), its mounts copied as folders. | Archive mounts, 9, #397. |
 | ~~Render pass registry cannot replace or disable an engine pass~~ | Retired by #322: `Replace`/`Disable` by id, applied at the seal. | Done (4n, #322). |
-| Dev tools allocate per frame | Frame zero-allocation holds only with the overlay closed. | 10b. |
+| ~~Dev tools allocate per frame~~ | The outliner and log panel allocate nothing per frame since #374; the console window still formats its lines. | Done in 10b. |
