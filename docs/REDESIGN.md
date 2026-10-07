@@ -843,8 +843,12 @@ editor, if one ever exists, is a front end over stages 2–4, never a new runtim
 - **Shaders in mods.** The host compiles `.fx` with mgfxc for any mount in dev builds, and on
   hot reload. The mod SDK ships a `sage build-mod` step that precompiles for packaging.
 - **Tools for modders.** The editor host (§4.6) is **shippable next to a game**. A studio can choose to
-  release it, with its build configuration separate from the dev overlay. Today Shipping contains no
-  tools at all.
+  release it, with its build configuration separate from the dev overlay. Shipping itself contains no
+  tools at all. *As built (#375, 2026-10-07):* `sage package --editor` (or `-p:SagePackageEditor=true`)
+  puts the Development host in `editor/` beside the Shipping one, with `edit.sh` and `edit.cmd`; `ed_mod
+  <id>` saves into that mod only, the game's own levels as placements patches (15 §10x; test:
+  AModderSavesBothTabsIntoTheModAndTheGamesLevelAsAPatch). No Shipping-with-editor configuration was made:
+  the editor beside a game is a full Development host.
 - **Hardening:** zip-slip checks, size limits, and no absolute paths in mounts.
 
 ### 4.5 Saves that survive content and mod changes
@@ -896,16 +900,19 @@ because it edits the live play world (`DevTools.cs:84-87`).
   2. undo (F30);
   3. record forms;
   4. problems panel;
-  5. conditions and actions editor;
-  6. behaviour-tree view;
-  7. asset browser;
-  8. material preview.
+  5. conditions and actions editor (**built**, #370, 15 §10s);
+  6. behaviour-tree view (**built** as the AI graph view over state machines, schedules and routines,
+     #369, 15 §10r; the engine has no behaviour-tree record until 4r's #387);
+  7. asset browser (**built**, #366, 15 §10o);
+  8. material preview (**built**, #366: the material's texture slots and the live world).
 - **Levels are built in this editor, not in TrenchBroom** (decided 2026-09-28, §6 item 8). In the edit
   world: block out rooms with simple brushes (boxes, wedges, cylinders; CSG only where a level needs
   it), place prefabs on them, set per-entity overrides from the metadata forms (§3.4), and wire entity
   I/O by picking source and target. A level is a document like any other, saved as records, so mods
   patch levels the way they patch everything else. The `.map` importer (15 §3) stays until the editor
-  can build what it builds, then becomes an import path for existing maps.
+  can build what it builds, then becomes an import path for existing maps. *As built (#61, 2026-10-07):*
+  boxes, wedges and cylinders are placements of brush prefabs with per-face materials, collision and
+  meshes (15 §10y; test: ARoomOfBrushesIsBuiltSavedAndReloadedWithItsCollidersAndMeshes); no CSG yet.
 - The ImGui overlay stays in dev builds as a **debugger**: console, stats, outliner, `ent_dump`. It's
   not the authoring tool.
 - **Renderer prerequisites:**
@@ -1157,7 +1164,7 @@ Tracked on GitHub: Phase 0 [#2](https://github.com/ZohnHadley/sage-engine/issues
 | Phase | State |
 |---|---|
 | 0 — Clean ground | **Done** (#2, closed): the hygiene list in §4.8 is done (checked for #303), `dev_branch_test` is gone, and the publish smoke test (#6, closed) is CI's package-and-run step (#293, R1). Left for the owner: import the ruleset `.github/rulesets/protect-main.json` |
-| 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred (#49, open, listed under 10b #365), for when an editor hosts a play session: a separate log, user folder and crash reporter per app |
+| 1 — Kernel | **Done.** `SageApp` and `HostLoop` (#10), parallel tests and only the host's app configuring the process log (#11), sealed registration and plugins (#12), world resources owned by their plugins and `CreateRules` (#13), `Sage.Testing` and every test on `HeadlessApp` (#14); a game with no plugins runs in the real host (CI). Deferred to 10b and done there (#49, 2026-10-07): a separate log, user folder and crash reporter per app (`AppEnvironment`, design 02 §3.4) |
 | 2 — Declarations | **Done.** Generated registration for records, saved resources and parts (#16, #17); stable component ids and saves keyed by them with upgraders (#16, #20); declared systems with ids, replace and disable (#17); a metadata table used by the inspector, `ent_dump` and the FGD, and a registry dump `check_docs` reads (#18); analyzers SAGE0001–0042 (#19); strict loading with `RecordRef<T>`, file:line errors and `sage validate` in CI (#22); JSON Schemas for every record, component and part with id enums from the loaded content, written by `sage schema` into a committed `schemas/` that `.vscode/settings.json` maps onto every data file, checked for staleness in CI (#21) |
 | 3 — Carve the base | **Done** (#23). the assembly split (#24, [plan](history/plan-24-assembly-split.md)), engine-owned scenes (#29), decoupled gameplay (#26), the physics facade (#30), the owned ECS API (#25), the RPG kit (#27: `games/Hello` runs on the base alone, `Sandbox` on base plus `Kits.Rpg`), open vocabularies (#28: `[Vocabulary]` registries for AI conditions, schedule selectors, quest objectives, dialogue conditions and actions, ability delivery, effect executions and item uses) and the SDK and templates (#32, §4.8), and public API files, SemVer from git tags and `sage` ranges (#31, [RELEASING](RELEASING.md)), each with an "As built" note |
 | 4a — Cameras as components | **Done** (#75: #76–#81). Cameras are entities with a director, rigs for first and third person with the V toggle, scripted cuts from entity I/O, several views and named render targets, and the editor's free camera and viewport on them; both exit criteria run in the Sandbox with tests |
@@ -1291,6 +1298,20 @@ headlessly: an NPC travels its clip's distance with its root in place (test: AnN
 and a clip plays on a second rig (test: SkeletonMapLetsAModelPlayAnotherRigsClips). Left: what a guard does to a blow
 (4r, #390), atlas packing for sprites, a gradient-band 2D blend; the handoff's §1 lists each issue's follow-ups. Next
 is 10b (#365).
+
+**10b (#365) as of 2026-10-07:** #366–#375, #61 and #49 are built (spec sheet [18](spec/subsystems/18-editor.md),
+design 15 §10o–§10z, [`history/handoff-2026-10-07-10b.md`](history/handoff-2026-10-07-10b.md)): the asset browser
+with a live material preview and asset rename (#366), multi-select, box select, scale and three-axis rotation
+(#367), nested fields, lists and added components in the inspector (#368), the AI graph view (#369), the
+conditions and actions form (#370), every panel drawn in CI (#371), terrain sculpt, paint and water and prefab
+revert-all and nesting (#372), single-quoted console JSON (#373), allocation-free outliner and log panel (#374),
+document tabs and the editor beside a Shipping game for modders (#375), blockout brushes (#61) and a log per app
+(#49). The exit is met headlessly: a room of brushes is built, textured, saved and reloaded with its colliders and
+meshes (test: ARoomOfBrushesIsBuiltSavedAndReloadedWithItsCollidersAndMeshes), a texture picked for a material
+shows at once (test: ATexturePickedForAMaterialShowsInTheGameAtOnceAndIsUndoable) and a state machine is edited
+and saved in place (test: AMovedStateIsSavedInItsNewPlace), all through the editor's commands. Left: CSG and
+vertex editing, mesh thumbnails, water drawn by the client, panel input in CI; the handoff's §1 lists each issue's
+follow-ups. Next is 4f (#376).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,
@@ -1520,7 +1541,7 @@ body position, documented rather than synced. SAGE0127. Details: docs/design/16 
 |---|---|---|
 | **8** | Designer logic polish: AI behaviour trees (§4.3 stage 4), per-entity map keys, problems panel, `sage validate` in templates | a quest with a door, a counter and a custom-BT creature, built with no C# |
 | **9** | **Replanned 2026-10-02 as #395 (#396–#401); see Stage B, part 2.** Full modding (code mods, `.sagemod` packages, namespaced assets, keyed list merge) and save headers (§4.4, §4.5) [F37, F27] | two conflicting example mods (data and code) show the report; saves survive mod changes |
-| **10** | **10a done** (#215: #216–#228, 10-1 to 10-13; pulled forward on the owner's request, 2026-10-01). The `Sage.Editing` model, commands and the command log, file-preserving write-back, the `-edit` mode of the dev host, picking and gizmos, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, the problems panel, and the exit game `tests/games/editor` (10-13); the guide is docs/EDITOR.md. 10b is #365 (#366–#375, with #61 and #49; see Stage B, part 2): brushes, the asset browser, the behaviour-tree view and the conditions editor. Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
+| **10** | **10a done** (#215: #216–#228, 10-1 to 10-13; pulled forward on the owner's request, 2026-10-01). The `Sage.Editing` model, commands and the command log, file-preserving write-back, the `-edit` mode of the dev host, picking and gizmos, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, the problems panel, and the exit game `tests/games/editor` (10-13); the guide is docs/EDITOR.md. **10b done** (#365: #366–#375, with #61 and #49, 2026-10-07; see Stage B, part 2): brushes, the asset browser, multi-select and scale, the nested inspector, the AI graph view, the conditions form, terrain tools, document tabs and the editor for modders. Editor host (§4.6) [F28–F30, D7], on the multi-view renderer from 4a | a designer builds a level (place, tune, wire, undo, play, save) without touching JSON |
 | **gate** | Scripting decision (§4.3 stage 5), informed by what the phase-5 samples needed | a written decision with evidence, replacing or confirming D3 |
 
 **Why this order.**
@@ -1557,6 +1578,8 @@ These are the owner's calls, and the plan works with any answer. My recommendati
      stack.
 3. **Do modders get the editor?**
    - Recommended: yes, as an opt-in release by each game. This changes Shipping packaging.
+   - *Built (#375):* yes, opt-in per package (`sage package --editor`), as the Development host beside
+     the Shipping one.
 4. **ECS ownership.**
    - Recommended: wrap Friflo behind Sage types (§3.5).
    - Alternative: accept Friflo as public API and skip the wrapper work.

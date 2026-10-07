@@ -1,6 +1,6 @@
 # 02 · Core services
 
-> Status: mostly built. Logging, asserts, crash reports, cvars, the console script language, the profiler and the allocation counter work and are tested, and the console has history and Tab completion (#299); the profiler can capture a Chrome trace and the dev overlay shows render and asset statistics (#300); a job system and per-app (rather than per-process) logging are not built. Owning assembly: `Sage.Core`. Design doc: [02 core services and logging](../../design/02-core-services-and-logging.md).
+> Status: mostly built. Logging, asserts, crash reports, cvars, the console script language, the profiler and the allocation counter work and are tested, and the console has history and Tab completion (#299); the profiler can capture a Chrome trace and the dev overlay shows render and asset statistics (#300); each app in a process has its own log, user folder and crash report sections (#49); a job system is not built. Owning assembly: `Sage.Core`. Design doc: [02 core services and logging](../../design/02-core-services-and-logging.md).
 
 ## 1. Purpose and scope
 
@@ -33,6 +33,7 @@ The core cvars and commands are registered by `CoreCVars.Register`, called by `S
 |---|---|---|
 | `Log`, `LogLevel`, `LogField`, `LogEntry` | `src/Sage.Core/Logging/Log.cs` | `Log.Trace/Debug/Info/Warn/Error/Fatal(cat, $"...")`, `Log.Once`, `Log.Every`, `Log.Flush`, `Log.Initialize(LogOptions)`. Trace and Debug are compiled out of Shipping. |
 | `LogCat` | `src/Sage.Core/Logging/LogCat.cs` | A category with a runtime level. Built in: Core, Host, Modules, VFS, Assets, Records, Shaders, Render, Input, World, Events, Physics, Audio, Animation, UI, Streaming, Level, Save, AI, Gameplay, Editor, Mods, Console. Games add their own with `new LogCat("Name")`. |
+| `AppEnvironment`, `Logger` | `src/Sage.Core/AppEnvironment.cs`, `src/Sage.Core/Logging/Logger.cs` | One app's log (`Logger`: sinks, levels, Once and Every keys, duplicate collapse, frame and tick counters), user folder and crash report sections (#49). `AppEnvironment.Current` is ambient and flows into tasks and threads the app starts; `AppEnvironment.Process` is the host's and everything outside an app. The statics `Log`, `LogCat`'s levels, `UserPaths` and `CrashReporter` forward to the current one. |
 | `ILogSink`, `FileLogSink`, `StdoutLogSink`, `RingBufferLogSink` | `src/Sage.Core/Logging/LogSinks.cs` | Where entries go; `Log.AddSink` adds more. |
 | `Assert` | `src/Sage.Core/Diagnostics/Assert.cs` | The three asserts. `SageFatalException` is thrown by `Check` and `Log.Fatal`. |
 | `CrashReporter` | `src/Sage.Core/Diagnostics/CrashReporter.cs` | `Install`, `Write(exception, reason)`, `AddSection(name, provider)`, `LastReportPath`. |
@@ -73,15 +74,15 @@ Core services own no records or components. Formats:
 
 `CVarRegistry.Pump(realDt)` runs once a frame in real time, so a console script that uses `wait` keeps running while the game is paused. That is what makes `+cmd` launch lines and `exec` files usable as automated checks.
 
-`log_level`, `developer`, `log_file_level` and `log_queue_size` configure the process log only for the app that owns it (`SageAppOptions.OwnsProcessLog`); a second app in the same process leaves the log alone (test: AnAppThatDoesNotOwnTheLogLeavesItAlone).
+Each app has its own log (#49). The app that owns the process log (`SageAppOptions.OwnsProcessLog`, the host's) uses `AppEnvironment.Process`; any other app gets `AppEnvironment.CreateForApp()`, a child of the current environment (or, when the current one is another app's, of that app's parent, so two apps side by side do not see each other's lines), with its own sinks, levels, Once and Every keys, duplicate collapse and frame and tick counters, starting at the parent's levels, and every line also reaching the parent's sinks: the editor's log file sees its play session. `SageApp.Create` makes it current until `Dispose`, and every stage method and `World.RunFixed` and `RunFrame` enter it (tests: TwoAppsInOneProcess_LogToSeparateSinks_WithSeparateLevels, EachAppsWorldTicksIntoItsOwnLog_WithItsOwnTickCounter, OnceIsOncePerApp, AnAppsLinesAlsoReachTheLogItWasMadeUnder, TheCurrentAppFlowsIntoTasksItStarts, UserFolderAndCrashSections_ArePerApp). A non-owning app's `developer`, `log_file_level`, `log_keep` and `log_queue_size` configure its own log; only the owner applies their defaults at start, and leaves the process log as the host set it (test: AnAppThatDoesNotOwnTheLogLeavesItAlone). `log_level`, `log_list` and `exec` act on the registry's own app.
 
 ## 7. Threading and memory
 
-`Log` is safe from any thread: producers enqueue, a background writer feeds the sinks. When the queue is over `log_queue_size`, Trace and Debug entries are dropped and counted; Info and above are never dropped and producers never block. A call whose category and level are disabled formats and allocates nothing (test: DisabledLevel_FormatsNothing_EnabledLevel_Writes). The profiler keeps its tables per thread. `CVarRegistry` and the console are main-thread only.
+`Log` is safe from any thread: producers enqueue, and one background writer thread feeds the sinks of every logger. When the queue is over `log_queue_size`, Trace and Debug entries are dropped and counted; Info and above are never dropped and producers never block. A call whose category and level are disabled formats and allocates nothing (test: DisabledLevel_FormatsNothing_EnabledLevel_Writes). The profiler keeps its tables per thread. `CVarRegistry` and the console are main-thread only.
 
 Allocation rule: Fixed and Frame systems, rendering and enabled logging do not allocate in steady state: no LINQ, no per-call lambdas that capture, no boxing, no string building. Measured per thread with `GC.GetAllocatedBytesForCurrentThread`. Tests that assert this run in the `Measurements` collection so nothing else shares the machine (test: SteadyStateTicksAndFrames_DoNotAllocate). A probe names the system that allocated (test: AnAllocationProbe_NamesTheSystemThatAllocated). `mem_warn_bytes` warns after 60 steady frames above a threshold; it defaults to 0 (off) because the dev tools allocate (#374). There is no `mem_lowlatency` GC setting.
 
-Process-wide state (`Log`, `UserPaths`, `CrashReporter`) is static. Tests that change it run in the `ProcessWideState` collection, alone.
+The log, its levels and rate limiter, the user folder and the crash sections are per app (#49); the statics forward to the current app. Left process-wide on purpose: the `LogCat` name registry (a category is the same name in every app), the `AssetPath` interner (immutable strings, safe to share) and the ECS schema (one per process from the loaded assemblies). Tests that change the process's own environment (`AppEnvironment.Process`) or another true global run in the `ProcessWideState` collection, alone; a test's `CaptureSink()` made outside an app gives the test a log of its own.
 
 ## 8. Errors and diagnostics
 
@@ -111,7 +112,7 @@ Not built: a general job system (`JobSystem`), Tracy, and visual-log recording f
 | REQ-CORE-10 | Give systems time only through their context (`TickTime`, `FrameTime`), never the wall clock. | Must | Done | `src/Sage.Core/Time.cs`; test: Clock_RunsWholeTicks_AndCarriesTheRemainder |
 | REQ-CORE-11 | Provide console history and Tab completion for commands, cvars and record ids. | Should | Done (#299): `ConsoleInput`, headless; the ImGui console forwards the keys | test: `History_WalksBackAndForthAndKeepsTheDraft`, `History_IsBounded`, `Tab_CompletesCommandsAndCVars`, `Tab_CompletesCVarValuesAndRecordIds` |
 | REQ-CORE-12 | Provide a visual logger, `stat render`, `stat assets` and a trace export. | Could | Done (#300) | test: TraceDumpWritesAChromeTraceOfEveryThreadThatPerfettoOpens, AFullBufferDropsTheRestAndSaysHowMany, TracingAScopeAllocatesNothing, ABareFileNameGoesInTheLogsFolder, ShapesAreKeptPerTickAndScrubbedBackTo, NothingIsRecordedUntilVlogRecordIsOn, OnlyTheLastVlogTicksAreKept, VlogShowPicksTheCategoriesDrawnAndListed, ARebaseClearsTheHistoryItsPositionsNoLongerMatch, AShapeWithoutTextAllocatesNothing, TheVisualLogKeepsWhatAnAgentSawAndWhereItStood |
-| REQ-CORE-13 | Give each app in a process its own log sinks, user folder and crash report. | Should | Not started | #49 |
+| REQ-CORE-13 | Give each app in a process its own log sinks, user folder and crash report. | Should | Done (#49): `AppEnvironment`, `Logger` | test: TwoAppsInOneProcess_LogToSeparateSinks_WithSeparateLevels, test: UserFolderAndCrashSections_ArePerApp |
 | REQ-CORE-14 | Offer a job system on the thread pool for decoding and generation, with main-thread completion. | Should | Partial: terrain generation on the thread pool with main-thread completion (test: `GenerationOnJobsIsTheSameGroundAsOnTheMainThread`); jobs, loads and uploads are counted (`WorkStats`; test: `ATerrainJobIsCountedAsAJobAndALoadUntilItIsDone`, `UploadsAreCountedInTheFrameTheyHappen`); no general job API | design 02 §4.5 |
 | REQ-CORE-15 | Expose content errors in a shipped game without the editor (`problems` command and badge). | Should | Done (#301): `ContentProblems`; `problems` is in every build, the badge (`ui_problems`) in dev builds' overlay | test: `ProblemsListsTheSameEntriesAsValidate`, `ProblemsListsTheLoadErrorsWithFileAndLine`, `ACleanLoadSaysSo_AndModConflictsAreWarnings` |
 | REQ-CORE-16 | Offer world and per-system time scale, pause and hit-stop. | Should | Done | `src/Sage.Simulation/World/WorldTime.cs`; per system: the world's time, or real time by `RunCondition.Always` (no per-system factor); test: HalfScaleHalvesTimerTweenAndClockProgress, AHitStopFreezesTheWorldForRealSeconds |
@@ -123,7 +124,7 @@ R1, Tooling and the first release (milestone 3):
 - #295 R1-3 Push the v0.1.0 tag and cut a first real release (P1): the API is frozen and the release workflow is in; the tag is the owner's push
 - ~~#300 R1-8 Diagnostics gaps~~ done
 
-Existing: #49 per-app log, user folder and crash reporter (P2).
+~~#49 per-app log, user folder and crash reporter~~ done (phase 10b, 2026-10-07).
 
 ## 11. References
 

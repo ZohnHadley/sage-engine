@@ -108,9 +108,10 @@ Content problems are load errors with file and line, never play-time crashes: a 
 
 ## 10. Open work
 
-Milestone 8, 10b (Editor, part 2):
-- #368 10b-3 Inspector: nested objects, lists, and overrides of components the prefab does not name (P1)
-- #372 10b-7 Terrain tools and prefab revert/nesting (P2)
+Milestone 8, 10b (Editor, part 2), done 2026-10-07 (sheet [18](18-editor.md)):
+- ~~#368 10b-3 Inspector: nested objects, lists, and overrides of components the prefab does not name~~ done: an added component is an ordinary `overrides.components` body, empty at first, which spawning merges at the component's defaults (test: ALightIsAddedToOnePlacedCrateAndASaveKeepsIt)
+- ~~#372 10b-7 Terrain tools and prefab revert/nesting~~ done: `ed_make_prefab` nests placements into a new prefab's `children` (test: MakePrefabNestsPlacementsIntoANewPrefabPlacedWhereTheyStood)
+- #367 10b-2 gave a placement `pitch`, `roll` and `scale`, which a placement's spawn applies everywhere it spawns; a prefab's `children` still have only a yaw (test: AYawOnlyFileLoadsAsBeforeAndPitchRollAndScaleSaveAndLoad)
 
 ## 11. References
 

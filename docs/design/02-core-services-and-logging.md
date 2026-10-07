@@ -58,10 +58,32 @@ Pluggable; each has its own minimum level.
 | Editor log panel | editor only | Filter, search, click-to-select the entity if the entry has an `entity` field |
 | Ring buffer | always | The last 2,000 entries in memory, for crash reports and the console's scroll-back |
 
-The log is one per process, so **only the app that owns it applies these defaults** (issue #11): the
-executable's app sets `SageAppOptions.OwnsProcessLog`, and its `developer`, `log_file_level` and
-`log_queue_size` configure the log. Any other app in the process — a test, a tool, a second app —
-still has those cvars, and setting them leaves the log as the host set it (test: AnAppThatDoesNotOwnTheLogLeavesItAlone).
+**As built (per-app logs, 2026-10-07, issue #49).** The log is one per app, not one per process. An
+`AppEnvironment` (`src/Sage.Core/AppEnvironment.cs`) is one app's `Logger` (`src/Sage.Core/Logging/Logger.cs`:
+sinks, levels, Once and Every keys, duplicate collapse, frame and tick counters), its user folder
+(`GameId`, `UserRoot`, `SetUserFolder`) and its crash report sections (`AddCrashSection`,
+`LastCrashReport`). `AppEnvironment.Current` is ambient: it flows into the tasks and threads the app
+starts. `AppEnvironment.Process` is the process's own, the host's and everything outside an app. The
+statics `Log`, `LogCat.MinLevel` and its kin, `UserPaths` and `CrashReporter` forward to the current
+environment, so no call site changed.
+
+The app that owns the process log (`SageAppOptions.OwnsProcessLog`, issue #11) uses
+`AppEnvironment.Process` and applies these defaults at start. Any other app gets
+`AppEnvironment.CreateForApp()`: a child of the current environment, or, when the current one is another
+app's, of that app's parent, so two apps side by side do not see each other's lines. It starts at its
+parent's levels, has its own sinks, and every line also reaches the parent's sinks, so the editor's log
+file sees its play session. `SageApp.Create` makes it current until `Dispose`, and every stage method and
+`World.RunFixed` and `RunFrame` enter it. A non-owning app's `developer`, `log_file_level`, `log_keep` and
+`log_queue_size` configure its own log; `log_level`, `log_list` and `exec` act on the registry's own app.
+One writer thread serves every logger, which it holds weakly. (tests:
+TwoAppsInOneProcess_LogToSeparateSinks_WithSeparateLevels, EachAppsWorldTicksIntoItsOwnLog_WithItsOwnTickCounter,
+OnceIsOncePerApp, AnAppsLinesAlsoReachTheLogItWasMadeUnder, TheCurrentAppFlowsIntoTasksItStarts,
+UserFolderAndCrashSections_ArePerApp, AnAppThatDoesNotOwnTheLogLeavesItAlone)
+
+Left process-wide on purpose: the `LogCat` name registry (a category is a name, the same in every app), the
+`AssetPath` interner (immutable strings, equal ids for equal paths in every app) and the ECS schema, which
+Friflo builds once per process from the loaded assemblies; a second app loading a game assembly after the
+first world exists is still a limitation.
 
 ## 4. Public API sketch
 
@@ -186,7 +208,12 @@ public sealed class CVarRegistry
     public IEnumerable<string> Complete(string prefix);
 }
 ```
-`ExecSource` is `Code`, `Console`, `Config` or `LaunchArgs`. Cheat and read-only checks apply to every source except `Code`. Paths are plain file paths under `UserPaths.Root` until the VFS exists (migration step 5).
+`ExecSource` is `Code`, `Console`, `Config` or `LaunchArgs`. Cheat and read-only checks apply to every source except `Code`.
+*As built (single quotes, 2026-10-07, issue #373):* a token that starts with a single quote is taken raw up
+to the closing quote, with double quotes, backslashes, `;` and `//` inside it (`\'` is a quote), so a JSON
+argument passes unchanged: `ed_set door loot '{"id":"x"}'`. A lone or unclosed `'` stays literal, double
+quotes behave as before, and `CommandLine.Quote` double-quotes a value that starts with `'` (tests:
+SingleQuotes_TakeAJsonArgumentRaw, SingleQuotes_OldInputsKeepTheirMeaning). Paths are plain file paths under `UserPaths.Root` until the VFS exists (migration step 5).
 Rules:
 - `Cheat` cvars can only change when `sv_cheats 1`.
 - `DevOnly` cvars and commands exist only in dev builds (`Debug`/`Development`); they're not compiled into `Shipping`.

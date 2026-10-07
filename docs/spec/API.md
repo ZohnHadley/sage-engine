@@ -59,7 +59,7 @@ experimental by deleting the attribute, which is not an API change. The full mem
 | Id | Area |
 |---|---|
 | SAGE0120 | The open vocabularies' contracts: `ICondition`, `IAction`, `IItemUse`, `IAbilityDelivery`, `IEffectExecution`, `IAICondition`, `IAIScheduleSelector`, `QuestObjective`, their attributes and contexts |
-| SAGE0121 | Scenes and placements in C#: `SceneRecord`, `Scenes`, `Placement`, `PlacementsRecord` |
+| SAGE0121 | Scenes and placements in C#: `SceneRecord`, `Scenes`, `Placement`, `PlacementsRecord`; editor brushes (#61): `BrushPart`, `BrushShape`, `BrushFace`, `BlockoutBrush` |
 | SAGE0122 | TrenchBroom brush maps: `MapRecord`, `MapLevel`, `BrushGeometry` |
 | SAGE0123 | Cameras as entities, render targets, rigs, blends, scripted cameras |
 | SAGE0124 | Phase 4b logic: `Conditions`, `Vars`, topics, the vocabulary shorthand, easing, timers, tweens, logic entities, state machines, `EntityIO.Fire` with a value |

@@ -37,7 +37,7 @@ Not responsible for: game design, the engine's runtime behaviour, or hosting a f
 | Player | `sdk/Sage.Player` | Host and CLI per configuration, plus engine assemblies a game compiles against |
 | Templates | `sdk/Sage.Templates/content/` | `sage-game` (simulation and client halves), `sage-game-data` (no C#), `sage-game-client` (a client half in a game's `Client/` folder, #297), `sage-mod-data` (`mod.json`, records, `.vscode/` mapping the game's schemas, #297); `sage-mod-code` is #396 |
 | Build props | `build/` | `Sage.Version.props` (MinVer), `Sage.Configurations.props`, `Sage.EngineContent.targets`, `Sage.Kits.targets` |
-| Scripts | `tools/` | `smoke_run.sh`, `check_docs.py` and its tests `test_check_docs.py`, `check_glsl_constants.py` (#318), `pack_sdk.sh`, `migrate_ecs_api.py`, `DaggerfallImport` |
+| Scripts | `tools/` | `smoke_run.sh`, `editor_smoke.sh` (#371), `kit_screens_check.sh`, `check_docs.py` and its tests `test_check_docs.py`, `check_glsl_constants.py` (#318), `pack_sdk.sh`, `migrate_ecs_api.py`, `DaggerfallImport` |
 | CI | `.github/workflows/ci.yml`, `release.yml` | Linux, Windows and drawing jobs (#318); the release workflow runs on a `v*.*.*` tag |
 
 The configurations are Debug, Development and Shipping. Tests run in Debug and Development, not Shipping.
@@ -48,7 +48,9 @@ Projects target `net8.0` and build with the .NET 10 SDK pinned in `global.json`.
 **CLI.** `sage validate <game> [--mods dir ...] [--game-mods] [--mounts dir[=ns] ...] [--engine-content dir]`,
 `sage schema <game> [<game> ...] [--out dir] ...` (also `--client <Sage.Client.dll>`), and `sage mods <game>
 [--mods dir ...]`, and `sage package <game> --out <dir> [--host <dir>] [--config Shipping] [--no-validate] [--no-cook]` (#293:
-the Shipping host with the game beside it in `game/`, its models and textures cooked, then the folder validated).
+the Shipping host with the game beside it in `game/`, its models and textures cooked, then the folder validated;
+`--editor [--editor-host <dir>]` adds a Debug or Development host in `editor/` and the launchers `edit.sh` and `edit.cmd`
+for modders, #375).
 `sage cook <game> [--force] [--clean]` (#302) writes a `<path>.sgmesh` beside each `.glb` and a `<path>.sgtex` beside each `.png`, `.jpg` and
 `.jpeg` in the game's mounts, in place (design 05 §7). `sage new <template> [-o dir] [-n name] [--game <game folder or id>]
 [--dry-run] [<dotnet new options>]` (#297) is `dotnet new` with the short names `game`, `game-data`, `game-client` and
@@ -60,7 +62,7 @@ what follows `--` goes to the host. Exit codes: 0 clean (warnings allowed), 1 co
 return the code of the command they start). The `sage` tool is not yet a dotnet tool (#296).
 
 **SDK switches.** `SageSimulationOnly`, `SageDataOnly`, `SageStrictSaves`, `SageGenerators`, `SageSkipShaders`,
-`SageGameDirectory`, `SagePackageDirectory` (default `bin/package/<config>`), `SageCook` (`false` makes `SagePackage` pass `--no-cook`), and the `<SageKit Include="id" />`
+`SageGameDirectory`, `SagePackageDirectory` (default `bin/package/<config>`), `SageCook` (`false` makes `SagePackage` pass `--no-cook`), `SagePackageEditor` and `SageEditorHostDirectory` (the editor beside the package, #375), and the `<SageKit Include="id" />`
 item. A game folder's project leaves a `Client/*.csproj` project's sources to it and does not check its dll (#297; the `Client/` project's own build checks it, SAGE0111). Tool targets: `SageValidate`, `SagePackage` (`dotnet msbuild -t:SagePackage -p:Configuration=Shipping`, #293),
 `SageCheckHost`, `SageCheckGameManifest`, `SageCompileGameShaders`. `-c Release` is Shipping: it writes
 `bin/Shipping`, so `{config}` and the packed Player's Shipping host agree (#294).
@@ -68,7 +70,8 @@ item. A game folder's project leaves a `Client/*.csproj` project's sources to it
 **Host and tools.** `Sage.Host -game <folder> [-edit] [-dump-registry file] [-mods dirs] [-nomods] [+cmd ...]`
 (the options are read by `HostOptions.cs`, which the tests compile in).
 `tools/smoke_run.sh <host dir> <game dir> [seconds] [allowed category ...]` and its `--dotnet-run`,
-`--packaged <package dir>` (the package's host with no `-game`, #293) and `--sage-run <game dir>` (`sage run`, #297) forms.
+`--packaged <package dir>` (the package's host with no `-game`, #293), `--packaged-editor <package dir>` (its `edit.sh`, #375) and `--sage-run <game dir>` (`sage run`, #297) forms.
+`tools/editor_smoke.sh <host dir> [allowed ...]` (#371) edits `tests/games/editor`'s level in the real host, draws every editor panel (`ed_panel all`) and checks the saved file.
 `python3 tools/check_docs.py --tests <count> [--fix]`, and its own tests, `python3 -m unittest discover -s tools -p 'test_*.py'`. `tools/pack_sdk.sh <feed> [--build]`.
 
 **SAGE diagnostic ranges** (the full table is MAKING_A_GAME §10a):
@@ -156,6 +159,7 @@ AGameNotBuiltInTheConfigurationOrAnOutputFolderInTheWayIsAnErrorThatWritesNothin
 | REQ-TOOL-15 | The dev console shall have history, Tab completion, a frame cap and autoexec. | Could | Done (#299) | test: History_WalksBackAndForthAndKeepsTheDraft, History_IsBounded, Tab_CompletesCommandsAndCVars, Tab_CompletesCVarValuesAndRecordIds, FrameLimiter_WaitsOutTheRestOfTheFrame, Autoexec_RunsAfterConfigAndWinsOverIt, Autoexec_MissingIsNotAnError |
 | REQ-TOOL-16 | Diagnostics shall include a visual logger, render stats, load and job stats and a trace dump. | Could | Done (#300): `trace_start`/`trace_dump`, `stat render`, `stat assets`, `WorkStats`, `world.VisualLog()` and the `vlog_*` commands (sheet 02) | test: TraceDumpWritesAChromeTraceOfEveryThreadThatPerfettoOpens, ATerrainJobIsCountedAsAJobAndALoadUntilItIsDone, UploadsAreCountedInTheFrameTheyHappen, ShapesAreKeptPerTickAndScrubbedBackTo, TheVisualLogKeepsWhatAnAgentSawAndWhereItStood |
 | REQ-TOOL-17 | Shipping content shall be cooked into engine formats. | Could | Done (#302): `sage cook`, run by `sage package` | test: CookWritesACookedFileBesideEveryModelAndTextureAndSkipsWhatIsUpToDate, APackagesModelsAndTexturesAreCookedBesideTheLooseFilesUnlessCookIsOff, CookedAssetsLoadFasterWithLessAllocationAndTexturesTakeLessMemory |
+| REQ-TOOL-18 | A game shall be packaged with the editor beside it for modders, without changing the Shipping host. | Could | Done (#375): the Development host in `editor/`; CI packages the template game with it on Linux and opens it | test: WithTheEditorAPackageHasADevelopmentHostInEditorAndLaunchersOnTheSameGame, AnEditorHostWithoutTheEditorOrTheGamesOwnHostIsRefused |
 
 ## 10. Open work
 

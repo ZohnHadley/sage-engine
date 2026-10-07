@@ -95,7 +95,7 @@ developer tools.
 - Games are single-player first. Multiplayer is later, but the readiness rules in ARCHITECTURE §4.9 hold
   (fixed tick, commands as input, no client-only state in the simulation).
 - Content is authored as JSON (JSONC accepted), glTF binary models, PNG/JPG textures, WAV sounds and
-  `.map` brush levels until the editor's brushes replace them.
+  `.map` brush levels, which the editor's blockout brushes (#61) now stand beside.
 
 ## 3. Goals and success criteria
 
@@ -128,7 +128,7 @@ developer's machine, and the zero-allocation rules are the hard requirements.
 |---|---|---|---|
 | REQ-PERF-01 | The simulation shall run at a fixed tick, 60 Hz by default (`sim_tickrate`), with interpolated rendering and a catch-up cap (`sim_maxframetime`). | Must | Done |
 | REQ-PERF-02 | A steady-state tick of the core systems (ECS, logic, animation, combat, AI think) shall allocate nothing on the managed heap. | Must | Done for the systems with Measurements tests, the physics step included since #273 (test: ASteadyStateStepAllocatesNothingOnAnyThread) |
-| REQ-PERF-03 | A frame shall allocate nothing in steady state with the developer overlay closed. | Must | Partial (dev tools allocate; 10b) |
+| REQ-PERF-03 | A frame shall allocate nothing in steady state with the developer overlay closed. | Must | Done; with it open, the outliner and log panel allocate nothing either since #374 (test: OutlinerAndLogPanelFramesAllocateNothingOnceTheirTextExists), and the console window still formats its lines |
 | REQ-PERF-04 | The Sandbox shall hold 60 frames per second with 2,000 entities, and a tick shall use under a quarter of its budget at that size. | Must | Done for the tick (scale review 2026-09-24: 0.76 ms of 16.67 ms) |
 | REQ-PERF-05 | Crossing a streaming sector edge shall not stall a frame beyond the frame budget. | Must | Done (generation on jobs, one sector a tick, collision four chunks a tick; #277; test: `AFarRingFourSectorsOutCostsABoundedTickAndCrossingEdgesDoesNotSpike`) |
 | REQ-PERF-06 | GPU texture and mesh memory shall return to baseline after the content that used them unloads. | Must | Done for meshes and textures (#277, #308; test: `LoadingAndUnloadingFiftySectorsReturnsTextureAndMeshCountsToBaseline`); sounds and effects are the game's and stay for the process |
@@ -188,7 +188,7 @@ summary and the traceability index.
 | Models and animation | glTF binary (`.glb`) with skins, clips and morph targets | [07](subsystems/07-rendering.md), [10](subsystems/10-animation.md) |
 | Textures, sound | PNG/JPG; WAV (OGG planned) | [06](subsystems/06-assets-and-content.md), [11](subsystems/11-audio.md) |
 | Shaders | HLSL `.fx` compiled to `.mgfxo` | [07](subsystems/07-rendering.md) |
-| Brush levels | Quake `.map` (TrenchBroom) import, until editor brushes (#61) | [18](subsystems/18-editor.md) |
+| Brush levels | Quake `.map` (TrenchBroom) import, beside the editor's blockout brushes (#61, placements of `brush` prefabs) | [18](subsystems/18-editor.md) |
 | Saves | JSON save format 4 with stable ids, mod list and upgraders | [15](subsystems/15-saves.md) |
 | Command line | `Sage.Host -game <folder> [-edit level] [+cmd ...]`, `sage validate|schema|mods` | [20](subsystems/20-tooling-and-release.md) |
 | User folder | `user://` (config, saves, mods.json, logs, crash reports) | [02](subsystems/02-core-services.md) |
@@ -211,7 +211,7 @@ These are the owner's (REDESIGN §6). The plan works with any answer; each has a
 | Distribution: a NuGet feed and templates, or source only | R1 |
 | Licence (still CC0; MIT or Apache recommended) | Anyone building on the engine |
 | Scripting language, decided on evidence after the phase-5 samples | Phase 9, the scripting gate |
-| Whether modders get the editor in shipped games | 10b, phase 9 |
+| ~~Whether modders get the editor in shipped games~~ Decided in 10b (#375): opt-in per package, `sage package --editor` | done |
 
 ## 11. Traceability to the plan
 
@@ -225,7 +225,7 @@ These are the owner's (REDESIGN §6). The plan works with any answer; each has a
 | 4o | Audio and input | 11, 12 |
 | 4q | Game UI and menus | 13 |
 | 4p | Animation | 10 |
-| 10b | Editor, part 2 | 18 |
+| 10b | Editor, part 2 (done) | 18 |
 | 4f | RPG progression and economy | 16, 17 |
 | 4r | AI, combat and narrative depth | 09, 16 |
 | 9 | Code mods and packaging | 19 |

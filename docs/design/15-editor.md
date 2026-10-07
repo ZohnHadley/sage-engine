@@ -17,12 +17,15 @@ The Sage editor is a **separate host** (`Sage.Editor` exe) that loads the same e
   - outliner (spaces → sectors → entities);
   - inspector (generated metadata, 09 §3.2: typed editors, ranges, categories, prefab-override highlighting, "revert to prefab");
   - record browser/editor (form view + raw JSON, showing which mod/file each field came from, 05);
-  - asset browser (VFS with mount/override info);
+  - asset browser (VFS with mount/override info; **built**, #366, §10o);
   - log panel (02);
   - console;
   - I/O link view (04).
 - **Gizmos:** translate/rotate/scale with grid and angle snapping. Picking by physics raycast (10) with a render-bounds fallback.
 - **Play-in-editor:** serialize the edit world → build a fresh play world → possess a player pawn → run → **Stop** discards the play world (edits made during play are not kept, as in Unity/UE).
+- **The editor for modders** is not a separate executable (#375, §10x): `sage package --editor` puts the
+  Development host, which has the editor, in an `editor/` folder beside a Shipping game, with `edit.sh` and
+  `edit.cmd` to open it on that game.
 - **External tools:**
   - export a **TrenchBroom FGD** generated from the game's prefabs (**done**, F16);
   - import `.map` brush geometry as meshes + colliders (**done**, F16 — see "As built" below);
@@ -458,8 +461,8 @@ console; `ViewportGizmo` (`src/Sage.Editor/Screens/`) only reads the mouse and d
   top of the picture sets the gizmo and the snapping too. The outliner's Delete on a placed entity is
   `ed_delete` now, so it is undoable and saved, rather than destroying the entity behind the document.
 
-**Not built:** multi-select and box select; local-space gizmos and rotation about X and Z (a placement
-has only a yaw); scaling; a gizmo for an entity the document did not place (it is marked, not movable).
+**Not built:** a gizmo for an entity the document did not place (it is marked, not movable). Multi-select,
+box select, local-space gizmos, rotation about X and Z and scaling came with #367 (§10p).
 
 ## 10i. As built: the inspector on the document (#223, 2026-10-01)
 
@@ -513,9 +516,8 @@ tested; `EntityInspectorWindow` only draws it.
   tweaking a running game still can; the choice keeps the dev tools of a play run what they were.
   (test: AnEntityTheDocumentDidNotPlaceIsReadOnly)
 
-**Not built:** nested object fields of a component (an `Object` row is shown, not edited; `ed_set` takes
-a whole object as JSON), list editing in the panel, and overriding a component the prefab does not name.
-A JSON value with double quotes cannot pass the console's tokenizer; the panel has no such limit.
+Nested object fields, list editing in the panel and overriding a component the prefab does not name came
+with #368 (§10q); a JSON value with double quotes passes the console in single quotes since #373 (§10v).
 
 ## 10j. As built: the record browser and forms (#224, 2026-10-01)
 
@@ -691,10 +693,336 @@ copy of the game in a temporary folder, with the same command sets DevTools regi
   a smoke run of the host with `-edit level` on it that places, overrides, wires, undoes and redoes, plays
   for a second, stops and lists the problems, without saving; the Sandbox's `-edit yard` run stays.
 
+## 10o. As built: the asset browser and material preview (#366, 2026-10-07)
+
+Models, textures and sounds were named by typing a path into a record. The **Assets** panel
+(`src/Sage.Editor/Tools/AssetsPanel.cs`, a tab beside Log and Problems) lists them; what it shows and does
+is `Sage.Editing`'s `AssetBrowser`, `AssetPicking`, `AssetReferences` and `AssetRename`, headless and tested.
+
+- **The listing.** `AssetBrowser` lists every asset in the VFS by kind (`AssetKinds`: texture, mesh, sound,
+  map, font, shader), with the mount that provides it, a mod by its id, and the mounts it shadows; it filters
+  by kind, by mount and by search words. A texture has a thumbnail; a selected asset shows its mount, what it
+  shadows, its size, a large preview, Play for a sound, "Place in the document", "Find references" and
+  Rename. (test: TheBrowserListsAssetsByKindMountAndModWithWhatEachShadows)
+- **Picking.** An asset dragged onto an inspector field marked `[AssetKind]` is a `SetOverride`, undone with
+  `ed_undo`; onto a Records-panel string field that names an asset, a record edit; onto a slot of the
+  Records panel's **Material preview** strip (`AssetPicking.Slots`: albedo `params.Albedo`, normalMap,
+  specularMap, emissiveMap, environmentMap, effect), the material's field. Dropped in the viewport it is
+  placed: the first prefab whose record names it (`AssetPicking.PrefabFor`), else the engine's
+  `sage:static_mesh` (a bare `mesh_renderer`, `engine_content/data/editor.json`) with the model as a
+  `mesh_renderer.mesh` override; one undo step. (test: AModelPickedIntoAPlacementsFieldIsAnOverrideAndDropsInTheViewportPlaceIt)
+- **The records panel is live.** `RecordEditor.Live` (on by default) shows every edit, undo and redo of the
+  open record in the game before a save, through `RecordStore.Preview(type, id, fields, out error)` and its
+  `Previewed` event; the renderer drops its cached materials when a `material` is previewed, so a texture
+  picked for a material is on the wall at once. Closing unsaved puts back what the files say
+  (`RecordDocument.Revert`); a preview that does not build leaves the record as it was, with the reason in
+  `RecordDocument.PreviewError`. (tests: ATexturePickedForAMaterialShowsInTheGameAtOnceAndIsUndoable,
+  APreviewThatDoesNotBuildLeavesTheRecordAsItWasAndAReloadTakesAPreviewBack)
+- **Rename** (05 §3.2). `AssetRename.Plan` and `Apply` move the file, and its cooked `.sgtex` or `.sgmesh`,
+  inside the game's own folder, rewrite every quoted occurrence of the path in the game's `.json` and `.map`
+  files (comments and layout kept), reload the records and reopen the open document and record. It is
+  refused when the asset is the engine's, a kit's or a mod's, when the new path is taken or changes the
+  extension, when a file outside the game's folder names the asset, or when an open document or record has
+  unsaved edits. It is not on an undo history; renaming back is the undo.
+  (tests: RenamingAnAssetMovesItAndItsCookedFileAndRewritesWhatNamesIt,
+  ARenameIsRefusedWhenTheAssetOrAReferenceIsNotTheGamesOrSomethingIsUnsaved)
+- **Console**: `ed_assets`, `ed_asset_refs`, `ed_asset_pick`, `ed_asset_place`, `ed_asset_rename` and
+  `ed_rec_live` (`AssetCommands`). (test: TheConsoleListsPicksPlacesAndRenamesAssets)
+
+**Not built:** mesh thumbnails (a model shows a labelled box; only textures have pictures) and a rendered
+material ball (the preview is the material's texture slots plus the live world).
+
+## 10p. As built: multi-select, box select, scale and three-axis rotation (#367, 2026-10-07)
+
+- **The placement record** gains `pitch` and `roll` (degrees, applied as `Quaternion.CreateFromYawPitchRoll`:
+  roll about the thing's -Z first, then pitch about X, then yaw) and `scale` (a vector, default `[1, 1, 1]`;
+  every axis must be above zero, a content error otherwise). There is no version bump: all three default to
+  what a yaw-only placement meant, so old files load unchanged, and a save leaves them out at 0, 0 and
+  `[1, 1, 1]`, so a yaw-only placement is written as before. They apply wherever a placement spawns
+  (placements documents, a scene's `place` and player, streamed sectors), and a placement's scale multiplies
+  the prefab's own Transform scale. `PlacementExtensions.PlacementRotation` builds the rotation;
+  `SageMath.YawPitchRollOf` takes yaw, pitch and roll back out of one (at ±90° of pitch it is all yaw), and
+  `ReadPlacements` reads all three back. (tests: AYawOnlyFileLoadsAsBeforeAndPitchRollAndScaleSaveAndLoad,
+  AScaleOfZeroIsAContentErrorAndTheInspectorRefusesIt, AFullRotationComesBackAsTheYawPitchAndRollThatMadeIt)
+- **The selection is several placements.** `EditorSelection.Placements` is in pick order; the last one is
+  `Placement`, the one the inspector and the gizmo show. `Select`, `Add`, `Toggle`, `Contains`, `PlacedOf`
+  and `SelectPlaced(entity, toggle)` change it; what leaves the document leaves the selection. Ctrl+click in
+  the viewport or the outliner toggles. (test: SelectingSeveralTogglesAddsAndDropsWhatLeavesTheDocument)
+- **Box select.** A drag on empty picture draws a rectangle; on release `EditorPicking.PlacementsInBox`
+  selects the placements the camera draws inside it (Ctrl or Shift adds). (test: ABoxSelectsWhatTheCameraDrawsInsideIt)
+- **Gizmos.** `GizmoMode.Scale` (T) is axis boxes and a centre handle (`GizmoHandle.All`); the factor is how
+  much further from the centre the pointer is, snapped to `ScaleStep` (0.1 by default, never below 0.01).
+  The rotate gizmo has three rings, X, Y and Z. `GizmoSpace` is World or Local (L, the toolbar,
+  `ed_space`): in local space the move and rotate gizmos follow the placement's own axes, and a local-space
+  move snaps the distance moved to the grid. Scale is always local. (test: LocalSpaceTurnsTheMoveGizmoWithThePlacement)
+- **Group edits are one undo step each.** `SetPlacements` (merged over a drag) and `CommandGroup` (a delete
+  or duplicate of several); `ViewportTools.MoveBy`, `RotateBy`, `ScaleBy`, `Delete` and `Duplicate` take a
+  list. A group turns and scales about the last-selected placement, where the gizmo is. A yaw-only placement
+  turned about the vertical keeps an exact yaw. `PlacementFields` gains `Pitch`, `Roll`, `Scale`, `Rotation`
+  and `WithRotation`. (tests: AGroupDragOfTheRingsAndTheScaleGizmoIsOneUndoStepEach,
+  TenCratesTurnAndScaleTogetherAndUndoPutsEveryOneBack: ten crates turned, tipped and scaled, and three undos
+  put every one back)
+- **Console**: `ed_select_add`, `ed_select_all`, `ed_nudge`, `ed_turn`, `ed_scale`, `ed_space`,
+  `ed_scalestep`; `ed_gizmo scale`; `ed_delete` and `ed_duplicate` with no name act on the whole selection;
+  `ed_set` takes `pitch`, `roll` and `scale`. The inspector's placement form has all three.
+
+**Not built:** far proxies and a travel `SceneEntry` still use only the yaw; a prefab's `children` still
+have only a yaw; physics colliders are not scaled by a placement's scale (the transform is); a `.map`
+entity's pitch and roll are unchanged.
+
+## 10q. As built: nested fields, lists and added components in the inspector (#368, 2026-10-07)
+
+- **Lists, maps and nested objects are rows under their field** (`InspectorRow.Children`, `Parent`, `Top`,
+  `Name`, `Index`, `Key`), with paths like `inventory.items[1].count` that `InspectorModel.Find` takes. An
+  edit of a row inside a field rewrites the whole top-level field with the change made in it: one
+  `SetOverride`, so a drag over a nested number merges into one undo step, and reverting a nested row
+  reverts the field. (tests: AnNpcsInventoryListIsEditedRowByRowAndASaveKeepsIt,
+  ANestedDragIsOneUndoAndBadListEditsChangeNothing)
+- **Add, remove and reorder.** `InspectorModel.AddItem` (the element type's default, or a value; a map's
+  entry needs a key), `RemoveItem` and `MoveItem`, each its own undo step. The panel draws a tree node per
+  list, map or object, up and down arrows and `x` per element, and `+ add` at the end (for a map, a key box
+  and add). (test: AnNpcsInventoryListIsEditedRowByRowAndASaveKeepsIt)
+- **A component the prefab does not name, added to one placement.** `InspectorModel.AddableComponents()`
+  offers the registered components the entity lacks (not Transform, not `[Transient]` ones);
+  `AddComponent(id)` writes an empty body, `overrides.components["sage:point_light"] = {}`, through the new
+  `SetOverrideBody` command, which spawning merges as the component at its defaults. Its group is
+  `InspectorGroup.AddedByPlacement`, noted "added by this placement", and its fields are editable;
+  `ClearOverride` keeps the empty body, so reverting its last field does not remove it; `RemoveComponent`
+  takes it off with its overrides. Removing one of the prefab's own components is refused, and so is adding
+  one the entity already has (a part's). The panel has an "Add component..." combo at the bottom and a
+  "remove" button in an added group's header. (test: ALightIsAddedToOnePlacedCrateAndASaveKeepsIt)
+- **Console**: `ed_add`, `ed_remove`, `ed_reorder`, `ed_add_component`, `ed_remove_component`; `ed_set`
+  takes a nested path; `ed_inspect` prints a list's elements and their fields indented under it
+  (`inventory.items = [3] *`, `inventory.items[0].count = 7`). (test: ANestedDragIsOneUndoAndBadListEditsChangeNothing)
+
+## 10r. As built: the AI graph view (#369, 2026-10-07)
+
+The engine has no behaviour-tree record: its AI graphs are state machines, schedules and routines, so that
+is what the view shows. `AIGraph` (`src/Sage.Editing/AIGraph.cs`) is the headless model, `AIGraphCommands`
+its console, and the **AI Graph** panel (`src/Sage.Editor/Tools/AIGraphPanel.cs`, a tab beside the
+inspector) draws it. It reads the record open in the Records panel (`RecordEditor.Current`) when that is a
+`state_machine` (a tree of states, nested and parallel, transitions as edges, the machine's own transitions
+under "(any)"), an `ai_schedule` (a list of tasks) or a `routine` (a list of entries).
+
+- **Edits are commands in the record document's own history** (`ed_rec_undo`, the Records panel's Undo):
+  add, remove, move among siblings, reparent (state machines only), rename. Renaming a state renames every
+  `to` and `initial` naming it; a state added to an empty machine, or under a plain state, becomes its
+  `initial`; removing a state drops the transitions to it and moves an `initial` that named it.
+  (tests: AStateIsAddedAndMovedAndBothAreUndone, AStateIsReparentedRenamedAndRemovedKeepingTheMachineLoadable,
+  AScheduleIsAListOfTasksEditedWithUndoAndTheTaskAnAgentIsOnIsActive)
+- **Live highlight.** `AIGraph.Runners(world)` and `Active(world, entity)` give every state a machine is in
+  (outer, inner and parallel regions) and the task an agent's `sage:ai_state` is on, read through the component ids
+  `sage:state_machine`, `sage:ai_state` and `sage:routine` and their declared fields, so `Sage.Editing` does
+  not reference the gameplay assembly. The panel watches the play world while playing, else the edit world;
+  the first runner is shown, and a picker chooses another. A routine has no live node (the entry in force is
+  the gameplay clock's arithmetic). (test: WhilePlayingTheViewShowsTheStatesTheGuardIsIn)
+- **Saving a move.** `JsonFileEdit.PatchRecord` now writes an object whole, in its new order, when its keys
+  were reordered or a new key was put before an existing one, so a moved state is saved in its new place in
+  the record's own file. A patch-file save still cannot reorder: objects merge. (test: AMovedStateIsSavedInItsNewPlace)
+- **Console**: `ed_ai_tree`, `ed_ai_add`, `ed_ai_remove`, `ed_ai_move`, `ed_ai_reparent`, `ed_ai_rename`,
+  `ed_ai_active`; a node is a state's name, a path, or a list index (`2` or `#2`).
+  (test: TheConsoleAddsMovesAndUndoesANodeOfTheOpenRecord)
+
+## 10s. As built: the conditions and actions form (#370, 2026-10-07)
+
+A wire's `requires` and a dialogue option's conditions were typed as JSON. The **Conditions** panel
+(`src/Sage.Editor/Tools/VocabularyPanel.cs`, a tab beside the inspector) is a form over any open
+vocabulary (04, 16 §3), opened from the I/O panel's per-wire **requires** button and from the Records
+panel's `<field>...` buttons, which appear on every object for each field that holds conditions, actions or
+any vocabulary entry, written yet or not. The model is `VocabularyCatalog`, `VocabularyForm` and
+`VocabularyEditor` in `Sage.Editing`.
+
+- **The catalog** lists a vocabulary's registered entries with their declared settings: field metadata,
+  `[EntryValue]`, record type, range, default and a nested vocabulary. (test: TheCatalogListsAVocabularysEntriesWithTheirDeclaredSettings)
+- **The form.** Each entry is a searchable picker of the vocabulary's ids (owner shown, settings as a
+  tooltip); each setting is a widget by its metadata (a bool a checkbox, an enum a combo, a record id a
+  combo of that record type, else text read by its kind with range checks); `reset` takes a setting back to
+  its default; a nested setting (`all`, `any` and `not`'s `of`) gets rows of its own and a `+ of` picker; `x`
+  removes an entry. Edits write the long form (`{ "condition": "has_item", "item": "key_iron" }`);
+  shorthand and bare ids are read as it.
+- **One undo step per edit** in the owner's history: the record's (`ed_rec_undo`), or the placements
+  document's for a wire (`ed_undo`, a `SetOutputs`). A wire's `requires` is held as the object the game
+  reads, so a value the reader refuses is refused by the form. (tests: AWiresRequiresIsAuthoredFromTheFormEachEditOneUndo,
+  ADialogueConditionIsAuthoredSavedAndReadByTheGame)
+- **Live checks**: an unknown id (with a did-you-mean), a setting the entry does not declare, a record that
+  does not exist, a number outside the field's Min and Max, an enum name that is not a member, then whatever
+  the game's reader refuses. The problems panel lists the open form's problems live (`IProblemSource`,
+  `ProblemList.Add`) and checks every wire's `requires` in the open document always. (tests:
+  TheFormRefusesWhatTheEntryDoesNotDeclare, ShorthandAndBareIdsReadAsTheLongFormAndProblemsReachTheProblemsPanel)
+- **Console**: `ed_vocab`, `ed_vocab_rec`, `ed_vocab_wire`, `ed_vocab_show`, `ed_vocab_pick`,
+  `ed_vocab_add`, `ed_vocab_param`, `ed_vocab_remove`, `ed_vocab_close`; the form closes with its record.
+  (test: TheConsolePressesEveryButtonOfTheForm)
+
+## 10t. As built: every panel drawn in the real host (#371, 2026-10-07)
+
+The ImGui panels had no tests; the smoke run only opened the editor. Now **every panel is drawn in front in
+the real host by CI**: `ed_panel all` (`PanelTour` in `Sage.Editing`) brings each panel listed by
+`DevTools.ListPanels()` to the front in turn for three frames, opening the ones behind a cvar or toggle
+first (Console, Viewport, Visual log), and logs `ed_panel: <title> (i/n)` for each. A panel that throws
+crashes the host and fails CI (checked by a probe throw in a hidden docked panel: the old run passed, the
+new one failed). `tools/editor_smoke.sh` runs `-edit level` on a copy of `tests/games/editor`, places a
+plate, a door and a crate, undoes the crate, overrides the door's `mover.seconds`, wires the plate to the
+door, tours the panels, plays, stops and saves, then checks the saved file (exactly the plate and the door,
+the override, the wire, the hand-written comment kept); the Sandbox's `-edit yard` smoke run also ends
+with the tour. The status bar's text is `EditorStatus.Line`, headless now.
+(tests: AllBringsEveryPanelForwardInTurnOpeningEachOnItsTurn, OnePanelIsNamedByItsTitleOrItsUniqueStart,
+ANewRequestReplacesTheRestAndTitlesAreListedOnce, TheCommandShowsPanelsOnlyInTheEditor,
+TheStatusLineSaysTheDocumentTheSelectionTheWorldAndTheCamera)
+
+A new panel adds one line to `DevTools.ListPanels()` (and its dock line in `EditorLayout.BuildDefault`),
+and CI then draws it. **Not built:** a panel's input handling (clicks and drags) is not driven; only each
+panel's Draw, with the state the script set up.
+
+## 10u. As built: terrain tools, revert all and nesting (#372, 2026-10-07)
+
+- **Sculpt in the base engine** (`TerrainSculpt`, `SculptSector`, `src/Sage.Simulation/World/TerrainSculpt.cs`,
+  SAGE0129): per sector, height offsets over the generator (129 by 129), paint (a byte per vertex for each of
+  layers 0 to 3, laid over the `terrain_material`'s rule weights; a cell's surface layer is a layer painted
+  at least half) and a water surface (absolute metres). It is saved as a deflated `.sterrain` file. The
+  `terrain` record's new `sculpt` field names it; empty means `terrain/<record name>.sterrain` if there is
+  one; a named file that is missing or unreadable is a logged error, and the ground is the generator's
+  alone. Every generation applies the sculpt (the main thread, jobs and the far ring's coarse copies) from an
+  immutable snapshot, and edge normals read the neighbours' sculpt, so there is no seam. `Terrain.Refresh`
+  rebuilds only what carries the new `sage:terrain_built` tag (chunk meshes, collision chunks, sculpt
+  water); the system `sage.streaming.terrain_water` places a `water_volume` over a sector with water.
+  (tests: AHillOnASectorEdgeHasNoSeam, TheSculptFileRoundTripsAndOneThatIsNotASculptIsRefused)
+- **The editor's model.** `TerrainDocument` has its own undo history; a stroke (`BeginStroke`, `Dab`,
+  `EndStroke`) is one undo step; tools are Raise, Lower, Smooth, Flatten and Paint; `SetWater` sets a
+  sector's water; `Save` writes the `.sterrain` into the mount its file is in, else the terrain record's
+  namespace's mount. The **Terrain** panel (beside the outliner) has the tool, radius, strength, layer,
+  flatten height, the camera sector's water, undo, redo and save; armed, a left drag in the viewport is one
+  stroke. (tests: ASculptedHillAPaintedPathAndALakeAreSavedAndTheStreamedWorldShowsThem,
+  AStrokeOfManyDabsIsOneUndoStepAndRedoPutsItBack, LowerFlattenAndSmoothMoveTheGroundTowardTheirTargets)
+- **Console**: `ed_terrain`, `ed_sculpt`, `ed_paint`, `ed_water`, `ed_terrain_save`, `ed_terrain_undo`,
+  `ed_terrain_redo`, `ed_terrain_history`. (test: TheConsoleSculptsPaintsSetsWaterUndoesAndSaves)
+- **Revert all** (REDESIGN F31's "revert to prefab"): `RevertPlacement`, `PrefabCommands.RevertAll`,
+  `ed_revert_all` and the inspector's "revert all" button take every override of a placement away as one
+  undo step. (test: RevertAllTakesEveryOverrideAwayAsOneUndoStep)
+- **Nesting.** `PrefabCommands.MakePrefab` (`ed_make_prefab <id> [placement...]`, the selection when none
+  is named) nests placements into a new prefab's `children`, writes it to `data/<name>.json` in the game's
+  mount, adds it to the store and places it where the first stood, as one undo step. It refuses a pitch,
+  roll or scale, mixed frames, and wires from or to the placements. (tests: MakePrefabNestsPlacementsIntoANewPrefabPlacedWhereTheyStood,
+  MakePrefabRefusesWiredPlacements)
+
+**Not built:** the client does not draw water volumes (physics and swimming only); far-ring coarse copies
+already loaded keep their old ground until they are generated again; paint shows only with a
+`terrain_material`.
+
+## 10v. As built: single-quoted console arguments (#373, 2026-10-07)
+
+A JSON value with double quotes could not pass the console's tokenizer. A token that starts with a single
+quote is now taken raw up to the closing quote: double quotes, backslashes, `;` and `//` included, and `\'`
+is a quote. A lone or unclosed `'` stays literal, and double quotes behave as before; `CommandLine.Quote`
+double-quotes a value that starts with `'`. So `ed_set door loot '{"id":"x"}'` and
+`ed_add trader inventory.items '{"item":"sandbox:knife","count":4}'` work.
+(tests: SingleQuotes_TakeAJsonArgumentRaw, SingleQuotes_OldInputsKeepTheirMeaning,
+AQuotedJsonObjectIsAnElementOrAWholeValueFromTheConsole)
+
+## 10w. As built: dev panels that do not allocate per frame (#374, 2026-10-07)
+
+The outliner built a label per entity per frame and the log panel formatted every line each frame.
+`EntityLabelCache` (`Label`, `Prune`, `Count`) builds an entity's label once and again only when its name
+changes, and `LogView.Texts` keeps one formatted string per shown line, parallel to `Lines`. The outliner
+and the log panel draw them through `ImGuiListClipper` (the outliner clips only while no row is expanded,
+since rows then differ in height). The console window still formats its lines; it was not in scope. The
+clipper itself is checked only by the smoke run. (tests: OutlinerAndLogPanelFramesAllocateNothingOnceTheirTextExists,
+OutlinerLabelsAreBuiltOnceAndRebuiltOnlyWhenTheNameChanges, LogLinesAreFormattedOnceAsTheRingSlides)
+
+## 10x. As built: document tabs, and the editor for modders (#375, 2026-10-07)
+
+- **Tabs.** `EditorWorkspace` holds several placements documents, each in an edit world of its own
+  (`Engine.CreateEditWorld`, placed with the scene that names the document, else the start scene) with its
+  own undo history. One tab is active: `doc_*`, `ed_undo` and `ed_redo` and the tools act on it, and its
+  world is `Renderer.ScreenWorld`. The first tab is the host's `-edit` world, never destroyed (closing it
+  closes its document); later tabs make and destroy their own worlds. Opening a document that is open
+  switches to its tab; an empty active tab in the same scene is reused; closing a tab with unsaved changes is
+  refused unless forced. The free camera keeps its pose per tab, and switching tabs while playing stops play
+  first. The ImGui strip across the top of the dock space (`DocumentTabs`) has an unsaved dot, close buttons
+  and a "+" popup (open in a new tab, a new document, the "Save into" target). (tests:
+  EachTabIsADocumentInAWorldOfItsOwnWithItsOwnUndo, TheTabCommandsOpenSwitchListCloseAndPickTheMod)
+- **Saving into a mod.** With `ed_mod <id>` (a loaded mod) the mod's folder is the only one written
+  (`EditDocument.Target`, `SavesAsPatch`, `SavedTo`): a document defined in the mod saves in place; a new
+  document is made in the mod's namespace and file; a document defined elsewhere, such as the shipped game's
+  level, is not written but saved as a `"patch": true` placements record in
+  `<mod>/data/patches/placements_<ns>_<name>.json` (the whole `place` list, with `origin` and `relativeTo`
+  and ids in full), changed in place by later saves; a new document in another namespace is refused. The
+  title and the tab say "(patch)". Record ids inside a patched placement's overrides are written in full with
+  the prefab's namespace (`OverrideIds`, found through the generated metadata). With no target, saving is as
+  before. An existing record is now saved into the file of the mount that defined it (`RecordStore.MountOf`),
+  not the first mount with a file of that name. (tests: AModderSavesBothTabsIntoTheModAndTheGamesLevelAsAPatch,
+  WithoutAModTargetTheGamesLevelSavesInPlaceAsBefore,
+  WhileModdingANewDocumentIsTheModsAndOneOfTheGamesNamespaceIsNotSaved,
+  AnOverridesBareRecordIdSavedAsAModPatchStillNamesTheGamesRecord)
+- **The editor beside a Shipping game.** `sage package <game> --out <dir> --editor [--editor-host <dir>]`,
+  or `Sage.Sdk`'s `-p:SagePackageEditor=true` (`SageEditorHostDirectory`), keeps the Shipping host at the
+  top of the package and adds a Debug or Development host in `editor/` (without the `sage` CLI) with
+  `edit.sh` and `edit.cmd`, which run `editor/Sage.Host -game game -edit` with the arguments given. A modder
+  runs `./edit.sh [level] +ed_mod <their mod>`. A Shipping editor host, a missing one, or the game's own host
+  given as the editor host is refused. It is not a separate executable: the modders' editor is the
+  Development host, packaged beside the game. CI's Linux job packages the template game with the editor and
+  opens it (`tools/smoke_run.sh --packaged-editor`). (tests: WithTheEditorAPackageHasADevelopmentHostInEditorAndLaunchersOnTheSameGame,
+  AnEditorHostWithoutTheEditorOrTheGamesOwnHostIsRefused)
+- **Console**: `ed_tabs`, `ed_tab`, `ed_tab_open`, `ed_tab_new`, `ed_tab_close`, `ed_mod`
+  (`WorkspaceCommands`).
+
+**Not built:** tabs hold placements documents only (a record keeps its own panel); a patch cannot remove a
+game record, only replace its list; the editor package is a second full host, with the Development
+configuration's dev cvars and commands (there is no Shipping-with-editor configuration); the `ed_mod`
+target is chosen per session, not remembered; on Windows `edit.cmd` is checked by the unit test only.
+
+## 10y. As built: blockout brushes (#61, 2026-10-07)
+
+Walls, floors and ramps are drawn in the editor now. **A brush is a placement** of one of three engine
+prefabs, `sage:brush` (a 2 by 2 by 2 box), `sage:wedge` (2 by 1 by 2) and `sage:cylinder` (1 by 2 by 1, 12
+sides), in `engine_content/data/blockout.json`, so the palette offers them, and moving, turning, scaling,
+multi-select, duplicate, delete, undo, save with comments kept, play and a mod's `place+` patch are a
+placement's (test: AModAddsBrushesToALevelByPatchingItsDocument). The scale gizmo resizes a brush: its
+scale multiplies `size`. The `.map` importer, its mesh system and `fgd_export` are unchanged; TrenchBroom
+stays a one-way path in.
+
+- **The `brush` part** (`BrushPart`, `src/Sage.Simulation/Levels/Blockout.cs`, SAGE0121): `shape` (Box,
+  Wedge or Cylinder), `size`, `sides` (3 to 64), `material` for the whole brush, a material per face
+  (`top`, `bottom`, `north` (-Z), `south` (+Z), `east` (+X), `west` (-X), `side` for a cylinder's round
+  faces), `textureScale` (metres per repeat; UVs are world-aligned, so neighbouring brushes continue each
+  other's texture), `layer` and `surface`. A wedge is a ramp rising to its north side. A placement's `at`
+  is the middle of the brush's floor. (tests: EachShapeIsAClosedConvexSolidWithItsFacesFacingOut,
+  AWedgeRisesNorthAndATurnedBrushTurnsItsHull)
+- **What it becomes**: a static convex hull (`IPhysicsWorld.AddHull`, turned by the placement's rotation),
+  a convex polygon per face (`LevelFace`, as a `.map` brush's) on the `[Transient]` component
+  `sage:blockout_brush`, and in the client one mesh per material from `BlockoutMeshSystem`
+  (`sage.client.blockout_mesh`); a headless server has the collision only.
+  (test: ARoomOfBrushesIsBuiltSavedAndReloadedWithItsCollidersAndMeshes)
+- **Checks.** `sage validate` checks a brush body as part options (material records exist, size above zero
+  on every axis, 3 to 64 sides, a positive `textureScale`) and a face material the shape has no face for ("a
+  wedge has no south face"); a placement's override is checked merged with its prefab's `brush` part.
+  (test: ALevelsBrushesAreCheckedWhenContentLoads)
+- **Editing.** The **Brushes** panel (a tab beside the palette) arms Box, Wedge or Cylinder (a click stands
+  one on the surface, snapped), sets a size and material for new brushes, paints faces ("Paint faces with
+  this material": click a face, Shift+click the whole brush), shows the grid, and edits the selected brush's
+  shape, sides, size and face materials, each one undo step. The console is `ed_brush`, `ed_brush_size`,
+  `ed_brush_shape`, `ed_brush_material` and `ed_brushes` (`BlockoutTools`). (tests: BrushEditsAreUndoneAndRedone,
+  PaintingAFaceGivesTheFaceUnderTheClickItsMaterial)
+
+**Not built:** CSG (subtracting one brush from another), per-face texture offset and rotation, vertex
+editing, brush entities (a brush that is a door or trigger: use a prefab with its own collider), lightmaps
+for editor brushes, and an export to `.map`. A brush nested as a prefab's child is built at its local
+transform.
+
+## 10z. As built: a play session's own log, user folder and crash report (#49, 2026-10-07)
+
+The editor's play world is a second app in the process, and its log lines, levels and once-only keys used
+to be the editor's. Each app now has an `AppEnvironment` (Core): its own `Logger`, user folder and crash
+report sections, current for the code it runs, with every line also reaching the parent's sinks, so the
+editor's log file still sees its play session. Design 02 §3.4 has the details.
+(tests: TwoAppsInOneProcess_LogToSeparateSinks_WithSeparateLevels, AnAppsLinesAlsoReachTheLogItWasMadeUnder,
+UserFolderAndCrashSections_ArePerApp)
+
 ## 11. v1 scope vs later
 
-**Phase 10a is done (#215, exit #228, §10n)**: the v1 list below is built. Phase 10b is next: brushes and
-block-out geometry, the asset browser, the behaviour-tree view and the conditions and actions editor.
+**Phase 10a is done (#215, exit #228, §10n)**: the v1 list below is built. **Phase 10b is done too (#365,
+§10o to §10z, 2026-10-07)**: brushes, the asset browser, the AI graph view, the conditions and actions
+form, multi-select and scaling, nested inspector fields, terrain tools, document tabs and the editor for
+modders.
 
 - **v1 (minimal, for building the vertical slice):**
   - ~~open/save a map document~~ **done (F28)**, as a placements document;
@@ -707,14 +1035,20 @@ block-out geometry, the asset browser, the behaviour-tree view and the condition
   - ~~log and console panels~~ **done (#219)**, docked in the editor mode;
   - ~~log category `Editor`~~ **done**.
 - **Later:**
-  - ~~rotate~~ **done (#221)**, about Y only; scale gizmos;
+  - ~~rotate~~ **done (#221)**, about Y; ~~scale gizmos~~ and rotation about X and Z **done (#367, §10p)**;
   - ~~record editor~~ **done (#224)**, the record browser;
-  - asset browser;
+  - ~~asset browser~~ **done (#366, §10o)**, with a material preview;
   - ~~I/O link view~~ **done (#225)**, the I/O panel and wire lines;
-  - terrain tools;
+  - ~~terrain tools~~ **done (#372, §10u)**: sculpt, paint and water;
   - ~~prefab override UI~~ **done (#223)**, the inspector on the document;
-  - the rename/refactor command for asset paths (05 §3.2);
-  - multi-document tabs.
+  - ~~the rename/refactor command for asset paths (05 §3.2)~~ **done (#366, §10o)**, `AssetRename`;
+  - ~~multi-document tabs~~ **done (#375, §10x)**;
+  - ~~brushes and block-out geometry~~ **done (#61, §10y)**, as placements of brush prefabs;
+  - ~~a behaviour-tree view and a conditions and actions editor~~ **done (#369, #370; §10r, §10s)**, an AI
+    graph view over state machines, schedules and routines, and a form over any vocabulary;
+  - ~~prefab revert-all and nesting~~ **done (#372, §10u)**;
+  - still later: CSG and vertex editing for brushes, mesh thumbnails, editing an `anim_graph` as a graph,
+    and driving the panels' input in CI.
 
 ## 14. Build steps
 1. Editor host + document model + command log + undo/redo (TODO F28, F30).
