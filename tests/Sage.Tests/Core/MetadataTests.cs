@@ -93,7 +93,7 @@ public class MetadataTests
 
         var items = Metadata.Of(typeof(InventoryPart)).Field("items")!;
         Assert.Equal(ValueKind.Object, items.Item!.Kind);
-        Assert.Equal(new[] { "item", "count" }, items.Item.Fields.Select(f => f.JsonName));
+        Assert.Equal(new[] { "item", "count", "instance" }, items.Item.Fields.Select(f => f.JsonName));
         Assert.Equal("item", items.Item.Fields[0].RecordType);
 
         var map = Metadata.Of(typeof(MapRecord)).Field("file")!;
