@@ -78,6 +78,7 @@ public sealed class DevTools : IDisposable
     private AnimationPanel? _animationPanel;
     private TerrainDocument? _terrain;        // the terrain tools (#372): ed_sculpt, ed_paint, ed_water, and their panel
     private TerrainPanel? _terrainPanel;
+    private AIGraphPanel? _aiGraph;   // the AI graph view (#369): ed_ai_*, and its panel
     private readonly AssetBrowser _assetBrowser;   // the asset browser (#366): ed_assets*, and its panel
     private readonly Thumbnails _thumbnails;
     private AssetsPanel? _assets;
@@ -252,6 +253,7 @@ public sealed class DevTools : IDisposable
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
         TerrainCommands.Register(cvars, () => _terrain);   // ed_sculpt, ed_paint, ed_water, ed_terrain_* (#372)
         PrefabCommands.Register(cvars, () => _document, () => _selection?.Placements ?? Array.Empty<Placement>());   // ed_revert_all, ed_make_prefab (#372)
+        AIGraphCommands.Register(cvars, _records.Editor, () => _play?.World ?? _world);   // ed_ai_* (#369)
         AssetCommands.Register(cvars, () => _assetBrowser, () => _document, () => _records.Editor);   // ed_assets, ed_asset_* (#366)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
@@ -375,6 +377,7 @@ public sealed class DevTools : IDisposable
         (_audioPanel ??= new AudioPanel(_engine, () => _world)).Draw();
         (_animationPanel ??= new AnimationPanel(_engine, _animation)).Draw(frameSeconds);
         _terrainPanel?.Draw();
+        (_aiGraph ??= new AIGraphPanel(_records.Editor, () => _play?.World ?? _world)).Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();
