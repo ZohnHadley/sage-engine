@@ -76,6 +76,7 @@ public sealed class DevTools : IDisposable
     private WiringPanel? _wiring;     // #225
     private readonly AnimationPreview _animation;   // the animation preview (#362): anim_preview*, and its panel
     private AnimationPanel? _animationPanel;
+    private AIGraphPanel? _aiGraph;   // the AI graph view (#369): ed_ai_*, and its panel
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -238,6 +239,7 @@ public sealed class DevTools : IDisposable
         _gizmo = new ViewportGizmo(_tools, cvars);
         ProblemCommands.Register(cvars, _engine, () => _document);   // ed_problems (#227)
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
+        AIGraphCommands.Register(cvars, _records.Editor, () => _play?.World ?? _world);   // ed_ai_* (#369)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
         {
@@ -358,6 +360,7 @@ public sealed class DevTools : IDisposable
         _problems?.Draw();
         (_audioPanel ??= new AudioPanel(_engine, () => _world)).Draw();
         (_animationPanel ??= new AnimationPanel(_engine, _animation)).Draw(frameSeconds);
+        (_aiGraph ??= new AIGraphPanel(_records.Editor, () => _play?.World ?? _world)).Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();

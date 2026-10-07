@@ -1,5 +1,44 @@
 #nullable enable
 const Sage.Editing.AnimationPreview.TickSeconds = 0.016666668 -> float
+override Sage.Editing.AIGraphNode.ToString() -> string!
+Sage.Editing.AIGraph
+Sage.Editing.AIGraph.Active(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AIGraph.Add(string? parent, string! name, System.Text.Json.Nodes.JsonNode? body = null, int index = -1) -> bool
+Sage.Editing.AIGraph.AnyStateEdges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
+Sage.Editing.AIGraph.Document.get -> Sage.Editing.RecordDocument!
+Sage.Editing.AIGraph.Find(string! key) -> Sage.Editing.AIGraphNode?
+Sage.Editing.AIGraph.Initial.get -> string!
+Sage.Editing.AIGraph.IsTree.get -> bool
+Sage.Editing.AIGraph.Kind.get -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraph.Move(string! key, int index) -> bool
+Sage.Editing.AIGraph.Nodes.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphNode!>!
+Sage.Editing.AIGraph.Remove(string! key) -> bool
+Sage.Editing.AIGraph.Rename(string! key, string! name) -> bool
+Sage.Editing.AIGraph.Reparent(string! key, string? parent, int index = -1) -> bool
+Sage.Editing.AIGraph.Runners(Sage.Simulation.World! world) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
+Sage.Editing.AIGraphCommands
+Sage.Editing.AIGraphEdge
+Sage.Editing.AIGraphEdge.AIGraphEdge() -> void
+Sage.Editing.AIGraphEdge.AIGraphEdge(string! To, string! Label) -> void
+Sage.Editing.AIGraphEdge.Label.get -> string!
+Sage.Editing.AIGraphEdge.Label.init -> void
+Sage.Editing.AIGraphEdge.To.get -> string!
+Sage.Editing.AIGraphEdge.To.init -> void
+Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.Routine = 2 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.Schedule = 1 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphKind.StateMachine = 0 -> Sage.Editing.AIGraphKind
+Sage.Editing.AIGraphNode
+Sage.Editing.AIGraphNode.Children.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Editing.AIGraphNode.Depth.get -> int
+Sage.Editing.AIGraphNode.Edges.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AIGraphEdge>!
+Sage.Editing.AIGraphNode.Index.get -> int
+Sage.Editing.AIGraphNode.IsInitial.get -> bool
+Sage.Editing.AIGraphNode.IsParallel.get -> bool
+Sage.Editing.AIGraphNode.Label.get -> string!
+Sage.Editing.AIGraphNode.Name.get -> string!
+Sage.Editing.AIGraphNode.Parent.get -> string?
+Sage.Editing.AIGraphNode.Path.get -> string!
 Sage.Editing.AnimationPreview
 Sage.Editing.AnimationPreview.Advance(float seconds) -> void
 Sage.Editing.AnimationPreview.AnimationPreview(Sage.Simulation.Engine! engine) -> void
@@ -150,6 +189,10 @@ Sage.Editing.SetOverrideBody.Placement.get -> Sage.Simulation.Placement!
 Sage.Editing.SetOverrideBody.Section.get -> Sage.Editing.OverrideSection
 Sage.Editing.SetOverrideBody.SetOverrideBody(Sage.Editing.EditDocument! document, Sage.Simulation.Placement! placement, Sage.Editing.OverrideSection section, string! id, System.Text.Json.Nodes.JsonObject? body) -> void
 Sage.Editing.SetOverrideBody.Undo() -> void
+static Sage.Editing.AIGraph.Of(Sage.Editing.RecordDocument? document) -> Sage.Editing.AIGraph?
+static Sage.Editing.AIGraph.Supports(string! type) -> bool
+static Sage.Editing.AIGraphCommands.Describe(Sage.Editing.AIGraph! graph) -> string!
+static Sage.Editing.AIGraphCommands.Register(Sage.Core.CVarRegistry! cvars, Sage.Editing.RecordEditor! records, System.Func<Sage.Simulation.World?>! world) -> void
 static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
 static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
 static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
