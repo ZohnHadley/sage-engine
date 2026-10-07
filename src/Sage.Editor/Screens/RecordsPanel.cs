@@ -1,4 +1,5 @@
 #nullable enable
+#pragma warning disable SAGE0132 // the mod conflict view (#401) shows record writes: data mods' experimental API
 using System;
 using System.Linq;
 using System.Numerics;
@@ -122,6 +123,7 @@ internal sealed class RecordsPanel
         }
 
         if (Thumbnails != null) RecordAssetStrip.Draw(record, Thumbnails);   // #366
+        DrawConflicts();   // #401
 
         ImGui.Separator();
         VocabularyButtons(record, "");
@@ -133,6 +135,48 @@ internal sealed class RecordsPanel
         {
             if (_rawStale) { _raw = record.RawText; _rawStale = false; }
             ImGui.InputTextMultiline("##raw", ref _raw, 1 << 16, new Vector2(-1, ImGui.GetTextLineHeight() * 14), ImGuiInputTextFlags.ReadOnly);
+        }
+    }
+
+    // The fields of the open record that mods conflict over (issue #401): per field, a row per write in
+    // load order — who, how, the value it wrote and where — with the winner marked. RecordEditor.Conflicts
+    // decides it all; `ed_rec_conflicts` prints the same.
+    private void DrawConflicts()
+    {
+        var conflicts = _editor.Conflicts;
+        if (conflicts.Count == 0) return;
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.75f, 0.3f, 1f));
+        bool open = ImGui.CollapsingHeader($"Mod conflicts ({conflicts.Count})###modconflicts", ImGuiTreeNodeFlags.DefaultOpen);
+        ImGui.PopStyleColor();
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Fields two or more mods wrote: the mod that loads later wins (mod_conflicts lists them all)");
+        if (!open) return;
+        foreach (var conflict in conflicts)
+        {
+            ImGui.PushID(conflict.Path);
+            string title = conflict.Path.Length == 0 ? "(the whole record)" : conflict.Path;
+            if (ImGui.TreeNodeEx($"{title}  ->  {conflict.Winner} wins", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                if (conflict.Current.Length > 0) ImGui.TextDisabled($"now: {conflict.Current}");
+                if (ImGui.BeginTable("##contributions", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
+                {
+                    foreach (var c in conflict.Contributions)
+                    {
+                        ImGui.TableNextRow();
+                        ImGui.TableNextColumn();
+                        if (c.Wins) ImGui.TextColored(new Vector4(0.4f, 1f, 0.4f, 1f), $"{c.Mount} (wins)");
+                        else if (c.IsMod) ImGui.TextUnformatted(c.Mount);
+                        else ImGui.TextDisabled(c.Mount);
+                        ImGui.TableNextColumn();
+                        ImGui.TextUnformatted($"{c.Op.ToString().ToLowerInvariant()} {c.Value}");
+                        ImGui.TableNextColumn();
+                        ImGui.TextDisabled(c.Path.Length == 0 ? "(record)" : c.Path);
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip(c.At + (c.Via.IsEmpty ? "" : $"\nvia base {c.Via}"));
+                    }
+                    ImGui.EndTable();
+                }
+                ImGui.TreePop();
+            }
+            ImGui.PopID();
         }
     }
 

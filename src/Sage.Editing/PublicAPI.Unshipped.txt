@@ -1,5 +1,6 @@
 #nullable enable
 const Sage.Editing.AnimationPreview.TickSeconds = 0.016666668 -> float
+override Sage.Editing.FieldContribution.ToString() -> string!
 override Sage.Editing.VocabularyProblem.ToString() -> string!
 Sage.Editing.AIGraphKind.BehaviourTree = 3 -> Sage.Editing.AIGraphKind
 Sage.Editing.AnimationPreview
@@ -78,6 +79,22 @@ Sage.Editing.EditorWorkspace.New(Sage.Core.RecordId id = default(Sage.Core.Recor
 Sage.Editing.EditorWorkspace.Open(Sage.Core.RecordId id) -> Sage.Editing.EditDocument?
 Sage.Editing.EditorWorkspace.SetTarget(string? id, out string! error) -> bool
 Sage.Editing.EditorWorkspace.Target.get -> Sage.Core.IMount?
+Sage.Editing.FieldConflict
+Sage.Editing.FieldConflict.Contributions.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.FieldContribution!>!
+Sage.Editing.FieldConflict.Current.get -> string!
+Sage.Editing.FieldConflict.Kind.get -> Sage.Core.ContentConflictKind
+Sage.Editing.FieldConflict.Line.get -> string!
+Sage.Editing.FieldConflict.Path.get -> string!
+Sage.Editing.FieldConflict.Winner.get -> string!
+Sage.Editing.FieldContribution
+Sage.Editing.FieldContribution.At.get -> string!
+Sage.Editing.FieldContribution.IsMod.get -> bool
+Sage.Editing.FieldContribution.Mount.get -> string!
+Sage.Editing.FieldContribution.Op.get -> Sage.Core.RecordWriteOp
+Sage.Editing.FieldContribution.Path.get -> string!
+Sage.Editing.FieldContribution.Value.get -> string!
+Sage.Editing.FieldContribution.Via.get -> Sage.Core.RecordId
+Sage.Editing.FieldContribution.Wins.get -> bool
 Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
 Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
 Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
@@ -180,6 +197,8 @@ Sage.Editing.PreviewSocket.PreviewSocket(string! Name, string! Joint, System.Num
 Sage.Editing.PreviewSocket.Rotation.get -> System.Numerics.Quaternion
 Sage.Editing.PreviewSocket.Rotation.init -> void
 Sage.Editing.ProblemList.Add(Sage.Editing.IProblemSource! source) -> void
+Sage.Editing.RecordConflicts
+Sage.Editing.RecordEditor.Conflicts.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.FieldConflict!>!
 Sage.Editing.SetOverrideBody
 Sage.Editing.SetOverrideBody.Body.get -> System.Text.Json.Nodes.JsonObject?
 Sage.Editing.SetOverrideBody.Description.get -> string!
@@ -286,6 +305,9 @@ static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) ->
 static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
 Sage.Editing.AnimationPreview.Opened -> System.Action?
 static Sage.Editing.EditorWorkspace.Describe(Sage.Editing.EditDocument! document) -> string!
+static Sage.Editing.RecordConflicts.Find(Sage.Core.RecordStore! records, Sage.Core.ContentReport! report, string! type, Sage.Core.RecordId id) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.FieldConflict!>!
+static Sage.Editing.RecordConflicts.Find(Sage.Simulation.Engine! engine, string! type, Sage.Core.RecordId id) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.FieldConflict!>!
+static Sage.Editing.RecordConflicts.Lines(Sage.Editing.FieldConflict! conflict) -> System.Collections.Generic.IEnumerable<string!>!
 static Sage.Editing.VocabularyCatalog.All(Sage.Simulation.Engine! engine) -> System.Collections.Generic.IReadOnlyList<Sage.Core.Vocabulary!>!
 static Sage.Editing.VocabularyCatalog.Entries(Sage.Simulation.Engine! engine, Sage.Core.Vocabulary! vocabulary, string! search = "") -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyChoice!>!
 static Sage.Editing.VocabularyCatalog.Entry(Sage.Simulation.Engine! engine, Sage.Core.Vocabulary! vocabulary, string! id) -> Sage.Editing.VocabularyChoice?

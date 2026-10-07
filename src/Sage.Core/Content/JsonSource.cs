@@ -151,6 +151,18 @@ internal sealed class JsonSource
         return parts;
     }
 
+    // Record `index` of the file as it is written there (issue #401): what one definition or patch said,
+    // parsed again from the kept bytes when asked. Null when it is not an object.
+    public System.Text.Json.Nodes.JsonObject? Record(int index)
+    {
+        try
+        {
+            var root = System.Text.Json.Nodes.JsonNode.Parse(Utf8, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+            return (root is System.Text.Json.Nodes.JsonArray array ? index < array.Count ? array[index] : null : index == 0 ? root : null) as System.Text.Json.Nodes.JsonObject;
+        }
+        catch (JsonException) { return null; }   // it parsed once, so this is not expected
+    }
+
     // The first property a path names: the record field an error belongs to.
     internal static string? FieldOf(string? path)
     {
@@ -163,4 +175,6 @@ internal sealed class JsonSource
 internal readonly record struct RecordSource(JsonSource File, int Index)
 {
     public string At(string? path = null) => File.Locate(Index, path);
+
+    public System.Text.Json.Nodes.JsonObject? Record() => File?.Record(Index);
 }
