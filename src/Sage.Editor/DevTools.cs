@@ -27,6 +27,7 @@ public sealed class DevTools : IDisposable
     public const string ViewportTarget = "editor";
     private const int ViewportWidth = 480, ViewportHeight = 270;
     private const float FrameDistance = 6f;   // metres from what F frames
+    private const string ViewportTitle = "Viewport";
     private const string FreeCameraName = "editor free camera", ViewportCameraName = "editor viewport camera";
 
     private readonly Game _game;
@@ -79,6 +80,7 @@ public sealed class DevTools : IDisposable
     private readonly AssetBrowser _assetBrowser;   // the asset browser (#366): ed_assets*, and its panel
     private readonly Thumbnails _thumbnails;
     private AssetsPanel? _assets;
+    private readonly PanelTour _panels = new();   // ed_panel (#371): every panel, brought to the front in turn
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -130,6 +132,7 @@ public sealed class DevTools : IDisposable
         });
 
         RegisterDocumentCommands();
+        ListPanels();
     }
 
     public bool IsEditing => _editing;
@@ -211,18 +214,26 @@ public sealed class DevTools : IDisposable
     }
 
     // The status bar's line: the document, whether it is saved, and the selection.
-    private string StatusLine()
+    private string StatusLine() =>
+        EditorStatus.Line(_document, _world, _selection?.Entity ?? default, _camera.Position.ToNumerics(), _problems?.Summary);
+
+    // Every window of the editor's frame, by title, for `ed_panel` (#371): CI's `-edit` smoke runs
+    // `ed_panel all`, so a panel listed here is drawn in the real host. A new panel adds a line.
+    private void ListPanels()
     {
-        var document = _document;
-        string doc = document is { IsOpen: true }
-            ? $"{document.Id}  {(document.Dirty ? "modified" : "saved")}"
-            : "no document";
-        var world = _world;
-        var selection = _selection?.Entity ?? default;
-        string selected = world != null && !selection.IsNull && world.IsAlive(selection)
-            ? World.Describe(selection) : "nothing selected";
-        return $"{doc}   |   {selected}   |   {world?.Name} ({world?.EntityCount ?? 0} entities)   |   camera {_camera.Position.X:F1} {_camera.Position.Y:F1} {_camera.Position.Z:F1}"
-            + (_problems != null ? $"   |   {_problems.Summary}" : "");
+        _panels.Add(EditorLayout.OutlinerTitle);
+        _panels.Add(PalettePanel.Title);
+        _panels.Add(EditorLayout.InspectorTitle);
+        _panels.Add(EditorLayout.RecordsTitle);
+        _panels.Add(WiringPanel.Title);
+        _panels.Add(AnimationPanel.Title);
+        _panels.Add(LogPanel.Title);
+        _panels.Add(ProblemsPanel.Title);
+        _panels.Add(AssetsPanel.Title);
+        _panels.Add(AudioPanel.Title);
+        _panels.Add(EditorLayout.ConsoleTitle, () => { if (!_console.IsOpen) _console.Toggle(); });
+        _panels.Add(ViewportTitle, () => _viewport.Value = true);
+        _panels.Add(VisualLogWindow.Title, _visualLog.Open);
     }
 
     // Every menu item is a console command as well. That is a rule rather than a convenience: a menu a
@@ -247,6 +258,7 @@ public sealed class DevTools : IDisposable
         ProblemCommands.Register(cvars, _engine, () => _document);   // ed_problems (#227)
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
         AssetCommands.Register(cvars, () => _assetBrowser, () => _document, () => _records.Editor);   // ed_assets, ed_asset_* (#366)
+        PanelTour.Register(cvars, () => _editing ? _panels : null);   // ed_panel (#371)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
         {
@@ -376,6 +388,8 @@ public sealed class DevTools : IDisposable
         _palette?.HandleViewport();
         _assets?.HandleViewport();
         if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);
+        // After the panels drew, so the one `ed_panel` names is in front from the next frame (#371).
+        if (_panels.Next() is { } panel) ImGui.SetWindowFocus(panel);
     }
 
     // The ray through a pixel of the screen's view (the free camera's in the editor), for placing by click.
@@ -408,7 +422,7 @@ public sealed class DevTools : IDisposable
         ImGui.SetNextWindowPos(new System.Numerics.Vector2(display.X - ViewportWidth - 24, 28), ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowSize(new System.Numerics.Vector2(ViewportWidth + 16, ViewportHeight + 58), ImGuiCond.FirstUseEver);
         bool open = true;
-        if (ImGui.Begin("Viewport", ref open))
+        if (ImGui.Begin(ViewportTitle, ref open))
         {
             // As wide as the window allows, at the target's shape.
             float width = MathF.Max(ImGui.GetContentRegionAvail().X, 16f);

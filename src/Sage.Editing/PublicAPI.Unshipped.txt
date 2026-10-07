@@ -320,3 +320,17 @@ static Sage.Editing.AssetPicking.ToRow(Sage.Editing.InspectorModel! model, Sage.
 static Sage.Editing.AssetReferences.Find(Sage.Core.VirtualFileSystem! vfs, Sage.Core.VirtualPath asset) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetReference!>!
 static Sage.Editing.AssetReferences.Scanned(Sage.Core.VirtualPath file) -> bool
 static Sage.Editing.AssetRename.Plan(Sage.Simulation.Engine! engine, Sage.Core.VirtualPath from, Sage.Core.VirtualPath to, Sage.Editing.EditDocument? document = null, Sage.Editing.RecordEditor? records = null) -> Sage.Editing.AssetRename!
+const Sage.Editing.PanelTour.DefaultFrames = 3 -> int
+Sage.Editing.EditorStatus
+Sage.Editing.PanelTour
+Sage.Editing.PanelTour.Add(string! title, System.Action? open = null) -> void
+Sage.Editing.PanelTour.Current.get -> string?
+Sage.Editing.PanelTour.FramesEach.get -> int
+Sage.Editing.PanelTour.FramesEach.set -> void
+Sage.Editing.PanelTour.IsTouring.get -> bool
+Sage.Editing.PanelTour.Next() -> string?
+Sage.Editing.PanelTour.PanelTour() -> void
+Sage.Editing.PanelTour.Show(string! which, out string! error) -> bool
+Sage.Editing.PanelTour.Titles.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Sage.Editing.EditorStatus.Line(Sage.Editing.EditDocument? document, Sage.Simulation.World? world, Sage.Simulation.Entity selection, System.Numerics.Vector3 camera, string? problems = null) -> string!
+static Sage.Editing.PanelTour.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.PanelTour?>! tour) -> void
