@@ -34,6 +34,7 @@
             "attribute",
             "attribute_gain",
             "barks",
+            "block",
             "calendar",
             "calendar_event",
             "cue",
@@ -250,6 +251,21 @@
           },
           "then": {
             "$ref": "barks.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "block"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "block.schema.json"
           }
         },
         {
