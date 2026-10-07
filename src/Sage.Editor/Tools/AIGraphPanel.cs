@@ -7,8 +7,8 @@ using Sage.Editing;
 
 namespace Sage.Editor;
 
-// The AI graph view (issue #369; docs/EDITOR.md "A behaviour-tree view"): the state_machine, ai_schedule or
-// routine open in the Records panel, drawn as a tree of states (with their transitions) or a list of
+// The AI graph view (issue #369; docs/EDITOR.md "A behaviour-tree view"): the state_machine, ai_schedule,
+// routine or behaviour_tree (#387) open in the Records panel, drawn as a tree of states (with their transitions) or a list of
 // steps, a node at a time to add, remove, move up and down, move into another state or rename; and, while
 // a world runs it, the nodes the chosen entity is in highlighted. What the nodes are, every edit (one undo
 // in the record's own history, so the Records panel's Undo and `ed_rec_undo` take it back) and what is
@@ -48,8 +48,8 @@ internal sealed class AIGraphPanel
         }
         if (_graph is not { } graph)
         {
-            ImGui.TextDisabled(record == null ? "Open a state_machine, ai_schedule or routine in the Records panel."
-                                              : $"{record.Type} is not an AI graph (state_machine, ai_schedule, routine).");
+            ImGui.TextDisabled(record == null ? "Open a state_machine, ai_schedule, routine or behaviour_tree in the Records panel."
+                                              : $"{record.Type} is not an AI graph (state_machine, ai_schedule, routine, behaviour_tree).");
             ImGui.End();
             return;
         }
@@ -93,7 +93,7 @@ internal sealed class AIGraphPanel
     {
         var node = _selected != null ? graph.Find(_selected) : null;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X * 0.5f);
-        ImGui.InputTextWithHint("##ainame", graph.Kind == AIGraphKind.StateMachine ? "state name" : graph.Kind == AIGraphKind.Schedule ? "task" : "schedule", ref _name, 64);
+        ImGui.InputTextWithHint("##ainame", graph.Kind == AIGraphKind.StateMachine ? "state name" : graph.Kind is AIGraphKind.Schedule or AIGraphKind.BehaviourTree ? "task" : "schedule", ref _name, 64);
         ImGui.SameLine();
         ImGui.BeginDisabled(_name.Trim().Length == 0);
         if (ImGui.Button("Add")) Added(graph, graph.Add(graph.IsTree ? node?.Parent : null, _name.Trim(), index: node != null ? node.Index + 1 : -1));

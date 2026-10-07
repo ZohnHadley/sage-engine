@@ -262,4 +262,59 @@ public class AIGraphTests
         Assert.True(routine.Add(null, "patrol"));
         Assert.Equal(24, (int?)routine.Document.Get("entries[1].to"));
     }
+
+    // A behaviour tree (issue #387): its nodes from the root, a composite's and a decorator's inside it; the
+    // node a creature runs is active with everything above it, numbered as the engine numbers them.
+    private const string Tree = """
+    [
+      { "type": "behaviour_tree", "id": "guard",
+        "root": { "selector": [
+          { "name": "fight", "when": ["SeeEnemy"], "task": "MoveToTarget", "distance": 2 },
+          { "sequence": [ { "task": "Wait", "seconds": 1.5 }, { "set": "rested" }, { "repeat": "FaceTarget", "times": 2 } ] } ] } },
+      { "type": "prefab", "id": "sentry", "name": "sentry", "components": { "ai_state": { "tree": "guard" } }, "parts": { "character": { "layer": "enemy" } } }
+    ]
+    """;
+
+    [Fact]
+    public void ABehaviourTreeIsATreeOfNodesEditedWithUndoAndTheNodeACreatureRunsIsActive()
+    {
+        using var app = HeadlessApp.Gameplay().File("data/bt.json", Tree).Boot();
+        Assert.Equal(0, app.Records.ErrorCount);
+        var document = RecordDocument.Open(app.Engine, "behaviour_tree", new RecordId("sage", "guard"))!;
+        var graph = AIGraph.Of(document)!;
+        var original = (JsonObject)document.Working.DeepClone();
+        Assert.Equal(AIGraphKind.BehaviourTree, graph.Kind);
+        Assert.True(graph.IsTree);
+        Assert.Equal(new[] { "selector", "fight", "sequence", "Wait", "set", "repeat", "FaceTarget" }, Names(graph));
+        Assert.Equal("fight: MoveToTarget  distance 2  [when SeeEnemy]", graph.Nodes[1].Label);
+        Assert.Equal("Wait  seconds 1.5", graph.Nodes[3].Label);
+        Assert.Equal("set rested = 1", graph.Nodes[4].Label);
+        Assert.Equal("repeat 2 times", graph.Nodes[5].Label);
+        Assert.Equal("root.selector[1].sequence[0]", graph.Nodes[3].Path);
+        Assert.Equal("root.selector[1]", graph.Nodes[3].Parent);
+        Assert.Equal(2, graph.Nodes[3].Depth);
+        Assert.Equal("root.selector[1].sequence[2].repeat", graph.Nodes[6].Path);
+        Assert.Equal(new[] { "root.selector[0]", "root.selector[1]" }, graph.Nodes[0].Children);
+
+        // Live: nobody to fight, so it rests — the Wait, inside the sequence, inside the root.
+        var sentry = app.World.Spawn(new RecordId("sage", "sentry"));
+        Assert.Equal(new[] { sentry }, graph.Runners(app.World));
+        for (int i = 0; i < 5; i++) app.World.RunFixed(Dt);
+        Assert.Equal(new[] { "root", "root.selector[1]", "root.selector[1].sequence[0]" }, graph.Active(app.World, sentry));
+
+        // Edits, each one undo in the record's history.
+        Assert.True(graph.Add("sequence", "FaceTarget", index: 0));              // inside the sequence, first
+        Assert.Equal("FaceTarget", graph.Nodes[3].Name);
+        Assert.True(graph.Move("root.selector[1]", 0));                           // the sequence before the fight
+        Assert.Equal("sequence", graph.Nodes[1].Name);
+        Assert.True(graph.Rename("set", "note"));                                 // a node that is not a task gets a name
+        Assert.Equal("note: set rested = 1", graph.Find("note")!.Label);
+        Assert.False(graph.Remove("root.selector[0].sequence[3].repeat"));       // a decorator's one node
+        Assert.True(graph.Remove("note"));
+        Assert.False(graph.Reparent("fight", "sequence"));
+        Assert.Equal(4, document.History.Position);
+        for (int i = 0; i < 4; i++) Assert.True(document.Undo());
+        Assert.True(JsonNode.DeepEquals(original, document.Working));
+        Assert.Equal(new[] { "selector", "fight", "sequence", "Wait", "set", "repeat", "FaceTarget" }, Names(graph));
+    }
 }

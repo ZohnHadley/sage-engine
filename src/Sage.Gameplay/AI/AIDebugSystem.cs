@@ -119,6 +119,7 @@ internal sealed class AIDebugSystem : ISystem
     private static string Describe(World world, in AIState s)
     {
         string target = s.Target.IsNull || !world.IsAlive(s.Target) ? "no target" : "target " + World.Describe(s.Target);
-        return $"{(s.Schedule.IsEmpty ? "(no schedule)" : s.Schedule.ToString())} task {s.TaskIndex}, {target}, conditions 0x{s.Conditions:X}";
+        string brain = !s.Tree.IsEmpty ? $"tree {s.Tree} node" : s.Schedule.IsEmpty ? "(no schedule) task" : $"{s.Schedule} task";   // #387
+        return $"{brain} {s.TaskIndex}, {target}, conditions 0x{s.Conditions:X}";
     }
 }

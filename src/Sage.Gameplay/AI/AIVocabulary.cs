@@ -189,6 +189,9 @@ public ref struct AIScheduleChoice
     // or the entry's anchor is not in the world. `default` runs it in place of idling.
     [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public RecordId Routine;
+    // What a measure may look at (issue #387): the creature as it perceived itself this think, for the
+    // `utility` selector's considerations.
+    public AIPerception Perception;
 
     public readonly bool Has(AICondition condition) => (Conditions & (ulong)condition) != 0;
     public readonly bool Has(string condition) => Names.Has(Conditions, condition);
@@ -263,10 +266,11 @@ public static class AIScheduleSelectors
 {
     public const string Default = "default";
     public const string Rules = "rules";
+    public const string Utility = "utility";
 
-    // What a profile names, or what it means by naming nothing.
+    // What a profile names, or what it means by naming nothing: its rules, else its utility options (#387).
     public static string NameOf(AIProfileRecord profile) =>
-        profile.Selector.Length > 0 ? profile.Selector : profile.Rules.Count > 0 ? Rules : Default;
+        profile.Selector.Length > 0 ? profile.Selector : profile.Rules.Count > 0 ? Rules : profile.Utility.Count > 0 ? Utility : Default;
 
     private static readonly DefaultScheduleSelector Fallback = new();
 
@@ -279,7 +283,7 @@ public static class AIScheduleSelectors
         if (found == null)
             Log.Once(LogCat.AI, LogLevel.Error, $"ai-selector:{name}",
                 $"no AI schedule selector '{name}' is registered; creatures with that profile use '{Default}'");
-        profile.SelectorInstance = found ?? (name == Rules ? new RulesScheduleSelector() : Fallback);
+        profile.SelectorInstance = found ?? (name == Rules ? new RulesScheduleSelector() : name == Utility ? new UtilityScheduleSelector() : Fallback);
         profile.SelectorFor = name;
         return profile.SelectorInstance;
     }
@@ -312,6 +316,30 @@ internal static class AIChecks
                     if (!conditions.Contains(names[i]))
                         check.Error($"Rules[{r}].{field}[{i}]", $"no AI condition '{names[i]}'" + Spelling.Suggest(names[i], conditions.Ids));
             if (rule.Schedule.IsEmpty) check.Error($"Rules[{r}]", "a rule needs the \"schedule\" it runs");
+        }
+
+        for (int u = 0; u < profile.Utility.Count; u++)
+        {
+            var option = profile.Utility[u];
+            if (option.Schedule.IsEmpty) check.Error($"Utility[{u}]", "a utility option needs the \"schedule\" it runs");
+            Considerations(vocabularies, option.Considerations, $"Utility[{u}].", check);
+        }
+    }
+
+    // A score's considerations (issue #387): their conditions and measures are names somebody registered.
+    public static void Considerations(Vocabularies vocabularies, IReadOnlyList<AIConsideration> considerations, string at, RecordCheck check)
+    {
+        var conditions = vocabularies.Of<IAICondition>();
+        var measures = vocabularies.Of<IAIMeasure>();
+        for (int c = 0; c < considerations.Count; c++)
+        {
+            var consideration = considerations[c];
+            foreach (var (field, names) in new[] { (nameof(AIConsideration.When), consideration.When), (nameof(AIConsideration.Unless), consideration.Unless) })
+                for (int i = 0; i < names.Count; i++)
+                    if (!conditions.Contains(names[i]))
+                        check.Error($"{at}Considerations[{c}].{field}[{i}]", $"no AI condition '{names[i]}'" + Spelling.Suggest(names[i], conditions.Ids));
+            if (consideration.Measure.Length > 0 && !measures.Contains(consideration.Measure))
+                check.Error($"{at}Considerations[{c}].{nameof(AIConsideration.Measure)}", measures.Unknown(consideration.Measure));
         }
     }
 }

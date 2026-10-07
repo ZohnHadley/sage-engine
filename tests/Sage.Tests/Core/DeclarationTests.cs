@@ -33,6 +33,7 @@ public class DeclarationTests
         {
             ["ability"] = "sage.gameplay.abilities", ["cue"] = "sage.gameplay.abilities",
             ["ai_profile"] = "sage.gameplay.ai", ["ai_schedule"] = "sage.gameplay.ai",
+            ["behaviour_tree"] = "sage.gameplay.ai",   // behaviour trees beside schedules (#387)
             ["attribute"] = "sage.gameplay.attributes", ["tag"] = "sage.gameplay.attributes",
             ["effect"] = "sage.gameplay.attributes", ["gameplay_conventions"] = "sage.gameplay.attributes",
             ["attribute_gain"] = "sage.gameplay.attributes",   // "when somebody does X, add Y to their Z" (#377)
