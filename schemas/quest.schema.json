@@ -121,6 +121,14 @@
           "failed": {
             "description": "Reaching this stage ends the quest failed. (bool)",
             "type": "boolean"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
+          },
+          "$remove": {
+            "description": "true (in a patch): remove the entry whose \"id\" is this one's.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -192,6 +200,14 @@
           },
           "failed": {
             "description": "Reaching this stage ends the quest failed. (bool)",
+            "type": "boolean"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
+          },
+          "$remove": {
+            "description": "true (in a patch): remove the entry whose \"id\" is this one's.",
             "type": "boolean"
           }
         },
@@ -265,10 +281,22 @@
           "failed": {
             "description": "Reaching this stage ends the quest failed. (bool)",
             "type": "boolean"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
+          },
+          "$remove": {
+            "description": "true (in a patch): remove the entry whose \"id\" is this one's.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

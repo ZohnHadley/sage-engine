@@ -82,6 +82,10 @@
             "items": {
               "$ref": "vocabularies.schema.json#/definitions/condition"
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -117,6 +121,10 @@
             "items": {
               "$ref": "vocabularies.schema.json#/definitions/condition"
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -152,10 +160,18 @@
             "items": {
               "$ref": "vocabularies.schema.json#/definitions/condition"
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

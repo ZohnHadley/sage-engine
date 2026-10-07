@@ -86,3 +86,6 @@ Sage.Core.RecordStore.Preview(string! type, Sage.Core.RecordId id, System.Text.J
 Sage.Core.RecordStore.Previewed -> System.Action<string!, Sage.Core.RecordId>?
 Sage.Core.RecordCheck.Ids(string! type) -> System.Collections.Generic.IEnumerable<Sage.Core.RecordId>!
 Sage.Core.ModManifest.AssemblyPaths.get -> System.Collections.Generic.IEnumerable<string!>!
+Sage.Core.ListKeyAttribute
+Sage.Core.ListKeyAttribute.Key.get -> string!
+Sage.Core.ListKeyAttribute.ListKeyAttribute(string! key) -> void

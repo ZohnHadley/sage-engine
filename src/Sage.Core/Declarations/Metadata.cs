@@ -66,6 +66,18 @@ public sealed class AssetKindAttribute : Attribute
     public string Kind { get; }
 }
 
+// A list of objects whose entries are told apart by this field (issue #399): `[ListKey("item")]` on an
+// inventory's stacks, `[ListKey("id")]` on a quest's stages. A record patch then merges the list by key
+// instead of replacing it: an entry whose key is already there is patched in place, one that isn't is
+// added, and one written with `"$remove": true` is taken out (RecordStore.MergeInto). `key` is the
+// field's JSON name.
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false)]
+public sealed class ListKeyAttribute : Attribute
+{
+    public ListKeyAttribute(string key) { Key = key; }
+    public string Key { get; }
+}
+
 public enum DeclarationKind { Component, Tag, Record, SavedResource, PrefabPart, Other }
 
 // The shape of a value, as content writes it. Chosen so that each maps to one JSON Schema type (#21).

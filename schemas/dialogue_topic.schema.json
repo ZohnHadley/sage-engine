@@ -92,6 +92,10 @@
           "text": {
             "description": "What the speaker says. May be a raw @key, resolved where it is shown. (string)",
             "type": "string"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -135,6 +139,10 @@
           "text": {
             "description": "What the speaker says. May be a raw @key, resolved where it is shown. (string)",
             "type": "string"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -178,6 +186,10 @@
           "text": {
             "description": "What the speaker says. May be a raw @key, resolved where it is shown. (string)",
             "type": "string"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -186,6 +198,10 @@
     "linked": {
       "description": "Learnt when its keyword is said in an answer, a greeting or a node's line (Morrowind's hyperlinks); off = learnt only by add_topic. (bool, default false)",
       "default": false,
+      "type": "boolean"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
       "type": "boolean"
     }
   },

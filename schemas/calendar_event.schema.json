@@ -70,6 +70,10 @@
       "description": "Only when the moon is in this phase (new, waxing_crescent, first_quarter, waxing_gibbous, full, waning_gibbous, last_quarter, waning_crescent); empty: any. (string, default \"\")",
       "default": "",
       "type": "string"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

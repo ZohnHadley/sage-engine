@@ -220,6 +220,10 @@
                       "type": "null"
                     }
                   ]
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -327,6 +331,10 @@
                       "type": "null"
                     }
                   ]
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -434,6 +442,10 @@
                       "type": "null"
                     }
                   ]
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -631,6 +643,10 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "replace": {
+                        "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                        "type": "boolean"
                       }
                     },
                     "additionalProperties": false
@@ -738,6 +754,10 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "replace": {
+                        "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                        "type": "boolean"
                       }
                     },
                     "additionalProperties": false
@@ -845,6 +865,10 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "replace": {
+                        "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                        "type": "boolean"
                       }
                     },
                     "additionalProperties": false
@@ -996,6 +1020,10 @@
                       "parallel": {
                         "description": "With states: in all of them at once (parallel regions), each moving on its own. (bool)",
                         "type": "boolean"
+                      },
+                      "replace": {
+                        "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                        "type": "boolean"
                       }
                     },
                     "additionalProperties": false
@@ -1008,6 +1036,10 @@
                 "parallel": {
                   "description": "With states: in all of them at once (parallel regions), each moving on its own. (bool)",
                   "type": "boolean"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -1019,6 +1051,10 @@
           },
           "parallel": {
             "description": "With states: in all of them at once (parallel regions), each moving on its own. (bool)",
+            "type": "boolean"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
             "type": "boolean"
           }
         },
@@ -1127,6 +1163,10 @@
                 "type": "null"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -1234,6 +1274,10 @@
                 "type": "null"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -1341,10 +1385,18 @@
                 "type": "null"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

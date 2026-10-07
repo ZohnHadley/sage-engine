@@ -97,6 +97,10 @@
       "description": "Every water volume is this area (one nav_area volume over it still wins) (bool, default false)",
       "default": false,
       "type": "boolean"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

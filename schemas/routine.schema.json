@@ -102,6 +102,10 @@
                 "$ref": "ids.schema.json#/definitions/record:scene"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -165,6 +169,10 @@
                 "$ref": "ids.schema.json#/definitions/record:scene"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -228,10 +236,18 @@
                 "$ref": "ids.schema.json#/definitions/record:scene"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

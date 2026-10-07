@@ -58,6 +58,10 @@
             "description": "How many days it has. Unit: days. At least 1. (int)",
             "type": "integer",
             "minimum": 1
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -77,6 +81,10 @@
             "description": "How many days it has. Unit: days. At least 1. (int)",
             "type": "integer",
             "minimum": 1
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -96,6 +104,10 @@
             "description": "How many days it has. Unit: days. At least 1. (int)",
             "type": "integer",
             "minimum": 1
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -176,6 +188,10 @@
             "description": "The day of that month it starts on. At least 1. (int)",
             "type": "integer",
             "minimum": 1
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -200,6 +216,10 @@
             "description": "The day of that month it starts on. At least 1. (int)",
             "type": "integer",
             "minimum": 1
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -224,6 +244,10 @@
             "description": "The day of that month it starts on. At least 1. (int)",
             "type": "integer",
             "minimum": 1
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -239,6 +263,10 @@
       "description": "How many days into the moon's cycle the clock's day 0 is (0 is a new moon) Unit: days. (double, default 0)",
       "default": 0,
       "type": "number"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false
