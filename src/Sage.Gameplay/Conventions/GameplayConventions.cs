@@ -61,6 +61,9 @@ public sealed class GameplayConventionsRecord
     // The schedules the AI's built-in choice picks between (16 §3.4).
     public AIScheduleConventions Schedules = new();
 
+    // How loud the engine's own noises are, which creatures hear (issue #386, Hearing.cs).
+    public NoiseConventions Noise = new();
+
     // The input actions gameplay reads, by name (08 §3.2). There is no cast button here: the base casts
     // what it is asked to (world.Cast); a button that fires a readied spell is a kit's model
     // (Sage.Kits.Rpg's `rpg_conventions`, issue #27).
@@ -90,6 +93,8 @@ public sealed class AIScheduleConventions
     public RecordRef<AIScheduleRecord> CastSpell;
     [Property(Tooltip = "Waiting for a spell to come back, with nothing to swing")]
     public RecordRef<AIScheduleRecord> HoldGround;
+    [Property(Tooltip = "Something heard and not yet looked into (issue #386); empty = a creature does not investigate")]
+    public RecordRef<AIScheduleRecord> Investigate;
 }
 
 public sealed class ActionConventions

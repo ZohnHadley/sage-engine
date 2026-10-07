@@ -51,5 +51,13 @@
     // keep trying before giving up and thinking again.
     "tasks": ["FaceTarget", { "task": "MeleeAttack", "giveUpAfter": 1.5 }, { "task": "Wait", "seconds": 0.5 }],
     "interrupts": ["LostEnemy", "NoEnemy"]
+  },
+  {
+    // Hearing (issue #386): what it does about a noise it cannot see the cause of. Face it, walk to
+    // where it was, look round, and let it go. A new noise starts it again; seeing somebody ends it.
+    "type": "ai_schedule",
+    "id": "investigate",
+    "tasks": ["FaceNoise", { "task": "MoveToNoise", "distance": 1.5 }, { "task": "Wait", "seconds": 3 }, "ForgetNoise"],
+    "interrupts": ["SeeEnemy", "HearNoise"]
   }
 ]
