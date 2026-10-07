@@ -221,7 +221,9 @@ public class ConsoleTests
                 Assert.Equal(LogLevel.Warn, app.Environment.Logger.DefaultLevel);   // started where the host's is
                 Assert.Same(app.Environment, AppEnvironment.Current);               // current, for the code that made it
 
-                // Set 1 then 0, so each is a change whatever the configuration's default `developer` is.
+                // `developer` defaults to 1 in Debug and 0 in Development: flip it first, so the 1 and the 0
+                // below each leave the log where that value puts it whatever the configuration.
+                app.Engine.Core.Developer.Value = 1 - app.Engine.Core.Developer.Value;
                 app.Engine.Core.Developer.Value = 1;
                 Assert.Equal(LogLevel.Debug, app.Environment.Logger.DefaultLevel);   // its own log follows its cvars
                 app.Engine.Core.Developer.Value = 0;
