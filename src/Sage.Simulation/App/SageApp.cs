@@ -197,11 +197,31 @@ public sealed class SageApp : IDisposable
         }
     }
 
+    // A mount that names a file is a zip (issue #397): `content.zip` is mounted as `<game>/content`, the name
+    // the folder had, so a packed game reports and saves as the loose one does. One that is refused (zip-slip,
+    // a limit, a damaged archive) is skipped with an error, and the game boots without it (05 §8).
     private void MountGame()
     {
-        if (Game is { } game)
-            foreach (string mount in game.Mounts)
-                Engine.Vfs.Mount(new FolderMount($"{game.Id}/{mount}", Path.Combine(game.Directory, mount), game.Id));
+        if (Game is not { } game) return;
+        foreach (string mount in game.Mounts)
+        {
+            string path = Path.Combine(game.Directory, mount);
+            if (!File.Exists(path))
+            {
+                Engine.Vfs.Mount(new FolderMount($"{game.Id}/{mount}", path, game.Id));
+                continue;
+            }
+            string name = mount.Replace('\\', '/');
+            if (Path.GetExtension(name).Length > 0) name = name[..^Path.GetExtension(name).Length];
+            try
+            {
+                Engine.Vfs.Mount(new ZipMount($"{game.Id}/{name}", path, game.Id));
+            }
+            catch (InvalidDataException ex)
+            {
+                Log.Error(LogCat.VFS, $"game.json mount '{mount}' is not mounted: {ex.Message}");
+            }
+        }
     }
 
     // Mods, after the game (phase 4j, issue 4j-3): found or named, ordered, and each active one mounted as

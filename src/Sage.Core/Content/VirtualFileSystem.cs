@@ -57,7 +57,7 @@ public readonly record struct VirtualPath
     public override string ToString() => Value;
 }
 
-// A folder (later also a .pak zip) added to the VFS. RecordNamespace is the namespace bare record ids
+// A folder, a zip (ZipMount) or a plugin's embedded content added to the VFS. RecordNamespace is the namespace bare record ids
 // in this mount get: "sage" for engine content, the game's id, a mod's id (05 §3.5).
 public interface IMount
 {
@@ -270,7 +270,7 @@ public sealed class AssemblyContentMount : IMount
     }
 
     // `*` and `?` against a file name, ignoring case, as Directory.EnumerateFiles matches.
-    private static bool Matches(string name, string pattern)
+    internal static bool Matches(string name, string pattern)
     {
         if (pattern is "*" or "*.*") return true;
         return Match(name.AsSpan(), pattern.AsSpan());
