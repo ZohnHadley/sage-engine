@@ -287,16 +287,56 @@ public sealed class ContentReport
         foreach (var (type, id, source) in records.SkippedPatches)
             For(source.File.Mount)?._skippedPatches.Add($"{type} {id} at {source.At()}");
 
-        foreach (var shadowed in vfs.Shadows())
+        foreach (var (shadowed, owner) in Assets(vfs))
         {
-            if (IsMerged(shadowed.Path)) continue;
             For(shadowed.Winner)?._shadows.Add(shadowed);
-            var mods = shadowed.Shadowed.Append(shadowed.Winner).Where(IsModMount).ToList();
+            // A mod's own asset replaced on purpose by another (`@owner/path`) is an override, as a mod's
+            // file over the game's is; two mods replacing one asset are a conflict.
+            var mods = shadowed.Shadowed.Append(shadowed.Winner).Where(m => IsModMount(m) && m != owner).ToList();
             if (mods.Count >= 2)
                 report._conflicts.Add(new ContentConflict(ContentConflictKind.Asset, "asset", default, shadowed.Path.Value, mods, shadowed.Winner,
                     $"asset {shadowed.Path}: {string.Join(", ", mods.Select(NameOf))}; {NameOf(shadowed.Winner)} won"));
         }
         return report;
+    }
+
+    // Every asset more than one mount provides, as the records see it (issue #398), with the mod that owns
+    // it when it is a mod's own: a mod's file no mount that is not a mod has is that mod's alone
+    // (`mod:path`), so two mods shipping one such path each keep theirs; a file at `@ns/path` replaces
+    // namespace `ns`'s `path` — a mod's own asset, or the game's, the engine's or a kit's file at that bare
+    // path; and every other file is bare, the later mount's hiding the earlier ones' (05 §3.1). Walks every
+    // mount's files, so it is for tools, never a frame.
+    private static IEnumerable<(ShadowedAsset Asset, IMount? Owner)> Assets(VirtualFileSystem vfs)
+    {
+        var files = new List<(IMount Mount, VirtualPath Path)>();
+        foreach (var mount in vfs.Mounts)
+            foreach (var path in mount.Enumerate(null, "*", recursive: true))
+                if (!IsMerged(path)) files.Add((mount, path));
+        var baseFiles = files.Where(f => !IsModMount(f.Mount) && MountLookup.Replaces(f.Path) == null).Select(f => f.Path.Value).ToHashSet(StringComparer.Ordinal);
+        var baseNamespaces = vfs.Mounts.Where(m => !IsModMount(m)).Select(m => m.RecordNamespace).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var providers = new SortedDictionary<string, List<IMount>>(StringComparer.Ordinal);
+        var owners = new Dictionary<string, IMount>(StringComparer.Ordinal);
+        foreach (var (mount, path) in files)
+        {
+            string key;
+            if (MountLookup.Replaces(path) is var (ns, replaced))
+                key = baseNamespaces.Contains(ns) ? replaced.Value : VirtualPath.InNamespace(ns, replaced).Value;
+            else if (IsModMount(mount) && !baseFiles.Contains(path.Value))
+            {
+                key = VirtualPath.InNamespace(mount.RecordNamespace, path).Value;
+                owners.TryAdd(key, mount);
+            }
+            else key = path.Value;
+            if (!providers.TryGetValue(key, out var list)) providers[key] = list = new List<IMount>(2);
+            if (list.Count == 0 || list[^1] != mount) list.Add(mount);
+        }
+        foreach (var (key, list) in providers)
+        {
+            if (list.Count < 2) continue;
+            owners.TryGetValue(key, out var owner);
+            yield return (new ShadowedAsset(VirtualPath.Parse(key), list[^1], list.Take(list.Count - 1).ToList()), owner);
+        }
     }
 
     // Decision 5: the same value path written by two mods, or one mod's disable against another's
@@ -375,7 +415,10 @@ public sealed class ContentReport
             }
             foreach (var r in m.Redefinitions) lines.Add($"  redefined {r} (an error; applied as a patch)");
             foreach (var s in m.SkippedPatches) lines.Add($"  skipped a patch of {s}, which isn't defined");
-            foreach (var s in m.Shadows) lines.Add($"  shadows {s.Path} in {string.Join(", ", s.Shadowed.Select(NameOf))}");
+            // A mod's file over what no other mod wrote is an override, which is what a mod is for.
+            foreach (var s in m.Shadows)
+                lines.Add($"  {(m.IsMod && s.Shadowed.All(o => !IsModMount(o) || s.Path.Namespace == o.RecordNamespace) ? "overrides" : "shadows")} " +
+                          $"{s.Path} in {string.Join(", ", s.Shadowed.Select(NameOf))}");
         }
         return lines;
     }
