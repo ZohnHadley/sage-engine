@@ -64,7 +64,7 @@ experimental by deleting the attribute, which is not an API change. The full mem
 | SAGE0123 | Cameras as entities, render targets, rigs, blends, scripted cameras |
 | SAGE0124 | Phase 4b logic: `Conditions`, `Vars`, topics, the vocabulary shorthand, easing, timers, tweens, logic entities, state machines, `EntityIO.Fire` with a value |
 | SAGE0125 | The retained game UI, all of `Sage.UI`, and the kit's view-models |
-| SAGE0126 | Skeletal animation: skeletons, clips, skinning, sockets and IK, animation graphs, viewmodels, clip events |
+| SAGE0126 | Skeletal animation: skeletons, clips, skinning, sockets and IK, animation graphs, viewmodels, clip events; since 4p root motion, additive layers and sync markers, retargeting, look-at and hand IK, directional stances and morph targets |
 | SAGE0127 | Weapons and combat: the hit pipeline, `hit_delivery`, hit locations, ammunition, spread and recoil |
 | SAGE0128 | Reserved for phase 4f |
 | SAGE0129 | The open world: calendar, dormant cells, streamed scenes, routines, travel, off-screen simulation, terrain materials (#307) |

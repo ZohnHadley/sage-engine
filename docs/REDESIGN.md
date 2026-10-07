@@ -71,7 +71,7 @@ base-engine gap. Fix it in the base engine, never inside the sample.
 | 3D physics, queries, triggers | ● | ● | ● | ○ | ● | ○ | ● | ✅ Bepu |
 | 2D physics (bodies, tiles, one-way platforms, slopes) | | | ● | ● | | ○ | | ❌ |
 | Character controllers (FP, 3P, top-down, 2D) | ● | ● | ● | ● | ○ | | ● | ◐ one kinematic first-person capsule |
-| **Skeletal animation**, blending, anim state machine | ● | ● | ● | ○ | ● | | ○ | ❌ F9–F12. `Animation/` is only `SpriteAnimation.cs` (102 lines) |
+| **Skeletal animation**, blending, anim state machine | ● | ● | ● | ○ | ● | | ○ | ✅ glTF skins, graphs with blend spaces and layers, clip events, IK, first-person arms (4d), ragdolls (4k), root motion, additive layers, retargeting, directional attacks, morph targets and an editor preview (4p) |
 | Sprites, sorting, tilemaps, 2D layer | ○ | | ● | ● | ○ | ● | ● | ◐ billboards and sprite sheets; no ortho, sorting layers or tilemaps |
 | Meshes, materials, lights, particles, weather | ● | ● | ● | ○ | ● | ○ | ● | ✅ |
 | **Render pass registry**, render targets, post-processing | ● | ● | ○ | ○ | ○ | ○ | ● | ❌ `Passes` is a private static array |
@@ -1280,6 +1280,17 @@ screen checked against a golden (#355), and one UI path: the panel screens, the 
 widgets (#350). #341 shipped with #328. The exit (boot to a title,
 change options and controls, load a slot, loot a corpse and trade, from records) is met in the Sandbox. Next is 4p
 (#356).
+
+**4p (#356) as of 2026-10-06:** #357–#364 are built (spec sheet [10](spec/subsystems/10-animation.md), design 12
+"As built", [`history/handoff-2026-10-06-4p.md`](history/handoff-2026-10-06-4p.md)): root motion per state into the
+body or the character controller (#357), additive layers, sync markers and per-transition fades (#358), directional
+swings and guards with the `Block` action and hit windows from clip events (#359), `skeleton_map` retargeting (#360),
+foot tilt, pelvis smoothing, look-at and hand IK and sockets checked at load (#361), the Sandbox's skeletal brute and
+the editor's Animation window (#362), morph targets (#363) and sprites in `anim_debug` (#364). The exit is met
+headlessly: an NPC travels its clip's distance with its root in place (test: AnNpcTravelsTheClipsAuthoredDistance_AndItsRootStaysInPlace)
+and a clip plays on a second rig (test: SkeletonMapLetsAModelPlayAnotherRigsClips). Left: what a guard does to a blow
+(4r, #390), atlas packing for sprites, a gradient-band 2D blend; the handoff's §1 lists each issue's follow-ups. Next
+is 10b (#365).
 
 *As built, 4a (issue #76, 2026-09-29): the camera component.* Phase 4a is split into #76–#81 (parent
 #75). #76 makes cameras entities: a `Camera` component (`sage:camera`; perspective or orthographic,

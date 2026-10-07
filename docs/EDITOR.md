@@ -69,6 +69,7 @@ tabbed and re-docked; **View → Reset layout** (`ed_layout`) puts them back.
 | Right | **Inspector** | The selection: its placement (position, yaw, name, frame) and every field of its components and parts |
 | Right (tab) | **Records** | Any record, by type: a form and the raw JSON, saved into the file it came from |
 | Right (tab) | **I/O** | The selection's wires: what it fires, at whom, and adding new ones |
+| Right (tab) | **Animation** | A preview of any `anim_graph` or a model's clips: scrub, drive params and states, see events and sockets (issue #362; below) |
 | Bottom | **Log** | The log, filtered by level and category |
 | Bottom (tab) | **Problems** | What is wrong with the content and the open document, by file |
 | Bottom (tab) | **Console** | Every editor action as a typed command (§9) |
@@ -88,6 +89,24 @@ sound it played: save a changed `.wav` or `.ogg` under a folder mount and the so
 file and hear it without leaving the editor. The same preview is the `snd_play <sound>` command. `snd_debug 1`
 puts the voices (loudest first, with their distances and gains) and the bus levels in the stat overlay. The numbers
 are `AudioMonitor`'s; the panel only draws them.
+
+### The Animation window
+
+**Animation** (issue #362) is a tab beside the inspector, and comes forward when something is opened in it. Pick
+an `anim_graph` — it opens on the model the first prefab whose `animator` names it plays it on, else on that
+prefab's `skinned_mesh` — or a model's clips, and press **Open**. The skeleton is drawn as a stick figure (bones,
+joints and the model's sockets, with labels); drag it to turn it. Nothing in the edited level changes: the graph
+runs in a world of its own.
+
+- **Clip:** any clip of the model, scrubbed with the slider or by clicking its timeline, looping or not. Its
+  events (from `anim_events` records) are markers on the timeline, and a button per event jumps to it.
+- **Graph:** the real animator. Every param the graph declares is a control (a float drags, a bool is a
+  checkbox, a trigger is a button), and every state of every layer is a button that puts the layer there. Each
+  layer shows its clip's timeline with markers and a playhead, the blend's weights, what it is fading from, and
+  the events it raised. Play, pause, speed, a single step and restart run it. A param the graph fills from the
+  body (`from: Speed`) is the preview's to set, since nothing moves.
+
+The same preview is the `anim_preview` commands (§9), which is how CI drives it.
 
 ### The viewport and gizmos
 
@@ -318,6 +337,17 @@ its own, `mover.seconds` means the part's field, the one you can change.
 | `cam_set <x> <y> <z> [yaw] [pitch]` | Put the free camera somewhere |
 | `ent_select <name>` | Select any entity by name for the inspector |
 
+**The animation preview** (issue #362; they work in any dev build, and the **Animation** window shows them in the editor)
+
+| Command | What |
+|---|---|
+| `anim_preview [graph \| model.glb] [model.glb]` | Open a graph (on the model a prefab plays it on, or the one named) or a model's clips; with nothing, list the graphs |
+| `anim_preview_clip <clip> [seconds]` | Show one clip scrubbed to that time; with no clip, back to the graph |
+| `anim_preview_param <param> [value]` | Set a param of the graph (a trigger needs no value) |
+| `anim_preview_state <state> [layer]` | Put a layer (the base when none is named) in a state |
+| `anim_preview_step [seconds]` | Run the graph on (a tick by default) and say where its layers are and what events it raised |
+| `anim_preview_close` | Close the preview |
+
 ## 10. The worked example
 
 `tests/games/editor` has no C# and no kit: four prefabs (a pressure plate, which is a trigger volume; a door
@@ -352,3 +382,5 @@ These are phase 10b's and later (docs/REDESIGN.md §5, design/15 §11):
 - Editing nested objects and lists of a component in the inspector (`ed_set` takes them as JSON), and
   overriding a component the prefab does not name.
 - Several documents open at once, and a separate editor executable for modders.
+- Editing an `anim_graph` in the **Animation** window: it previews a graph, which is edited in the Records tab,
+  and it draws the skeleton as a stick figure rather than the skinned mesh.

@@ -504,7 +504,9 @@ sun cannot get past. The inside of the Sandbox's hut was a uniform dark grey box
   only faces the camera. It is `sage:sprite_lit`'s technique, which a sheet opts into; `sage:sprite_default`
   (also named `sage:sprite_unlit`) stays full-bright. A run of sprites is split where its
   four lights change (`LightRules.SameSet`, `Renderer.DrawSprites`), so sprites away from any lamp still
-  batch (test: TwoChoicesAreTheSameSetWhateverTheirOrder) (test: SpritesAreUnlitByDefault_AndLitIsOptIn).
+  batch (test: TwoChoicesAreTheSameSetWhateverTheirOrder) (test: SpritesAreUnlitByDefault_AndLitIsOptIn). Phase 4p's #364 checked
+  this against its issue and found nothing to add: a lamp lights a sprite near it and switching it off darkens it
+  (test: EntFireOnALampTogglesIt_AndASpriteNearItIsLitByIt); only the smoke run shows the pixels.
 - **Since built:** lightmaps (#313), sun shadows (4h-4, #315), lamps that switch and flicker through entity
   I/O, spot lights and a light grid (#314), shadows from point and spot lights (#315); see their "As built"
   sections below.

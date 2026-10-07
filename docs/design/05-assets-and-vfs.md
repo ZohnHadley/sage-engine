@@ -750,8 +750,8 @@ set); an older one is refused with a warning and the `.glb` is read.
 ### The glTF subset (as built, 2026-10-06, issue #321)
 A model is held to one table, `GltfSubset.Features` in `src/Sage.Simulation/Content/GltfSubset.cs`, which
 the check reads before SharpGLTF decodes anything. A file with a rejected feature does not load: one error
-per feature, naming the file and the feature, such as `Model 'x': glTF feature 'morph-targets' is not
-supported: the file has morph targets ...` (test: AFileWithAnUnsupportedFeatureFailsWithOneErrorNamingTheFileAndTheFeature),
+per feature, naming the file and the feature, such as `Model 'x': glTF feature 'draco' is not
+supported: the file uses Draco mesh compression ...` (test: AFileWithAnUnsupportedFeatureFailsWithOneErrorNamingTheFileAndTheFeature),
 and every rejected row has a test (test: EachRejectedFeatureOfTheTableHasATestOrIsTheNoGeometryCase). What
 is read past is a warning. The second UV set and the colours are read
 (test: TheSecondUvSetAndTheColoursAreRead) and survive the cook (test: TheSecondUvSetSurvivesTheCook).
@@ -766,13 +766,13 @@ The guides copy this table (`GltfSubset.Table()`); MAKING_A_GAME "Model formats"
 | `texcoord-1` | Supported | TEXCOORD_1: a second UV set (lightmaps), kept beside the vertices as `Uv1` |
 | `skinning` | Supported | One skin of up to 64 joints, JOINTS_0 and WEIGHTS_0 (four influences per vertex) |
 | `primitive-triangles` | Supported | Primitive modes TRIANGLES, TRIANGLE_STRIP and TRIANGLE_FAN |
+| `morph-targets` | Supported | Morph targets (blend shapes): POSITION and NORMAL deltas, named by the mesh's extras.targetNames, at the mesh's weights; a skinned mesh's are animated by clips' weight tracks (TANGENT deltas are not read) |
 | `materials` | Ignored | The file's materials and textures: the material record named by whatever draws the mesh decides |
 | `animations` | Ignored | Animation clips are read by the animation reader, not the mesh reader; cameras and lights are not read |
 | `extra-attribute-sets` | Ignored | TEXCOORD_2 and up, COLOR_1 and up: dropped, with a warning |
 | `not-gltf` | Rejected | A file that is not glTF 2.0 (bad header, broken JSON chunk) |
 | `text-gltf` | Rejected | Text .gltf with its buffers in separate files |
 | `external-buffers` | Rejected | A buffer stored in a separate file (a `uri` that is not a data: URI) |
-| `morph-targets` | Rejected | Morph targets (blend shapes) |
 | `sparse-accessors` | Rejected | Sparse accessors |
 | `draco` | Rejected | KHR_draco_mesh_compression |
 | `meshopt` | Rejected | EXT_meshopt_compression / KHR_meshopt_compression |
@@ -782,6 +782,8 @@ The guides copy this table (`GltfSubset.Table()`); MAKING_A_GAME "Model formats"
 | `too-many-joints` | Rejected | A skin of more than 64 joints |
 | `multiple-skins` | Rejected | More than one skin |
 | `no-geometry` | Rejected | A file with no drawable triangle primitive |
+
+*Since #363 (phase 4p, 2026-10-06)* morph targets are read rather than rejected: one list per model by name across its meshes, a rigid mesh baked at its rest weights, a skinned one morphed on the CPU each frame its weights change (design 12 "As built (morph targets)"); the cooked `.sgmesh` is format 4, and an older cook is refused and the loose `.glb` read until it is re-cooked (test: ACookedMeshKeepsItsMorphTargets).
 
 Extensions a file may mark required and still load: `KHR_materials_unlit`, `KHR_materials_emissive_strength`,
 `KHR_texture_transform`, `KHR_mesh_quantization`, `KHR_lights_punctual`.
