@@ -103,6 +103,7 @@ internal sealed class TerrainMeshSystem : ISystem
             var entity = _world.Create(Transform.At(corner), $"terrain {sector.Coord} {cx},{cz}");
             _world.Add(entity, new MeshRenderer { Handle = handle, Material = material });
             _world.Add(entity, new SectorOwned { Sector = sector.Coord });   // unloaded with it, its buffers released (#277)
+            entity.AddTag<TerrainBuilt>();   // and built again when a sculpt refreshes it (#372)
         }
         Log.Info(LogCat.Streaming, $"Terrain sector {sector.Coord}: chunk meshes {from}..{upTo - 1} of {chunks * chunks} " +
                                    $"({ChunkCells}x{ChunkCells} cells each) in {watch.Elapsed.TotalMilliseconds:F1} ms");

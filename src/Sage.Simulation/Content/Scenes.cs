@@ -449,11 +449,52 @@ public sealed partial class Scenes
         terrain.SurfaceLayers.AddRange(record.Surfaces);   // issue #270: before the ground is (re)built
         bool looks = terrain.Material == record.Material;
         terrain.Material = record.Material;                // issue #307: drawn with it from the next sector built
-        if (looks && BuiltInTerrain.Matches(terrain.Generator, terrain.Seed, record)) return;
+        // Issue #372: the editor's sculpt over the generator, read again only when its file changed.
+        string sculptPath = TerrainRecord.SculptPathOf(scene.Terrain.Id, record);
+        var (sculpt, hash) = ReadSculpt(sculptPath, !record.Sculpt.IsEmpty);
+        bool sameSculpt = terrain.Record == scene.Terrain.Id && terrain.SculptPath == sculptPath && terrain.SculptHash == hash;
+        terrain.Record = scene.Terrain.Id;
+        terrain.SculptPath = sculptPath;
+        if (looks && sameSculpt && BuiltInTerrain.Matches(terrain.Generator, terrain.Seed, record)) return;
         for (int i = terrain.Sectors.Count - 1; i >= 0; i--) terrain.Unload(terrain.Sectors[i].Coord);
         terrain.Generator = BuiltInTerrain.Create(record);
         terrain.Seed = record.Seed;
+        terrain.SetSculpt(sculpt);
+        terrain.SculptHash = hash;
+        if (sculpt != null) Log.Info(LogCat.Streaming, $"'{world.Name}': {sculpt.Count} sculpted sector(s) from {sculptPath}");
         Log.Info(LogCat.Streaming, $"'{world.Name}': ground from terrain '{scene.Terrain.Id}' ({record.Generator}, seed {record.Seed})");
+    }
+
+    // A terrain's sculpt file (issue #372): none (and hash 0) when there is no such file; one the record
+    // names that is missing or unreadable is an error, and the ground is the generator's alone.
+    private (TerrainSculpt? Sculpt, ulong Hash) ReadSculpt(string path, bool named)
+    {
+        var vpath = VirtualPath.Parse(path);
+        if (!_engine.Vfs.Exists(vpath))
+        {
+            if (named) Log.Error(LogCat.Streaming, $"terrain sculpt '{path}' is not in any mount: the ground is the generator's alone");
+            return (null, 0);
+        }
+        try
+        {
+            using var stream = _engine.Vfs.Open(vpath);
+            using var memory = new System.IO.MemoryStream();
+            stream.CopyTo(memory);
+            byte[] bytes = memory.ToArray();
+            return (TerrainSculpt.FromBytes(bytes), Fnv(bytes));
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException)
+        {
+            Log.Error(LogCat.Streaming, $"terrain sculpt '{path}' could not be read ({ex.Message}): the ground is the generator's alone");
+            return (null, 0);
+        }
+    }
+
+    private static ulong Fnv(byte[] bytes)
+    {
+        ulong h = 14695981039346656037UL;
+        foreach (byte b in bytes) h = unchecked((h ^ b) * 1099511628211UL);
+        return h | 1;   // never 0, which is "no file"
     }
 
     // A scene's `space` (4g-5). An interior stops the streaming rings and unloads the terrain, and the

@@ -83,6 +83,9 @@ public sealed class DevTools : IDisposable
     private WiringPanel? _wiring;     // #225
     private readonly AnimationPreview _animation;   // the animation preview (#362): anim_preview*, and its panel
     private AnimationPanel? _animationPanel;
+    private TerrainDocument? _terrain;        // the terrain tools (#372): ed_sculpt, ed_paint, ed_water, and their panel
+    private TerrainPanel? _terrainPanel;
+    private readonly System.Collections.Generic.Dictionary<EditDocument, TerrainDocument> _terrains = new();   // per open tab
     private readonly VocabularyEditor _vocab;       // the conditions and actions form (#370): ed_vocab*
     private readonly VocabularyPanel _vocabPanel;
     private AIGraphPanel? _aiGraph;   // the AI graph view (#369): ed_ai_*, and its panel
@@ -187,12 +190,14 @@ public sealed class DevTools : IDisposable
             if (_play is { IsPlaying: true }) _play.Stop();
             _views[old] = (_camera.Position, _camera.Rotation);
             foreach (var closed in _views.Keys.Where(d => !_workspace!.Documents.Contains(d)).ToList()) _views.Remove(closed);   // tabs since closed
+            foreach (var closed in _terrains.Keys.Where(d => !_workspace!.Documents.Contains(d)).ToList()) _terrains.Remove(closed);
             if (_world != null && _world.IsAlive(_freeCamera)) _world.Destroy(_freeCamera);
             if (_world != null && _world.IsAlive(_viewportCamera)) _world.Destroy(_viewportCamera);
             if (_renderer != null) _renderer.ScreenWorld = world;
         }
         _world = world;
         _document = document;
+        if (!_terrains.TryGetValue(document, out _terrain)) _terrains[document] = _terrain = new TerrainDocument(world);   // its own sculpt and undo per tab (#372)
         // The selection holds a placement, so it follows its re-spawns to the new entity (#221).
         _selection = new EditorSelection(_document);
         _outliner = new EntityOutlinerWindow(world, _selection);
@@ -275,6 +280,7 @@ public sealed class DevTools : IDisposable
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
         _assets = new AssetsPanel(_assetBrowser, _thumbnails, () => _document, _records.Editor,
             () => _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Content, ViewportRay, entity => _selection?.SelectPlaced(entity));
+        _terrainPanel = new TerrainPanel(() => _terrain, ViewportRay, () => _camera.Position.ToNumerics());   // #372
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
         StandAtStart(_world);
@@ -331,6 +337,8 @@ public sealed class DevTools : IDisposable
         _gizmo = new ViewportGizmo(_tools, cvars);
         ProblemCommands.Register(cvars, _engine, () => _document);   // ed_problems (#227)
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
+        TerrainCommands.Register(cvars, () => _terrain);   // ed_sculpt, ed_paint, ed_water, ed_terrain_* (#372)
+        PrefabCommands.Register(cvars, () => _document, () => _selection?.Placements ?? Array.Empty<Placement>());   // ed_revert_all, ed_make_prefab (#372)
         _vocab.Register(cvars, () => _document);   // ed_vocab* (#370)
         AIGraphCommands.Register(cvars, _records.Editor, () => _play?.World ?? _world);   // ed_ai_* (#369)
         AssetCommands.Register(cvars, () => _assetBrowser, () => _document, () => _records.Editor);   // ed_assets, ed_asset_* (#366)
@@ -442,7 +450,7 @@ public sealed class DevTools : IDisposable
     {
         _menu?.Draw(_game);
         _layout.BeginFrame(_drawTabs);
-        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _brushes is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
+        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _brushes is not { IsArmed: true } && _wiring is not { IsPicking: true } && _terrainPanel is not { IsArmed: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();
         _records.Draw();
@@ -457,6 +465,7 @@ public sealed class DevTools : IDisposable
         _problems?.Draw();
         (_audioPanel ??= new AudioPanel(_engine, () => _world)).Draw();
         (_animationPanel ??= new AnimationPanel(_engine, _animation)).Draw(frameSeconds);
+        _terrainPanel?.Draw();
         (_aiGraph ??= new AIGraphPanel(_records.Editor, () => _play?.World ?? _world)).Draw();
         _console.Draw();
         DrawViewport();
@@ -464,6 +473,7 @@ public sealed class DevTools : IDisposable
         _visualLog.Draw();
         _layout.DrawStatusBar(StatusLine());
         _palette?.HandleViewport();
+        _terrainPanel?.HandleViewport();
         if (_world != null) _brushes?.HandleViewport(_world);
         _assets?.HandleViewport();
         if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);
