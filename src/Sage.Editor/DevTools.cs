@@ -75,6 +75,7 @@ public sealed class DevTools : IDisposable
     private readonly LogPanel _log = new();
     private readonly RecordsPanel _records;   // the record browser (#224)
     private PalettePanel? _palette;   // #222
+    private BrushPanel? _brushes;     // blockout brushes (#61)
     private ProblemsPanel? _problems;   // #227
     private AudioPanel? _audioPanel;    // 4o-12
     private PlaySession? _play;       // play-in-editor (#226): ed_play, ed_stop
@@ -239,6 +240,7 @@ public sealed class DevTools : IDisposable
                 Report(_document is { } doc && _vocab.OpenWire(doc, placement, index, out error), error);
             },
         };
+        _brushes = new BrushPanel(_engine, _selection!, _tools, ViewportRay);   // per tab: it holds the selection (#61)
         _problems?.Dispose();
         var problems = new ProblemList(_engine, _document!);
         problems.Add(_vocab);   // the conditions form's checks, live (#370)
@@ -440,11 +442,12 @@ public sealed class DevTools : IDisposable
     {
         _menu?.Draw(_game);
         _layout.BeginFrame(_drawTabs);
-        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
+        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _brushes is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();
         _records.Draw();
         _palette?.Draw();
+        _brushes?.Draw();
         _assets?.Draw();
         _playBar?.DrawButton();
         _wiring?.Draw();
@@ -461,6 +464,7 @@ public sealed class DevTools : IDisposable
         _visualLog.Draw();
         _layout.DrawStatusBar(StatusLine());
         _palette?.HandleViewport();
+        if (_world != null) _brushes?.HandleViewport(_world);
         _assets?.HandleViewport();
         if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);
     }
