@@ -76,6 +76,8 @@ public sealed class DevTools : IDisposable
     private WiringPanel? _wiring;     // #225
     private readonly AnimationPreview _animation;   // the animation preview (#362): anim_preview*, and its panel
     private AnimationPanel? _animationPanel;
+    private readonly VocabularyEditor _vocab;       // the conditions and actions form (#370): ed_vocab*
+    private readonly VocabularyPanel _vocabPanel;
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -89,6 +91,9 @@ public sealed class DevTools : IDisposable
         _console = new DevConsoleWindow(cvars, engine.Core,
             () => engine.Records.TypeNames.SelectMany(t => engine.Records.Ids(t)).Select(i => i.ToString()));
         _records = new RecordsPanel(new RecordEditor(engine));
+        _vocab = new VocabularyEditor(engine, _records.Editor);
+        _vocabPanel = new VocabularyPanel(_vocab);
+        _records.EditField = (record, path) => Report(_vocab.OpenRecord(record, path, out var error), error);
         _stats = new StatOverlay(cvars, engine.Core, () => _renderer, () => _world);
         _visualLog = new VisualLogWindow(cvars, () => _world);
         _badge = new ProblemsBadge(engine);
@@ -176,10 +181,19 @@ public sealed class DevTools : IDisposable
         _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
         if (_menu != null) _menu.Editing = true;
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
-        _wiring = new WiringPanel(_selection!, _pickable);
+        _wiring = new WiringPanel(_selection!, _pickable)
+        {
+            EditRequires = (placement, index) =>
+            {
+                string? error = "no document is open";
+                Report(_document is { } doc && _vocab.OpenWire(doc, placement, index, out error), error);
+            },
+        };
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
         _problems?.Dispose();
-        _problems = new ProblemsPanel(new ProblemList(_engine, _document), _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
+        var problems = new ProblemList(_engine, _document);
+        problems.Add(_vocab);   // the conditions form's checks, live (#370)
+        _problems = new ProblemsPanel(problems, _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
 
         // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
@@ -200,6 +214,13 @@ public sealed class DevTools : IDisposable
         if (!target.Document.IsEmpty) _document.Open(target.Document);
         Log.Info(LogCat.Editor, $"Editing '{_world.Name}': scene {(target.Scene.IsEmpty ? "(none)" : target.Scene.ToString())}, " +
                                 $"document {(_document.IsOpen ? _document.Title : "(none: File > New or doc_open)")}");
+    }
+
+    // A panel's button that opens the conditions form, and the form's tab brought forward.
+    private static void Report(bool opened, string? error)
+    {
+        if (opened) ImGuiNET.ImGui.SetWindowFocus(VocabularyPanel.Title);
+        else if (error != null) Log.Warn(LogCat.Editor, error);
     }
 
     // The status bar's line: the document, whether it is saved, and the selection.
@@ -238,6 +259,7 @@ public sealed class DevTools : IDisposable
         _gizmo = new ViewportGizmo(_tools, cvars);
         ProblemCommands.Register(cvars, _engine, () => _document);   // ed_problems (#227)
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
+        _vocab.Register(cvars, () => _document);   // ed_vocab* (#370)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
         {
@@ -353,6 +375,7 @@ public sealed class DevTools : IDisposable
         _palette?.Draw();
         _playBar?.DrawButton();
         _wiring?.Draw();
+        _vocabPanel.Draw();
         if (_world != null) _wiring?.DrawLines(_world);
         _log.Draw();
         _problems?.Draw();
