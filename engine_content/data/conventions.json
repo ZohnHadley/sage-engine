@@ -28,7 +28,9 @@
       "chase": "chase",
       "meleeAttack": "melee_attack",
       "castSpell": "cast_spell",
-      "holdGround": "hold_ground"
+      "holdGround": "hold_ground",
+      // Something heard and not yet looked into (issue #386): turn to it, walk there, look round.
+      "investigate": "investigate"
     },
     // Input actions by name. Modules register these in Init, before content loads; a game that wants
     // its own registers them in its module and names them here.
