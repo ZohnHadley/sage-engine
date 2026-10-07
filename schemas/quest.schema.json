@@ -100,6 +100,27 @@
           "done": {
             "description": "(bool)",
             "type": "boolean"
+          },
+          "timeLimit": {
+            "description": "Game hours the stage may take before it fails; 0 = no limit. Unit: h. At least 0. (float)",
+            "type": "number",
+            "minimum": 0
+          },
+          "failWhen": {
+            "description": "Fails the stage the moment this holds, asked about the player (one condition; use all for several) (ICondition)",
+            "allOf": [
+              {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            ]
+          },
+          "fail": {
+            "description": "The stage failing goes to; empty = the quest ends failed at this one. (string)",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Reaching this stage ends the quest failed. (bool)",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -151,6 +172,27 @@
           "done": {
             "description": "(bool)",
             "type": "boolean"
+          },
+          "timeLimit": {
+            "description": "Game hours the stage may take before it fails; 0 = no limit. Unit: h. At least 0. (float)",
+            "type": "number",
+            "minimum": 0
+          },
+          "failWhen": {
+            "description": "Fails the stage the moment this holds, asked about the player (one condition; use all for several) (ICondition)",
+            "allOf": [
+              {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            ]
+          },
+          "fail": {
+            "description": "The stage failing goes to; empty = the quest ends failed at this one. (string)",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Reaching this stage ends the quest failed. (bool)",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -201,6 +243,27 @@
           },
           "done": {
             "description": "(bool)",
+            "type": "boolean"
+          },
+          "timeLimit": {
+            "description": "Game hours the stage may take before it fails; 0 = no limit. Unit: h. At least 0. (float)",
+            "type": "number",
+            "minimum": 0
+          },
+          "failWhen": {
+            "description": "Fails the stage the moment this holds, asked about the player (one condition; use all for several) (ICondition)",
+            "allOf": [
+              {
+                "$ref": "vocabularies.schema.json#/definitions/condition"
+              }
+            ]
+          },
+          "fail": {
+            "description": "The stage failing goes to; empty = the quest ends failed at this one. (string)",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Reaching this stage ends the quest failed. (bool)",
             "type": "boolean"
           }
         },

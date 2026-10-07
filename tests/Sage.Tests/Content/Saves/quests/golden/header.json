@@ -1,0 +1,75 @@
+{
+  "formatVersion": 4,
+  "game": "tests",
+  "engineVersion": "0.1.1-alpha.0.91\u002Bf1102ea",
+  "savedUtc": "2026-10-07T09:32:48.7758841Z",
+  "kind": "manual",
+  "worlds": [
+    "main"
+  ],
+  "plugins": [
+    {
+      "id": "sage.gameplay.abilities",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.ai",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.animation",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.attributes",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.character",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.combat",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.dialogue",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.factions",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.io",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.items",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.lights",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.movers",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.gameplay.quests",
+      "version": "0.1.0"
+    },
+    {
+      "id": "sage.physics3d",
+      "version": "0.1.0"
+    }
+  ],
+  "content": [
+    {
+      "mount": "engine",
+      "namespace": "sage"
+    }
+  ],
+  "mods": []
+}

@@ -399,3 +399,34 @@ static Sage.Gameplay.Merchants.Price(Sage.Simulation.World! world, Sage.Simulati
 static Sage.Gameplay.Merchants.Ready(Sage.Simulation.World! world, Sage.Simulation.Entity merchant) -> bool
 static Sage.Gameplay.Merchants.RecordOf(Sage.Simulation.World! world, Sage.Simulation.Entity merchant) -> Sage.Gameplay.MerchantRecord?
 static Sage.Gameplay.Merchants.Sell(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant, int index, int count) -> Sage.Gameplay.TradeResult
+const Sage.Gameplay.BridgeIO.OnQuestFailed = "OnQuestFailed" -> string!
+const Sage.Gameplay.QuestHappening.Asked = "asked" -> string!
+const Sage.Gameplay.QuestHappening.Entered = "entered" -> string!
+Sage.Gameplay.ItemRecord.QuestItem -> bool
+Sage.Gameplay.Journal.Entry.Deadline.get -> double
+Sage.Gameplay.Journal.Entry.Deadline.set -> void
+Sage.Gameplay.Journal.Entry.Failed.get -> bool
+Sage.Gameplay.Journal.Entry.Failed.set -> void
+Sage.Gameplay.Journal.Entry.Told.get -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.Journal.Entry.Told.set -> void
+Sage.Gameplay.QuestChanged.Failed.get -> bool
+Sage.Gameplay.QuestChanged.Failed.init -> void
+Sage.Gameplay.QuestHappening.Topic.get -> Sage.Core.RecordId
+Sage.Gameplay.QuestHappening.Topic.init -> void
+Sage.Gameplay.QuestStage.Fail -> string!
+Sage.Gameplay.QuestStage.Failed -> bool
+Sage.Gameplay.QuestStage.FailWhen -> Sage.Simulation.ICondition?
+Sage.Gameplay.QuestStage.TimeLimit -> float
+Sage.Gameplay.TopicAsked
+Sage.Gameplay.TopicAsked.Listener.get -> Sage.Simulation.Entity
+Sage.Gameplay.TopicAsked.Listener.init -> void
+Sage.Gameplay.TopicAsked.Speaker.get -> Sage.Simulation.Entity
+Sage.Gameplay.TopicAsked.Speaker.init -> void
+Sage.Gameplay.TopicAsked.Topic.get -> Sage.Core.RecordId
+Sage.Gameplay.TopicAsked.Topic.init -> void
+Sage.Gameplay.TopicAsked.TopicAsked() -> void
+Sage.Gameplay.TopicAsked.TopicAsked(Sage.Simulation.Entity Speaker, Sage.Simulation.Entity Listener, Sage.Core.RecordId Topic) -> void
+static Sage.Gameplay.Items.CanDrop(this Sage.Simulation.World! world, Sage.Core.RecordId item, out string! why) -> bool
+static Sage.Gameplay.Quests.Fail(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
+static Sage.Gameplay.Quests.HoursLeft(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> double?
+static Sage.Gameplay.Quests.IsFailed(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool

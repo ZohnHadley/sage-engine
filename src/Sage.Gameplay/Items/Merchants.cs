@@ -244,7 +244,7 @@ public static class Merchants
         if (!StackAt(world, customer, index, count, out var stack)) return Refuse(TradeRefusal.Gone, 0, "that is not there");
         string what = Describe(world, stack, count);
         world.Records().TryGet(stack.Item, out ItemRecord item);
-        if (stack.Item == record.Currency.Id || !record.BuysCategory(item?.Category))
+        if (stack.Item == record.Currency.Id || !record.BuysCategory(item?.Category) || item?.QuestItem == true)
             return Refuse(TradeRefusal.NotBought, 0, $"{World.Describe(merchant)} does not buy {what}");
         int price = Price(world, customer, merchant, in stack, count, buying: false);
         ref var m = ref world.Get<Merchant>(merchant);
