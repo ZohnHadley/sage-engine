@@ -32,6 +32,9 @@ public sealed class GameplayConventionsRecord
     [Property(Category = "Attributes", Tooltip = "The tag the `god` cheat toggles on the local player")]
     public RecordRef<TagRecord> Invulnerable;
 
+    [Property(Category = "Attributes", Tooltip = "The attribute that scales a character's walk and run speed (1 = as its movement profile says): what a heavy pack or a slowing spell lowers; empty = nothing does (issue #384)")]
+    public RecordRef<AttributeRecord> SpeedAttribute;
+
     [Property(Category = "Combat", Tooltip = "The damage type of a hit that names none")]
     public RecordRef<DamageTypeRecord> DamageType;
     [Property(Category = "Combat", Tooltip = "The attack of a fighter that was given none")]

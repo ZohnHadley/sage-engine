@@ -92,6 +92,14 @@
         }
       ]
     },
+    "burden": {
+      "description": "The component sage:burden (Burden), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:burden"
+        }
+      ]
+    },
     "calendar_event": {
       "description": "The component sage:calendar_event (CalendarEventListener), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -809,6 +817,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:bone_attachment"
+        }
+      ]
+    },
+    "sage:burden": {
+      "description": "Component sage:burden (Burden).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:burden"
         }
       ]
     },
@@ -3009,6 +3025,27 @@
       "additionalProperties": false,
       "description": "Component sage:bone_attachment (BoneAttachment)."
     },
+    "sage:burden": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "description": "Its encumbrance rules. Names a encumbrance record. (RecordRef<EncumbranceRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:encumbrance"
+            }
+          ]
+        },
+        "level": {
+          "description": "The level it is at: 0 = none, n = the rules' nth level. At least 0. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:burden (Burden)."
+    },
     "sage:calendar_event": {
       "type": "object",
       "properties": {
@@ -3393,6 +3430,11 @@
           "description": "Not saved. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "speedScale": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
         },
         "inWater": {
           "description": "Its feet are in a water volume (set by the controller) (bool, default false)",

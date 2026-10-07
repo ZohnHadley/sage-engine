@@ -2,44 +2,36 @@
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
-Sage.Gameplay.AttributeGained
-Sage.Gameplay.AttributeGained.Amount.get -> float
-Sage.Gameplay.AttributeGained.Amount.init -> void
-Sage.Gameplay.AttributeGained.Attribute.get -> Sage.Core.RecordId
-Sage.Gameplay.AttributeGained.Attribute.init -> void
-Sage.Gameplay.AttributeGained.AttributeGained() -> void
-Sage.Gameplay.AttributeGained.AttributeGained(Sage.Simulation.Entity Entity, Sage.Core.RecordId Attribute, float Amount, Sage.Core.RecordId Rule) -> void
-Sage.Gameplay.AttributeGained.Entity.get -> Sage.Simulation.Entity
-Sage.Gameplay.AttributeGained.Entity.init -> void
-Sage.Gameplay.AttributeGained.Rule.get -> Sage.Core.RecordId
-Sage.Gameplay.AttributeGained.Rule.init -> void
-Sage.Gameplay.AttributeGainEvent
-Sage.Gameplay.AttributeGainEvent.Cast = 3 -> Sage.Gameplay.AttributeGainEvent
-Sage.Gameplay.AttributeGainEvent.Hit = 0 -> Sage.Gameplay.AttributeGainEvent
-Sage.Gameplay.AttributeGainEvent.Hurt = 1 -> Sage.Gameplay.AttributeGainEvent
-Sage.Gameplay.AttributeGainEvent.Kill = 2 -> Sage.Gameplay.AttributeGainEvent
-Sage.Gameplay.AttributeGainEvent.Use = 4 -> Sage.Gameplay.AttributeGainEvent
-Sage.Gameplay.AttributeGainRecord
-Sage.Gameplay.AttributeGainRecord.Abilities -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.AbilityRecord!>>!
-Sage.Gameplay.AttributeGainRecord.Amount -> float
-Sage.Gameplay.AttributeGainRecord.Attribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
-Sage.Gameplay.AttributeGainRecord.AttributeGainRecord() -> void
-Sage.Gameplay.AttributeGainRecord.DamageTypes -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.DamageTypeRecord!>>!
-Sage.Gameplay.AttributeGainRecord.Items -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
-Sage.Gameplay.AttributeGainRecord.On -> Sage.Gameplay.AttributeGainEvent
-Sage.Gameplay.AttributeGainRecord.PerDamage -> float
-Sage.Gameplay.AttributeGainRecord.Wielding -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
+Sage.Gameplay.Burden
+Sage.Gameplay.Burden.Burden() -> void
+Sage.Gameplay.Burden.Level -> int
+Sage.Gameplay.Burden.Rules -> Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!>
+Sage.Gameplay.BurdenLevel
+Sage.Gameplay.BurdenLevel.BurdenLevel() -> void
+Sage.Gameplay.BurdenLevel.Effect -> Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>
+Sage.Gameplay.BurdenLevel.Load -> float
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
 Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.TickCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
+Sage.Gameplay.Encumbrance
+Sage.Gameplay.EncumbranceRecord
+Sage.Gameplay.EncumbranceRecord.EncumbranceRecord() -> void
+Sage.Gameplay.EncumbranceRecord.Levels -> System.Collections.Generic.List<Sage.Gameplay.BurdenLevel!>!
+Sage.Gameplay.EncumbranceRecord.MaxLoad -> float
+Sage.Gameplay.EquipSlotRecord
+Sage.Gameplay.EquipSlotRecord.EquipSlotRecord() -> void
+Sage.Gameplay.EquipSlotRecord.Name -> string!
+Sage.Gameplay.EquipSlotRecord.NameOf(Sage.Core.RecordId id) -> string!
+Sage.Gameplay.EquipSlotRecord.Order -> int
 Sage.Gameplay.FootIk.LeftTilt -> float
 Sage.Gameplay.FootIk.MaxFootTilt -> float
 Sage.Gameplay.FootIk.PelvisSmoothing -> float
 Sage.Gameplay.FootIk.RightTilt -> float
 Sage.Gameplay.FootIkPart.MaxFootTilt -> float
 Sage.Gameplay.FootIkPart.PelvisSmoothing -> float
+Sage.Gameplay.InventoryPart.Encumbrance -> Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!>
 Sage.Gameplay.Journal.Entry.History.get -> System.Collections.Generic.List<string!>!
 Sage.Gameplay.Journal.Entry.History.set -> void
 Sage.Gameplay.Journal.Entry.Tracked.get -> bool
@@ -56,34 +48,6 @@ Sage.Gameplay.HitResult.Surface.get -> Sage.Core.RecordId
 Sage.Gameplay.HitResult.Surface.init -> void
 Sage.Gameplay.LightPart.Baked -> bool
 Sage.Gameplay.LightPart.Shadows -> bool
-Sage.Gameplay.Loot
-Sage.Gameplay.Loot.Loot() -> void
-Sage.Gameplay.Loot.Rolled -> bool
-Sage.Gameplay.Loot.Table -> Sage.Core.RecordId
-Sage.Gameplay.LootEntry
-Sage.Gameplay.LootEntry.Always -> bool
-Sage.Gameplay.LootEntry.Item -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
-Sage.Gameplay.LootEntry.LootEntry() -> void
-Sage.Gameplay.LootEntry.Max -> int
-Sage.Gameplay.LootEntry.Min -> int
-Sage.Gameplay.LootEntry.Requires -> Sage.Simulation.ICondition?
-Sage.Gameplay.LootEntry.Table -> Sage.Core.RecordRef<Sage.Gameplay.LootTableRecord!>
-Sage.Gameplay.LootEntry.Weight -> float
-Sage.Gameplay.LootPart
-Sage.Gameplay.LootPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
-Sage.Gameplay.LootPart.LootPart() -> void
-Sage.Gameplay.LootPart.Table -> Sage.Core.RecordRef<Sage.Gameplay.LootTableRecord!>
-Sage.Gameplay.LootPart.When -> Sage.Gameplay.LootWhen
-Sage.Gameplay.LootTableRecord
-Sage.Gameplay.LootTableRecord.Entries -> System.Collections.Generic.List<Sage.Gameplay.LootEntry!>!
-Sage.Gameplay.LootTableRecord.LootTableRecord() -> void
-Sage.Gameplay.LootTableRecord.MaxRolls -> int
-Sage.Gameplay.LootTableRecord.Requires -> Sage.Simulation.ICondition?
-Sage.Gameplay.LootTableRecord.Rolls -> int
-Sage.Gameplay.LootTables
-Sage.Gameplay.LootWhen
-Sage.Gameplay.LootWhen.Death = 0 -> Sage.Gameplay.LootWhen
-Sage.Gameplay.LootWhen.Spawn = 1 -> Sage.Gameplay.LootWhen
 Sage.Gameplay.Melee.Direction -> Sage.Simulation.AttackDirection
 Sage.Gameplay.QuestObjective.Target -> string!
 Sage.Gameplay.QuestStage.Target -> string!
@@ -106,10 +70,13 @@ Sage.Gameplay.FootstepsPart.Right -> string!
 Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>
 Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
 Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
-static Sage.Gameplay.LootTables.Roll(Sage.Simulation.World! world, Sage.Simulation.Entity into, Sage.Core.RecordId table) -> int
+static Sage.Gameplay.Encumbrance.AddBurden(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!> rules) -> void
+static Sage.Gameplay.Encumbrance.BurdenLevelOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> int
+static Sage.Gameplay.Encumbrance.CarryLimitOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> float
 static Sage.Gameplay.Quests.IsTracked(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.Track(Sage.Simulation.World! world, Sage.Core.RecordId quest, bool tracked = true) -> bool
 virtual Sage.Gameplay.QuestObjective.TryGetPlace(out System.Numerics.Vector3 at) -> bool
+Sage.Gameplay.GameplayConventionsRecord.SpeedAttribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
 Sage.Gameplay.ContainerPart
 Sage.Gameplay.ContainerPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
 Sage.Gameplay.ContainerPart.ContainerPart() -> void
@@ -149,6 +116,35 @@ static Sage.Gameplay.Containers.IsTheft(Sage.Simulation.World! world, Sage.Simul
 static Sage.Gameplay.Containers.MakeContainer(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Gameplay.ItemContainer container = default(Sage.Gameplay.ItemContainer)) -> void
 static Sage.Gameplay.Containers.Open(Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Simulation.Entity container) -> bool
 static Sage.Gameplay.Containers.Took(Sage.Simulation.World! world, Sage.Simulation.Entity taker, Sage.Simulation.Entity container, Sage.Core.RecordId item, int count) -> void
+Sage.Gameplay.Loot
+Sage.Gameplay.Loot.Loot() -> void
+Sage.Gameplay.Loot.Rolled -> bool
+Sage.Gameplay.Loot.Table -> Sage.Core.RecordId
+Sage.Gameplay.LootEntry
+Sage.Gameplay.LootEntry.Always -> bool
+Sage.Gameplay.LootEntry.Item -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
+Sage.Gameplay.LootEntry.LootEntry() -> void
+Sage.Gameplay.LootEntry.Max -> int
+Sage.Gameplay.LootEntry.Min -> int
+Sage.Gameplay.LootEntry.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.LootEntry.Table -> Sage.Core.RecordRef<Sage.Gameplay.LootTableRecord!>
+Sage.Gameplay.LootEntry.Weight -> float
+Sage.Gameplay.LootPart
+Sage.Gameplay.LootPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.LootPart.LootPart() -> void
+Sage.Gameplay.LootPart.Table -> Sage.Core.RecordRef<Sage.Gameplay.LootTableRecord!>
+Sage.Gameplay.LootPart.When -> Sage.Gameplay.LootWhen
+Sage.Gameplay.LootTableRecord
+Sage.Gameplay.LootTableRecord.Entries -> System.Collections.Generic.List<Sage.Gameplay.LootEntry!>!
+Sage.Gameplay.LootTableRecord.LootTableRecord() -> void
+Sage.Gameplay.LootTableRecord.MaxRolls -> int
+Sage.Gameplay.LootTableRecord.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.LootTableRecord.Rolls -> int
+Sage.Gameplay.LootTables
+Sage.Gameplay.LootWhen
+Sage.Gameplay.LootWhen.Death = 0 -> Sage.Gameplay.LootWhen
+Sage.Gameplay.LootWhen.Spawn = 1 -> Sage.Gameplay.LootWhen
+static Sage.Gameplay.LootTables.Roll(Sage.Simulation.World! world, Sage.Simulation.Entity into, Sage.Core.RecordId table) -> int
 Sage.Gameplay.Equipment.InstanceIn(string! slot) -> int
 Sage.Gameplay.EquippedItem.Instance -> int
 Sage.Gameplay.InventoryPart.Stack.Instance -> Sage.Gameplay.ItemInstance?
@@ -175,3 +171,30 @@ static Sage.Gameplay.Items.SpawnPickup(this Sage.Simulation.World! world, in Sag
 static Sage.Gameplay.Items.Split(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count) -> bool
 static Sage.Gameplay.Items.TakeAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count, out Sage.Gameplay.ItemStack taken) -> bool
 static Sage.Gameplay.Items.WornInstance(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! slot) -> Sage.Gameplay.ItemInstance?
+Sage.Gameplay.AttributeGained
+Sage.Gameplay.AttributeGained.Amount.get -> float
+Sage.Gameplay.AttributeGained.Amount.init -> void
+Sage.Gameplay.AttributeGained.Attribute.get -> Sage.Core.RecordId
+Sage.Gameplay.AttributeGained.Attribute.init -> void
+Sage.Gameplay.AttributeGained.AttributeGained() -> void
+Sage.Gameplay.AttributeGained.AttributeGained(Sage.Simulation.Entity Entity, Sage.Core.RecordId Attribute, float Amount, Sage.Core.RecordId Rule) -> void
+Sage.Gameplay.AttributeGained.Entity.get -> Sage.Simulation.Entity
+Sage.Gameplay.AttributeGained.Entity.init -> void
+Sage.Gameplay.AttributeGained.Rule.get -> Sage.Core.RecordId
+Sage.Gameplay.AttributeGained.Rule.init -> void
+Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Cast = 3 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Hit = 0 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Hurt = 1 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Kill = 2 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Use = 4 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainRecord
+Sage.Gameplay.AttributeGainRecord.Abilities -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.AbilityRecord!>>!
+Sage.Gameplay.AttributeGainRecord.Amount -> float
+Sage.Gameplay.AttributeGainRecord.Attribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.AttributeGainRecord.AttributeGainRecord() -> void
+Sage.Gameplay.AttributeGainRecord.DamageTypes -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.DamageTypeRecord!>>!
+Sage.Gameplay.AttributeGainRecord.Items -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
+Sage.Gameplay.AttributeGainRecord.On -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainRecord.PerDamage -> float
+Sage.Gameplay.AttributeGainRecord.Wielding -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
