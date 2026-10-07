@@ -108,8 +108,9 @@
       "hint":    { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.topics.hint" }
     } },
 
-  // ---- shop: the shell of #99 — the merchant's goods beside the bag, each move across priced by a stub
-  // rule (ShopView.Prices) and added to a balance; barter proper is phase 4f ---------------------------
+  // ---- shop: the merchant's goods beside the bag (#99). At a `merchant` (issue #380) a move across is a
+  // trade — the stack and its price change hands, or `message` says why not — and the money is shown; at
+  // anybody else each move is priced by a stub rule (ShopView.Prices) and added to a balance -------------
   { "type": "screen", "id": "shop", "layout": "shop", "viewModel": "rpg_shop" },
   { "type": "ui_layout", "id": "shop", "style": "panel",
     "nodes": {
@@ -137,8 +138,13 @@
 
       "buying":      { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.buy",
                        "args": { "item": "heldLabel", "price": "heldPrice" }, "bindings": { "visible": "heldIsStock" } },
+      "selling":     { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.sell",
+                       "args": { "item": "heldLabel", "price": "heldPrice" }, "bindings": { "visible": "heldIsBag" } },
+      "money":       { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.money",
+                       "args": { "money": "money", "who": "merchantName", "gold": "merchantGold" },
+                       "bindings": { "visible": "isMerchant" } },
       "balance":     { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.balance",
-                       "args": { "balance": "balance" } },
+                       "args": { "balance": "balance" }, "bindings": { "visible": "keepsBalance" } },
       "message":     { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
       "hint":        { "widget": "label", "parent": "window", "style": "hint", "text": "@rpg.shop.hint" }
     } },

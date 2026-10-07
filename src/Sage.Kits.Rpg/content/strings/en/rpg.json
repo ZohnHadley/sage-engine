@@ -77,6 +77,11 @@
     "buy": "Buying {item} for {price}",
     "sell": "Selling {item} for {price}",
     "balance": "You owe {balance}",
+    "money": "Your money {money}    {who} has {gold}",
+    "too_poor": "You cannot afford {item}: it costs {price} and you have {money}.",
+    "merchant_too_poor": "{who} cannot afford {item}: it fetches {price} and they have {gold}.",
+    "not_bought": "{who} does not buy {item}.",
+    "too_heavy": "{item} cannot be carried.",
     "hint": "A: pick up / put down on the other side to trade    B: close"
   },
   "rest": {

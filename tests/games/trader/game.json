@@ -1,0 +1,17 @@
+{
+  // Phase 4f's trader (engine issue #380, REDESIGN §5): a S.T.A.L.K.E.R.-style trader in a bunker who buys
+  // and sells for money, as data. No C#: rubles are an item (the currency), the trader is a `merchant` record
+  // (his purse, markup, what he pays, the categories he buys, a loot table for his goods and a restock every
+  // 24 game hours) on a prefab with the `merchant` part, and the price moves with the player's `barter`
+  // attribute and their standing with the loners. Using him opens the RPG kit's shop (`use_screen`).
+  // CI validates it and smoke-runs it; tests/Sage.Tests/Games/TraderExitTests.cs plays it headlessly: buy,
+  // sell, the three refusals, the price rule, a restock after a day and a save carried across.
+  "name": "Trader",
+  "id": "bunker",
+  "version": "1.0.0",
+  "plugins": ["sage.gameplay.io", "sage.gameplay.character", "sage.gameplay.attributes",
+              "sage.gameplay.combat", "sage.gameplay.items", "sage.gameplay.factions"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "bunker"
+}

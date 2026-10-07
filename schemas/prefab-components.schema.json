@@ -500,6 +500,14 @@
         }
       ]
     },
+    "merchant": {
+      "description": "The component sage:merchant (Merchant), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:merchant"
+        }
+      ]
+    },
     "mesh_renderer": {
       "description": "The component sage:mesh_renderer (MeshRenderer), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -1209,6 +1217,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:melee"
+        }
+      ]
+    },
+    "sage:merchant": {
+      "description": "Component sage:merchant (Merchant).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:merchant"
         }
       ]
     },
@@ -5689,6 +5705,242 @@
       },
       "additionalProperties": false,
       "description": "Component sage:melee (Melee)."
+    },
+    "sage:merchant": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "Their prices, purse, what they buy and when they restock. Names a merchant record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:merchant"
+            }
+          ]
+        },
+        "gold": {
+          "description": "What they have to buy with now. At least 0. (int, default 0)",
+          "default": 0,
+          "type": "integer",
+          "minimum": 0
+        },
+        "restockAt": {
+          "description": "World-clock hours at which they next restock; 0 = never. Unit: h. (double, default 0)",
+          "default": 0,
+          "type": "number"
+        },
+        "stock": {
+          "description": "(List<ItemStack>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "instance": {
+                "description": "(ItemInstance)",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "description": "Its own name (a unique sword); empty = the item's label. (string)",
+                    "type": "string"
+                  },
+                  "effects": {
+                    "description": "Enchantments: effects applied while it is equipped, on top of the item's own. Names a effect record. (List<RecordRef<EffectRecord>>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects+": {
+                    "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects-": {
+                    "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "condition": {
+                    "description": "How worn it is, 1 = as made; below that, the durability rules say what it means. Range: 0 to 1. (float)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "charges": {
+                    "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "stock+": {
+          "description": "Adds to \"stock\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "instance": {
+                "description": "(ItemInstance)",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "description": "Its own name (a unique sword); empty = the item's label. (string)",
+                    "type": "string"
+                  },
+                  "effects": {
+                    "description": "Enchantments: effects applied while it is equipped, on top of the item's own. Names a effect record. (List<RecordRef<EffectRecord>>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects+": {
+                    "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects-": {
+                    "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "condition": {
+                    "description": "How worn it is, 1 = as made; below that, the durability rules say what it means. Range: 0 to 1. (float)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "charges": {
+                    "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "stock-": {
+          "description": "Removes these from \"stock\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              },
+              "instance": {
+                "description": "(ItemInstance)",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "description": "Its own name (a unique sword); empty = the item's label. (string)",
+                    "type": "string"
+                  },
+                  "effects": {
+                    "description": "Enchantments: effects applied while it is equipped, on top of the item's own. Names a effect record. (List<RecordRef<EffectRecord>>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects+": {
+                    "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects-": {
+                    "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "condition": {
+                    "description": "How worn it is, 1 = as made; below that, the durability rules say what it means. Range: 0 to 1. (float)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "charges": {
+                    "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:merchant (Merchant)."
     },
     "sage:mesh_renderer": {
       "type": "object",

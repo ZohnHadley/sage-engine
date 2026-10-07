@@ -159,7 +159,7 @@ public class PrefabPartTests
         var expected = new Dictionary<string, string>
         {
             ["abilities"] = "sage.gameplay.abilities", ["aim_ik"] = "sage.core", ["animator"] = "sage.core", ["attributes"] = "sage.gameplay.attributes",
-            ["bone_attachment"] = "sage.core", ["foot_ik"] = "sage.gameplay.animation", ["footsteps"] = "sage.gameplay.animation", ["hand_ik"] = "sage.core", ["look_at_ik"] = "sage.core", ["loot"] = "sage.gameplay.items",
+            ["bone_attachment"] = "sage.core", ["foot_ik"] = "sage.gameplay.animation", ["footsteps"] = "sage.gameplay.animation", ["hand_ik"] = "sage.core", ["look_at_ik"] = "sage.core", ["loot"] = "sage.gameplay.items", ["merchant"] = "sage.gameplay.items",
             ["body"] = "sage.physics3d", ["brush"] = "sage.core", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
             ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
             ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hitboxes"] = "sage.gameplay.combat", ["hop"] = "sandbox", ["orbit"] = "sandbox", ["inventory"] = "sage.gameplay.items", ["container"] = "sage.gameplay.items",

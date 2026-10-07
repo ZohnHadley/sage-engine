@@ -89,6 +89,10 @@ public abstract class ItemGridView : IViewModel
     // Whether a stack of grid i may be dropped on the ground from this screen: the subject's own.
     protected virtual bool CanDrop(int grid, in UiBindContext context) => OwnerOf(grid, in context) == context.Subject;
 
+    // Moves a held stack onto another grid (ItemGrid.Transfer); a shop trades instead (issue #380).
+    private protected virtual bool Transfer(World world, GridItem held, ItemGrid to, int x, int y, bool rotated, out string reason) =>
+        ItemGrid.Transfer(world, held, to, x, y, rotated, out reason);
+
     // A stack went from one grid to another (a shop prices it). Called after the move succeeded.
     protected virtual void Moved(World world, RecordId item, int count, ItemGrid from, ItemGrid to) { }
 
@@ -223,7 +227,7 @@ public abstract class ItemGridView : IViewModel
             moved = to.Move(world, held, x, y, rotated);
             if (!moved) reason = RpgText.Of(world).Format("@rpg.grid.no_room", ("item", held.Label));
         }
-        else moved = ItemGrid.Transfer(world, held, to, x, y, rotated, out reason);
+        else moved = Transfer(world, held, to, x, y, rotated, out reason);
         Message = moved ? "" : reason;
         if (moved && to != from) Moved(world, item, count, from, to);
     }
