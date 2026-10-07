@@ -38,3 +38,5 @@ Sage.Core.DropDownConsole.Update(float seconds) -> void
 Sage.Core.CVarRegistry.Version.get -> int
 Sage.Core.GameManifest.Title.get -> string?
 Sage.Core.GameManifest.Title.set -> void
+Sage.Core.RecordStore.Preview(string! type, Sage.Core.RecordId id, System.Text.Json.Nodes.JsonObject! fields, out string! error) -> bool
+Sage.Core.RecordStore.Previewed -> System.Action<string!, Sage.Core.RecordId>?
