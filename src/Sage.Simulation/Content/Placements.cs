@@ -25,6 +25,16 @@ public sealed class Placement
     public Vector3 At;                 // converted to the simulation's frame on spawn (R6)
     [Property(Unit = "deg", Tooltip = "Degrees about +Y; 0 faces -Z")]
     public float Yaw;                  // degrees about +Y, 0 facing -Z
+    // The rest of a full rotation (issue #367), applied as Quaternion.CreateFromYawPitchRoll does: roll
+    // about the thing's own -Z first, then pitch about X, then the yaw. Left out, both are 0, so a file
+    // written before them (a yaw and nothing else) places exactly what it placed before.
+    [Property(Unit = "deg", Tooltip = "Degrees about the thing's X axis, applied before the yaw; positive tips its front up")]
+    public float Pitch;
+    [Property(Unit = "deg", Tooltip = "Degrees about the thing's Z axis, applied first")]
+    public float Roll;
+    // Its size on each of its own axes (issue #367); left out, (1, 1, 1). Every part of it must be above 0.
+    [Property(Tooltip = "Its size along its own X, Y and Z axes; 1 is the prefab's size")]
+    public Vector3 Scale = Vector3.One;
     [Property(Tooltip = "Optional, so an outliner, ent_list and a wire can name it")]
     public string Name = "";
     // Its identity in saves (phase 4i-3): left out, one is derived from where it is in the list, which
@@ -105,7 +115,7 @@ public static class PlacementExtensions
     {
         var placement = record.Place[index];
         var at = world.PlacementPosition(placement, record.Origin, record.RelativeTo);
-        var entity = world.SpawnWithoutId(placement.Prefab.Id, at, placement.Yaw, placement.Overrides, $"placements {document}");
+        var entity = world.SpawnPlacementWithoutId(placement, at, $"placements {document}");
         if (entity.IsNull) return entity;
 
         if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
@@ -115,6 +125,13 @@ public static class PlacementExtensions
         ContentIds.Place(world, ContentIds.DocumentSource(document), entity, ContentIds.DocumentPlacement(document, index, placement));
         return entity;
     }
+
+    // A placement's whole rotation (issue #367): its yaw, pitch and roll, as CreateFromYawPitchRoll
+    // composes them. A yaw-only placement is SageMath.RotationFromYaw of its yaw, as it always was.
+    public static Quaternion PlacementRotation(this Placement placement) =>
+        Quaternion.CreateFromYawPitchRoll(placement.Yaw * DegreesToRadians, placement.Pitch * DegreesToRadians, placement.Roll * DegreesToRadians);
+
+    private const float DegreesToRadians = MathF.PI / 180f;
 
     // The document has placed everything (SpawnPlacement, one by one): what a save said about it — its
     // dead, its state — is laid on now.
@@ -199,12 +216,16 @@ public static class PlacementExtensions
             if (entity.GetComponent<FromPlacements>().Document != document) continue;
 
             var transform = entity.GetComponent<Transform>();
+            var angles = SageMath.YawPitchRollOf(transform.LocalRotation) * (180f / MathF.PI);
             record.Place.Add(new Placement
             {
                 Prefab = entity.TryGetComponent<FromPrefab>(out var from) ? from.Prefab : default,
                 At = world.PlacementAt(transform.LocalPosition, record.Origin, record.RelativeTo),
-                // + 0: a yaw of -0 is 0, and a file should not say "-0".
-                Yaw = SageMath.YawOf(transform.LocalRotation) * 180f / MathF.PI + 0f,
+                // + 0: an angle of -0 is 0, and a file should not say "-0".
+                Yaw = angles.X + 0f,
+                Pitch = angles.Y + 0f,
+                Roll = angles.Z + 0f,
+                Scale = transform.LocalScale == Vector3.Zero ? Vector3.One : transform.LocalScale,
                 Name = entity.Name ?? "",
                 Id = entity.TryGetComponent<Persistent>(out var persistent) && authored.TryGetValue(persistent.Id, out var written) ? written : "",
                 Outputs = PlacementWires.Read(entity),

@@ -6143,6 +6143,23 @@
                 "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
                 "type": "number"
               },
+              "pitch": {
+                "description": "Degrees about the thing's X axis, applied before the yaw; positive tips its front up. Unit: deg. (float)",
+                "type": "number"
+              },
+              "roll": {
+                "description": "Degrees about the thing's Z axis, applied first. Unit: deg. (float)",
+                "type": "number"
+              },
+              "scale": {
+                "description": "Its size along its own X, Y and Z axes; 1 is the prefab's size. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
               "name": {
                 "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
                 "type": "string"
@@ -6340,6 +6357,23 @@
                 "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
                 "type": "number"
               },
+              "pitch": {
+                "description": "Degrees about the thing's X axis, applied before the yaw; positive tips its front up. Unit: deg. (float)",
+                "type": "number"
+              },
+              "roll": {
+                "description": "Degrees about the thing's Z axis, applied first. Unit: deg. (float)",
+                "type": "number"
+              },
+              "scale": {
+                "description": "Its size along its own X, Y and Z axes; 1 is the prefab's size. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
               "name": {
                 "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
                 "type": "string"
@@ -6536,6 +6570,23 @@
               "yaw": {
                 "description": "Degrees about +Y; 0 faces -Z. Unit: deg. (float)",
                 "type": "number"
+              },
+              "pitch": {
+                "description": "Degrees about the thing's X axis, applied before the yaw; positive tips its front up. Unit: deg. (float)",
+                "type": "number"
+              },
+              "roll": {
+                "description": "Degrees about the thing's Z axis, applied first. Unit: deg. (float)",
+                "type": "number"
+              },
+              "scale": {
+                "description": "Its size along its own X, Y and Z axes; 1 is the prefab's size. (Vector3)",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
               },
               "name": {
                 "description": "Optional, so an outliner, ent_list and a wire can name it. (string)",
