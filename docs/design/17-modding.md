@@ -263,7 +263,7 @@ Phase 4j's exit: a data mod that adds a weapon and patches a trader loads, and i
 - **The report:** `mod_conflicts` says `prefab village:trader name: better_blades, rival_trade; rival_trade won`
   and `asset textures/falchion.png: better_blades, rival_trade; rival_trade won`, lists each mod's patch of the
   trader as an override of the game, and says nothing of the two `items+` (test:
-  ModsExit_ModConflictsReportsTheNameAndTheTexture). With the player's `mods.json` ordering `rival_trade`
+  ModsExit_ModConflictsReportsTheName_AndNeitherFalchionTexture). With the player's `mods.json` ordering `rival_trade`
   first, `better_blades` wins both (test: ModsExit_WithTheOrderReversed_TheOtherModWins); with `rival_trade`
   switched off, it is not mounted, its spear and stall are gone and there are no conflicts (test:
   ModsExit_WithRivalTradeSwitchedOff_ItsItemIsGoneAndNothingIsReported).
