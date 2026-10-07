@@ -158,6 +158,7 @@ public static class ContentValidation
         }
         foreach (string dir in options.Mods)
         {
+            if (ModManifest.IsPackagePath(dir)) { folders.Add(dir); continue; }   // a .sagemod (issue #397)
             if (!Directory.Exists(dir)) throw new DirectoryNotFoundException($"no mods folder {Path.GetFullPath(dir)}");
             Expand(dir, folders);
         }
@@ -167,9 +168,10 @@ public static class ContentValidation
     private static void Expand(string dir, List<string> folders)
     {
         if (File.Exists(Path.Combine(dir, "mod.json"))) { folders.Add(dir); return; }
-        foreach (string sub in Directory.GetDirectories(dir).OrderBy(d => d, StringComparer.Ordinal))
+        var packages = Directory.GetFiles(dir).Where(ModManifest.IsPackagePath);
+        foreach (string sub in Directory.GetDirectories(dir).Concat(packages).OrderBy(d => d, StringComparer.Ordinal))
         {
-            if (File.Exists(Path.Combine(sub, "mod.json"))) folders.Add(sub);
+            if (ModManifest.IsPackagePath(sub) || File.Exists(Path.Combine(sub, "mod.json"))) folders.Add(sub);
             else Log.Warn(LogCat.Mods, $"{sub} has no mod.json, so it is not a mod (skipped)");
         }
     }
