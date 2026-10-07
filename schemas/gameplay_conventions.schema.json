@@ -183,6 +183,81 @@
               "$ref": "ids.schema.json#/definitions/record:ai_schedule"
             }
           ]
+        },
+        "investigate": {
+          "description": "Something heard and not yet looked into (issue #386); empty = a creature does not investigate. Names a ai_schedule record. (RecordRef<AIScheduleRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:ai_schedule"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "noise": {
+      "description": "(NoiseConventions)",
+      "type": "object",
+      "properties": {
+        "gunshotRadius": {
+          "description": "How far a ranged attack (a `ray` or `projectile` delivery) is heard; an attack's own `noiseRadius` wins. Unit: m. At least 0. (float)",
+          "type": "number",
+          "minimum": 0
+        },
+        "gunshotLoudness": {
+          "description": "How loud a ranged attack is at the muzzle (1 = the loudest) Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "swingRadius": {
+          "description": "How far a swing (a `sweep` delivery) is heard; an attack's own `noiseRadius` wins. Unit: m. At least 0. (float)",
+          "type": "number",
+          "minimum": 0
+        },
+        "swingLoudness": {
+          "description": "How loud a swing is. Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "hitRadius": {
+          "description": "How far a blow landing is heard, from the one it landed on. Unit: m. At least 0. (float)",
+          "type": "number",
+          "minimum": 0
+        },
+        "hitLoudness": {
+          "description": "How loud a blow landing is. Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "footstepRadius": {
+          "description": "How far a step at walking speed is heard; it scales with speed (a run further, a crouch less far) Unit: m. At least 0. (float)",
+          "type": "number",
+          "minimum": 0
+        },
+        "footstepLoudness": {
+          "description": "How loud a step is. Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "footstepMaxScale": {
+          "description": "The most a step's radius is scaled by speed (a sprint's) At least 0. (float)",
+          "type": "number",
+          "minimum": 0
+        },
+        "landRadius": {
+          "description": "How far a landing from a fall or a jump is heard. Unit: m. At least 0. (float)",
+          "type": "number",
+          "minimum": 0
+        },
+        "landLoudness": {
+          "description": "How loud a landing is. Range: 0 to 1. (float)",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "additionalProperties": false

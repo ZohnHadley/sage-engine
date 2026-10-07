@@ -17,6 +17,8 @@ internal sealed class AIThinkSystem : ISystem
     private readonly Entity[] _candidates;   // broad-phase scratch, reused every think (F24)
     private readonly EventReader<Damaged> _damage;
     private readonly EventReader<TimePassed> _timePassed;   // routines catch up from a skip (issue 4g-4)
+    private readonly EventReader<Noise> _noises;            // what creatures hear (issue #386)
+    private readonly Hearing _hearing;
     private readonly RecordStore _records;
     private readonly AITaskRegistry _tasks;
     private readonly IPhysicsWorld _space;
@@ -32,9 +34,11 @@ internal sealed class AIThinkSystem : ISystem
         _candidates = new Entity[64];
         _damage = world.Events.Reader<Damaged>(this, Schedule.Fixed);
         _timePassed = world.Events.Reader<TimePassed>(this, Schedule.Fixed);
+        _noises = world.Events.Reader<Noise>(this, Schedule.Fixed);
         _records = records;
         _tasks = tasks;
         _space = world.Resources.Get<IPhysicsWorld>();
+        _hearing = new Hearing(_space);
         _attack = actions.Get(world.Conventions().Actions.Attack);
         _block = actions.Get(world.Conventions().Actions.Block);
         _conditions = AIConditions.Of(world);
@@ -53,6 +57,8 @@ internal sealed class AIThinkSystem : ISystem
 
         Provoked(world, time);
         var conventions = world.Conventions();
+        foreach (ref readonly var noise in _noises.Read())
+            _hearing.Hear(world, _records, in noise, time, conventions.AiProfile.Id, FallbackProfile);
         CatchUp(world, conventions);
 
         foreach (var (transforms, states, intents, entities) in _agents.Chunks)
@@ -73,6 +79,7 @@ internal sealed class AIThinkSystem : ISystem
                     float period = 1f / MathF.Max(profile.ThinkRate, 0.1f);
                     s[n].NextThink = time + period * (0.85f + 0.3f * ((entity.Id % 7) / 7f));   // staggered
                     Perceive(world, entity, ref t[n], ref s[n], profile, time);
+                    s[n].Conditions |= Hearing.Conditions(ref s[n], time);
                     bool moved = Routines.Think(world, _records, entity, ref s[n], profile, time, out var routine);
                     Sense(world, entity, ref t[n], ref s[n], profile, time);
                     ChooseSchedule(world, entity, ref s[n], profile, conventions.Schedules, routine, moved);
@@ -292,6 +299,7 @@ internal sealed class AIThinkSystem : ISystem
             for (int n = 0; n < s.Length; n++)
             {
                 s[n].LastSeen += offset;
+                s[n].Heard += offset;
                 s[n].Path.Rebase(offset);
             }
         }

@@ -51,6 +51,12 @@ public enum AICondition : ulong
     // Its routine has somewhere for it to be now, and it knows where (issue 4g-4, Routines.cs): an entry is
     // in force at this hour and its anchor is in the world. Named `in_routine` in content.
     InRoutine = 1 << 11,
+
+    // Hearing (issue #386, Hearing.cs). `HearNoise`: it heard something new since its last think, loud
+    // enough to wonder about. `Suspicious`: it has a point of interest (AIState.Heard) it has not finished
+    // looking into, until the profile's `interestSeconds` run out or a `ForgetNoise` task drops it.
+    HearNoise = 1 << 12,
+    Suspicious = 1 << 13,
 }
 
 // How an agent senses and fights (16 §3.4). Tuning is data, like movement profiles.
@@ -78,6 +84,15 @@ public sealed class AIProfileRecord
     [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Tooltip = "Its daily routine; an entity's own `routine` part wins over it")]
     public RecordRef<RoutineRecord> Routine;
+
+    // Hearing (issue #386): how far it hears, as a multiple of each noise's radius (0 is deaf; at most 2),
+    // what a wall between them leaves of that, and how long something heard stays worth looking into.
+    [Property(Min = 0, Max = 2, Tooltip = "How far it hears, times a noise's radius; 0 = deaf")]
+    public float Hearing = 1f;
+    [Property(Min = 0, Max = 1, Tooltip = "What a wall between it and a noise leaves of its hearing")]
+    public float OccludedHearing = 0.5f;
+    [Property(Min = 0, Unit = "s", Tooltip = "How long something it heard stays worth investigating")]
+    public float InterestSeconds = 15f;
 
     // The selector named, found once (AIScheduleSelectors.Of): a think must not look it up by name.
     internal IAIScheduleSelector? SelectorInstance;
@@ -141,6 +156,15 @@ public struct AIState : IComponent
     [Transient] public NavPath Path;
     [Transient] public Vector3 LastSeen;    // where the target was when it was last in sight
     [Transient] public float ForgetAt;      // sim time after which it gives up on a target it cannot see
+
+    // What it heard and is looking into (issue #386, Hearing.cs): where, how loud it was where it stood,
+    // who made it (if anybody did) and the sim time it stops caring. Transient like the rest of what it
+    // perceives; `HeardUntil` 0 is nothing.
+    [Transient] public Vector3 Heard;
+    [Transient] public float HeardLoudness;
+    [Transient] public Entity HeardSource;
+    [Transient] public float HeardUntil;
+    internal bool HeardNew;                 // heard since its last think: `HearNoise` on the next
 
     // Where its routine has it now (issue 4g-4, Routines.cs). Internal, so never saved: the entry is worked
     // out from the clock and the anchor found by name again after a load.
@@ -281,6 +305,10 @@ public sealed class AITaskRegistry
         Register("MoveToAnchor", new MoveToAnchorTask());
         Register("FaceAnchor", new FaceAnchorTask());
         Register("StayAt", new StayAtTask());
+        // Hearing's (issue #386, Hearing.cs).
+        Register("FaceNoise", new FaceNoiseTask());
+        Register("MoveToNoise", new MoveToNoiseTask());
+        Register("ForgetNoise", new ForgetNoiseTask());
     }
 
     public void Register(string name, IAITask task) => _tasks[name] = task;
@@ -300,6 +328,7 @@ public sealed class AITaskRegistry
         "castspell" => CastSpellTask.ArgumentName,
         "movetoanchor" => MoveToAnchorTask.ArgumentName,
         "stayat" => StayAtTask.ArgumentName,
+        "movetonoise" => MoveToNoiseTask.ArgumentName,
         _ => "<argument>",
     };
 }
