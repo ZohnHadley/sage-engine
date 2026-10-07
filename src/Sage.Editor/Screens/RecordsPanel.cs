@@ -29,6 +29,9 @@ internal sealed class RecordsPanel
     private string _raw = "";       // the open record's text, rebuilt when it changes
     private bool _rawStale = true;
 
+    // The asset browser's thumbnails (#366): with them, a record's asset slots are drawn above its form.
+    public Thumbnails? Thumbnails { get; set; }
+
     public RecordsPanel(RecordEditor editor)
     {
         _editor = editor;
@@ -115,6 +118,8 @@ internal sealed class RecordsPanel
             else if (ImGui.IsKeyPressed(ImGuiKey.Y)) record.Redo();
             else if (ImGui.IsKeyPressed(ImGuiKey.S)) record.Save();
         }
+
+        if (Thumbnails != null) RecordAssetStrip.Draw(record, Thumbnails);   // #366
 
         ImGui.Separator();
         foreach (var (name, value) in record.Working.ToArray())
@@ -213,8 +218,27 @@ internal sealed class RecordsPanel
                     ImGui.EndCombo();
                 }
             }
-            else if (ImGui.InputText(shown, ref text, 256)) record.Set(path, JsonValue.Create(text));
+            else
+            {
+                if (ImGui.InputText(shown, ref text, 256)) record.Set(path, JsonValue.Create(text));
+                AssetDrop(record, path, meta, text);   // #366
+            }
         }
         else ImGui.TextDisabled($"{label}: {value.ToJsonString()}");
+    }
+
+    // A field that names an asset (declared so, or holding a path) takes one dragged from the Assets panel.
+    private static void AssetDrop(RecordDocument record, string path, FieldMetadata? meta, string text)
+    {
+        bool declared = meta?.Kind == ValueKind.AssetPath || meta?.Item?.Kind == ValueKind.AssetPath;
+        if (!declared && !LooksLikeAsset(text)) return;
+        if (AssetDrag.Accept(meta?.AssetKind ?? meta?.Item?.AssetKind) is { } dropped && !AssetPicking.ToRecord(record, path, dropped, out string error))
+            Log.Warn(LogCat.Editor, error);
+    }
+
+    private static bool LooksLikeAsset(string text)
+    {
+        try { return text.Length > 0 && AssetKinds.Of(VirtualPath.Parse(text)) != null; }
+        catch (ArgumentException) { return false; }
     }
 }

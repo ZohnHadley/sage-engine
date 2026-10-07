@@ -114,6 +114,10 @@ internal sealed class EntityInspectorWindow
         }
         if (changed && !model.Set(row, model.ToNode(edited), out string error) && error.Length > 0)
             Log.Warn(LogCat.Editor, error);
+        // An asset field takes one dragged from the Assets panel (#366).
+        if (row.Editable && row.Field.Kind == ValueKind.AssetPath && AssetDrag.Accept(row.Field.AssetKind) is { } dropped
+            && !AssetPicking.ToRow(model, row, dropped, out string refused))
+            Log.Warn(LogCat.Editor, refused);
 
         if (row.Overridden)
         {
