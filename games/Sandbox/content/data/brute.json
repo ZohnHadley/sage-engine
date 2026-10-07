@@ -1,0 +1,92 @@
+[
+  // The sparring brute (engine issue #362): a creature of the clearing on a skeleton, so the real game runs
+  // the whole skeletal pipeline every time it starts — a skinned mesh, an anim_graph with a blend space and
+  // an upper-body layer, clip events and sockets — where the sprite creatures (scene.json) run only a
+  // sprite's graph. No C#: a `state_machine` sends SetAnimParam and AnimTrigger down its own wires, as the
+  // skeletal test game's sentry does. The model is the box mannequin the hut's walker wears
+  // (tools/make_mannequin.py: 18 joints; idle, walk, run, aim, aim_up, aim_down, attack, reload and the
+  // two getups). It fights nobody: no faction, no melee, no AI; it guards and swings at the air.
+  //
+  // The editor previews its graph: `anim_preview sandbox:brute` (or the Animation panel in -edit) scrubs its
+  // clips, drives `speed`, `guard` and `attack`, and shows the strike's `hit` marker and the sockets below.
+  { "type": "material", "id": "brute", "base": "sage:lit_default", "params": { "AlbedoColor": [0.55, 0.40, 0.34, 1] } },
+  {
+    // The base layer: idle, or a walk-run blend on how fast it moves. The `upper` layer, over the spine's
+    // branch: nothing until `guard`, then the aim pose held up as a guard; from any state, `attack`
+    // swings once and goes back to the guard when its clip is done (and to nothing the tick after, if it
+    // has dropped its guard meanwhile).
+    "type": "anim_graph",
+    "id": "brute",
+    "initial": "idle",
+    "fade": 0.25,
+    "params": {
+      "speed": { "from": "Speed" },
+      "guard": { "kind": "Bool" },
+      "attack": { "kind": "Trigger" }
+    },
+    "states": {
+      "idle": { "clip": "idle", "tags": ["grounded"],
+                "transitions": [ { "to": "move", "when": { "anim_param": "speed", "min": 0.3 } } ] },
+      "move": { "blend": { "x": "speed", "points": [ { "clip": "walk", "x": 1.5 }, { "clip": "run", "x": 4.5 } ] },
+                "tags": ["grounded", "moving"],
+                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] }
+    },
+    "layers": [
+      {
+        "name": "upper",
+        "mask": ["spine"],
+        "initial": "none",
+        "states": {
+          "none":   { "transitions": [ { "to": "guard", "when": { "anim_param": "guard", "eq": 1 } } ] },
+          "guard":  { "clip": "aim", "tags": ["guarding"],
+                      "transitions": [ { "to": "none", "when": { "anim_param": "guard", "eq": 0 } } ] },
+          "attack": { "clip": "attack", "loop": false, "fade": 0.1, "tags": ["attacking"],
+                      "transitions": [ { "to": "guard", "when": { "anim_finished": "upper" } } ] }
+        },
+        "transitions": [ { "to": "attack", "on": "attack" } ]
+      }
+    ]
+  },
+  {
+    // The strike connects 0.4 s into `attack` (a second record for the model: footsteps.json's gives the
+    // walk and the run their foot events).
+    "type": "anim_events",
+    "id": "brute",
+    "model": "models/mannequin.glb",
+    "clips": { "attack": [ { "time": 0.4, "name": "hit" } ] }
+  },
+  {
+    // Where the mannequin holds things and wears them: what a bone_attachment names, and what the editor's
+    // preview marks.
+    "type": "skeleton_sockets",
+    "id": "mannequin",
+    "model": "models/mannequin.glb",
+    "sockets": {
+      "hand_r": { "joint": "hand_r", "offset": [0, -0.06, 0] },
+      "hand_l": { "joint": "hand_l", "offset": [0, -0.06, 0] },
+      "head_top": { "joint": "head", "offset": [0, 0.16, 0] }
+    }
+  },
+  {
+    // Rest, raise the guard, swing, and round again.
+    "type": "state_machine",
+    "id": "spar",
+    "initial": "rest",
+    "states": {
+      "rest":   { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "guard 0" } ],
+                  "transitions": [ { "to": "guard", "after": 1.5 } ] },
+      "guard":  { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "guard 1" } ],
+                  "transitions": [ { "to": "strike", "after": 1 } ] },
+      "strike": { "enter": [ { "fire": "!self", "input": "AnimTrigger", "parameter": "attack" } ],
+                  "transitions": [ { "to": "rest", "after": 1.5 } ] }
+    }
+  },
+  {
+    "type": "prefab", "id": "brute", "name": "brute",
+    "parts": {
+      "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "brute" },
+      "animator": { "graph": "brute" },
+      "state_machine": { "machine": "spar" }
+    }
+  }
+]

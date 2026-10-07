@@ -243,6 +243,18 @@ jobs:
           # Then it is moved, turned, framed, duplicated, the copy deleted and all undone (#221, ViewportToolsTests).
           SAGE_SMOKE_ARGS='-edit yard' SAGE_SMOKE_COMMANDS=$'+wait 1\n+doc_status\n+ent_select crate by the door\n+ed_select crate by the door\n+ed_move 3 0 2\n+ed_rotate 45\n+ed_frame\n+ed_duplicate\n+wait 1\n+ed_delete\n+ed_undo 4\n+in_axis EditorMove 0 1 1\n+wait 1\n+ed_layout\n+ed_viewport 1\n+wait 1\n+in_contexts' \
             tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
+          # The Sandbox's skeletal creature (issue #362): the brute in the clearing is the mannequin on its
+          # `brute` graph, guarding and swinging on its upper layer; anim_debug must find it posed (18 joints).
+          SAGE_SMOKE_EXPECT=$'brute \\([0-9]+\\): graph sandbox:brute, model models/mannequin.glb, pose of 18 joints\n  upper: (none|guard|attack)' \
+          SAGE_SMOKE_COMMANDS=$'+wait 3\n+anim_debug brute' \
+            tools/smoke_run.sh "$host" games/Sandbox 4 Shaders Audio
+          # The editor's animation preview (issue #362): `anim_preview brute` opens the brute's graph on its model
+          # in the Animation panel, its params and a trigger drive it (the strike's `hit` is raised), a clip is
+          # scrubbed to its marker, and the panel draws both for a second. AnimationPreviewTests has the rest.
+          SAGE_SMOKE_ARGS='-edit yard' \
+          SAGE_SMOKE_EXPECT=$'anim_preview: graph sandbox:brute on models/mannequin.glb, 18 joints, 10 clip\\(s\\)\nanim_preview: t=[0-9.]+s, events: .*hit@\nanim_preview: clip attack at 0.40/0.80s, 18 joints, 3 socket\\(s\\) \\| hit@0.40s' \
+          SAGE_SMOKE_COMMANDS=$'+wait 1\n+anim_preview brute\n+anim_preview_param guard 1\n+anim_preview_param attack\n+anim_preview_step 1\n+wait 1\n+anim_preview_clip attack 0.4\n+wait 1\n+anim_preview_clip\n+anim_preview_param speed 3\n+wait 1\n+anim_preview_close' \
+            tools/smoke_run.sh "$host" games/Sandbox 5 Shaders Audio
           # A widget screen (issue #97): the Sandbox's status screen opened by its key, walked with the
           # D-pad actions, closed with Back, then opened and closed from the console, fades and all.
           SAGE_SMOKE_COMMANDS=$'+wait 1\n+in_tap Status\n+wait 5\n+in_tap MenuDown\n+wait 2\n+in_tap MenuTab\n+wait 2\n+in_tap MenuBack\n+wait 5\n+ui_open status\n+wait 5\n+ui_close all' \

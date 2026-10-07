@@ -432,6 +432,22 @@ public static partial class Animators
         return id;
     }
 
+    // ---- previews --------------------------------------------------------------------------------------
+
+    // A world of its own for previewing a graph outside any game world (issue #362: the editor's animation
+    // preview): the engine's records and skinned models, and an animator system that reads **no** param
+    // from the body, so whatever the preview sets (`speed` too, though the graph reads it `from` Speed) is
+    // what the graph sees. Nothing else runs in it. Not one of Engine.Worlds: whoever makes it ticks it
+    // (RunFixed) and disposes it.
+    public static World CreatePreviewWorld(Engine engine, string name = "anim_preview")
+    {
+        ArgumentNullException.ThrowIfNull(engine);
+        var world = new World(name, engine);
+        world.Resources.Add(engine.Animations);
+        world.AddSystem(new AnimatorSystem(world, driveParams: false));
+        return world;
+    }
+
     // ---- the pose --------------------------------------------------------------------------------------
 
     // The entity's pose, as AnimatorSystem last sampled it (ModelSpace filled). False when it has no

@@ -1106,6 +1106,9 @@
       { "prefab": "hermit",       "at": [5, 0, 5],     "yaw": 200 },
       { "prefab": "fence",        "at": [0, 0.6, -9] },
       { "prefab": "watcher",      "at": [0, 0, -12],   "yaw": 180, "name": "penned watcher" },
+      // The sparring brute (engine issue #362; content/data/brute.json): a creature on a skeleton, guarding and
+      // swinging at the air beside the trees.
+      { "prefab": "brute",        "at": [5.5, 0, -7],  "yaw": 210, "name": "brute" },
 
       // A scripted camera cut from entity I/O (issue #81): the path in front of the hut's door turns the
       // engine's `sage:scripted_camera` on for three seconds (CameraOn's parameter), once. It looks at
