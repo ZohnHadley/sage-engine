@@ -357,3 +357,9 @@ static Sage.Editing.AssetPicking.ToRow(Sage.Editing.InspectorModel! model, Sage.
 static Sage.Editing.AssetReferences.Find(Sage.Core.VirtualFileSystem! vfs, Sage.Core.VirtualPath asset) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AssetReference!>!
 static Sage.Editing.AssetReferences.Scanned(Sage.Core.VirtualPath file) -> bool
 static Sage.Editing.AssetRename.Plan(Sage.Simulation.Engine! engine, Sage.Core.VirtualPath from, Sage.Core.VirtualPath to, Sage.Editing.EditDocument? document = null, Sage.Editing.RecordEditor? records = null) -> Sage.Editing.AssetRename!
+Sage.Editing.EntityLabelCache
+Sage.Editing.EntityLabelCache.Count.get -> int
+Sage.Editing.EntityLabelCache.EntityLabelCache() -> void
+Sage.Editing.EntityLabelCache.Label(Sage.Simulation.Entity entity) -> string!
+Sage.Editing.EntityLabelCache.Prune(System.Collections.Generic.IReadOnlyCollection<Sage.Simulation.Entity>! live) -> void
+Sage.Editing.LogView.Texts.get -> System.Collections.Generic.IReadOnlyList<string!>!
