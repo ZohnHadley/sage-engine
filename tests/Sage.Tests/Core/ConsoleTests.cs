@@ -221,10 +221,11 @@ public class ConsoleTests
                 Assert.Equal(LogLevel.Warn, app.Environment.Logger.DefaultLevel);   // started where the host's is
                 Assert.Same(app.Environment, AppEnvironment.Current);               // current, for the code that made it
 
-                app.Engine.Core.Developer.Value = 0;
-                Assert.Equal(LogLevel.Info, app.Environment.Logger.DefaultLevel);   // its own log follows its cvars
+                // Set 1 then 0, so each is a change whatever the configuration's default `developer` is.
                 app.Engine.Core.Developer.Value = 1;
-                Assert.Equal(LogLevel.Debug, app.Environment.Logger.DefaultLevel);
+                Assert.Equal(LogLevel.Debug, app.Environment.Logger.DefaultLevel);   // its own log follows its cvars
+                app.Engine.Core.Developer.Value = 0;
+                Assert.Equal(LogLevel.Info, app.Environment.Logger.DefaultLevel);
                 Assert.Equal(LogLevel.Warn, process.DefaultLevel);                  // the process's doesn't
             }
             Assert.True(AppEnvironment.Current.IsProcess);   // disposed: no longer current
