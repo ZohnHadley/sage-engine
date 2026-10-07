@@ -184,6 +184,13 @@ Phase 4e's exit (#132): `tests/games/weapons` is a game with no C#, where a swor
 - **CI** validates `tests/games/weapons`, includes it in `sage schema` and smoke-runs it.
 - **Left:** the dummies do not fight back (no AI); no sounds, muzzle flash or impacts; slots such as Head can still be registered only from C#, so a helmet in data is an effect.
 
+### As built (directional attacks and blocks, issue #359, 2026-10-06)
+Phase 4p's combat side (#356); the animation side is design 12 "As built (directional attacks and blocks)". Experimental: **SAGE0126**.
+- **A fighter's stance** is the `sage:attack_stance` component (`AttackStance`: `Input` Manual, Mouse or Movement; `Direction` None, Overhead, Right, Thrust or Left, saved; a transient `Blocking`). `sage.combat.stance` (Gameplay phase, before `sage.combat.melee`) chooses the direction from the look gesture or the movement keys and sets `Blocking` while the **`Block` action** is held (Mouse Right, the pad's left trigger; `gameplay_conventions` `actions.block`), not while dead or mid-swing (test: APlayerChoosesTheDirectionByMouseGestureOrMovementKeys).
+- **A swing keeps its direction:** `Melee.Direction` (transient) is the stance's direction when the swing started, and the blow lands on that swing clip's own `hit` event (test: ADataOnlyGraphSwingsFourWays_EachLandingOnItsOwnClipsHit).
+- **The AI guards and varies its blows:** the `Block` task (`seconds`, default 1) faces the target, holds Block and turns a Manual stance's guard to the blow under way; `MeleeAttack` picks a Manual stance's next direction, skipping the side the target guards. A held Block is released before each task run (test: AnAiVariesItsSwingsAndGuardsAgainstTheIncomingBlow).
+- **Left:** what a guard or a direction does to a blow — a block that must match the swing, parries, directional damage — is #390's (4r) and the RPG rules'.
+
 ### As built (items and interaction, 2026-09-23)
 - **Code:** `src/Sage.Gameplay/Items/Items.cs` — the `item` record, `Inventory`, `Equipment`, `Pickup`, the `Interactable` tag, the `Used` event, `InteractionState` and `InteractionSystem`, plus the `World` extensions (`AddInventory`, `Give`, `Take`, `Equip`, `Unequip`, `Drop`, `SpawnPickup`, `MakePickup`).
 - **An item is a record, not an entity.** An inventory is a list of ids and counts, which is what makes stacking, saving and modding cheap (05 §3.5, 09). An item only becomes an entity while it is lying in the world — a `Pickup` with a billboard and a small static body — and stops being one the moment someone takes it.

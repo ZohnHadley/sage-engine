@@ -185,7 +185,7 @@ summary and the traceability index.
 | Game manifest | `game.json` (id, version, `sage` range, mounts, plugins, start scene) | [03](subsystems/03-app-and-loop.md) |
 | Mod manifest | `mod.json` (id, version, dependencies, load-after) and `user://mods.json` | [19](subsystems/19-modding.md) |
 | Content | JSON/JSONC records; JSON Schemas generated into `schemas/` | [06](subsystems/06-assets-and-content.md) |
-| Models and animation | glTF binary (`.glb`) with skins and clips | [07](subsystems/07-rendering.md), [10](subsystems/10-animation.md) |
+| Models and animation | glTF binary (`.glb`) with skins, clips and morph targets | [07](subsystems/07-rendering.md), [10](subsystems/10-animation.md) |
 | Textures, sound | PNG/JPG; WAV (OGG planned) | [06](subsystems/06-assets-and-content.md), [11](subsystems/11-audio.md) |
 | Shaders | HLSL `.fx` compiled to `.mgfxo` | [07](subsystems/07-rendering.md) |
 | Brush levels | Quake `.map` (TrenchBroom) import, until editor brushes (#61) | [18](subsystems/18-editor.md) |

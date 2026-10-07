@@ -107,7 +107,7 @@ Content mistakes are load errors at their lines: an unknown vocabulary entry wit
 | REQ-GAME-17 | Shops shall move money and have merchant gold, disposition and restock. | Must | Partial: stub price rule, no money | #380 |
 | REQ-GAME-18 | Items shall have durability, condition, repair, instances, enchantments and stack splitting. | Should | Not started | #382, #383 |
 | REQ-GAME-19 | Equipment slots shall be registrable from data, and weight shall have consequences. | Could | Not started | #384 |
-| REQ-GAME-20 | Combat shall have blocking, parry, knockback, hit reactions and directional attacks. | Should | Not started | #390, #359 |
+| REQ-GAME-20 | Combat shall have blocking, parry, knockback, hit reactions and directional attacks. | Should | Partial: directional swings and guards are built (#359: `attack_stance`, the `Block` action, `Melee.Direction`, the AI's `Block` task); what a guard or a direction does to a blow, parry, knockback and hit reactions are not | test: ADataOnlyGraphSwingsFourWays_EachLandingOnItsOwnClipsHit, test: AnAiVariesItsSwingsAndGuardsAgainstTheIncomingBlow; #390 |
 | REQ-GAME-21 | Crime, witnesses, bounty and faction ranks shall be supported. | Should | Not started | #389 |
 | REQ-GAME-22 | Dialogue shall have barks, greetings, linked topics and per-speaker known lists. | Could | Not started | #392 |
 | REQ-GAME-23 | Friendly-fire, self-heal, buffs, and projectile bounce and stick shall be supported. | Could | Not started | #393 |
@@ -134,7 +134,7 @@ Milestone 10, AI, combat and narrative depth (epic #385).
 - #393 4r-8 Friendly-fire and ability gaps: self-heal, buffs, projectile bounce/stick (P3)
 - #394 4r-9 Tests for the kit screens and combat edge cases (P3)
 
-Related: #359 4p-3 directional attack and block sets (P2). #344 (4q-7) is built: the dead say nothing (`DialogueRules.Start` refuses a speaker with the conventions' dead tag) and using a body loots it (17-rpg-kit).
+Related: #359 4p-3 directional attack and block sets is done (sheet [10](10-animation.md), design 12 "As built (directional attacks and blocks)"): the stance, the guard and the hit window are the animation side; their effect on damage stays with #390. #344 (4q-7) is built: the dead say nothing (`DialogueRules.Start` refuses a speaker with the conventions' dead tag) and using a body loots it (17-rpg-kit).
 
 ## 11. References
 

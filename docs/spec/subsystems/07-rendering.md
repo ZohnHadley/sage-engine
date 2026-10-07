@@ -126,7 +126,7 @@ All drawing runs on the main thread. Extract and every pass's `Draw` allocate no
 
 Milestone 4n, Rendering and assets (epic #304). Both packs are merged (2026-10-06): the first pack's issues and #310, #311 and #315 are all done, so the phase's rendering issues are finished. Left in this sheet: none.
 
-Other milestones: #362 4p-6 Skeletal animation coverage for the Sandbox and an editor preview (P2, sheet [10](10-animation.md)); #366 10b-1 Asset browser and material preview (P1, sheet [18](18-editor.md)).
+Other milestones: #362 4p-6 (done: the Sandbox's brute and the editor's animation preview, sheet [10](10-animation.md)); #363 4p-7 (done: morph targets are morphed on the CPU before skinning, `MorphedMeshes`, sheet [10](10-animation.md), test: TheCpuMorphPassMovesTheVerticesByThePosesWeights); #366 10b-1 Asset browser and material preview (P1, sheet [18](18-editor.md)).
 
 ## 11. References
 
