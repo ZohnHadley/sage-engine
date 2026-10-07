@@ -78,6 +78,7 @@ public sealed class GridItem
 {
     public RecordId Item { get; internal set; }
     public int Count { get; internal set; }
+    internal string? Named { get; set; }   // its instance's own name (issue #383), what Label was made from
     public int X { get; internal set; }
     public int Y { get; internal set; }
     // Its footprint as it lies: the rpg_item's, or that turned on its side when Rotated.
@@ -148,7 +149,7 @@ public sealed class GridCell
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0125", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the RPG screens (#98): SAGE0125, as Sage.UI
 public sealed class ItemGrid
 {
-    private readonly List<(RecordId Item, int Count)> _stacks = new();
+    private readonly List<(RecordId Item, int Count, ItemInstance? Instance)> _stacks = new();
     private readonly List<GridPlacement> _placed = new();
     private readonly List<GridItem> _itemPool = new();
     private readonly List<GridCell> _cellPool = new();
@@ -220,7 +221,7 @@ public sealed class ItemGrid
         _stacks.Clear();
         if (stacks != null)
             foreach (var stack in stacks)
-                if (stack.Count > 0) _stacks.Add((stack.Item, stack.Count));
+                if (stack.Count > 0) _stacks.Add((stack.Item, stack.Count, stack.Instance));
         _placed.Clear();
         if (placed != null) _placed.AddRange(placed);
         Build(world);
@@ -234,7 +235,8 @@ public sealed class ItemGrid
             for (int i = 0; i < stacks.Count; i++)
             {
                 if (stacks[i].Count <= 0) continue;
-                if (n >= _stacks.Count || _stacks[n].Item != stacks[i].Item || _stacks[n].Count != stacks[i].Count) return false;
+                if (n >= _stacks.Count || _stacks[n].Item != stacks[i].Item || _stacks[n].Count != stacks[i].Count
+                    || _stacks[n].Instance != stacks[i].Instance) return false;
                 n++;
             }
         if (n != _stacks.Count) return false;
@@ -301,15 +303,8 @@ public sealed class ItemGrid
             reason = text.Format("@rpg.grid.cannot_split", ("item", item.Label));
             return false;
         }
-        ref var inventory = ref world.Get<Inventory>(Owner);
-        var stacks = inventory.Items;
-        int at = -1;
-        for (int i = 0, n = 0; stacks != null && i < stacks.Count; i++)
-        {
-            if (stacks[i].Count <= 0) continue;
-            if (n++ == index) { at = i; break; }
-        }
-        if (at < 0 || stacks![at].Item != item.Item || stacks[at].Count != item.Count)
+        int at = StackOf(world, item);
+        if (at < 0)
         {
             reason = text.Format("@rpg.grid.gone", ("item", item.Label));
             return false;
@@ -328,8 +323,7 @@ public sealed class ItemGrid
             list.Add(new GridPlacement { Item = each.Item, X = each.X, Y = each.Y, Rotated = each.Rotated });
             if (each == item) list.Add(new GridPlacement { Item = item.Item, X = fx, Y = fy, Rotated = item.Rotated });
         }
-        stacks[at] = new ItemStack { Item = item.Item, Count = item.Count - half };
-        stacks.Insert(at + 1, new ItemStack { Item = item.Item, Count = half });
+        world.Split(Owner, at, half);   // an instance's copy goes with the new half (issue #383)
         Save(world, list);
         Refresh(world, Owner);
         reason = "";
@@ -346,7 +340,8 @@ public sealed class ItemGrid
             reason = text.Format("@rpg.grid.cannot_drop", ("item", item.Label));
             return false;
         }
-        if (world.Drop(Owner, item.Item, item.Count).IsNull)
+        int at = StackOf(world, item);
+        if (at < 0 || world.DropAt(Owner, at, item.Count).IsNull)
         {
             reason = text.Format("@rpg.grid.gone", ("item", item.Label));
             return false;
@@ -393,14 +388,15 @@ public sealed class ItemGrid
         var id = item.Item;
         int count = item.Count;
         int stacksBefore = CountStacks(world, to.Owner);
-        if (!world.Take(from.Owner, id, count))
+        int at = from.StackOf(world, item);
+        if (at < 0)
         {
             reason = text.Format("@rpg.grid.gone", ("item", item.Label));
             return false;
         }
-        if (!world.Give(to.Owner, id, count))
+        // The stack itself, instance and all (issue #383), not "this many of the item".
+        if (!world.MoveTo(from.Owner, at, to.Owner, count))
         {
-            world.Give(from.Owner, id, count);   // it was there a moment ago, so it fits again
             reason = text.Format("@rpg.grid.too_heavy", ("item", item.Label), ("weight", Tenths(item.Weight)),
                                  ("total", Tenths(now + item.Weight)), ("capacity", Tenths(inventory.Capacity)));
             return false;
@@ -414,6 +410,21 @@ public sealed class ItemGrid
             to.Move(world, placed, x, y, rotated);
         reason = "";
         return true;
+    }
+
+    // Where a stack of this grid is in its owner's inventory, or -1 when it is not there as shown.
+    private int StackOf(World world, GridItem item)
+    {
+        int index = Items.IndexOf(item);
+        if (item.Grid != this || index < 0 || !world.TryGet<Inventory>(Owner, out var inventory) || inventory.Items == null) return -1;
+        var stacks = inventory.Items;
+        for (int i = 0, n = 0; i < stacks.Count; i++)
+        {
+            if (stacks[i].Count <= 0) continue;
+            if (n++ != index) continue;
+            return stacks[i].Item == item.Item && stacks[i].Count == item.Count ? i : -1;
+        }
+        return -1;
     }
 
     private static int CountStacks(World world, Entity owner) =>
@@ -443,18 +454,21 @@ public sealed class ItemGrid
         {
             if (_itemPool.Count <= i) _itemPool.Add(new GridItem());
             var item = _itemPool[i];
-            var (id, count) = _stacks[i];
+            var (id, count, instance) = _stacks[i];
             records.TryGet(id, out ItemRecord record);
             var (w, h) = RpgItemRecord.Of(records, id);
             float each = record?.Weight ?? 0f;
-            if (item.Item != id || item.Count != count || item.Width != w || item.Height != h || item.Weight != each * count || item.Label.Length == 0)
+            string? named = instance != null && !string.IsNullOrEmpty(instance.Name) ? instance.Name : null;   // issue #383
+            if (item.Item != id || item.Count != count || item.Width != w || item.Height != h || item.Weight != each * count || item.Label.Length == 0
+                || !ReferenceEquals(item.Named, named))
             {
-                string name = text.Text(record?.Describe(id) ?? id.Name);
+                string name = text.Text(named ?? record?.Describe(id) ?? id.Name);
                 item.Label = count > 1 ? text.Format("@rpg.grid.stack", ("item", name), ("count", count)) : name;
                 item.Tooltip = text.Format("@rpg.grid.tooltip", ("item", name), ("count", count), ("weight", Tenths(each * count)));
             }
             item.Item = id;
             item.Count = count;
+            item.Named = named;
             item.Width = Math.Min(w, Columns);
             item.Height = h;
             item.Rotated = false;

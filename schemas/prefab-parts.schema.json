@@ -1641,6 +1641,54 @@
                 "description": "At least 1. (int)",
                 "type": "integer",
                 "minimum": 1
+              },
+              "instance": {
+                "description": "What makes these unlike the rest of their kind: a name, enchantments, condition, charges; none = plain. (ItemInstance)",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "description": "Its own name (a unique sword); empty = the item's label. (string)",
+                    "type": "string"
+                  },
+                  "effects": {
+                    "description": "Enchantments: effects applied while it is equipped, on top of the item's own. Names a effect record. (List<RecordRef<EffectRecord>>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects+": {
+                    "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects-": {
+                    "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "condition": {
+                    "description": "How worn it is, 1 = as made; below that, the durability rules say what it means. Range: 0 to 1. (float)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "charges": {
+                    "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1664,6 +1712,54 @@
                 "description": "At least 1. (int)",
                 "type": "integer",
                 "minimum": 1
+              },
+              "instance": {
+                "description": "What makes these unlike the rest of their kind: a name, enchantments, condition, charges; none = plain. (ItemInstance)",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "description": "Its own name (a unique sword); empty = the item's label. (string)",
+                    "type": "string"
+                  },
+                  "effects": {
+                    "description": "Enchantments: effects applied while it is equipped, on top of the item's own. Names a effect record. (List<RecordRef<EffectRecord>>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects+": {
+                    "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects-": {
+                    "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "condition": {
+                    "description": "How worn it is, 1 = as made; below that, the durability rules say what it means. Range: 0 to 1. (float)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "charges": {
+                    "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1687,6 +1783,54 @@
                 "description": "At least 1. (int)",
                 "type": "integer",
                 "minimum": 1
+              },
+              "instance": {
+                "description": "What makes these unlike the rest of their kind: a name, enchantments, condition, charges; none = plain. (ItemInstance)",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "name": {
+                    "description": "Its own name (a unique sword); empty = the item's label. (string)",
+                    "type": "string"
+                  },
+                  "effects": {
+                    "description": "Enchantments: effects applied while it is equipped, on top of the item's own. Names a effect record. (List<RecordRef<EffectRecord>>)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects+": {
+                    "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "effects-": {
+                    "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+                    "type": "array",
+                    "items": {
+                      "$ref": "ids.schema.json#/definitions/record:effect"
+                    }
+                  },
+                  "condition": {
+                    "description": "How worn it is, 1 = as made; below that, the durability rules say what it means. Range: 0 to 1. (float)",
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "charges": {
+                    "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -2672,6 +2816,54 @@
           "default": 1,
           "type": "integer",
           "minimum": 1
+        },
+        "instance": {
+          "description": "What makes it unlike the rest of its kind: a name, enchantments, condition, charges; none = plain. (ItemInstance)",
+          "type": "object",
+          "properties": {
+            "id": {
+              "description": "Which instance this is in its carrier's inventory, given as it goes in; what an equipment slot points at. At least 0. (int)",
+              "type": "integer",
+              "minimum": 0
+            },
+            "name": {
+              "description": "Its own name (a unique sword); empty = the item's label. (string)",
+              "type": "string"
+            },
+            "effects": {
+              "description": "Enchantments: effects applied while it is equipped, on top of the item's own. Names a effect record. (List<RecordRef<EffectRecord>>)",
+              "type": "array",
+              "items": {
+                "$ref": "ids.schema.json#/definitions/record:effect"
+              }
+            },
+            "effects+": {
+              "description": "Adds to \"effects\": what a base or an earlier definition listed, then these.",
+              "type": "array",
+              "items": {
+                "$ref": "ids.schema.json#/definitions/record:effect"
+              }
+            },
+            "effects-": {
+              "description": "Removes these from \"effects\" (as a base or an earlier definition listed it).",
+              "type": "array",
+              "items": {
+                "$ref": "ids.schema.json#/definitions/record:effect"
+              }
+            },
+            "condition": {
+              "description": "How worn it is, 1 = as made; below that, the durability rules say what it means. Range: 0 to 1. (float)",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "charges": {
+              "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false,
