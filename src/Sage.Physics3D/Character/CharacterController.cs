@@ -158,7 +158,8 @@ internal sealed class CharacterMovementSystem : ISystem
         Vector3 wish = right * intent.Move.X + forward * intent.Move.Y;
         if (wish.LengthSquared() > 1f) wish = Vector3.Normalize(wish);
 
-        float speed = (intent.Held.Has(_run) ? profile.RunSpeed : profile.WalkSpeed) * (character.Crouching ? profile.CrouchSpeedScale : 1f);
+        float speed = (intent.Held.Has(_run) ? profile.RunSpeed : profile.WalkSpeed) * (character.Crouching ? profile.CrouchSpeedScale : 1f)
+                      * (character.SpeedScale > 0f ? character.SpeedScale : 1f);   // gameplay's pace (#384)
         bool jump = character.Grounded && intent.Pressed.Has(_jump);
         if (airStrafe)
             AirStrafe(ref character, wish, speed, profile, jump, dt);

@@ -41,6 +41,8 @@
             "dialogue",
             "dialogue_topic",
             "effect",
+            "encumbrance",
+            "equip_slot",
             "faction",
             "gameplay_conventions",
             "hit_location",
@@ -350,6 +352,36 @@
           },
           "then": {
             "$ref": "effect.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "encumbrance"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "encumbrance.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "equip_slot"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "equip_slot.schema.json"
           }
         },
         {

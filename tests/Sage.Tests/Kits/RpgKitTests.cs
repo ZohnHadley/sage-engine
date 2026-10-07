@@ -230,4 +230,19 @@ public class RpgKitTests
         Assert.True(world.Get<Equipment>(knight).In("Head").IsEmpty);
         Assert.Equal(Id("sword"), world.Get<Equipment>(knight).In(RpgKitModule.MainHand));
     }
+
+    // A slot in data beside the kit's (issue #384): a record naming the kit's MainHand is that slot,
+    // not a second one, and the data's Head comes after the code's two hands.
+    [Fact]
+    public void ASlotInDataJoinsTheKitsHands()
+    {
+        using var kit = HeadlessApp.Gameplay().With(new Sage.UI.UiModule(), new RpgKitModule())
+            .File("data/slots.json", """
+                [{ "type": "equip_slot", "id": "head", "name": "Head" },
+                 { "type": "equip_slot", "id": "mainhand", "name": "mainhand" }]
+                """)
+            .File("data/armoury.json", Armoury).Boot("kit");
+        Assert.Equal(new[] { RpgKitModule.MainHand, RpgKitModule.OffHand, "Head" }, SlotsOf(kit).Names);
+        Assert.Equal(0, kit.Records.ErrorCount);
+    }
 }

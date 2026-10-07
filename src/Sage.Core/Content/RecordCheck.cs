@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -39,6 +40,10 @@ public sealed class RecordCheck
 
     // Whether a record exists in the content being loaded: of `type` ("item"), or of any type when null.
     public bool Exists(string? type, RecordId id) => _store.ExistsWhileChecking(type, id);
+
+    // Every id of `type` in the content being loaded: for a check whose rule names records by
+    // something other than their id (an item's slot, by an equip_slot's name, issue #384).
+    public IEnumerable<RecordId> Ids(string type) => _store.IdsWhileChecking(type);
 
     // Another record of the content being loaded, as built: for a check that follows references — a
     // prefab whose children contain it (phase 4i). Null when there is no such record of that type.
