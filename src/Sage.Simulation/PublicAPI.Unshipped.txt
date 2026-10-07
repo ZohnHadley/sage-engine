@@ -169,6 +169,9 @@ Sage.Simulation.PendingRebind.Context.init -> void
 Sage.Simulation.PendingRebind.Input.get -> Sage.Simulation.InputBinding!
 Sage.Simulation.PendingRebind.Input.init -> void
 Sage.Simulation.PendingRebind.PendingRebind(Sage.Simulation.InputContext Context, string! Action, Sage.Simulation.InputBinding! Input, System.Collections.Generic.IReadOnlyList<string!>! Conflicts, bool CanReplace) -> void
+Sage.Simulation.Placement.Pitch -> float
+Sage.Simulation.Placement.Roll -> float
+Sage.Simulation.Placement.Scale -> System.Numerics.Vector3
 Sage.Simulation.RebindResult
 Sage.Simulation.RebindResult.CanReplace.get -> bool
 Sage.Simulation.RebindResult.CanReplace.init -> void
@@ -289,6 +292,8 @@ Sage.Simulation.TerrainMaterialRecord.TerrainMaterialRecord() -> void
 Sage.Simulation.TerrainRecord.Material -> Sage.Core.RecordId
 static Sage.Simulation.MouseCapturePolicy.ShouldCapture(in Sage.Simulation.MouseCaptureInputs i) -> bool
 static Sage.Simulation.MouseCapturePolicy.Why(in Sage.Simulation.MouseCaptureInputs i) -> string?
+static Sage.Simulation.PlacementExtensions.PlacementRotation(this Sage.Simulation.Placement! placement) -> System.Numerics.Quaternion
+static Sage.Simulation.SageMath.YawPitchRollOf(System.Numerics.Quaternion rotation) -> System.Numerics.Vector3
 static Sage.Simulation.ShadowMath.Atlas(int cascades, int size, int maxTexture = 4096) -> Sage.Simulation.ShadowAtlas
 static Sage.Simulation.ShadowMath.BillboardAxes(in Sage.Simulation.ShadowFit fit, bool cylindrical) -> (System.Numerics.Vector3 Right, System.Numerics.Vector3 Up)
 static Sage.Simulation.ShadowMath.CascadeOf(System.ReadOnlySpan<Sage.Simulation.ShadowFit> fits, System.Numerics.Vector3 relative) -> int

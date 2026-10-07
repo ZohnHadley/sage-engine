@@ -40,7 +40,11 @@ public sealed class RecordDocument
         _original = raw;
         Working = (JsonObject)raw.DeepClone();
         History = new CommandLog();
-        History.Changed += () => Changed?.Invoke();
+        History.Changed += () =>
+        {
+            if (Live) ApplyPreview(Working);
+            Changed?.Invoke();
+        };
         Meta = engine.Records.TypeOf(type) is { } clr ? Metadata.Of(clr) : null;
     }
 
@@ -77,6 +81,41 @@ public sealed class RecordDocument
 
     // The raw JSON as it reads now: what the read-only view shows.
     public string RawText => Working.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+
+    // ---- The live preview (issue #366) ----------------------------------------------------------------
+
+    // On, every edit, undo and redo is shown in the game at once (`RecordStore.Preview`): a texture picked
+    // for a material is on the walls before anything is saved. Nothing is written; a save writes it, and
+    // `Revert` (closing without a save) puts back what the files say. Off by default for a document opened
+    // on its own; the record browser (RecordEditor.Live) turns it on.
+    public bool Live
+    {
+        get => _live;
+        set
+        {
+            if (_live == value) return;
+            _live = value;
+            ApplyPreview(value ? Working : _original);
+        }
+    }
+    private bool _live;
+
+    // Why the working copy could not be shown in the game, "" when it was (or Live is off). A record
+    // half-way through an edit may not build (a list being typed); the game keeps the last one that did.
+    public string PreviewError { get; private set; } = "";
+
+    // The game back to the record as opened or last saved: what closing an unsaved live document does.
+    public void Revert()
+    {
+        if (Dirty) ApplyPreview(_original);
+    }
+
+    private void ApplyPreview(JsonObject fields)
+    {
+        if (Engine.Records.Preview(Type, Id, fields, out string error)) { PreviewError = ""; return; }
+        if (error != PreviewError) Log.Debug(LogCat.Editor, $"Live preview of {Type} {Id}: {error}");
+        PreviewError = error;
+    }
 
     // ---- Editing --------------------------------------------------------------------------------------
 

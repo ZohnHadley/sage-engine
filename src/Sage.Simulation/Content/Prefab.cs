@@ -401,6 +401,18 @@ public static class PrefabExtensions
         return entity;
     }
 
+    // A placement (a document's, a scene's, a streamed sector's) at `position` (the simulation's frame):
+    // its whole rotation and its scale (issue #367), its overrides, and no runtime id of its own.
+    internal static Entity SpawnPlacementWithoutId(this World world, Placement placement, Vector3 position, string? where)
+    {
+        var placed = Transform.At(position);
+        placed.LocalRotation = placement.PlacementRotation();
+        placed.LocalScale = placement.Scale;
+        var entity = SpawnTree(world, placement.Prefab.Id, placed, placement.Overrides, where, default, 0);
+        if (!entity.IsNull) SnapGlobals(world, entity);
+        return entity;
+    }
+
     // The same, with per-entity values from a map (`"light.range" "12"`): the keys PrefabKeys offers for
     // this prefab, read as overrides of this one entity (issue #18; since phase 4i the same overrides a
     // placement writes). `where` names the map line.
@@ -461,7 +473,13 @@ public static class PrefabExtensions
         // Placed *before* the body goes on, because parts read the transform: `character` seeds the
         // pawn's yaw from it, and seeding that from an identity rotation would spin every creature to
         // face -Z on its first tick, throwing away the direction it was placed facing (review #43).
-        var entity = world.Create(placed, string.IsNullOrEmpty(record.Name) ? prefab.Name : record.Name);
+        // A placement's scale (#367) multiplies the prefab's own (a Transform it writes; none, or a zero
+        // one, is 1), so the entity starts at 1 and is scaled once the body is on.
+        var scale = placed.LocalScale;
+        bool scaled = scale != Vector3.One && scale != Vector3.Zero;
+        var start = placed;
+        if (scaled) start.LocalScale = Vector3.One;
+        var entity = world.Create(start, string.IsNullOrEmpty(record.Name) ? prefab.Name : record.Name);
         world.Add(entity, new FromPrefab { Prefab = prefab });   // so a save can rebuild it (F27)
         if (!parent.IsNull)
         {
@@ -477,6 +495,7 @@ public static class PrefabExtensions
         ref var transform = ref world.Get<Transform>(entity);
         transform.LocalPosition = placed.LocalPosition;
         transform.LocalRotation = placed.LocalRotation;
+        if (scaled) transform.LocalScale = (transform.LocalScale == Vector3.Zero ? Vector3.One : transform.LocalScale) * scale;
 
         // What it was spawned as, for a save to diff it against (4i-5): before its children, a name or
         // an id are added, none of which is the prefab's.
