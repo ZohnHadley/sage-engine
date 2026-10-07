@@ -14,7 +14,9 @@ namespace Sage.Editor;
 // document saves (a drag's frames merge into one undo); an overridden field is marked and has a revert
 // button (`ClearOverride`), and hovering a field says who set it (the prefab's file and line, a mod's
 // patch, or this placement). What the prefab does not name — a part's collider, the transform — is shown
-// and left alone.
+// and left alone. Lists, maps and nested objects are tree nodes of their own rows (#368): an element
+// moves up or down, comes out or goes on the end; and "Add component..." adds one the prefab does not
+// name to this placement alone (an override body of its own), which a "remove" button takes off again.
 //
 // **Anything else is edited live, and says so.** An entity the game spawned, a prefab's child, or anything
 // in a world with no document open has no placement to write to; its components are edited in place, as
@@ -82,9 +84,17 @@ internal sealed class EntityInspectorWindow
 
         foreach (var group in model.Groups)
         {
-            string title = group.Rows.Any(r => r.Overridden) ? $"{group} *" : group.ToString();
+            string title = group.Rows.Any(r => r.Overridden) || group.AddedByPlacement ? $"{group} *" : group.ToString();
             if (!ImGui.CollapsingHeader($"{title}###{group.Section}.{group.Key}")) continue;
             if (group.Section == null && group.Note != null) ImGui.TextDisabled(group.Note);
+            if (group.AddedByPlacement)
+            {
+                ImGui.TextDisabled(group.Note ?? "");
+                ImGui.SameLine();
+                if (ImGui.SmallButton($"remove##component.{group.Key}") && !model.RemoveComponent(group, out string why))
+                    Log.Warn(LogCat.Editor, why);
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip("Take this component off this placement");
+            }
 
             string? category = null;
             foreach (var row in group.Rows.OrderBy(r => r.Field.Category ?? "", StringComparer.Ordinal))
@@ -97,13 +107,33 @@ internal sealed class EntityInspectorWindow
                 DrawRow(model, row);
             }
         }
+
+        DrawAddComponent(model);
+    }
+
+    // A component the prefab does not name, added to this placement alone (#368).
+    private static void DrawAddComponent(InspectorModel model)
+    {
+        ImGui.Separator();
+        if (!ImGui.BeginCombo("##addcomponent", "Add component...")) return;
+        foreach (var id in model.AddableComponents())
+        {
+            if (!ImGui.Selectable(id)) continue;
+            if (!model.AddComponent(id, out string why)) Log.Warn(LogCat.Editor, why);
+        }
+        ImGui.EndCombo();
     }
 
     private void DrawRow(InspectorModel model, InspectorRow row)
     {
-        string label = $"{row.Field.JsonName}##{row.Group.Section}.{row.Path}";
+        if (row.Field.Kind is ValueKind.List or ValueKind.Map or ValueKind.Object)
+        {
+            DrawNested(model, row);
+            return;
+        }
+        string label = $"{row.Name}##{row.Group.Section}.{row.Path}";
         if (row.Overridden) ImGui.PushStyleColor(ImGuiCol.Text, OverriddenColour);
-        bool changed = row.Editable ? Widget(label, row.Field, row.Value, out object? edited) : ReadOnly(row.Field, row.Value, out edited);
+        bool changed = row.Editable ? Widget(label, row.Field, row.Value, out object? edited) : ReadOnly(row.Name, row.Value, out edited);
         if (row.Overridden) ImGui.PopStyleColor();
 
         if (ImGui.IsItemHovered())
@@ -119,13 +149,87 @@ internal sealed class EntityInspectorWindow
             && !AssetPicking.ToRow(model, row, dropped, out string refused))
             Log.Warn(LogCat.Editor, refused);
 
-        if (row.Overridden)
+        DrawItemButtons(model, row);
+        DrawRevert(model, row);
+    }
+
+    // An overridden field (not a row inside one: the override is the field's, whole) can go back.
+    private static void DrawRevert(InspectorModel model, InspectorRow row)
+    {
+        if (!row.Overridden || row.Parent != null) return;
+        ImGui.SameLine();
+        if (ImGui.SmallButton($"revert##{row.Group.Section}.{row.Path}") && !model.Revert(row, out string why))
+            Log.Warn(LogCat.Editor, why);
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Back to the prefab's value");
+    }
+
+    // A list, a map or a nested object (#368): a tree node of its rows, each edited by rewriting the field
+    // it is in; a list's elements move up and down and come out, and a new one goes on the end.
+    private void DrawNested(InspectorModel model, InspectorRow row)
+    {
+        string count = row.Field.Kind == ValueKind.Object ? "" : $" ({row.Children.Count})";
+        if (row.Overridden && row.Parent == null) ImGui.PushStyleColor(ImGuiCol.Text, OverriddenColour);
+        bool open = ImGui.TreeNodeEx($"{row.Name}{count}###{row.Group.Section}.{row.Path}", ImGuiTreeNodeFlags.SpanAvailWidth);
+        if (row.Overridden && row.Parent == null) ImGui.PopStyleColor();
+        if (ImGui.IsItemHovered())
+        {
+            string tip = row.Field.Tooltip ?? row.Field.TypeName;
+            if (row.Provenance.Length > 0) tip += $"\nset by {row.Provenance}";
+            ImGui.SetTooltip(tip);
+        }
+        DrawItemButtons(model, row);
+        DrawRevert(model, row);
+        if (!open) return;
+
+        foreach (var child in row.Children) DrawRow(model, child);
+        if (row.Value == null && row.Field.Kind == ValueKind.Object) ImGui.TextDisabled("(none)");
+
+        if (row.Editable && row.Field.Kind == ValueKind.List)
+        {
+            if (ImGui.SmallButton($"+ add##{row.Group.Section}.{row.Path}") && !model.AddItem(row, null, out string why))
+                Log.Warn(LogCat.Editor, why);
+        }
+        else if (row.Editable && row.Field.Kind == ValueKind.Map)
+        {
+            _newKey.TryGetValue(row.Path, out string? key);
+            key ??= "";
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.InputText($"##key.{row.Group.Section}.{row.Path}", ref key, 64)) _newKey[row.Path] = key;
+            ImGui.SameLine();
+            if (ImGui.SmallButton($"+ add##{row.Group.Section}.{row.Path}"))
+            {
+                if (model.AddItem(row, null, out string why, key)) _newKey.Remove(row.Path);
+                else Log.Warn(LogCat.Editor, why);
+            }
+        }
+        ImGui.TreePop();
+    }
+
+    // The key typed for a map's next entry, by the map's path.
+    private readonly System.Collections.Generic.Dictionary<string, string> _newKey = new();
+
+    // An element of a list: up, down and out; an entry of a map: out.
+    private static void DrawItemButtons(InspectorModel model, InspectorRow row)
+    {
+        if (!row.Editable || row.Parent is not { } parent) return;
+        string id = $"{row.Group.Section}.{row.Path}";
+        string error = "";
+        bool failed = false;
+        if (parent.Field.Kind == ValueKind.List && row.Index >= 0)
         {
             ImGui.SameLine();
-            if (ImGui.SmallButton($"revert##{row.Group.Section}.{row.Path}") && !model.Revert(row, out string why))
-                Log.Warn(LogCat.Editor, why);
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Back to the prefab's value");
+            if (ImGui.ArrowButton($"up##{id}", ImGuiDir.Up) && row.Index > 0) failed |= !model.MoveItem(row, row.Index - 1, out error);
+            ImGui.SameLine();
+            if (ImGui.ArrowButton($"down##{id}", ImGuiDir.Down) && row.Index < parent.Children.Count - 1)
+                failed |= !model.MoveItem(row, row.Index + 1, out error);
         }
+        if (parent.Field.Kind is ValueKind.List or ValueKind.Map)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton($"x##{id}")) failed |= !model.RemoveItem(row, out error);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Remove");
+        }
+        if (failed && error.Length > 0) Log.Warn(LogCat.Editor, error);
     }
 
     // The placement's own fields: a SetPlacement each, merged over a drag.
@@ -198,9 +302,11 @@ internal sealed class EntityInspectorWindow
 
     // ---- Widgets --------------------------------------------------------------------------------------
 
-    private static bool ReadOnly(FieldMetadata field, object? value, out object? edited)
+    private static bool ReadOnly(FieldMetadata field, object? value, out object? edited) => ReadOnly(field.JsonName, value, out edited);
+
+    private static bool ReadOnly(string name, object? value, out object? edited)
     {
-        ImGui.TextDisabled($"{field.JsonName}: {InspectorValue.Format(value)}");
+        ImGui.TextDisabled($"{name}: {InspectorValue.Format(value)}");
         edited = null;
         return false;
     }
