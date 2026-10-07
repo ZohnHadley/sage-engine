@@ -32,6 +32,7 @@
             "area_map",
             "attack",
             "attribute",
+            "attribute_gain",
             "calendar",
             "calendar_event",
             "cue",
@@ -48,6 +49,7 @@
             "input_map",
             "item",
             "language",
+            "levelling",
             "loot_table",
             "map",
             "material",
@@ -74,6 +76,7 @@
             "screen",
             "skeleton_map",
             "skeleton_sockets",
+            "skill",
             "sky",
             "sound",
             "spread",
@@ -213,6 +216,21 @@
           },
           "then": {
             "$ref": "attribute.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "attribute_gain"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "attribute_gain.schema.json"
           }
         },
         {
@@ -453,6 +471,21 @@
           },
           "then": {
             "$ref": "language.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "levelling"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "levelling.schema.json"
           }
         },
         {
@@ -843,6 +876,21 @@
           },
           "then": {
             "$ref": "skeleton_sockets.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "skill"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "skill.schema.json"
           }
         },
         {

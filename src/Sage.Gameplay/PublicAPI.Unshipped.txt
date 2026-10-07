@@ -216,3 +216,30 @@ static Sage.Gameplay.Containers.IsTheft(Sage.Simulation.World! world, Sage.Simul
 static Sage.Gameplay.Containers.MakeContainer(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Gameplay.ItemContainer container = default(Sage.Gameplay.ItemContainer)) -> void
 static Sage.Gameplay.Containers.Open(Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Simulation.Entity container) -> bool
 static Sage.Gameplay.Containers.Took(Sage.Simulation.World! world, Sage.Simulation.Entity taker, Sage.Simulation.Entity container, Sage.Core.RecordId item, int count) -> void
+Sage.Gameplay.AttributeGained
+Sage.Gameplay.AttributeGained.Amount.get -> float
+Sage.Gameplay.AttributeGained.Amount.init -> void
+Sage.Gameplay.AttributeGained.Attribute.get -> Sage.Core.RecordId
+Sage.Gameplay.AttributeGained.Attribute.init -> void
+Sage.Gameplay.AttributeGained.AttributeGained() -> void
+Sage.Gameplay.AttributeGained.AttributeGained(Sage.Simulation.Entity Entity, Sage.Core.RecordId Attribute, float Amount, Sage.Core.RecordId Rule) -> void
+Sage.Gameplay.AttributeGained.Entity.get -> Sage.Simulation.Entity
+Sage.Gameplay.AttributeGained.Entity.init -> void
+Sage.Gameplay.AttributeGained.Rule.get -> Sage.Core.RecordId
+Sage.Gameplay.AttributeGained.Rule.init -> void
+Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Cast = 3 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Hit = 0 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Hurt = 1 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Kill = 2 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainEvent.Use = 4 -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainRecord
+Sage.Gameplay.AttributeGainRecord.Abilities -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.AbilityRecord!>>!
+Sage.Gameplay.AttributeGainRecord.Amount -> float
+Sage.Gameplay.AttributeGainRecord.Attribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.AttributeGainRecord.AttributeGainRecord() -> void
+Sage.Gameplay.AttributeGainRecord.DamageTypes -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.DamageTypeRecord!>>!
+Sage.Gameplay.AttributeGainRecord.Items -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
+Sage.Gameplay.AttributeGainRecord.On -> Sage.Gameplay.AttributeGainEvent
+Sage.Gameplay.AttributeGainRecord.PerDamage -> float
+Sage.Gameplay.AttributeGainRecord.Wielding -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>>!
