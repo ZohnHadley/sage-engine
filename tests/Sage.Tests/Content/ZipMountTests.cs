@@ -401,6 +401,17 @@ public class ZipMountTests
                 s.CopyTo(ms);
                 return $"{p} {mount.Name} {Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(ms.ToArray()))}";
             }).ToList();
+        // Each mod's own falchion and the lantern rival_trade replaces through `@village/` (issue #398) resolve from zips too.
+        foreach (string named in new[] { "better_blades:textures/falchion.png", "rival_trade:textures/falchion.png", "village:textures/lantern.png" })
+        {
+            var p = VirtualPath.Parse(named);
+            var mount = app.Vfs.Which(p);
+            Assert.NotNull(mount);
+            using var s = mount!.Open(p);
+            using var ms = new MemoryStream();
+            s.CopyTo(ms);
+            files.Add($"{named} {mount.Name} {Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(ms.ToArray()))}");
+        }
         return new Snap(app.Engine.Mods.Active.Select(m => m.Id).ToArray(),
                         app.Vfs.Mounts.Select(m => $"{m.Name}|{m.GetType().Name}").ToArray(),
                         records, files, ContentReport.Build(app.Records, app.Vfs).Lines().ToList());

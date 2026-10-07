@@ -151,11 +151,25 @@ public sealed class ZipMount : IMount, IDisposable
 
     private InvalidDataException Refuse(string why) => new($"{ArchivePath}: refused: {why}");
 
-    public bool Exists(VirtualPath path) => _files.ContainsKey(path.Value);
+    public bool Exists(VirtualPath path) => Find(path) != null;
+
+    // The entry a path names in this archive, namespaces and `@ns/` replacements followed, as a folder mount does (MountLookup).
+    private ZipArchiveEntry? Find(VirtualPath path)
+    {
+        ZipArchiveEntry? found = null;
+        MountLookup.Find(path, RecordNamespace, p => _files.TryGetValue(p.Value, out found), OverrideNamespaces);
+        return found;
+    }
+
+    // The namespaces this archive replaces files of: its top-level `@ns` folders.
+    private IEnumerable<string> OverrideNamespaces() =>
+        _files.Keys.Where(k => k.Length > 1 && k[0] == MountLookup.OverridePrefix && k.IndexOf('/') > 1)
+            .Select(k => k[1..k.IndexOf('/')].ToLowerInvariant()).Where(n => !n.Contains(':'))
+            .Distinct().OrderBy(n => n, StringComparer.Ordinal);
 
     public Stream Open(VirtualPath path)
     {
-        if (!_files.TryGetValue(path.Value, out var entry))
+        if (Find(path) is not { } entry)
             throw new FileNotFoundException($"'{path}' not found in mount {Name}");
         int length = (int)entry.Length;   // at most MaxEntryBytes, checked when mounted
         var bytes = new byte[length];
