@@ -21,6 +21,9 @@
   "dialogue": {
     "hint": "D-pad: choose    A: say    B: leave"
   },
+  "perks": {
+    "hint": "D-pad: choose    A: take    B: close"
+  },
   "spellmaker": {
     "name": "a name for it",
     "hint": "Type a name    D-pad: choose    A: add / change    B: close"

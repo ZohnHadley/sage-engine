@@ -3,8 +3,9 @@
   // levels by them, in data. No C#: a Morrowind-style blade skill that rises as you hit a training dummy with a
   // sword (an attribute_gain on Hit into its use-XP, the RPG kit's `skill` turning use-XP into rank), and a
   // Daggerfall-style level that comes from skill use (the kit's `levelling`, fed by the skill's rises), whose
-  // level raises the governing attribute by how often its skills rose. tests/Sage.Tests/Games/SkillsExitTests.cs
-  // swings, quick-saves, boots a fresh app and quick-loads.
+  // level raises the governing attribute by how often its skills rose. A level also brings a perk point, spent on
+  // a perk whose prerequisites are conditions (issue #381, perks.json); the player is made with a trait.
+  // tests/Sage.Tests/Games/SkillsExitTests.cs swings, picks a perk, quick-saves, boots a fresh app and quick-loads.
   "name": "Skills",
   "id": "skills",
   "plugins": ["sage.gameplay.character", "sage.gameplay.attributes", "sage.gameplay.combat", "sage.gameplay.items"],

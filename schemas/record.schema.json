@@ -61,6 +61,7 @@
             "music",
             "nav_area",
             "particle",
+            "perk",
             "physics_layers",
             "physics_material",
             "placements",
@@ -653,6 +654,21 @@
           },
           "then": {
             "$ref": "particle.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "perk"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "perk.schema.json"
           }
         },
         {

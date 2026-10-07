@@ -14,6 +14,8 @@ using Assert = Xunit.Assert;
 // player cuts a training dummy with a sword (an attribute_gain on Hit, the kit's skill), and a Daggerfall-style
 // level comes from those rises (the kit's levelling), raising strength, which governs blade, by how often blade
 // rose. The input is a PlayerCommand, as the client's is; F5 saves, and a fresh app loads with F9 and goes on.
+// Issue #381 adds perks: the level brings a perk point, the `perk` command spends it on a perk whose prerequisites
+// (blade 4, level 2) now hold, and its lasting effect and the trait the player was made with survive the save.
 #pragma warning disable SAGE0131   // saves you can trust (phase 4i)
 public class SkillsExitTests
 {
@@ -84,6 +86,12 @@ public class SkillsExitTests
 
     private static float Of(World world, string attribute) => world.Attribute(Player(world), Id(attribute));
 
+    private static float BaseOf(World world, string attribute) =>
+        world.Get<Attributes>(Player(world)).Values.BaseOf(world.Resources.Get<GameplayRegistries>().Attribute(Id(attribute)));
+
+    private static int ActiveCount(World world, string effect) =>
+        world.Get<ActiveEffects>(Player(world)).Effects.Count(e => e.Record == Id(effect));
+
     [Xunit.Fact]
     public void TheSkillsGameValidates()
     {
@@ -112,6 +120,10 @@ public class SkillsExitTests
             Assert.Equal(2f, Skills.RankOf(world, player, Blade));
             Assert.Equal(1f, Of(world, "level"));
             Assert.Equal(40f, Of(world, "strength"));
+            Assert.True(Perks.Has(world, player, Id("hardy")));      // the trait it was made with
+            Assert.Equal(45f, Of(world, "endurance"));
+            Assert.False(Perks.CanPick(world, player, Id("strong_arm"), out string why));
+            Assert.Equal("your skill is too low", why);
 
             Assert.True(world.Equip(player, Id("sword")));
             Step(world, 2);
@@ -137,6 +149,17 @@ public class SkillsExitTests
             var rises = Assert.Single(world.Get<Progression>(player).Rises!);
             Assert.Equal((Id("character"), Id("strength"), 1), (rises.Levelling, rises.Attribute, rises.Count));
 
+            // The level's perk point, spent at the console on the perk blade 4 and level 2 opened.
+            Assert.Equal(1f, Perks.PointsOf(world, player));
+            Assert.True(first.Engine.CVars.Execute("perk strong_arm"));
+            Step(world);
+            Assert.True(Perks.Has(world, player, Id("strong_arm")));
+            Assert.Equal(0f, Perks.PointsOf(world, player));
+            Assert.Equal(47f, Of(world, "strength"));               // 42 and the perk's lasting +5
+            Assert.Equal(42f, BaseOf(world, "strength"));
+            Assert.False(Perks.CanPick(world, player, Id("brute"), out why));
+            Assert.Equal("not enough perk points", why);
+
             Press(first, player, SaveSystem.QuickSaveAction, Vector3.Zero, 1);
             Assert.Equal(SaveKind.Quick, Assert.Single(first.Engine.Saves.Slots).Kind);
         }
@@ -150,8 +173,14 @@ public class SkillsExitTests
         Assert.Equal(0.5f, Skills.ExperienceOf(w, p, Blade));
         Assert.Equal(2f, Of(w, "level"));
         Assert.Equal(1f, Of(w, "level_progress"));
-        Assert.Equal(42f, Of(w, "strength"));
+        Step(w);                                                 // the loaded effects' modifiers, on the current values
+        Assert.Equal(47f, Of(w, "strength"));
         Assert.Equal(41f, Of(w, "luck"));
+        Assert.Equal(new[] { Id("hardy"), Id("strong_arm") }, w.Get<GrantedPerks>(p).Perks!);
+        Assert.Equal(1, ActiveCount(w, "strong_arm"));            // loaded, not applied again
+        Assert.Equal(1, ActiveCount(w, "hardy"));
+        Assert.Equal(45f, Of(w, "endurance"));
+        Assert.Equal(0f, Perks.PointsOf(w, p));
         Assert.Equal(1, Assert.Single(w.Get<Progression>(p).Rises!).Count);
         Assert.Equal(Id("sword"), w.Get<Equipment>(p).In(RpgKitModule.MainHand));
 
@@ -159,7 +188,13 @@ public class SkillsExitTests
         for (int cut = 0; cut < 3; cut++) Cut(second);
         Assert.Equal(6f, Skills.RankOf(w, p, Blade));
         Assert.Equal(3f, Of(w, "level"));
-        Assert.Equal(44f, Of(w, "strength"));                    // two rises since level 2, one of them saved
+        Assert.Equal(49f, Of(w, "strength"));                    // two rises since level 2, one of them saved, and the perk
         Assert.Equal(42f, Of(w, "luck"));
+
+        // Level 3's point, on the perk strong arm opened: luck +1 for good.
+        Assert.Equal(1f, Perks.PointsOf(w, p));
+        Assert.True(Perks.Pick(w, p, Id("brute"), out string refused), refused);
+        Assert.Equal(43f, Of(w, "luck"));
+        Assert.Equal(0f, Perks.PointsOf(w, p));
     }
 }

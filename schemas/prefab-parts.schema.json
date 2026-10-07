@@ -449,6 +449,21 @@
         }
       ]
     },
+    "perks": {
+      "description": "Prefab part 'perks' (PerksPart). A bare value is its \"ids\".",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/perks"
+        },
+        {
+          "description": "Perks and traits it starts with, granted for nothing. Names a perk record. (List<RecordRef<PerkRecord>>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:perk"
+          }
+        }
+      ]
+    },
     "pickup": {
       "description": "Prefab part 'pickup' (PickupPart).",
       "allOf": [
@@ -2830,6 +2845,34 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'particles' (ParticlesPart)."
+    },
+    "perks": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "description": "Perks and traits it starts with, granted for nothing. Names a perk record. (List<RecordRef<PerkRecord>>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:perk"
+          }
+        },
+        "ids+": {
+          "description": "Adds to \"ids\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:perk"
+          }
+        },
+        "ids-": {
+          "description": "Removes these from \"ids\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/record:perk"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'perks' (PerksPart)."
     },
     "pickup": {
       "type": "object",

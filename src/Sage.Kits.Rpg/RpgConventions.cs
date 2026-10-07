@@ -47,6 +47,9 @@ public sealed class RpgConventionsRecord
     [Property(Tooltip = "The screen using a body with an inventory opens, and a use_screen part that names none (issue #344); empty: the kit's rpg:loot")]
     public RecordRef<Sage.UI.ScreenRecord> LootScreen;
 
+    [Property(Category = "Perks", Tooltip = "The attribute perk points are kept in, which picking a perk spends (issue #381); a levelling's effect fills it. Empty: perks with a cost cannot be picked")]
+    public RecordRef<AttributeRecord> PerkPoints;
+
     // InventoryGrid in whole squares.
     public (int Columns, int Rows) GridSize => (Math.Max((int)MathF.Round(InventoryGrid.X), 1), Math.Max((int)MathF.Round(InventoryGrid.Y), 1));
 
