@@ -97,6 +97,14 @@
           "$ref": "ids.schema.json#/definitions/record:screen"
         }
       ]
+    },
+    "perkPoints": {
+      "description": "The attribute perk points are kept in, which picking a perk spends (issue #381); a levelling's effect fills it. Empty: perks with a cost cannot be picked. Names a attribute record. Category: Perks. (RecordRef<AttributeRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:attribute"
+        }
+      ]
     }
   },
   "additionalProperties": false

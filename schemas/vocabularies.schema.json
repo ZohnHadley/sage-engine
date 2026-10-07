@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, command, cue, destroy, finish_quest, fire, give_item, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, command, cue, destroy, finish_quest, fire, give_item, grant_perk, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -200,6 +200,7 @@
         "FinishQuest",
         "Fire",
         "GiveItem",
+        "GrantPerk",
         "HitStop",
         "LoadScene",
         "Log",
@@ -231,6 +232,7 @@
         "finish_quest",
         "fire",
         "give_item",
+        "grant_perk",
         "hit_stop",
         "load_scene",
         "log",
@@ -702,6 +704,43 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'give_item' (GiveItemAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "grant_perk",
+                      "GrantPerk"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: grant_perk.",
+                    "enum": [
+                      "grant_perk",
+                      "GrantPerk"
+                    ]
+                  },
+                  "perk": {
+                    "description": "The perk or trait it gives. Names a perk record. (RecordRef<PerkRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:perk"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'grant_perk' (GrantPerkAction)."
               }
             },
             {
@@ -2641,6 +2680,94 @@
           },
           "required": [
             "GiveItem"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "grant_perk": {
+              "anyOf": [
+                {
+                  "description": "The perk or trait it gives. Names a perk record. (RecordRef<PerkRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:perk"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "perk": {
+                      "description": "The perk or trait it gives. Names a perk record. (RecordRef<PerkRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:perk"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'grant_perk' (GrantPerkAction), in shorthand."
+            },
+            "perk": {
+              "description": "The perk or trait it gives. Names a perk record. (RecordRef<PerkRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:perk"
+                }
+              ]
+            }
+          },
+          "required": [
+            "grant_perk"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "GrantPerk": {
+              "anyOf": [
+                {
+                  "description": "The perk or trait it gives. Names a perk record. (RecordRef<PerkRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:perk"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "perk": {
+                      "description": "The perk or trait it gives. Names a perk record. (RecordRef<PerkRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:perk"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'grant_perk' (GrantPerkAction), in shorthand."
+            },
+            "perk": {
+              "description": "The perk or trait it gives. Names a perk record. (RecordRef<PerkRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:perk"
+                }
+              ]
+            }
+          },
+          "required": [
+            "GrantPerk"
           ],
           "additionalProperties": false
         },
@@ -5515,7 +5642,7 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, anim_window, any, attribute, date_between, distance_to, entity_exists, has_item, has_tag, in_scene, is_alive, lacks_tag, moon_phase, not, on_date, quest, random, season, speaker, standing, time_between, var, weekday.",
+      "description": "A condition by id: all, anim_finished, anim_param, anim_window, any, attribute, date_between, distance_to, entity_exists, has_item, has_perk, has_tag, in_scene, is_alive, lacks_tag, level, moon_phase, not, on_date, quest, random, season, skill, speaker, standing, time_between, var, weekday.",
       "type": "string",
       "enum": [
         "All",
@@ -5528,16 +5655,19 @@
         "DistanceTo",
         "EntityExists",
         "HasItem",
+        "HasPerk",
         "HasTag",
         "InScene",
         "IsAlive",
         "LacksTag",
+        "Level",
         "MoonPhase",
         "Not",
         "OnDate",
         "Quest",
         "Random",
         "Season",
+        "Skill",
         "Speaker",
         "Standing",
         "TimeBetween",
@@ -5553,16 +5683,19 @@
         "distance_to",
         "entity_exists",
         "has_item",
+        "has_perk",
         "has_tag",
         "in_scene",
         "is_alive",
         "lacks_tag",
+        "level",
         "moon_phase",
         "not",
         "on_date",
         "quest",
         "random",
         "season",
+        "skill",
         "speaker",
         "standing",
         "time_between",
@@ -6063,6 +6196,43 @@
                 "properties": {
                   "condition": {
                     "enum": [
+                      "has_perk",
+                      "HasPerk"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "condition": {
+                    "description": "The condition: has_perk.",
+                    "enum": [
+                      "has_perk",
+                      "HasPerk"
+                    ]
+                  },
+                  "perk": {
+                    "description": "The perk or trait it must have. Names a perk record. (RecordRef<PerkRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:perk"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'has_perk' (HasPerkCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
                       "has_tag",
                       "HasTag"
                     ]
@@ -6211,6 +6381,48 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'lacks_tag' (LacksTagCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "level",
+                      "Level"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "atLeast": {
+                    "description": "The least level that holds. (float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "condition": {
+                    "description": "The condition: level.",
+                    "enum": [
+                      "level",
+                      "Level"
+                    ]
+                  },
+                  "levelling": {
+                    "description": "The levelling whose level is asked. Names a levelling record. (RecordRef<LevellingRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:levelling"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'level' (LevelCondition)."
               }
             },
             {
@@ -6507,6 +6719,48 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'season' (SeasonCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "skill",
+                      "Skill"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "atLeast": {
+                    "description": "The least rank that holds. (float, default 0)",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "condition": {
+                    "description": "The condition: skill.",
+                    "enum": [
+                      "skill",
+                      "Skill"
+                    ]
+                  },
+                  "skill": {
+                    "description": "The skill whose rank is asked. Names a skill record. (RecordRef<SkillRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:skill"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'skill' (SkillCondition)."
               }
             },
             {
@@ -7992,6 +8246,94 @@
         {
           "type": "object",
           "properties": {
+            "has_perk": {
+              "anyOf": [
+                {
+                  "description": "The perk or trait it must have. Names a perk record. (RecordRef<PerkRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:perk"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "perk": {
+                      "description": "The perk or trait it must have. Names a perk record. (RecordRef<PerkRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:perk"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'has_perk' (HasPerkCondition), in shorthand."
+            },
+            "perk": {
+              "description": "The perk or trait it must have. Names a perk record. (RecordRef<PerkRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:perk"
+                }
+              ]
+            }
+          },
+          "required": [
+            "has_perk"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "HasPerk": {
+              "anyOf": [
+                {
+                  "description": "The perk or trait it must have. Names a perk record. (RecordRef<PerkRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:perk"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "perk": {
+                      "description": "The perk or trait it must have. Names a perk record. (RecordRef<PerkRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:perk"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'has_perk' (HasPerkCondition), in shorthand."
+            },
+            "perk": {
+              "description": "The perk or trait it must have. Names a perk record. (RecordRef<PerkRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:perk"
+                }
+              ]
+            }
+          },
+          "required": [
+            "HasPerk"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "entity": {
               "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
               "default": "",
@@ -8360,6 +8702,114 @@
           },
           "required": [
             "LacksTag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "atLeast": {
+              "description": "The least level that holds. (float, default 0)",
+              "default": 0,
+              "type": "number"
+            },
+            "level": {
+              "anyOf": [
+                {
+                  "description": "The levelling whose level is asked. Names a levelling record. (RecordRef<LevellingRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:levelling"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "levelling": {
+                      "description": "The levelling whose level is asked. Names a levelling record. (RecordRef<LevellingRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:levelling"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "The least level that holds. (float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'level' (LevelCondition), in shorthand."
+            },
+            "levelling": {
+              "description": "The levelling whose level is asked. Names a levelling record. (RecordRef<LevellingRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:levelling"
+                }
+              ]
+            }
+          },
+          "required": [
+            "level"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Level": {
+              "anyOf": [
+                {
+                  "description": "The levelling whose level is asked. Names a levelling record. (RecordRef<LevellingRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:levelling"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "levelling": {
+                      "description": "The levelling whose level is asked. Names a levelling record. (RecordRef<LevellingRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:levelling"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "The least level that holds. (float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'level' (LevelCondition), in shorthand."
+            },
+            "atLeast": {
+              "description": "The least level that holds. (float, default 0)",
+              "default": 0,
+              "type": "number"
+            },
+            "levelling": {
+              "description": "The levelling whose level is asked. Names a levelling record. (RecordRef<LevellingRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:levelling"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Level"
           ],
           "additionalProperties": false
         },
@@ -9096,6 +9546,106 @@
           },
           "required": [
             "Season"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "atLeast": {
+              "description": "The least rank that holds. (float, default 0)",
+              "default": 0,
+              "type": "number"
+            },
+            "skill": {
+              "anyOf": [
+                {
+                  "description": "The skill whose rank is asked. Names a skill record. (RecordRef<SkillRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:skill"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "description": "The skill whose rank is asked. Names a skill record. (RecordRef<SkillRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:skill"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "The least rank that holds. (float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'skill' (SkillCondition), in shorthand."
+            }
+          },
+          "required": [
+            "skill"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Skill": {
+              "anyOf": [
+                {
+                  "description": "The skill whose rank is asked. Names a skill record. (RecordRef<SkillRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:skill"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "description": "The skill whose rank is asked. Names a skill record. (RecordRef<SkillRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:skill"
+                        }
+                      ]
+                    },
+                    "atLeast": {
+                      "description": "The least rank that holds. (float, default 0)",
+                      "default": 0,
+                      "type": "number"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'skill' (SkillCondition), in shorthand."
+            },
+            "atLeast": {
+              "description": "The least rank that holds. (float, default 0)",
+              "default": 0,
+              "type": "number"
+            },
+            "skill": {
+              "description": "The skill whose rank is asked. Names a skill record. (RecordRef<SkillRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:skill"
+                }
+              ]
+            }
+          },
+          "required": [
+            "Skill"
           ],
           "additionalProperties": false
         },
@@ -10677,7 +11227,7 @@
       ]
     },
     "view_model:id": {
-      "description": "A view_model by id: rpg_bag, rpg_dialogue, rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_rest, rpg_save, rpg_shop, rpg_spellbook, rpg_spellmaker, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_crosshair, ui_mods, ui_options, ui_world.",
+      "description": "A view_model by id: rpg_bag, rpg_dialogue, rpg_equipment, rpg_inventory, rpg_journal, rpg_load, rpg_loot, rpg_map, rpg_pause, rpg_perks, rpg_rest, rpg_save, rpg_shop, rpg_spellbook, rpg_spellmaker, rpg_title, rpg_topics, sandbox_hud, sandbox_main_menu, sandbox_status, ui_controls, ui_crosshair, ui_mods, ui_options, ui_world.",
       "type": "string",
       "enum": [
         "RpgBag",
@@ -10689,6 +11239,7 @@
         "RpgLoot",
         "RpgMap",
         "RpgPause",
+        "RpgPerks",
         "RpgRest",
         "RpgSave",
         "RpgShop",
@@ -10713,6 +11264,7 @@
         "rpg_loot",
         "rpg_map",
         "rpg_pause",
+        "rpg_perks",
         "rpg_rest",
         "rpg_save",
         "rpg_shop",
@@ -11006,6 +11558,35 @@
                 },
                 "additionalProperties": false,
                 "description": "view_model 'rpg_pause' (PauseView)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "viewModel": {
+                    "enum": [
+                      "rpg_perks",
+                      "RpgPerks"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewModel"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "viewModel": {
+                    "description": "The view_model: rpg_perks.",
+                    "enum": [
+                      "rpg_perks",
+                      "RpgPerks"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "view_model 'rpg_perks' (PerksView)."
               }
             },
             {
