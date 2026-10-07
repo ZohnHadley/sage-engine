@@ -114,6 +114,11 @@
       "default": 0,
       "type": "integer"
     },
+    "category": {
+      "description": "(string, default \"\")",
+      "default": "",
+      "type": "string"
+    },
     "maxStack": {
       "description": "(int, default 1)",
       "default": 1,

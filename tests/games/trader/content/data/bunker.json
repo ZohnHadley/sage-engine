@@ -1,0 +1,70 @@
+[
+  // The bunker (engine issue #380): a trader behind his counter and a stalker with something to sell.
+
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [20, 1, 20] } } },
+
+  // Money is an item: rubles, weightless and stacked as high as anyone will ever carry.
+  { "type": "item", "id": "rubles", "label": "rubles", "weight": 0, "maxStack": 1000000, "category": "money" },
+
+  // What changes hands. `value` is where the trader's prices start; `category` is what he buys by.
+  { "type": "item", "id": "medkit", "label": "medkit", "weight": 0.5, "maxStack": 10, "value": 100, "category": "medicine" },
+  { "type": "item", "id": "sausage", "label": "sausage", "weight": 0.3, "maxStack": 10, "value": 20, "category": "food" },
+  { "type": "item", "id": "ak74", "label": "AK-74", "weight": 3.6, "value": 1000, "category": "weapon" },
+  { "type": "item", "id": "jellyfish", "label": "Jellyfish", "weight": 0.5, "value": 2000, "category": "artifact" },
+  { "type": "item", "id": "pistol", "label": "PM pistol", "weight": 0.8, "value": 300, "category": "weapon" },
+  { "type": "item", "id": "flesh_eye", "label": "flesh eye", "weight": 0.2, "maxStack": 10, "value": 50, "category": "mutant_part" },
+
+  // How well the player haggles: an attribute, 0 to 100 (a game with skills makes it one, issue #377).
+  { "type": "attribute", "id": "barter", "start": 0, "min": 0, "max": 100 },
+
+  // The trader's people; the player starts neutral with them.
+  { "type": "faction", "id": "loners", "label": "loners", "standing": 0 },
+
+  // What he has to sell, rolled as he spawns and again at every restock.
+  { "type": "loot_table", "id": "bunker_stock", "rolls": 0,
+    "entries": [ { "item": "medkit", "min": 3, "always": true },
+                 { "item": "sausage", "min": 5, "always": true },
+                 { "item": "ak74", "always": true } ] },
+
+  // The trader: 1500 rubles to buy with, half again over value to sell, half of value to buy, only
+  // artifacts, weapons and medicine; restocked every 24 game hours. A point of barter is a percent off,
+  // a point of standing with the loners a fifth of one.
+  { "type": "merchant", "id": "trader", "currency": "rubles", "gold": 1500, "markup": 1.5, "pays": 0.5,
+    "buys": ["artifact", "weapon", "medicine"], "stock": "bunker_stock", "restock": 24,
+    "skill": "barter", "skillEffect": 0.01, "dispositionEffect": 0.002, "maxAdvantage": 0.5 },
+
+  {
+    "type": "prefab", "id": "trader", "name": "Sidorovich",
+    "parts": {
+      "character": { "layer": "enemy" },
+      "faction": "loners",
+      "inventory": {},
+      "merchant": "trader",
+      "use_screen": "rpg:shop"
+    }
+  },
+
+  {
+    // The stalker: 500 rubles, two artifacts, a worn pistol of his own and a flesh eye nobody here wants.
+    "type": "prefab", "id": "player", "name": "stalker", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "inventory": { "capacity": 50, "items": [
+        { "item": "rubles", "count": 500 },
+        { "item": "jellyfish" },
+        { "item": "jellyfish" },
+        { "item": "pistol", "instance": { "name": "Strelok's PM", "condition": 0.5 } },
+        { "item": "flesh_eye", "count": 2 } ] }
+    }
+  },
+
+  {
+    "type": "scene", "id": "bunker",
+    "player": { "prefab": "player", "at": [0, 0.1, 1.8] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0], "id": "floor" },
+      { "prefab": "trader", "at": [0, 0, 0], "yaw": 180, "id": "trader" }
+    ]
+  }
+]

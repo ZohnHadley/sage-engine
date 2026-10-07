@@ -228,3 +228,71 @@ static Sage.Gameplay.Encumbrance.AddBurden(this Sage.Simulation.World! world, Sa
 static Sage.Gameplay.Encumbrance.BurdenLevelOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> int
 static Sage.Gameplay.Encumbrance.CarryLimitOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> float
 Sage.Gameplay.GameplayConventionsRecord.SpeedAttribute -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.ItemRecord.Category -> string!
+Sage.Gameplay.Merchant
+Sage.Gameplay.Merchant.Gold -> int
+Sage.Gameplay.Merchant.Merchant() -> void
+Sage.Gameplay.Merchant.Record -> Sage.Core.RecordId
+Sage.Gameplay.Merchant.RestockAt -> double
+Sage.Gameplay.Merchant.Stock -> System.Collections.Generic.List<Sage.Gameplay.ItemStack>?
+Sage.Gameplay.MerchantPart
+Sage.Gameplay.MerchantPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.MerchantPart.MerchantPart() -> void
+Sage.Gameplay.MerchantPart.Record -> Sage.Core.RecordRef<Sage.Gameplay.MerchantRecord!>
+Sage.Gameplay.MerchantRecord
+Sage.Gameplay.MerchantRecord.Buys -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.MerchantRecord.BuysCategory(string? category) -> bool
+Sage.Gameplay.MerchantRecord.Currency -> Sage.Core.RecordRef<Sage.Gameplay.ItemRecord!>
+Sage.Gameplay.MerchantRecord.DispositionEffect -> float
+Sage.Gameplay.MerchantRecord.Gold -> int
+Sage.Gameplay.MerchantRecord.Markup -> float
+Sage.Gameplay.MerchantRecord.MaxAdvantage -> float
+Sage.Gameplay.MerchantRecord.MerchantRecord() -> void
+Sage.Gameplay.MerchantRecord.Pays -> float
+Sage.Gameplay.MerchantRecord.Restock -> float
+Sage.Gameplay.MerchantRecord.Skill -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.MerchantRecord.SkillEffect -> float
+Sage.Gameplay.MerchantRecord.Stock -> Sage.Core.RecordRef<Sage.Gameplay.LootTableRecord!>
+Sage.Gameplay.Merchants
+Sage.Gameplay.Traded
+Sage.Gameplay.Traded.Buying.get -> bool
+Sage.Gameplay.Traded.Buying.init -> void
+Sage.Gameplay.Traded.Count.get -> int
+Sage.Gameplay.Traded.Count.init -> void
+Sage.Gameplay.Traded.Customer.get -> Sage.Simulation.Entity
+Sage.Gameplay.Traded.Customer.init -> void
+Sage.Gameplay.Traded.Item.get -> Sage.Core.RecordId
+Sage.Gameplay.Traded.Item.init -> void
+Sage.Gameplay.Traded.Merchant.get -> Sage.Simulation.Entity
+Sage.Gameplay.Traded.Merchant.init -> void
+Sage.Gameplay.Traded.Price.get -> int
+Sage.Gameplay.Traded.Price.init -> void
+Sage.Gameplay.Traded.Traded() -> void
+Sage.Gameplay.Traded.Traded(Sage.Simulation.Entity Customer, Sage.Simulation.Entity Merchant, Sage.Core.RecordId Item, int Count, int Price, bool Buying) -> void
+Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeRefusal.CannotAfford = 3 -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeRefusal.Gone = 2 -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeRefusal.MerchantCannotAfford = 4 -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeRefusal.None = 0 -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeRefusal.NotAMerchant = 1 -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeRefusal.NotBought = 5 -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeRefusal.TooHeavy = 6 -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeResult
+Sage.Gameplay.TradeResult.Ok.get -> bool
+Sage.Gameplay.TradeResult.Price.get -> int
+Sage.Gameplay.TradeResult.Price.init -> void
+Sage.Gameplay.TradeResult.Reason.get -> string!
+Sage.Gameplay.TradeResult.Reason.init -> void
+Sage.Gameplay.TradeResult.Refusal.get -> Sage.Gameplay.TradeRefusal
+Sage.Gameplay.TradeResult.Refusal.init -> void
+Sage.Gameplay.TradeResult.TradeResult() -> void
+Sage.Gameplay.TradeResult.TradeResult(Sage.Gameplay.TradeRefusal Refusal, int Price, string! Reason) -> void
+static Sage.Gameplay.Merchants.Advantage(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant) -> float
+static Sage.Gameplay.Merchants.Buy(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant, int index, int count) -> Sage.Gameplay.TradeResult
+static Sage.Gameplay.Merchants.GoldOf(Sage.Simulation.World! world, Sage.Simulation.Entity merchant) -> int
+static Sage.Gameplay.Merchants.MoneyOf(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant) -> int
+static Sage.Gameplay.Merchants.Price(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant, in Sage.Gameplay.ItemStack stack, int count, bool buying) -> int
+static Sage.Gameplay.Merchants.Price(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant, Sage.Core.RecordId item, int count, bool buying) -> int
+static Sage.Gameplay.Merchants.Ready(Sage.Simulation.World! world, Sage.Simulation.Entity merchant) -> bool
+static Sage.Gameplay.Merchants.RecordOf(Sage.Simulation.World! world, Sage.Simulation.Entity merchant) -> Sage.Gameplay.MerchantRecord?
+static Sage.Gameplay.Merchants.Sell(Sage.Simulation.World! world, Sage.Simulation.Entity customer, Sage.Simulation.Entity merchant, int index, int count) -> Sage.Gameplay.TradeResult

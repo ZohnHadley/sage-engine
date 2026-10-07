@@ -55,6 +55,7 @@
             "loot_table",
             "map",
             "material",
+            "merchant",
             "mesh_lod",
             "movement_profile",
             "music",
@@ -562,6 +563,21 @@
           },
           "then": {
             "$ref": "material.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "merchant"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "merchant.schema.json"
           }
         },
         {
