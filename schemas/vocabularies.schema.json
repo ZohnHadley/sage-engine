@@ -5642,7 +5642,7 @@
       ]
     },
     "condition:id": {
-      "description": "A condition by id: all, anim_finished, anim_param, anim_window, any, date_between, distance_to, entity_exists, has_item, has_perk, has_tag, in_scene, is_alive, lacks_tag, level, moon_phase, not, on_date, quest, random, season, skill, speaker, standing, time_between, var, weekday.",
+      "description": "A condition by id: all, anim_finished, anim_param, anim_window, any, attribute, date_between, distance_to, entity_exists, has_item, has_perk, has_tag, in_scene, is_alive, lacks_tag, level, moon_phase, not, on_date, quest, random, season, skill, speaker, standing, time_between, var, weekday.",
       "type": "string",
       "enum": [
         "All",
@@ -5650,6 +5650,7 @@
         "AnimParam",
         "AnimWindow",
         "Any",
+        "Attribute",
         "DateBetween",
         "DistanceTo",
         "EntityExists",
@@ -5677,6 +5678,7 @@
         "anim_param",
         "anim_window",
         "any",
+        "attribute",
         "date_between",
         "distance_to",
         "entity_exists",
@@ -5957,6 +5959,56 @@
                 },
                 "additionalProperties": false,
                 "description": "condition 'any' (AnyCondition)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "condition": {
+                    "enum": [
+                      "attribute",
+                      "Attribute"
+                    ]
+                  }
+                },
+                "required": [
+                  "condition"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "attribute": {
+                    "description": "The attribute asked about: level, health, a skill. Names a attribute record. (RecordRef<AttributeRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:attribute"
+                      }
+                    ]
+                  },
+                  "condition": {
+                    "description": "The condition: attribute.",
+                    "enum": [
+                      "attribute",
+                      "Attribute"
+                    ]
+                  },
+                  "entity": {
+                    "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  },
+                  "max": {
+                    "description": "The highest it may be. (float)",
+                    "type": "number"
+                  },
+                  "min": {
+                    "description": "The lowest it may be. (float)",
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "condition 'attribute' (AttributeCondition)."
               }
             },
             {
@@ -7598,6 +7650,138 @@
           },
           "required": [
             "Any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "attribute": {
+              "anyOf": [
+                {
+                  "description": "The attribute asked about: level, health, a skill. Names a attribute record. (RecordRef<AttributeRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:attribute"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "attribute": {
+                      "description": "The attribute asked about: level, health, a skill. Names a attribute record. (RecordRef<AttributeRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:attribute"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "The lowest it may be. (float)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "The highest it may be. (float)",
+                      "type": "number"
+                    },
+                    "entity": {
+                      "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'attribute' (AttributeCondition), in shorthand."
+            },
+            "entity": {
+              "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "max": {
+              "description": "The highest it may be. (float)",
+              "type": "number"
+            },
+            "min": {
+              "description": "The lowest it may be. (float)",
+              "type": "number"
+            }
+          },
+          "required": [
+            "attribute"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Attribute": {
+              "anyOf": [
+                {
+                  "description": "The attribute asked about: level, health, a skill. Names a attribute record. (RecordRef<AttributeRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:attribute"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "attribute": {
+                      "description": "The attribute asked about: level, health, a skill. Names a attribute record. (RecordRef<AttributeRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:attribute"
+                        }
+                      ]
+                    },
+                    "min": {
+                      "description": "The lowest it may be. (float)",
+                      "type": "number"
+                    },
+                    "max": {
+                      "description": "The highest it may be. (float)",
+                      "type": "number"
+                    },
+                    "entity": {
+                      "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "condition 'attribute' (AttributeCondition), in shorthand."
+            },
+            "attribute": {
+              "description": "The attribute asked about: level, health, a skill. Names a attribute record. (RecordRef<AttributeRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:attribute"
+                }
+              ]
+            },
+            "entity": {
+              "description": "Who is asked: an entity's name, or !subject / !other; empty: the subject. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            },
+            "max": {
+              "description": "The highest it may be. (float)",
+              "type": "number"
+            },
+            "min": {
+              "description": "The lowest it may be. (float)",
+              "type": "number"
+            }
+          },
+          "required": [
+            "Attribute"
           ],
           "additionalProperties": false
         },

@@ -44,6 +44,7 @@ public class DeclarationTests
             ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
+            ["loot_table"] = "sage.gameplay.items",   // loot tables and leveled lists (#379)
             ["map"] = "sage.maps",
             ["physics_layers"] = "sage.physics3d",
             ["physics_material"] = "sage.physics3d",   // issue #270
