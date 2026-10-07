@@ -341,6 +341,11 @@ public sealed class ItemGrid
             return false;
         }
         int at = StackOf(world, item);
+        if (at >= 0 && !world.CanDrop(item.Item, out _))
+        {
+            reason = text.Format("@rpg.grid.quest_item", ("item", item.Label));   // issue #391
+            return false;
+        }
         if (at < 0 || world.DropAt(Owner, at, item.Count).IsNull)
         {
             reason = text.Format("@rpg.grid.gone", ("item", item.Label));

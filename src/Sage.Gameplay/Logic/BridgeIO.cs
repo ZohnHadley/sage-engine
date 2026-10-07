@@ -20,6 +20,7 @@ namespace Sage.Gameplay;
 //   output          owner                     fired on                    activator       value
 //   OnStageChanged  sage.gameplay.quests      every quest_watch on it     the player      the stage
 //   OnQuestFinished sage.gameplay.quests      every quest_watch on it     the player      the stage
+//   OnQuestFailed   sage.gameplay.quests      every quest_watch on it     the player      the stage (#391)
 //   OnDeath         sage.gameplay.attributes  the victim (Died)           the killer      —
 //   OnDamaged       sage.gameplay.combat      the one hurt (Damaged)      the attacker    the damage done
 //   OnPickedUp      sage.gameplay.items       the pickup, as it is taken  who took it     —
@@ -37,6 +38,7 @@ public static class BridgeIO
 
     public const string OnStageChanged = "OnStageChanged";
     public const string OnQuestFinished = "OnQuestFinished";
+    public const string OnQuestFailed = "OnQuestFailed";
     public const string OnDeath = "OnDeath";
     public const string OnDamaged = "OnDamaged";
     public const string OnPickedUp = "OnPickedUp";
@@ -73,6 +75,7 @@ public static class BridgeIO
         });
         engine.Outputs.Declare(OnStageChanged, "The quest this entity's quest_watch names started or moved to a stage; hands on the stage.");
         engine.Outputs.Declare(OnQuestFinished, "The quest this entity's quest_watch names was finished; hands on the stage it ended at.");
+        engine.Outputs.Declare(OnQuestFailed, "The quest this entity's quest_watch names failed; hands on the stage it ended at.");
     }
 
     // ---- dialogue (DialogueModule.Init) ----
@@ -216,7 +219,7 @@ public sealed class QuestWatchPart : IPrefabPart
     }
 }
 
-// QuestChanged → OnStageChanged / OnQuestFinished on every quest_watch of that quest.
+// QuestChanged → OnStageChanged / OnQuestFinished / OnQuestFailed on every quest_watch of that quest.
 [System("sage.io.quests", Phase.Gameplay)]
 internal sealed class QuestOutputSystem : ISystem
 {
@@ -244,7 +247,8 @@ internal sealed class QuestOutputSystem : ISystem
                     if (w[i].Quest != changed.Quest) continue;
                     var entity = entities.EntityAt(i);
                     // Firing only queues (entity I/O), so it is safe inside the query.
-                    world.FireOutput(entity, changed.Finished ? BridgeIO.OnQuestFinished : BridgeIO.OnStageChanged, player, changed.Stage);
+                    world.FireOutput(entity, changed.Failed ? BridgeIO.OnQuestFailed
+                                           : changed.Finished ? BridgeIO.OnQuestFinished : BridgeIO.OnStageChanged, player, changed.Stage);
                 }
             }
         }
