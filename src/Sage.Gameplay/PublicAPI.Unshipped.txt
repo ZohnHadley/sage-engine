@@ -1,6 +1,17 @@
 #nullable enable
 Sage.Gameplay.ActionConventions.Block -> string!
+Sage.Gameplay.AICondition.HearNoise = 4096 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AICondition.Suspicious = 8192 -> Sage.Gameplay.AICondition
+Sage.Gameplay.AIProfileRecord.Hearing -> float
+Sage.Gameplay.AIProfileRecord.InterestSeconds -> float
+Sage.Gameplay.AIProfileRecord.OccludedHearing -> float
+Sage.Gameplay.AIScheduleConventions.Investigate -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIState.Heard -> System.Numerics.Vector3
+Sage.Gameplay.AIState.HeardLoudness -> float
+Sage.Gameplay.AIState.HeardSource -> Sage.Simulation.Entity
+Sage.Gameplay.AIState.HeardUntil -> float
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
+Sage.Gameplay.AttackRecord.NoiseRadius -> float
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
@@ -16,6 +27,7 @@ Sage.Gameplay.FootIk.PelvisSmoothing -> float
 Sage.Gameplay.FootIk.RightTilt -> float
 Sage.Gameplay.FootIkPart.MaxFootTilt -> float
 Sage.Gameplay.FootIkPart.PelvisSmoothing -> float
+Sage.Gameplay.GameplayConventionsRecord.Noise -> Sage.Gameplay.NoiseConventions!
 Sage.Gameplay.InventoryPart.Stack.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.ItemBreak
 Sage.Gameplay.ItemBreak.Keep = 2 -> Sage.Gameplay.ItemBreak
@@ -71,6 +83,40 @@ Sage.Gameplay.HitResult.Surface.init -> void
 Sage.Gameplay.LightPart.Baked -> bool
 Sage.Gameplay.LightPart.Shadows -> bool
 Sage.Gameplay.Melee.Direction -> Sage.Simulation.AttackDirection
+Sage.Gameplay.Noise
+Sage.Gameplay.Noise.Kind.get -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.Noise.Kind.init -> void
+Sage.Gameplay.Noise.Loudness.get -> float
+Sage.Gameplay.Noise.Loudness.init -> void
+Sage.Gameplay.Noise.LoudnessAt(float distance, float scale = 1) -> float
+Sage.Gameplay.Noise.Noise() -> void
+Sage.Gameplay.Noise.Noise(Sage.Simulation.Entity Source, System.Numerics.Vector3 Point, float Radius, float Loudness) -> void
+Sage.Gameplay.Noise.Point.get -> System.Numerics.Vector3
+Sage.Gameplay.Noise.Point.init -> void
+Sage.Gameplay.Noise.Radius.get -> float
+Sage.Gameplay.Noise.Radius.init -> void
+Sage.Gameplay.Noise.Source.get -> Sage.Simulation.Entity
+Sage.Gameplay.Noise.Source.init -> void
+Sage.Gameplay.NoiseConventions
+Sage.Gameplay.NoiseConventions.FootstepLoudness -> float
+Sage.Gameplay.NoiseConventions.FootstepMaxScale -> float
+Sage.Gameplay.NoiseConventions.FootstepRadius -> float
+Sage.Gameplay.NoiseConventions.GunshotLoudness -> float
+Sage.Gameplay.NoiseConventions.GunshotRadius -> float
+Sage.Gameplay.NoiseConventions.HitLoudness -> float
+Sage.Gameplay.NoiseConventions.HitRadius -> float
+Sage.Gameplay.NoiseConventions.LandLoudness -> float
+Sage.Gameplay.NoiseConventions.LandRadius -> float
+Sage.Gameplay.NoiseConventions.NoiseConventions() -> void
+Sage.Gameplay.NoiseConventions.SwingLoudness -> float
+Sage.Gameplay.NoiseConventions.SwingRadius -> float
+Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Alert = 4 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Footstep = 1 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Impact = 3 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Other = 0 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.NoiseKind.Weapon = 2 -> Sage.Gameplay.NoiseKind
+Sage.Gameplay.Noises
 Sage.Gameplay.Pickup.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.PickupPart.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.QuestObjective.Target -> string!
@@ -107,6 +153,7 @@ static Sage.Gameplay.Items.SpawnPickup(this Sage.Simulation.World! world, in Sag
 static Sage.Gameplay.Items.Split(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count) -> bool
 static Sage.Gameplay.Items.TakeAt(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, int count, out Sage.Gameplay.ItemStack taken) -> bool
 static Sage.Gameplay.Items.WornInstance(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! slot) -> Sage.Gameplay.ItemInstance?
+static Sage.Gameplay.Noises.Make(Sage.Simulation.World! world, Sage.Simulation.Entity source, System.Numerics.Vector3 point, float radius, float loudness = 1, Sage.Gameplay.NoiseKind kind = Sage.Gameplay.NoiseKind.Other) -> void
 static Sage.Gameplay.Quests.IsTracked(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.Track(Sage.Simulation.World! world, Sage.Core.RecordId quest, bool tracked = true) -> bool
 virtual Sage.Gameplay.QuestObjective.TryGetPlace(out System.Numerics.Vector3 at) -> bool
