@@ -132,7 +132,7 @@ public sealed class JsonFileEdit
     {
         if (FindRecord(type, id) == null) return false;
         var ops = new List<Op>();
-        Diff(ToNode(before), ToNode(after), new List<(string?, int)>(), ops, recordRoot: true);
+        Diff(ToNode(before), ToNode(after), new List<(string?, int)>(), ops, recordRoot: true, keepOrder: true);
         Apply(type, id, ops);
         return true;
     }
@@ -218,14 +218,18 @@ public sealed class JsonFileEdit
     // What to do to turn `before` into `after`. Objects are compared key by key (names as records read
     // them, ignoring case) and arrays element by element, so the operations touch only what changed. An
     // array's removals come last and from its end, so an index an earlier operation used still holds.
-    private static void Diff(JsonNode? before, JsonNode? after, List<(string?, int)> path, List<Op> ops, bool recordRoot)
+    // `keepOrder` (PatchRecord's, whose two versions come from one JSON and so share an order): an object
+    // whose keys were put in another order (the AI graph view moving a state, #369) is written whole in its
+    // new order, which a key-by-key diff would not see.
+    private static void Diff(JsonNode? before, JsonNode? after, List<(string?, int)> path, List<Op> ops, bool recordRoot, bool keepOrder = false)
     {
         if (before is JsonObject a && after is JsonObject b)
         {
+            if (keepOrder && !recordRoot && Reordered(a, b)) { ops.Add(new Op(OpKind.Set, path, null, after)); return; }
             foreach (var (name, value) in b)
             {
                 if (recordRoot && Identity.Contains(name)) continue;
-                if (TryGetProperty(a, name, out string? written, out var old)) Diff(old, value, With(path, written, 0), ops, false);
+                if (TryGetProperty(a, name, out string? written, out var old)) Diff(old, value, With(path, written, 0), ops, false, keepOrder);
                 else ops.Add(new Op(OpKind.Add, path, name, value));
             }
             foreach (var (name, _) in a)
@@ -236,12 +240,27 @@ public sealed class JsonFileEdit
         if (before is JsonArray x && after is JsonArray y)
         {
             int common = Math.Min(x.Count, y.Count);
-            for (int i = 0; i < common; i++) Diff(x[i], y[i], With(path, null, i), ops, false);
+            for (int i = 0; i < common; i++) Diff(x[i], y[i], With(path, null, i), ops, false, keepOrder);
             for (int i = common; i < y.Count; i++) ops.Add(new Op(OpKind.Add, path, null, y[i]));
             for (int i = x.Count - 1; i >= common; i--) ops.Add(new Op(OpKind.Remove, With(path, null, i), null, null));
             return;
         }
         if (!Same(before, after)) ops.Add(new Op(OpKind.Set, path, null, after));
+    }
+
+    // Whether `b` puts its keys in an order a key-by-key edit of `a` would not: the keys both have in
+    // another order, or a new key before one `a` had (an edit adds new keys at the end).
+    private static bool Reordered(JsonObject a, JsonObject b)
+    {
+        var expected = new List<string>();
+        foreach (var (key, _) in a)
+            if (TryGetProperty(b, key, out string? spelled, out _)) expected.Add(spelled!);
+        foreach (var (key, _) in b)
+            if (!TryGetProperty(a, key, out _, out _)) expected.Add(key);
+        int i = 0;
+        foreach (var (key, _) in b)
+            if (!string.Equals(expected[i++], key, StringComparison.Ordinal)) return true;
+        return false;
     }
 
     private static List<(string?, int)> With(List<(string?, int)> path, string? name, int index) => new(path) { (name, index) };

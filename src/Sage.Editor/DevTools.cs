@@ -78,6 +78,7 @@ public sealed class DevTools : IDisposable
     private AnimationPanel? _animationPanel;
     private readonly VocabularyEditor _vocab;       // the conditions and actions form (#370): ed_vocab*
     private readonly VocabularyPanel _vocabPanel;
+    private AIGraphPanel? _aiGraph;   // the AI graph view (#369): ed_ai_*, and its panel
     private readonly AssetBrowser _assetBrowser;   // the asset browser (#366): ed_assets*, and its panel
     private readonly Thumbnails _thumbnails;
     private AssetsPanel? _assets;
@@ -268,6 +269,7 @@ public sealed class DevTools : IDisposable
         ProblemCommands.Register(cvars, _engine, () => _document);   // ed_problems (#227)
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
         _vocab.Register(cvars, () => _document);   // ed_vocab* (#370)
+        AIGraphCommands.Register(cvars, _records.Editor, () => _play?.World ?? _world);   // ed_ai_* (#369)
         AssetCommands.Register(cvars, () => _assetBrowser, () => _document, () => _records.Editor);   // ed_assets, ed_asset_* (#366)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
@@ -391,6 +393,7 @@ public sealed class DevTools : IDisposable
         _problems?.Draw();
         (_audioPanel ??= new AudioPanel(_engine, () => _world)).Draw();
         (_animationPanel ??= new AnimationPanel(_engine, _animation)).Draw(frameSeconds);
+        (_aiGraph ??= new AIGraphPanel(_records.Editor, () => _play?.World ?? _world)).Draw();
         _console.Draw();
         DrawViewport();
         _stats.Draw();
