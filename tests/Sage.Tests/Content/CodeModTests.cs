@@ -164,7 +164,7 @@ public class CodeModTests : IDisposable
         Assert.True(report.Ok, string.Join("\n", report.Errors));
         Assert.Equal(new[] { "better_blades", "rival_trade", "smiths_guild" }, report.Mods.Active.Select(m => m.Id));
         Assert.Empty(report.Mods.Refused);
-        Assert.Equal(2, report.Conflicts);                                   // the trader's name; the falchion's texture
+        Assert.Equal(1, report.Conflicts);                                   // the trader's name (each mod keeps its own falchion texture, #398)
         Assert.Contains(report.ReportLines, l => l.Contains("prefab village:trader name: better_blades, rival_trade, smiths_guild; smiths_guild won"));
         Assert.Contains(report.ReportLines, l => l.Contains("added guild_order: smiths_guild:falchion_order"));
         Assert.Contains(report.ModLines, l => l.Contains("smiths_guild") && l.Contains(ModManager.ContainsCodeFlag));
