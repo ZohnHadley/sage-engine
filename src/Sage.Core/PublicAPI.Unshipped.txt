@@ -82,3 +82,5 @@ static Sage.Core.AppEnvironment.Current.get -> Sage.Core.AppEnvironment!
 static Sage.Core.AppEnvironment.Process.get -> Sage.Core.AppEnvironment!
 static Sage.Core.CoreCVars.Register(Sage.Core.CVarRegistry! registry, bool ownsProcessLog, Sage.Core.AppEnvironment! environment) -> Sage.Core.CoreCVars!
 static Sage.Core.Logger.Current.get -> Sage.Core.Logger!
+Sage.Core.RecordStore.Preview(string! type, Sage.Core.RecordId id, System.Text.Json.Nodes.JsonObject! fields, out string! error) -> bool
+Sage.Core.RecordStore.Previewed -> System.Action<string!, Sage.Core.RecordId>?
