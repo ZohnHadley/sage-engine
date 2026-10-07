@@ -5882,6 +5882,11 @@
             "Thrust",
             "Left"
           ]
+        },
+        "staggered": {
+          "description": "Not saved. (float, default 0)",
+          "default": 0,
+          "type": "number"
         }
       },
       "additionalProperties": false,

@@ -467,3 +467,60 @@ Sage.Gameplay.NoiseKind.Other = 0 -> Sage.Gameplay.NoiseKind
 Sage.Gameplay.NoiseKind.Weapon = 2 -> Sage.Gameplay.NoiseKind
 Sage.Gameplay.Noises
 static Sage.Gameplay.Noises.Make(Sage.Simulation.World! world, Sage.Simulation.Entity source, System.Numerics.Vector3 point, float radius, float loudness = 1, Sage.Gameplay.NoiseKind kind = Sage.Gameplay.NoiseKind.Other) -> void
+Sage.Gameplay.AttackRecord.Block -> Sage.Core.RecordRef<Sage.Gameplay.BlockRecord!>
+Sage.Gameplay.AttackRecord.Cleave -> int
+Sage.Gameplay.AttackRecord.FriendlyFire -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.AttackRecord.Knockback -> float
+Sage.Gameplay.AttackRecord.KnockbackLift -> float
+Sage.Gameplay.AttackRecord.Reaction -> string!
+Sage.Gameplay.AttackRecord.Stagger -> float
+Sage.Gameplay.Blocked
+Sage.Gameplay.Blocked.Attack.get -> Sage.Core.RecordId
+Sage.Gameplay.Blocked.Attack.init -> void
+Sage.Gameplay.Blocked.Attacker.get -> Sage.Simulation.Entity
+Sage.Gameplay.Blocked.Attacker.init -> void
+Sage.Gameplay.Blocked.Blocked() -> void
+Sage.Gameplay.Blocked.Blocked(Sage.Simulation.Entity Defender, Sage.Simulation.Entity Attacker, Sage.Core.RecordId Attack, Sage.Gameplay.GuardOutcome Outcome, float Stopped) -> void
+Sage.Gameplay.Blocked.Defender.get -> Sage.Simulation.Entity
+Sage.Gameplay.Blocked.Defender.init -> void
+Sage.Gameplay.Blocked.Outcome.get -> Sage.Gameplay.GuardOutcome
+Sage.Gameplay.Blocked.Outcome.init -> void
+Sage.Gameplay.Blocked.Stopped.get -> float
+Sage.Gameplay.Blocked.Stopped.init -> void
+Sage.Gameplay.BlockRecord
+Sage.Gameplay.BlockRecord.ArcDegrees -> float
+Sage.Gameplay.BlockRecord.BlockCue -> Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>
+Sage.Gameplay.BlockRecord.BlockRecord() -> void
+Sage.Gameplay.BlockRecord.BlockTrigger -> string!
+Sage.Gameplay.BlockRecord.Directional -> bool
+Sage.Gameplay.BlockRecord.GuardBreakStagger -> float
+Sage.Gameplay.BlockRecord.ParryCue -> Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>
+Sage.Gameplay.BlockRecord.ParryStagger -> float
+Sage.Gameplay.BlockRecord.ParryTrigger -> string!
+Sage.Gameplay.BlockRecord.ParryWindow -> float
+Sage.Gameplay.BlockRecord.Reduction -> float
+Sage.Gameplay.BlockRecord.Stamina -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Gameplay.BlockRecord.StaminaCost -> float
+Sage.Gameplay.BlockRecord.StaminaPerDamage -> float
+Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Allies = 4 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Anyone = 1 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Default = 0 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.Hostile = 3 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilter.NotAllies = 2 -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.FactionFilters
+Sage.Gameplay.GuardOutcome
+Sage.Gameplay.GuardOutcome.Blocked = 0 -> Sage.Gameplay.GuardOutcome
+Sage.Gameplay.GuardOutcome.Broken = 2 -> Sage.Gameplay.GuardOutcome
+Sage.Gameplay.GuardOutcome.Parried = 1 -> Sage.Gameplay.GuardOutcome
+Sage.Gameplay.Melee.Staggered -> float
+Sage.Gameplay.Staggered
+Sage.Gameplay.Staggered.Seconds.get -> float
+Sage.Gameplay.Staggered.Seconds.init -> void
+Sage.Gameplay.Staggered.Source.get -> Sage.Simulation.Entity
+Sage.Gameplay.Staggered.Source.init -> void
+Sage.Gameplay.Staggered.Staggered() -> void
+Sage.Gameplay.Staggered.Staggered(Sage.Simulation.Entity Target, Sage.Simulation.Entity Source, float Seconds) -> void
+Sage.Gameplay.Staggered.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.Staggered.Target.init -> void
+static Sage.Gameplay.FactionFilters.Allows(Sage.Simulation.World! world, Sage.Simulation.Entity source, Sage.Simulation.Entity target, Sage.Gameplay.FactionFilter filter) -> bool

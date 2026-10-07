@@ -258,6 +258,55 @@
           "$ref": "ids.schema.json#/definitions/record:recoil"
         }
       ]
+    },
+    "block": {
+      "description": "How a fighter holding this guards (a block record); empty = it cannot block. Names a block record. (RecordRef<BlockRecord>)",
+      "allOf": [
+        {
+          "$ref": "ids.schema.json#/definitions/record:block"
+        }
+      ]
+    },
+    "cleave": {
+      "description": "How many bodies a sweep strikes, nearest first, within its reach and arc; 1 = the first it meets. At least 1. (int, default 1)",
+      "default": 1,
+      "type": "integer",
+      "minimum": 1
+    },
+    "knockback": {
+      "description": "How hard a landed blow pushes a character along its direction, less what a block stopped. Unit: m/s. At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "knockbackLift": {
+      "description": "And how hard it pushes it up. Unit: m/s. At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "stagger": {
+      "description": "How long a blow that hurt staggers its victim: its swing is lost and it cannot swing or guard; 0 = no stagger. Unit: s. At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "reaction": {
+      "description": "The trigger a blow that hurt sets on its victim's animator (a flinch); empty = none. (string, default \"\")",
+      "default": "",
+      "type": "string"
+    },
+    "friendlyFire": {
+      "description": "Who it may hurt, by faction: Default (a player anyone, others not their allies), Anyone, NotAllies, Hostile or Allies. (FactionFilter, default \"Default\")",
+      "default": "Default",
+      "type": "string",
+      "enum": [
+        "Default",
+        "Anyone",
+        "NotAllies",
+        "Hostile",
+        "Allies"
+      ]
     }
   },
   "additionalProperties": false

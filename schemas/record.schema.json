@@ -33,6 +33,7 @@
             "attack",
             "attribute",
             "attribute_gain",
+            "block",
             "calendar",
             "calendar_event",
             "crime",
@@ -236,6 +237,21 @@
           },
           "then": {
             "$ref": "attribute_gain.schema.json"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "block"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "block.schema.json"
           }
         },
         {
