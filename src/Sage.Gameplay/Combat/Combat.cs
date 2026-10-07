@@ -118,6 +118,18 @@ public sealed class AttackRecord
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     [Property(Min = 0, Tooltip = "How many targets a projectile delivery's carrier passes through before one stops it")]
     public int ProjectilePierce;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Tooltip = "How many times a projectile delivery's carrier bounces off scenery before it stops (issue #393)")]
+    public int ProjectileBounces;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Max = 1, Tooltip = "The speed the carrier keeps on each bounce")]
+    public float ProjectileBounciness = 0.6f;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Tooltip = "The carrier stays where it stops, in what it struck, instead of vanishing (an arrow)")]
+    public bool ProjectileSticks;
+    [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    [Property(Min = 0, Unit = "s", Tooltip = "How long a stuck carrier stays")]
+    public float ProjectileStickSeconds = 30f;
 
     // ---- ammunition (issue #135; Ammunition.cs) — kept together, away from the hit fields above ----
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0127", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]

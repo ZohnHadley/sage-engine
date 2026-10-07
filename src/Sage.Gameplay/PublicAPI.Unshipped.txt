@@ -1,4 +1,17 @@
 #nullable enable
+Sage.Gameplay.AbilityAIUse
+Sage.Gameplay.AbilityAIUse.Attack = 1 -> Sage.Gameplay.AbilityAIUse
+Sage.Gameplay.AbilityAIUse.Auto = 0 -> Sage.Gameplay.AbilityAIUse
+Sage.Gameplay.AbilityAIUse.Buff = 3 -> Sage.Gameplay.AbilityAIUse
+Sage.Gameplay.AbilityAIUse.Heal = 2 -> Sage.Gameplay.AbilityAIUse
+Sage.Gameplay.AbilityAIUse.Never = 4 -> Sage.Gameplay.AbilityAIUse
+Sage.Gameplay.AbilityRecord.Affects -> Sage.Gameplay.FactionFilter
+Sage.Gameplay.AbilityRecord.AIHealBelow -> float
+Sage.Gameplay.AbilityRecord.AIUse -> Sage.Gameplay.AbilityAIUse
+Sage.Gameplay.AbilityRecord.ProjectileBounces -> int
+Sage.Gameplay.AbilityRecord.ProjectileBounciness -> float
+Sage.Gameplay.AbilityRecord.ProjectileSticks -> bool
+Sage.Gameplay.AbilityRecord.ProjectileStickSeconds -> float
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Block -> Sage.Core.RecordRef<Sage.Gameplay.BlockRecord!>
@@ -6,6 +19,10 @@ Sage.Gameplay.AttackRecord.Cleave -> int
 Sage.Gameplay.AttackRecord.FriendlyFire -> Sage.Gameplay.FactionFilter
 Sage.Gameplay.AttackRecord.Knockback -> float
 Sage.Gameplay.AttackRecord.KnockbackLift -> float
+Sage.Gameplay.AttackRecord.ProjectileBounces -> int
+Sage.Gameplay.AttackRecord.ProjectileBounciness -> float
+Sage.Gameplay.AttackRecord.ProjectileSticks -> bool
+Sage.Gameplay.AttackRecord.ProjectileStickSeconds -> float
 Sage.Gameplay.AttackRecord.Reaction -> string!
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Gameplay.AttackRecord.Stagger -> float
@@ -120,6 +137,12 @@ Sage.Gameplay.Melee.Direction -> Sage.Simulation.AttackDirection
 Sage.Gameplay.Melee.Staggered -> float
 Sage.Gameplay.Pickup.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.PickupPart.Instance -> Sage.Gameplay.ItemInstance?
+Sage.Gameplay.Projectile.Bounces -> int
+Sage.Gameplay.Projectile.Bounciness -> float
+Sage.Gameplay.Projectile.Host -> Sage.Simulation.Entity
+Sage.Gameplay.Projectile.Sticks -> bool
+Sage.Gameplay.Projectile.StickSeconds -> float
+Sage.Gameplay.Projectile.Stuck -> bool
 Sage.Gameplay.QuestObjective.Target -> string!
 Sage.Gameplay.QuestStage.Target -> string!
 Sage.Gameplay.Staggered

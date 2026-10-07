@@ -129,6 +129,7 @@ public struct AIState : IComponent
     public int TaskIndex;                  // where in the schedule; bounds-checked on use
     [Transient] public ulong Conditions;   // Perceive rebuilds it wholesale every think
     [Transient] public RecordId Spell;     // what Perceive picked to cast; rebuilt with the conditions
+    internal Entity SpellTarget;           // who it is cast at: the enemy, or a heal's or buff's patient (#393)
     public Entity Target;                  // by PersistentId in a save; null if it is gone
     [Property(Category = "Running", Unit = "s", Tooltip = "Simulation time of its next think")]
     public float NextThink;
@@ -797,7 +798,8 @@ internal sealed class CastSpellTask : IAITask
     public AITaskStatus Start(ref AITaskContext c)
     {
         if (c.State.Spell.IsEmpty) return AITaskStatus.Failed;
-        if (!c.World.IsAlive(c.State.Target)) return AITaskStatus.Failed;
+        var on = SpellTarget(ref c);
+        if (!c.World.IsAlive(on)) return AITaskStatus.Failed;
         if (!c.World.Has<Abilities>(c.Entity))
         {
             Log.Once(LogCat.AI, LogLevel.Warn, $"ai-cast:{World.Describe(c.Entity)}",
@@ -805,22 +807,36 @@ internal sealed class CastSpellTask : IAITask
             return AITaskStatus.Failed;
         }
 
+        // A heal or a buff for somebody other than the enemy it faced (issue #393): it turns to them at
+        // once, as the cast is aimed on the next tick.
+        if (on != c.State.Target && on != c.Entity) Aim(ref c, on, snap: true);
         c.World.Cast(c.Entity, c.State.Spell);
         return AITaskStatus.Running;
+    }
+
+    // Who the spell is for: the patient the think chose (a heal, a buff), else the enemy.
+    private static Entity SpellTarget(ref AITaskContext c) =>
+        !c.State.SpellTarget.IsNull && c.World.IsAlive(c.State.SpellTarget) ? c.State.SpellTarget : c.State.Target;
+
+    private static void Aim(ref AITaskContext c, Entity on, bool snap)
+    {
+        Vector3 self = c.Transform.LocalPosition;
+        Vector3 target = c.World.Get<Transform>(on).LocalPosition;
+        float wanted = AIMath.YawTo(self, target);
+        c.Intent.Yaw = snap ? wanted : AIMath.TurnToward(c.Intent.Yaw, wanted, c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
+        c.Intent.Pitch = SageMath.PitchTo(self + Vector3.UnitY * 1.4f, target + Vector3.UnitY * 1.0f);
     }
 
     public AITaskStatus Run(ref AITaskContext c)
     {
         c.Intent.Move = Vector2.Zero;
-        if (!c.World.IsAlive(c.State.Target)) return AITaskStatus.Failed;
+        var on = SpellTarget(ref c);
+        if (!c.World.IsAlive(on)) return AITaskStatus.Failed;
 
         // Keep tracking through the wind-up: the aim is read when the spell goes off, not when it
-        // was asked for, so a target that steps aside during a slow cast is still followed.
-        Vector3 self = c.Transform.LocalPosition;
-        Vector3 target = c.World.Get<Transform>(c.State.Target).LocalPosition;
-        c.Intent.Yaw = AIMath.TurnToward(c.Intent.Yaw, AIMath.YawTo(self, target),
-                                         c.Profile.TurnSpeedDegrees * MathF.PI / 180f * c.Dt);
-        c.Intent.Pitch = SageMath.PitchTo(self + Vector3.UnitY * 1.4f, target + Vector3.UnitY * 1.0f);
+        // was asked for, so a target that steps aside during a slow cast is still followed. One cast on
+        // the caster itself has nothing to track.
+        if (on != c.Entity) Aim(ref c, on, snap: false);
 
         // Still winding up. `Casting` is set by AbilitySystem on the tick after the ask (the AI phase
         // runs after Gameplay), so "empty" only means finished once it has had a tick to start.
