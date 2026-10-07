@@ -172,7 +172,7 @@ public sealed class InventoryPart : IPrefabPart
 {
     [Property(Min = 0, Unit = "kg", Tooltip = "How much it can carry; 0 = no limit")]
     public float Capacity;
-    [Property(Tooltip = "What it starts with")]
+    [Property(Tooltip = "What it starts with"), ListKey("item")]
     public List<Stack> Items = new();
     [Property(Tooltip = "What its load does to it (issue #384); empty = nothing, and Give refuses past its capacity")]
     public RecordRef<EncumbranceRecord> Encumbrance;

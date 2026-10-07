@@ -85,3 +85,6 @@ static Sage.Core.Logger.Current.get -> Sage.Core.Logger!
 Sage.Core.RecordStore.Preview(string! type, Sage.Core.RecordId id, System.Text.Json.Nodes.JsonObject! fields, out string! error) -> bool
 Sage.Core.RecordStore.Previewed -> System.Action<string!, Sage.Core.RecordId>?
 Sage.Core.RecordCheck.Ids(string! type) -> System.Collections.Generic.IEnumerable<Sage.Core.RecordId>!
+Sage.Core.ListKeyAttribute
+Sage.Core.ListKeyAttribute.Key.get -> string!
+Sage.Core.ListKeyAttribute.ListKeyAttribute(string! key) -> void

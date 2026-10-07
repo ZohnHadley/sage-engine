@@ -371,6 +371,10 @@
                   "type": "null"
                 }
               ]
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -513,6 +517,10 @@
                   "type": "null"
                 }
               ]
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -655,6 +663,10 @@
                   "type": "null"
                 }
               ]
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -797,6 +809,10 @@
                   "type": "null"
                 }
               ]
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -939,12 +955,24 @@
                   "type": "null"
                 }
               ]
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false
