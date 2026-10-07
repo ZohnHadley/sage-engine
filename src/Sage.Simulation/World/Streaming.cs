@@ -220,6 +220,9 @@ public sealed class StreamingModule : IModule
             }
             if (destroyed > 0) Log.Debug(LogCat.Streaming, $"sector {coord}: {destroyed} owned entities destroyed");
         };
+        // A sculpted sector generated again (#372): what was built from its old heights goes, and is built anew.
+        terrain.Refreshed += coord => TerrainWaterSystem.DropBuilt(world, assets, coord);
+        world.AddSystem(new TerrainWaterSystem(world));   // a sculpt's water over its sectors (#372)
     }
 }
 

@@ -1,8 +1,8 @@
 #nullable enable
-const Sage.Simulation.BrushPart.MaxSides = 64 -> int
-const Sage.Simulation.BrushPart.MinSides = 3 -> int
 const Sage.Simulation.ClipRetargeter.DefaultSampleRate = 30 -> float
 const Sage.Simulation.Decals.DefaultCeiling = 256 -> int
+const Sage.Simulation.SculptSector.Resolution = 129 -> int
+const Sage.Simulation.SculptSector.Vertices = 16641 -> int
 const Sage.Simulation.ShadowMath.DefaultCascades = 3 -> int
 const Sage.Simulation.ShadowMath.DefaultDistance = 150 -> float
 *REMOVED*const Sage.Simulation.ShadowMath.DefaultDistance = 60 -> float
@@ -10,47 +10,7 @@ const Sage.Simulation.ShadowMath.DefaultSplitBlend = 0.75 -> float
 const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
 const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
 const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
-Sage.Simulation.BlockoutBrush
-Sage.Simulation.BlockoutBrush.BlockoutBrush() -> void
-Sage.Simulation.BlockoutBrush.FaceCount.get -> int
-Sage.Simulation.BlockoutBrush.FaceHit(System.Numerics.Vector3 position, System.Numerics.Quaternion rotation, System.Numerics.Vector3 origin, System.Numerics.Vector3 direction) -> (Sage.Simulation.BrushFace Face, float Distance)?
-Sage.Simulation.BlockoutBrush.FaceMaterial(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
-Sage.Simulation.BlockoutBrush.Material.get -> Sage.Core.RecordId
-Sage.Simulation.BlockoutBrush.MaterialOf(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
-Sage.Simulation.BlockoutBrush.Shape -> Sage.Simulation.BrushShape
-Sage.Simulation.BlockoutBrush.Sides -> int
-Sage.Simulation.BlockoutBrush.Size -> System.Numerics.Vector3
-Sage.Simulation.BrushFace
-Sage.Simulation.BrushFace.Bottom = 1 -> Sage.Simulation.BrushFace
-Sage.Simulation.BrushFace.East = 4 -> Sage.Simulation.BrushFace
-Sage.Simulation.BrushFace.North = 2 -> Sage.Simulation.BrushFace
-Sage.Simulation.BrushFace.Side = 6 -> Sage.Simulation.BrushFace
-Sage.Simulation.BrushFace.South = 3 -> Sage.Simulation.BrushFace
-Sage.Simulation.BrushFace.Top = 0 -> Sage.Simulation.BrushFace
-Sage.Simulation.BrushFace.West = 5 -> Sage.Simulation.BrushFace
-Sage.Simulation.BrushPart
-Sage.Simulation.BrushPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
-Sage.Simulation.BrushPart.Bottom -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.BrushPart() -> void
-Sage.Simulation.BrushPart.East -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.FaceMaterial(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.Layer -> string!
-Sage.Simulation.BrushPart.Material -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.MaterialOf(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.North -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.Shape -> Sage.Simulation.BrushShape
-Sage.Simulation.BrushPart.Side -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.Sides -> int
-Sage.Simulation.BrushPart.Size -> System.Numerics.Vector3
-Sage.Simulation.BrushPart.South -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.Surface -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.TextureScale -> float
-Sage.Simulation.BrushPart.Top -> Sage.Core.RecordId
-Sage.Simulation.BrushPart.West -> Sage.Core.RecordId
-Sage.Simulation.BrushShape
-Sage.Simulation.BrushShape.Box = 0 -> Sage.Simulation.BrushShape
-Sage.Simulation.BrushShape.Cylinder = 2 -> Sage.Simulation.BrushShape
-Sage.Simulation.BrushShape.Wedge = 1 -> Sage.Simulation.BrushShape
+const Sage.Simulation.TerrainSculpt.Extension = ".sterrain" -> string!
 Sage.Simulation.ClipRetargeter
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
@@ -263,6 +223,21 @@ Sage.Simulation.ReverbZonePart.ReverbZonePart() -> void
 Sage.Simulation.ReverbZonePart.Size -> System.Numerics.Vector3
 Sage.Simulation.SageAppOptions.InputFile.get -> string?
 Sage.Simulation.SageAppOptions.InputFile.init -> void
+Sage.Simulation.SculptSector
+Sage.Simulation.SculptSector.Clone() -> Sage.Simulation.SculptSector!
+Sage.Simulation.SculptSector.Coord.get -> Sage.Simulation.SectorCoord
+Sage.Simulation.SculptSector.HasHeights.get -> bool
+Sage.Simulation.SculptSector.HeightAt(int x, int z) -> float
+Sage.Simulation.SculptSector.Heights.get -> float[]!
+Sage.Simulation.SculptSector.IsEmpty.get -> bool
+Sage.Simulation.SculptSector.Paint.get -> uint[]?
+Sage.Simulation.SculptSector.Paint.set -> void
+Sage.Simulation.SculptSector.PaintAt(int x, int z) -> uint
+Sage.Simulation.SculptSector.Painted(int x, int z, int layer) -> float
+Sage.Simulation.SculptSector.SameAs(Sage.Simulation.SculptSector? other) -> bool
+Sage.Simulation.SculptSector.SculptSector(Sage.Simulation.SectorCoord coord) -> void
+Sage.Simulation.SculptSector.Water.get -> float?
+Sage.Simulation.SculptSector.Water.set -> void
 Sage.Simulation.ShadowAtlas
 Sage.Simulation.ShadowAtlas.Cascades.get -> int
 Sage.Simulation.ShadowAtlas.CascadeSize.get -> int
@@ -281,6 +256,29 @@ Sage.Simulation.SkeletonMapRecord.Source -> Sage.Core.AssetPath
 Sage.Simulation.SkeletonMapRecord.Target -> Sage.Core.AssetPath
 Sage.Simulation.SoundRecord.Caption -> string!
 Sage.Simulation.SoundRecord.Speaker -> string!
+Sage.Simulation.Terrain.CopySculpt() -> Sage.Simulation.TerrainSculpt!
+Sage.Simulation.Terrain.Record.get -> Sage.Core.RecordId
+Sage.Simulation.Terrain.Refresh(Sage.Simulation.SectorCoord coord) -> bool
+Sage.Simulation.Terrain.Refreshed -> System.Action<Sage.Simulation.SectorCoord>?
+Sage.Simulation.Terrain.Resculpt(Sage.Simulation.SectorCoord coord, Sage.Simulation.SculptSector? sector) -> void
+Sage.Simulation.Terrain.SculptPath.get -> string!
+Sage.Simulation.Terrain.SetSculpt(Sage.Simulation.TerrainSculpt? sculpt) -> void
+Sage.Simulation.TerrainBuilt
+Sage.Simulation.TerrainBuilt.TerrainBuilt() -> void
+Sage.Simulation.TerrainRecord.Sculpt -> Sage.Core.AssetPath
+Sage.Simulation.TerrainSculpt
+Sage.Simulation.TerrainSculpt.Clone() -> Sage.Simulation.TerrainSculpt!
+Sage.Simulation.TerrainSculpt.Count.get -> int
+Sage.Simulation.TerrainSculpt.Get(Sage.Simulation.SectorCoord coord) -> Sage.Simulation.SculptSector?
+Sage.Simulation.TerrainSculpt.GetOrAdd(Sage.Simulation.SectorCoord coord) -> Sage.Simulation.SculptSector!
+Sage.Simulation.TerrainSculpt.Remove(Sage.Simulation.SectorCoord coord) -> bool
+Sage.Simulation.TerrainSculpt.Sectors.get -> System.Collections.Generic.IEnumerable<Sage.Simulation.SculptSector!>!
+Sage.Simulation.TerrainSculpt.Set(Sage.Simulation.SculptSector! sector) -> void
+Sage.Simulation.TerrainSculpt.TerrainSculpt() -> void
+Sage.Simulation.TerrainSculpt.ToBytes() -> byte[]!
+Sage.Simulation.TerrainSculpt.Write(System.IO.Stream! stream) -> void
+Sage.Simulation.TerrainSector.Water.get -> float?
+Sage.Simulation.TerrainSector.Water.init -> void
 static readonly Sage.Simulation.DecalRecord.DefaultMaterial -> Sage.Core.RecordId
 Sage.Simulation.MapRecord.Lightmap -> float
 Sage.Simulation.PointLight.Baked -> bool
@@ -305,7 +303,6 @@ Sage.Simulation.MeshLodRecord.Levels -> System.Collections.Generic.List<Sage.Sim
 Sage.Simulation.MeshLodRecord.MeshLodRecord() -> void
 Sage.Simulation.MeshLodRecord.Metric -> Sage.Simulation.LodMetric
 Sage.Simulation.MeshRenderer.Lod -> Sage.Core.RecordId
-static Sage.Simulation.BrushPart.FacesOf(Sage.Simulation.BrushShape shape) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.BrushFace>!
 static Sage.Simulation.ClipRetargeter.Retarget(Sage.Simulation.AnimationClip! clip, Sage.Simulation.Skeleton! source, Sage.Simulation.Skeleton! target, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! bones, float scale = 0, float sampleRate = 30) -> Sage.Simulation.AnimationClip!
 static Sage.Simulation.InputBinding.TryParse(string! text, out Sage.Simulation.InputBinding! binding, out string! error) -> bool
 static Sage.Simulation.InputGlyphs.DefaultName(Sage.Simulation.InputBinding! binding, Sage.Simulation.PadFamily pad) -> string!
@@ -374,6 +371,8 @@ Sage.Simulation.WeatherRecord.LightningRate -> float
 Sage.Simulation.WeatherRecord.ShelteredVolume -> float
 Sage.Simulation.WeatherRecord.Thunder -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Simulation.WeatherRecord.ThunderVolume -> float
+static Sage.Simulation.TerrainSculpt.FromBytes(byte[]! bytes) -> Sage.Simulation.TerrainSculpt!
+static Sage.Simulation.TerrainSculpt.Read(System.IO.Stream! stream) -> Sage.Simulation.TerrainSculpt!
 static Sage.Simulation.WeatherRules.LightningRateNow(Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather) -> float
 const Sage.Simulation.LightStyles.DefaultRate = 10 -> float
 Sage.Simulation.LightSample.ConeAt(System.Numerics.Vector3 at) -> float
@@ -850,5 +849,49 @@ static Sage.Simulation.AttackStances.IsBlocking(Sage.Simulation.World! world, Sa
 static Sage.Simulation.AttackStances.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Simulation.AttackDirection
 static Sage.Simulation.AttackStances.Set(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Simulation.AttackDirection direction) -> bool
 static Sage.Simulation.AttackStances.Step(ref Sage.Simulation.AttackStance stance, in Sage.Simulation.PawnIntent intent, float dt) -> void
+const Sage.Simulation.BrushPart.MaxSides = 64 -> int
+const Sage.Simulation.BrushPart.MinSides = 3 -> int
+Sage.Simulation.BlockoutBrush
+Sage.Simulation.BlockoutBrush.BlockoutBrush() -> void
+Sage.Simulation.BlockoutBrush.FaceCount.get -> int
+Sage.Simulation.BlockoutBrush.FaceHit(System.Numerics.Vector3 position, System.Numerics.Quaternion rotation, System.Numerics.Vector3 origin, System.Numerics.Vector3 direction) -> (Sage.Simulation.BrushFace Face, float Distance)?
+Sage.Simulation.BlockoutBrush.FaceMaterial(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
+Sage.Simulation.BlockoutBrush.Material.get -> Sage.Core.RecordId
+Sage.Simulation.BlockoutBrush.MaterialOf(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
+Sage.Simulation.BlockoutBrush.Shape -> Sage.Simulation.BrushShape
+Sage.Simulation.BlockoutBrush.Sides -> int
+Sage.Simulation.BlockoutBrush.Size -> System.Numerics.Vector3
+Sage.Simulation.BrushFace
+Sage.Simulation.BrushFace.Bottom = 1 -> Sage.Simulation.BrushFace
+Sage.Simulation.BrushFace.East = 4 -> Sage.Simulation.BrushFace
+Sage.Simulation.BrushFace.North = 2 -> Sage.Simulation.BrushFace
+Sage.Simulation.BrushFace.Side = 6 -> Sage.Simulation.BrushFace
+Sage.Simulation.BrushFace.South = 3 -> Sage.Simulation.BrushFace
+Sage.Simulation.BrushFace.Top = 0 -> Sage.Simulation.BrushFace
+Sage.Simulation.BrushFace.West = 5 -> Sage.Simulation.BrushFace
+Sage.Simulation.BrushPart
+Sage.Simulation.BrushPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Simulation.BrushPart.Bottom -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.BrushPart() -> void
+Sage.Simulation.BrushPart.East -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.FaceMaterial(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.Layer -> string!
+Sage.Simulation.BrushPart.Material -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.MaterialOf(Sage.Simulation.BrushFace face) -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.North -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.Shape -> Sage.Simulation.BrushShape
+Sage.Simulation.BrushPart.Side -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.Sides -> int
+Sage.Simulation.BrushPart.Size -> System.Numerics.Vector3
+Sage.Simulation.BrushPart.South -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.Surface -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.TextureScale -> float
+Sage.Simulation.BrushPart.Top -> Sage.Core.RecordId
+Sage.Simulation.BrushPart.West -> Sage.Core.RecordId
+Sage.Simulation.BrushShape
+Sage.Simulation.BrushShape.Box = 0 -> Sage.Simulation.BrushShape
+Sage.Simulation.BrushShape.Cylinder = 2 -> Sage.Simulation.BrushShape
+Sage.Simulation.BrushShape.Wedge = 1 -> Sage.Simulation.BrushShape
+static Sage.Simulation.BrushPart.FacesOf(Sage.Simulation.BrushShape shape) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.BrushFace>!
 Sage.Simulation.Engine.Environment.get -> Sage.Core.AppEnvironment!
 Sage.Simulation.SageApp.Environment.get -> Sage.Core.AppEnvironment!

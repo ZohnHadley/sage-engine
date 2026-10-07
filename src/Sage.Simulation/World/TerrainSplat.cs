@@ -99,6 +99,7 @@ internal static class TerrainSplat
     public static uint Weights(TerrainMaterialRecord material, Heightfield heights, int x, int z)
     {
         var w = Blend(material, heights[x, z], SlopeOf(heights.VertexNormal(x, z)));
+        if (heights.Paint is { } paint) w = SculptApply.Overlay(w, paint[z * heights.Resolution + x]);   // painted over the rules (#372)
         return Pack(w);
     }
 

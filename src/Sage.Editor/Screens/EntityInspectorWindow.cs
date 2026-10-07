@@ -79,6 +79,12 @@ internal sealed class EntityInspectorWindow
     {
         var placement = model.Placement!;
         ImGui.TextDisabled($"placement of {_document.Id}: edits are saved with it");
+        if (PrefabCommands.Overrides(placement))   // every override off at once (#372)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton("revert all") && !PrefabCommands.RevertAll(_document, placement, out string why)) Log.Warn(LogCat.Editor, why);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Back to the prefab: every override taken away");
+        }
         ImGui.Separator();
         DrawPlacement(placement);
 
