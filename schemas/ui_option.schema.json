@@ -143,6 +143,10 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -168,6 +172,10 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -193,6 +201,10 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -206,6 +218,10 @@
         "None",
         "Languages"
       ]
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

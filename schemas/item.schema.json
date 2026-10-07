@@ -188,6 +188,10 @@
             "Remove",
             "Keep"
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -195,6 +199,10 @@
     "questItem": {
       "description": "A quest item: it cannot be dropped or sold, only given or taken by the story (issue #391) (bool, default false)",
       "default": false,
+      "type": "boolean"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
       "type": "boolean"
     }
   },

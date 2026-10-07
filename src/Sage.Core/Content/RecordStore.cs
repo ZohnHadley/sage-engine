@@ -21,7 +21,9 @@ namespace Sage.Core;
 //
 // Load order = mount order; within one mount, definitions load before patches (file names don't
 // matter). The first definition of an id creates the record; a later one with "patch": true merges FIELD BY FIELD (scalars replace, objects merge recursively, lists replace unless
-// patched with "field+": [...] / "field-": [...]). A later non-patch redefinition is an error (it would
+// patched with "field+": [...] / "field-": [...]; a list declared `[ListKey]` merges by key, an entry
+// with `"$remove": true` taking its key out; `"replace": true` in any object of a patch replaces it
+// instead, issue #399). A later non-patch redefinition is an error (it would
 // silently wipe the earlier one — Bethesda's "rule of one"); it's logged with both files and applied
 // as a patch. A bare id in a field means the namespace of the file it is written in, so a game's patch
 // of an engine record that says "sound": "hit_flesh" means the game's hit_flesh (R11). "disabled": true in a patch removes the record. "base" inherits from another record of
@@ -474,7 +476,8 @@ public sealed class RecordStore
             // The record's own bare ids are written out too, in its own namespace, so that a list the
             // patch adds to or removes from compares like with like ("tags-": ["sage:x"] against "x").
             if (foreign) existing.Fields = QualifyFields(existing.Fields, type, id.Namespace);
-            MergeInto(existing.Fields, fields, existing.Writes, source, null, define: false);
+            MergeInto(existing.Fields, fields, existing.Writes, source, null, define: false,
+                      new PatchTypes(this, ns, id.Namespace), _typesByName[type], null);
             if (obj.ContainsKey("disabled"))
             {
                 existing.Disabled = disabled;
@@ -529,12 +532,67 @@ public sealed class RecordStore
     // definition (`define`) one per top-level field; for a patch one at the deepest path it names, so a
     // patch of `"stats": { "agility": 5 }` is a set of `stats.agility` and `"parts": { "inv": { "items+":
     // […] } }` an add to `parts.inv.items`. `prefix` is the path of `target` inside the record.
-    private static void MergeInto(JsonObject target, JsonObject patch, List<FieldWrite>? writes, RecordSource source, string? prefix, bool define)
+    // A patch's own words (issue #399): `"replace": true` in any object of a patch (the record itself
+    // included) replaces that object instead of merging into it, and `"$remove": true` in an entry of a
+    // keyed list takes the entry with that key out.
+    internal const string ReplaceKey = "replace";
+    internal const string RemoveKey = "$remove";
+
+    // What a patch's merge knows about the types it walks (issue #399), so that a list declared
+    // `[ListKey]` merges by key: the namespace the patch's file is written in (for a prefab's parts and
+    // components, whose type their key names) and the record's (for comparing a key that is a bare id).
+    private sealed class PatchTypes
     {
+        public readonly RecordStore Store;
+        public readonly string FileNamespace;
+        public readonly string RecordNamespace;
+        public PatchTypes(RecordStore store, string fileNamespace, string recordNamespace)
+        {
+            Store = store;
+            FileNamespace = fileNamespace;
+            RecordNamespace = recordNamespace;
+        }
+    }
+
+    // Per-field merge (05 §3.5). `writes`, when given, gets one entry per write (4j-2): for a
+    // definition (`define`) one per top-level field; for a patch one at the deepest path it names, so a
+    // patch of `"stats": { "agility": 5 }` is a set of `stats.agility` and `"parts": { "inv": { "items+":
+    // […] } }` an add to `parts.inv.items`. `prefix` is the path of `target` inside the record.
+    //
+    // A patch (`types` given) also merges a keyed list by key, writing `items[village:lantern].count`,
+    // and honours `"replace": true` and `"$remove": true` (issue #399). `type` is the C# type `target`
+    // is read as, null when it can't be told; `bodies` the way to tell a body's type from its key, for a
+    // prefab's parts and components. `keyField`, inside a keyed list's entry, is the key: never written.
+    private static void MergeInto(JsonObject target, JsonObject patch, List<FieldWrite>? writes, RecordSource source, string? prefix, bool define,
+                                  PatchTypes? types = null, Type? type = null, Func<string, JsonNode?, string, Type?>? bodies = null,
+                                  string? keyField = null)
+    {
+        if (types != null && !define && patch[ReplaceKey] is JsonValue replace && replace.GetValueKind() == JsonValueKind.True)
+        {
+            // The object as the patch writes it, and nothing else: what was there goes, but the key of a
+            // list's entry stays (it is how the entry is found) and so does a record's "base".
+            JsonNode? keep = keyField != null ? target[keyField]?.DeepClone() : prefix == null ? target["base"]?.DeepClone() : null;
+            string? keepName = keyField ?? (prefix == null ? "base" : null);
+            target.Clear();
+            if (keepName != null && keep != null) target[keepName] = keep;
+            foreach (var (key, value) in patch)
+            {
+                if (key == ReplaceKey || key == RemoveKey) continue;
+                target[key] = value?.DeepClone();
+                // A whole record replaced: one write per field, as a definition writes them.
+                if (prefix == null && key != keyField) writes?.Add(new FieldWrite(key, source, RecordWriteOp.Set));
+            }
+            writes?.Add(new FieldWrite(prefix ?? "", source, RecordWriteOp.Set));
+            return;
+        }
+
         foreach (var (key, value) in patch)
         {
             string field = key;
             RecordWriteOp op;
+            if (types != null && (key == ReplaceKey && value is JsonValue v && v.GetValueKind() == JsonValueKind.True || key == RemoveKey)) continue;
+            if (keyField != null && string.Equals(key, keyField, StringComparison.OrdinalIgnoreCase)) continue;
+
             if (key.EndsWith('+') && key.Length > 1)
             {
                 field = key[..^1];
@@ -556,7 +614,17 @@ public sealed class RecordStore
             }
             else if (value is JsonObject childPatch && target[key] is JsonObject childTarget)
             {
-                MergeInto(childTarget, childPatch, writes, source, writes == null ? null : prefix == null ? key : $"{prefix}.{key}", define);
+                string? path = writes == null ? null : prefix == null ? key : $"{prefix}.{key}";
+                if (types == null) { MergeInto(childTarget, childPatch, writes, source, path, define); continue; }
+                var (childType, childBodies, _) = types.Store.ChildOf(type, bodies, key, childTarget, types.FileNamespace);
+                MergeInto(childTarget, childPatch, writes, source, path, define, types, childType, childBodies);
+                continue;
+            }
+            else if (types != null && !define && value is JsonArray entries && target[key] is null or JsonArray &&
+                     types.Store.ChildOf(type, bodies, key, target[key], types.FileNamespace) is { Key: { } listKey, Type: { } listType })
+            {
+                if (target[key] is not JsonArray existing) target[key] = existing = new JsonArray();
+                MergeByKey(existing, entries, listKey, ElementType(listType), writes, source, prefix == null ? key : $"{prefix}.{key}", types);
                 continue;
             }
             else
@@ -567,6 +635,105 @@ public sealed class RecordStore
 
             writes?.Add(new FieldWrite(prefix == null ? field : $"{prefix}.{field}", source, op));
         }
+    }
+
+    // A patch's list against a keyed list (issue #399): each entry finds the entries with its key and is
+    // merged into each, field by field (so it says only what it changes); `"$remove": true` takes them
+    // out; an entry whose key isn't there is added at the end. Each is a write at `path[key]`, so two
+    // patches of different keys never overlap, and the same key's are a conflict about that key.
+    private static void MergeByKey(JsonArray list, JsonArray entries, string keyName, Type? element, List<FieldWrite>? writes,
+                                   RecordSource source, string path, PatchTypes types)
+    {
+        bool reference = element != null && KeyIsReference(element, keyName);
+        foreach (var node in entries)
+        {
+            string? key = node is JsonObject e ? KeyOf(e, keyName, reference, types.RecordNamespace) : null;
+            if (node is not JsonObject entry || key == null)
+            {
+                // No key to find it by: an entry added, as a plain list would take it.
+                list.Add(node?.DeepClone());
+                writes?.Add(new FieldWrite(path, source, RecordWriteOp.Add));
+                continue;
+            }
+
+            string at = $"{path}[{key}]";
+            bool remove = entry[RemoveKey] is JsonValue r && r.GetValueKind() == JsonValueKind.True;
+            bool found = false;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                if (list[i] is not JsonObject target || KeyOf(target, keyName, reference, types.RecordNamespace) != key) continue;
+                found = true;
+                if (remove) { list.RemoveAt(i); continue; }
+                var (entryType, entryBodies, _) = types.Store.ChildOf(element, null, null, target, types.FileNamespace);
+                MergeInto(target, entry, writes, source, at, define: false, types, entryType, entryBodies, keyFieldOf(target));
+            }
+
+            if (remove) writes?.Add(new FieldWrite(at, source, RecordWriteOp.Remove));
+            else if (!found)
+            {
+                var added = new JsonObject();
+                foreach (var (k, v) in entry)
+                    if (k != RemoveKey && !(k == ReplaceKey && v is JsonValue b && b.GetValueKind() == JsonValueKind.True)) added[k] = v?.DeepClone();
+                list.Add(added);
+                writes?.Add(new FieldWrite(at, source, RecordWriteOp.Set));
+            }
+
+            // The entry's key as it is spelled in the record (records are case-insensitive).
+            string keyFieldOf(JsonObject target)
+            {
+                foreach (var (k, _) in target)
+                    if (string.Equals(k, keyName, StringComparison.OrdinalIgnoreCase)) return k;
+                return keyName;
+            }
+        }
+    }
+
+    // An entry's key, as text to compare: a bare id is the record's namespace's, so "lantern" and
+    // "village:lantern" in the village's own content are the same key. Null when it has none.
+    private static string? KeyOf(JsonObject entry, string keyName, bool reference, string ns)
+    {
+        JsonNode? value = null;
+        foreach (var (k, v) in entry)
+            if (string.Equals(k, keyName, StringComparison.OrdinalIgnoreCase)) { value = v; break; }
+        if (value is not JsonValue scalar) return null;
+        string? text = scalar.GetValueKind() switch
+        {
+            JsonValueKind.String => (string?)scalar,
+            JsonValueKind.Number => scalar.ToJsonString(),
+            _ => null,
+        };
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        text = text.Trim();
+        if (!reference) return text;
+        return (text.Contains(':') ? text : $"{ns}:{text}").ToLowerInvariant();
+    }
+
+    private static bool KeyIsReference(Type element, string keyName) =>
+        SettableMembers(element).FirstOrDefault(m => string.Equals(m.Name, keyName, StringComparison.OrdinalIgnoreCase)) is { } member &&
+        IsReference(MemberType(member));
+
+    // The type of `key` inside a value of `type` (null: not known), the way to type its bodies when it
+    // is a prefab's parts or components, and the key its entries are told apart by when it is a list
+    // declared `[ListKey]`. `key` null asks about `type` itself (a list's entry, which may be a
+    // vocabulary entry whose JSON says its type). `node` is the value as the record has it now.
+    private (Type? Type, Func<string, JsonNode?, string, Type?>? Bodies, string? Key) ChildOf(
+        Type? type, Func<string, JsonNode?, string, Type?>? bodies, string? key, JsonNode? node, string ns)
+    {
+        if (key == null)
+        {
+            if (type != null && node is JsonObject && PolymorphicTypes?.Invoke(type, node) is { } entryType) type = entryType;
+            return (type, null, null);
+        }
+        if (bodies != null) return (bodies(key, node, ns), null, null);
+        if (type == null) return (null, null, null);
+        if (DictionaryValueType(type) is { } valueType) return (valueType, null, null);
+        var member = SettableMembers(type).FirstOrDefault(m => string.Equals(m.Name, key, StringComparison.OrdinalIgnoreCase));
+        if (member == null) return (null, null, null);
+        var memberType = Nullable.GetUnderlyingType(MemberType(member)) ?? MemberType(member);
+        if (node is JsonObject && PolymorphicTypes?.Invoke(memberType, node) is { } concrete) memberType = concrete;
+        _bodies.TryGetValue((type, member.Name), out var typeOf);
+        string? listKey = ElementType(memberType) != null ? member.GetCustomAttribute<ListKeyAttribute>(false)?.Key : null;
+        return (memberType, typeOf, listKey);
     }
 
     private void ResolveBases(Dictionary<(string, RecordId), RawRecord> raw)

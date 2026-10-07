@@ -184,6 +184,10 @@
       "description": "(float, default 1.7)",
       "default": 1.7,
       "type": "number"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

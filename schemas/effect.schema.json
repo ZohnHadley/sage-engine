@@ -70,6 +70,10 @@
           "value": {
             "description": "(float)",
             "type": "number"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -101,6 +105,10 @@
           "value": {
             "description": "(float)",
             "type": "number"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -132,6 +140,10 @@
           "value": {
             "description": "(float)",
             "type": "number"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -323,6 +335,10 @@
       "items": {
         "$ref": "vocabularies.schema.json#/definitions/effect_execution"
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

@@ -146,9 +146,17 @@
                 "type": "number",
                 "minimum": -180,
                 "maximum": 180
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -178,6 +186,10 @@
       "default": 1,
       "type": "number",
       "minimum": 0
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

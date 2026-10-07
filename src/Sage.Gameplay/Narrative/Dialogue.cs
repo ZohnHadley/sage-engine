@@ -120,7 +120,7 @@ public sealed class DialogueRecord
 {
     public string Label = "";
     public string Start = "";                   // empty = the first node
-    public List<DialogueNode> Nodes = new();
+    [ListKey("id")] public List<DialogueNode> Nodes = new();
     // Greetings by condition, first that holds (issue #392); none = the start node's line, as before.
     public List<DialogueGreeting> Greetings = new();
     // The topics this speaker brings up (issue #392): on their list whether or not the listener has

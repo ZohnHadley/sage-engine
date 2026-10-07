@@ -722,6 +722,10 @@
           "items": {
             "$ref": "ids.schema.json#/definitions/record:ability"
           }
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -757,6 +761,10 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 180
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -789,6 +797,10 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 180
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -821,6 +833,10 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 180
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -832,6 +848,10 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -851,6 +871,10 @@
         "model": {
           "description": "The skinned .glb whose skeleton and clips it plays; left out, the skinned_mesh part's mesh. A mesh path. (AssetPath)",
           "type": "string"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -880,6 +904,10 @@
           "description": "(float, default 0)",
           "default": 0,
           "type": "number"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -895,6 +923,10 @@
               "$ref": "ids.schema.json#/definitions/record:barks"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -969,6 +1001,10 @@
               "$ref": "ids.schema.json#/definitions/record:physics_material"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1019,6 +1055,10 @@
           "description": "Let go, with a dynamic body of its own, when the owner goes ragdoll (a weapon in a hand) (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1049,6 +1089,10 @@
               "$ref": "ids.schema.json#/definitions/record:material"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1172,6 +1216,10 @@
               "$ref": "ids.schema.json#/definitions/record:physics_material"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1187,6 +1235,10 @@
               "$ref": "ids.schema.json#/definitions/record:calendar_event"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1266,6 +1318,10 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1301,6 +1357,10 @@
           "description": "This view draws no debug lines. Category: Passes. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1321,6 +1381,10 @@
               "$ref": "ids.schema.json#/definitions/record:movement_profile"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1360,6 +1424,10 @@
               "$ref": "ids.schema.json#/definitions/record:faction"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1375,6 +1443,10 @@
               "$ref": "ids.schema.json#/definitions/record:dialogue"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1403,6 +1475,10 @@
           "items": {
             "$ref": "ids.schema.json#/definitions/record:effect"
           }
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1418,6 +1494,10 @@
               "$ref": "ids.schema.json#/definitions/record:faction"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1435,6 +1515,10 @@
           "description": "Draw the followed body from this view (a game with full-body awareness); off hides it. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1448,6 +1532,10 @@
           "default": 2,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1476,6 +1564,10 @@
             "foot": {
               "description": "The ankle (what is placed on the ground) (string)",
               "type": "string"
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1495,6 +1587,10 @@
             "foot": {
               "description": "The ankle (what is placed on the ground) (string)",
               "type": "string"
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1542,6 +1638,10 @@
           "default": 0.1,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1582,6 +1682,10 @@
           "description": "The animation event that is a step of the right foot (under foot_ik's right foot); empty = none. (string, default \"foot_right\")",
           "default": "foot_right",
           "type": "string"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1615,6 +1719,10 @@
           "default": 0,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1657,6 +1765,10 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1695,6 +1807,10 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1705,6 +1821,10 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1716,6 +1836,10 @@
         "model": {
           "description": "The model whose hitboxes records to use; left out, the skinned_mesh's or the animator's. A mesh path. (AssetPath)",
           "type": "string"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -1797,9 +1921,21 @@
                     "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
+              },
+              "$remove": {
+                "description": "true (in a patch): remove the entry whose \"item\" is this one's.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1868,9 +2004,21 @@
                     "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
+              },
+              "$remove": {
+                "description": "true (in a patch): remove the entry whose \"item\" is this one's.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1939,9 +2087,21 @@
                     "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
+              },
+              "$remove": {
+                "description": "true (in a patch): remove the entry whose \"item\" is this one's.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -1954,6 +2114,10 @@
               "$ref": "ids.schema.json#/definitions/record:encumbrance"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2078,6 +2242,10 @@
           "default": 0.5,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2099,6 +2267,10 @@
           "type": "number",
           "minimum": 0,
           "maximum": 20
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2173,6 +2345,10 @@
           "description": "Casts shadows (a cube, or a spot's cone) when among the r_shadow_lamps nearest lamps that ask; off costs nothing. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2199,6 +2375,10 @@
           "default": 0,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2214,6 +2394,10 @@
         "value": {
           "description": "True or false to start with. (bool, default false)",
           "default": false,
+          "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
           "type": "boolean"
         }
       },
@@ -2256,6 +2440,10 @@
           "default": 0,
           "type": "integer",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2273,6 +2461,10 @@
           "description": "What the value is compared with. (float, default 0)",
           "default": 0,
           "type": "number"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2300,6 +2492,10 @@
           "description": "Starts disabled: nothing changes it until Enable. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2314,6 +2510,10 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 32
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2360,6 +2560,10 @@
           "description": "OnTrigger's wires with no delay arrive in the same tick rather than the next. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2395,6 +2599,10 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 180
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2427,6 +2635,10 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 180
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2459,6 +2671,10 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 180
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -2488,6 +2704,10 @@
           "default": 0.15,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2512,6 +2732,10 @@
             "Death",
             "Spawn"
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2581,6 +2805,10 @@
             "SmoothStep",
             "SmootherStep"
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2604,6 +2832,10 @@
               "$ref": "ids.schema.json#/definitions/record:attack"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2619,6 +2851,10 @@
               "$ref": "ids.schema.json#/definitions/record:merchant"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2742,6 +2978,10 @@
           "description": "Starts locked: refuses to open until it is sent Unlock. (bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2772,6 +3012,10 @@
           },
           "minItems": 3,
           "maxItems": 3
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2783,6 +3027,10 @@
         "locked": {
           "description": "(bool, default false)",
           "default": false,
+          "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
           "type": "boolean"
         }
       },
@@ -2832,6 +3080,10 @@
           "description": "(bool, default false)",
           "default": false,
           "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2868,6 +3120,10 @@
               "const": ""
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2901,6 +3157,10 @@
           },
           "minItems": 3,
           "maxItems": 3
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2957,6 +3217,10 @@
               "$ref": "ids.schema.json#/definitions/record:crime"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -2976,6 +3240,10 @@
         "enabled": {
           "description": "(bool, default true)",
           "default": true,
+          "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
           "type": "boolean"
         }
       },
@@ -3005,6 +3273,10 @@
           "items": {
             "$ref": "ids.schema.json#/definitions/record:perk"
           }
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3071,9 +3343,17 @@
               "description": "Uses left in it (a wand, a lantern's oil); 0 = none. At least 0. (int)",
               "type": "integer",
               "minimum": 0
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3089,6 +3369,10 @@
               "$ref": "ids.schema.json#/definitions/record:quest"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3137,6 +3421,10 @@
           "default": 0.2,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3193,6 +3481,10 @@
           "type": "number",
           "minimum": 0,
           "maximum": 30
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3208,6 +3500,10 @@
               "$ref": "ids.schema.json#/definitions/record:routine"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3275,6 +3571,10 @@
           "default": 0,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3301,6 +3601,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 15
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -3423,6 +3727,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3466,6 +3774,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3509,6 +3821,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3523,9 +3839,17 @@
                   },
                   "parts": {
                     "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -3637,6 +3961,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3680,6 +4008,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3723,6 +4055,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3737,9 +4073,17 @@
                   },
                   "parts": {
                     "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -3851,6 +4195,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3894,6 +4242,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3937,6 +4289,10 @@
                           "$ref": "vocabularies.schema.json#/definitions/condition"
                         }
                       ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -3951,9 +4307,17 @@
                   },
                   "parts": {
                     "description": "Part options by part id, merged field by field into the prefab's. (JsonObject)"
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -3973,6 +4337,10 @@
         "startDisabled": {
           "description": "Starts disabled: Spawn does nothing until Enable. (bool, default false)",
           "default": false,
+          "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
           "type": "boolean"
         }
       },
@@ -4024,6 +4392,10 @@
               "$ref": "ids.schema.json#/definitions/record:anim_graph"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4039,6 +4411,10 @@
               "$ref": "ids.schema.json#/definitions/record:state_machine"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4060,6 +4436,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 16
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4125,6 +4505,10 @@
           "default": 0.3,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4177,6 +4561,10 @@
           "default": 0,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4199,6 +4587,10 @@
         "discovered": {
           "description": "Known from the start, without going there. (bool, default false)",
           "default": false,
+          "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
           "type": "boolean"
         }
       },
@@ -4230,6 +4622,10 @@
         "startDisabled": {
           "description": "Starts disabled: nothing fires it until Enable. (bool, default false)",
           "default": false,
+          "type": "boolean"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
           "type": "boolean"
         }
       },
@@ -4352,6 +4748,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4367,6 +4767,10 @@
               "$ref": "ids.schema.json#/definitions/record:screen"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4406,6 +4810,10 @@
           "default": 10,
           "type": "number",
           "minimum": 0
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4454,6 +4862,10 @@
           },
           "minItems": 3,
           "maxItems": 3
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -4469,6 +4881,10 @@
               "$ref": "ids.schema.json#/definitions/record:water_surface"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

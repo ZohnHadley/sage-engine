@@ -250,6 +250,10 @@
               "shadows": {
                 "description": "Casts shadows in it (default: none, no second shadow map) (bool)",
                 "type": "boolean"
+              },
+              "replace": {
+                "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -737,6 +741,10 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -748,6 +756,10 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false
