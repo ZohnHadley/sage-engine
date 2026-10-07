@@ -428,6 +428,14 @@
         }
       ]
     },
+    "loot": {
+      "description": "The component sage:loot (Loot), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:loot"
+        }
+      ]
+    },
     "magazine": {
       "description": "The component sage:magazine (Magazine), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -1081,6 +1089,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:look_at_ik"
+        }
+      ]
+    },
+    "sage:loot": {
+      "description": "Component sage:loot (Loot).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:loot"
         }
       ]
     },
@@ -4906,6 +4922,26 @@
       },
       "additionalProperties": false,
       "description": "Component sage:look_at_ik (LookAtIk)."
+    },
+    "sage:loot": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "description": "The loot table rolled into its inventory when it dies. Names a loot_table record. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:loot_table"
+            }
+          ]
+        },
+        "rolled": {
+          "description": "It has been rolled. (bool, default false)",
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:loot (Loot)."
     },
     "sage:magazine": {
       "type": "object",
