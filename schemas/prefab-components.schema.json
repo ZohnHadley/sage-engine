@@ -556,6 +556,14 @@
         }
       ]
     },
+    "perks": {
+      "description": "The component rpg:perks (GrantedPerks), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:perks"
+        }
+      ]
+    },
     "persistent": {
       "description": "The component sage:persistent (Persistent), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -681,6 +689,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/rpg:item_grid"
+        }
+      ]
+    },
+    "rpg:perks": {
+      "description": "Component rpg:perks (GrantedPerks).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:perks"
         }
       ]
     },
@@ -1831,6 +1847,34 @@
       },
       "additionalProperties": false,
       "description": "Component rpg:item_grid (ItemGridPlacements)."
+    },
+    "rpg:perks": {
+      "type": "object",
+      "properties": {
+        "perks": {
+          "description": "The perks and traits it has. (List<RecordId>)",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        },
+        "perks+": {
+          "description": "Adds to \"perks\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        },
+        "perks-": {
+          "description": "Removes these from \"perks\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "$ref": "ids.schema.json#/definitions/id"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component rpg:perks (GrantedPerks)."
     },
     "rpg:progression": {
       "type": "object",

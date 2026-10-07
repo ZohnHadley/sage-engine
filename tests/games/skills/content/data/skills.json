@@ -28,11 +28,15 @@
   },
 
   // Daggerfall's level by skill use: two rises and the character levels. A level raises each governing
-  // attribute by how often its skills rose since the last (one rise +1, two or more +2), and brings luck.
+  // attribute by how often its skills rose since the last (one rise +1, two or more +2), and brings luck and a
+  // perk point (perks.json).
   {
     "type": "levelling", "id": "character", "level": "level", "points": "level_progress", "rate": 2,
     "attributeBonus": [ { "rises": 1, "gain": 1 }, { "rises": 2, "gain": 2 } ],
     "effects": ["level_up"]
   },
-  { "type": "effect", "id": "level_up", "modifiers": [ { "attribute": "luck", "op": "Add", "value": 1 } ] }
+  {
+    "type": "effect", "id": "level_up",
+    "modifiers": [ { "attribute": "luck", "op": "Add", "value": 1 }, { "attribute": "perk_points", "op": "Add", "value": 1 } ]
+  }
 ]

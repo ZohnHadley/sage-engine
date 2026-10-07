@@ -122,12 +122,14 @@
         "armor_head",
         "blade",
         "blade_xp",
+        "endurance",
         "fire_resist",
         "health",
         "level",
         "level_progress",
         "luck",
         "mana",
+        "perk_points",
         "sage:armor",
         "sage:fire_resist",
         "sage:health",
@@ -136,9 +138,11 @@
         "skeletal:armor_head",
         "skills:blade",
         "skills:blade_xp",
+        "skills:endurance",
         "skills:level",
         "skills:level_progress",
         "skills:luck",
+        "skills:perk_points",
         "skills:strength",
         "stamina",
         "strength",
@@ -240,6 +244,7 @@
       "description": "The id of a effect record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "brute",
         "burning",
         "damage",
         "ember_cooldown",
@@ -247,6 +252,7 @@
         "fireball_cooldown",
         "glow",
         "goblin_build",
+        "hardy",
         "helmet",
         "kitscreens:glow",
         "lethal",
@@ -268,9 +274,13 @@
         "saves:goblin_build",
         "skeletal:lethal",
         "skeleton_build",
+        "skills:brute",
+        "skills:hardy",
         "skills:level_up",
+        "skills:strong_arm",
         "spend_mana",
         "straw",
+        "strong_arm",
         "tough_hide",
         "vigour",
         "village:straw",
@@ -587,6 +597,24 @@
         "sandbox:sparks",
         "snowflake",
         "sparks"
+      ]
+    },
+    "record:perk": {
+      "description": "The id of a perk record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "brute",
+        "hardy",
+        "keen_eye",
+        "kitscreens:keen_eye",
+        "kitscreens:night_owl",
+        "kitscreens:steady",
+        "night_owl",
+        "skills:brute",
+        "skills:hardy",
+        "skills:strong_arm",
+        "steady",
+        "strong_arm"
       ]
     },
     "record:physics_layers": {
@@ -950,7 +978,9 @@
       "type": "string",
       "enum": [
         "rpg",
-        "sandbox:rpg"
+        "rules",
+        "sandbox:rpg",
+        "skills:rules"
       ]
     },
     "record:rpg_item": {
@@ -1025,6 +1055,7 @@
         "mods",
         "options",
         "pause",
+        "perks",
         "rest",
         "rpg:bag",
         "rpg:controls",
@@ -1038,6 +1069,7 @@
         "rpg:mods",
         "rpg:options",
         "rpg:pause",
+        "rpg:perks",
         "rpg:rest",
         "rpg:save",
         "rpg:shop",
@@ -1605,12 +1637,14 @@
         "armor_head",
         "blade",
         "blade_xp",
+        "endurance",
         "fire_resist",
         "health",
         "level",
         "level_progress",
         "luck",
         "mana",
+        "perk_points",
         "sage:armor",
         "sage:fire_resist",
         "sage:health",
@@ -1619,9 +1653,11 @@
         "skeletal:armor_head",
         "skills:blade",
         "skills:blade_xp",
+        "skills:endurance",
         "skills:level",
         "skills:level_progress",
         "skills:luck",
+        "skills:perk_points",
         "skills:strength",
         "stamina",
         "strength",
@@ -1723,6 +1759,7 @@
       "description": "Another effect record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "brute",
         "burning",
         "damage",
         "ember_cooldown",
@@ -1730,6 +1767,7 @@
         "fireball_cooldown",
         "glow",
         "goblin_build",
+        "hardy",
         "helmet",
         "kitscreens:glow",
         "lethal",
@@ -1751,9 +1789,13 @@
         "saves:goblin_build",
         "skeletal:lethal",
         "skeleton_build",
+        "skills:brute",
+        "skills:hardy",
         "skills:level_up",
+        "skills:strong_arm",
         "spend_mana",
         "straw",
+        "strong_arm",
         "tough_hide",
         "vigour",
         "village:straw",
@@ -2070,6 +2112,24 @@
         "sandbox:sparks",
         "snowflake",
         "sparks"
+      ]
+    },
+    "base:perk": {
+      "description": "Another perk record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "brute",
+        "hardy",
+        "keen_eye",
+        "kitscreens:keen_eye",
+        "kitscreens:night_owl",
+        "kitscreens:steady",
+        "night_owl",
+        "skills:brute",
+        "skills:hardy",
+        "skills:strong_arm",
+        "steady",
+        "strong_arm"
       ]
     },
     "base:physics_layers": {
@@ -2435,7 +2495,9 @@
       "type": "string",
       "enum": [
         "rpg",
-        "sandbox:rpg"
+        "rules",
+        "sandbox:rpg",
+        "skills:rules"
       ]
     },
     "base:rpg_item": {
@@ -2510,6 +2572,7 @@
         "mods",
         "options",
         "pause",
+        "perks",
         "rest",
         "rpg:bag",
         "rpg:controls",
@@ -2523,6 +2586,7 @@
         "rpg:mods",
         "rpg:options",
         "rpg:pause",
+        "rpg:perks",
         "rpg:rest",
         "rpg:save",
         "rpg:shop",

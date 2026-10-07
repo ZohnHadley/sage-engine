@@ -13,14 +13,21 @@
   { "type": "effect", "id": "glow", "cost": 5, "modifiers": [] },
   { "type": "ability", "id": "light", "name": "Light", "targeting": "Self", "effects": ["glow"] },
 
-  // The player: a bag with a few things in it, a dagger to wear, and a spell.
+  // Perks (rpg:perks, issue #381): a trait the player was made with (ticked), one it may take (free), and one
+  // that asks for that one first (greyed, with why).
+  { "type": "perk", "id": "steady", "name": "Steady", "trait": true },
+  { "type": "perk", "id": "keen_eye", "name": "Keen Eye", "cost": 0 },
+  { "type": "perk", "id": "night_owl", "name": "Night Owl", "cost": 0, "requires": [ { "has_perk": "keen_eye" } ] },
+
+  // The player: a bag with a few things in it, a dagger to wear, a spell and a trait.
   {
     "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
     "parts": {
       "character": { "layer": "player" },
       "attributes": {},
       "abilities": ["light"],
-      "inventory": { "items": [ { "item": "bread", "count": 3 }, { "item": "rope" }, { "item": "dagger" } ], "capacity": 30 }
+      "inventory": { "items": [ { "item": "bread", "count": 3 }, { "item": "rope" }, { "item": "dagger" } ], "capacity": 30 },
+      "perks": ["steady"]
     }
   },
 

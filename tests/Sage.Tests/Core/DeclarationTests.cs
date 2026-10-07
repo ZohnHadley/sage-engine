@@ -67,6 +67,7 @@ public class DeclarationTests
             ["rpg_item"] = "sage.kits.rpg",          // an item's footprint on the inventory grid (#98)
             ["area_map"] = "sage.kits.rpg",          // a scene's map picture and fog (#349)
             ["skill"] = "sage.kits.rpg", ["levelling"] = "sage.kits.rpg",   // skills and levelling (#377)
+            ["perk"] = "sage.kits.rpg",                                      // perks and traits (#381)
             ["ui_style"] = "sage.ui", ["ui_layout"] = "sage.ui", ["screen"] = "sage.ui",   // the UI's (#96)
             ["language"] = "sage.ui",   // a translation's direction and fonts (#345)
             ["ui_style_set"] = "sage.ui",                                                             // accessibility (#351)

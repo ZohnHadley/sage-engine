@@ -31,9 +31,10 @@
   <!-- Experimental API (docs/MAKING_A_GAME.md §10b): the screens are Sage.UI's (SAGE0125) and the topics
        screen reads DialogueTopics (SAGE0124); the ammunition readout reads the 4e magazine (SAGE0127); the rest
        screen and the map's fast travel read the open world's time and travel (SAGE0129, issue 4g-7); the title,
-       pause and slot menus start the world from the title and read the save slots (SAGE0121, SAGE0131, issue #342). -->
+       pause and slot menus start the world from the title and read the save slots (SAGE0121, SAGE0131, issue #342); perks
+       ask and grant through the condition and action vocabularies (SAGE0120, issue #381). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SAGE0121;SAGE0124;SAGE0125;SAGE0127;SAGE0129;SAGE0131</NoWarn>
+    <NoWarn>$(NoWarn);SAGE0120;SAGE0121;SAGE0124;SAGE0125;SAGE0127;SAGE0129;SAGE0131</NoWarn>
   </PropertyGroup>
 
   <!-- The layers below, for every file. -->

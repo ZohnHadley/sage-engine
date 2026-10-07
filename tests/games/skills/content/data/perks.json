@@ -1,0 +1,27 @@
+[
+  // Perks and traits (engine issue #381): effects granted for good, with prerequisites in the condition
+  // vocabulary and a cost in perk points. A level brings a point (skills.json's level_up); the player spends it
+  // with `perk strong_arm` or on the rpg:perks screen. A trait is never bought: the player's prefab starts with it.
+  { "type": "attribute", "id": "endurance", "start": 40, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "perk_points", "start": 0, "min": 0 },
+  { "type": "rpg_conventions", "id": "rules", "perkPoints": "perk_points" },
+
+  // Strong arm: blade 4 and level 2 first, then a point for strength +5 for as long as you have it.
+  {
+    "type": "perk", "id": "strong_arm", "name": "Strong Arm", "description": "Strength +5.",
+    "cost": 1, "effects": ["strong_arm"],
+    "requires": [ { "skill": "blade", "atLeast": 4 }, { "level": "character", "atLeast": 2 } ]
+  },
+  { "type": "effect", "id": "strong_arm", "duration": "Infinite", "modifiers": [ { "attribute": "strength", "op": "Add", "value": 5 } ] },
+
+  // Brute: strong arm first; luck +1, for good (an instant effect raises the base).
+  {
+    "type": "perk", "id": "brute", "name": "Brute", "description": "Luck +1.",
+    "cost": 1, "effects": ["brute"], "requires": [ { "has_perk": "strong_arm" } ]
+  },
+  { "type": "effect", "id": "brute", "modifiers": [ { "attribute": "luck", "op": "Add", "value": 1 } ] },
+
+  // Hardy: a trait the character is made with (the player prefab's `perks` part); endurance +5.
+  { "type": "perk", "id": "hardy", "name": "Hardy", "description": "Endurance +5.", "trait": true, "effects": ["hardy"] },
+  { "type": "effect", "id": "hardy", "duration": "Infinite", "modifiers": [ { "attribute": "endurance", "op": "Add", "value": 5 } ] }
+]

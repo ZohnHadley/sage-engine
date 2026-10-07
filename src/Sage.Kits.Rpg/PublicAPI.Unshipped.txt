@@ -12,6 +12,7 @@ override Sage.Kits.Rpg.BagView.Hint.get -> string!
 override Sage.Kits.Rpg.DialogueView.Back(in Sage.UI.UiBindContext context) -> bool
 override Sage.Kits.Rpg.DialogueView.Hint.get -> string!
 override Sage.Kits.Rpg.DialogueView.Refresh(in Sage.UI.UiBindContext context) -> void
+override Sage.Kits.Rpg.PerksView.Hint.get -> string!
 override Sage.Kits.Rpg.SpellbookView.Hint.get -> string!
 override Sage.Kits.Rpg.SpellmakerView.Hint.get -> string!
 Sage.Kits.Rpg.AttributeBonusStep
@@ -28,6 +29,10 @@ Sage.Kits.Rpg.GoverningRises.Attribute -> Sage.Core.RecordId
 Sage.Kits.Rpg.GoverningRises.Count -> int
 Sage.Kits.Rpg.GoverningRises.GoverningRises() -> void
 Sage.Kits.Rpg.GoverningRises.Levelling -> Sage.Core.RecordId
+Sage.Kits.Rpg.GrantedPerks
+Sage.Kits.Rpg.GrantedPerks.GrantedPerks() -> void
+Sage.Kits.Rpg.GrantedPerks.Has(Sage.Core.RecordId perk) -> bool
+Sage.Kits.Rpg.GrantedPerks.Perks -> System.Collections.Generic.List<Sage.Core.RecordId>?
 Sage.Kits.Rpg.GridCell.ColumnSpan.get -> int
 Sage.Kits.Rpg.GridCell.Icon.get -> string?
 Sage.Kits.Rpg.GridCell.IconTurned.get -> bool
@@ -91,9 +96,33 @@ Sage.Kits.Rpg.PanelListView.Problem.get -> string!
 Sage.Kits.Rpg.PanelListView.Reason.get -> string!
 Sage.Kits.Rpg.PanelListView.Rows.get -> System.Collections.Generic.List<Sage.Kits.Rpg.ListRow!>!
 Sage.Kits.Rpg.PanelListView.Title.get -> string!
+Sage.Kits.Rpg.PerkGranted
+Sage.Kits.Rpg.PerkGranted.Entity.get -> Sage.Simulation.Entity
+Sage.Kits.Rpg.PerkGranted.Entity.init -> void
+Sage.Kits.Rpg.PerkGranted.Perk.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.PerkGranted.Perk.init -> void
+Sage.Kits.Rpg.PerkGranted.PerkGranted() -> void
+Sage.Kits.Rpg.PerkGranted.PerkGranted(Sage.Simulation.Entity Entity, Sage.Core.RecordId Perk) -> void
+Sage.Kits.Rpg.PerkRecord
+Sage.Kits.Rpg.PerkRecord.Cost -> float
+Sage.Kits.Rpg.PerkRecord.Description -> string!
+Sage.Kits.Rpg.PerkRecord.Effects -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>!
+Sage.Kits.Rpg.PerkRecord.Label(Sage.Core.RecordId id) -> string!
+Sage.Kits.Rpg.PerkRecord.Name -> string!
+Sage.Kits.Rpg.PerkRecord.PerkRecord() -> void
+Sage.Kits.Rpg.PerkRecord.Requires -> System.Collections.Generic.List<Sage.Simulation.ICondition!>!
+Sage.Kits.Rpg.PerkRecord.Trait -> bool
+Sage.Kits.Rpg.Perks
+Sage.Kits.Rpg.PerksPart
+Sage.Kits.Rpg.PerksPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Kits.Rpg.PerksPart.Ids -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Kits.Rpg.PerkRecord!>>!
+Sage.Kits.Rpg.PerksPart.PerksPart() -> void
+Sage.Kits.Rpg.PerksView
+Sage.Kits.Rpg.PerksView.PerksView() -> void
 Sage.Kits.Rpg.Progression
 Sage.Kits.Rpg.Progression.Progression() -> void
 Sage.Kits.Rpg.Progression.Rises -> System.Collections.Generic.List<Sage.Kits.Rpg.GoverningRises>?
+Sage.Kits.Rpg.RpgConventionsRecord.PerkPoints -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
 Sage.Kits.Rpg.RpgItemRecord.Icon -> Sage.Core.AssetPath
 Sage.Kits.Rpg.SkillRaised
 Sage.Kits.Rpg.SkillRaised.Entity.get -> Sage.Simulation.Entity
@@ -125,6 +154,7 @@ Sage.Kits.Rpg.SpellmakerView.SpellmakerView() -> void
 static readonly Sage.Kits.Rpg.RpgKitModule.BagScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.ControlsScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.DialogueScreen -> Sage.Core.RecordId
+static readonly Sage.Kits.Rpg.RpgKitModule.PerksScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.SpellbookScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.RpgKitModule.SpellmakerScreen -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.SpellmakerView.DeliveryRow -> Sage.Core.RecordId
@@ -132,6 +162,12 @@ static readonly Sage.Kits.Rpg.SpellmakerView.MakeRow -> Sage.Core.RecordId
 static readonly Sage.Kits.Rpg.SpellmakerView.PowerRow -> Sage.Core.RecordId
 static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, bool rotated, out string! reason) -> bool
 static Sage.Kits.Rpg.PanelListView.Fold(int hash, int value) -> int
+static Sage.Kits.Rpg.Perks.CanPick(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId perk, out string! why) -> bool
+static Sage.Kits.Rpg.Perks.Grant(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId perk) -> bool
+static Sage.Kits.Rpg.Perks.Has(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId perk) -> bool
+static Sage.Kits.Rpg.Perks.Panel(Sage.Simulation.World! world, Sage.Simulation.Entity who, Sage.Simulation.Panel? into = null) -> Sage.Simulation.Panel!
+static Sage.Kits.Rpg.Perks.Pick(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId perk, out string! why) -> bool
+static Sage.Kits.Rpg.Perks.PointsOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> float
 static Sage.Kits.Rpg.RpgItemRecord.IconOf(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> string?
 static Sage.Kits.Rpg.Skills.ExperienceOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId skill) -> float
 static Sage.Kits.Rpg.Skills.Practise(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId skill, float amount) -> void

@@ -53,6 +53,9 @@ public sealed class RpgKitModule : IModule
     // The rest and wait screen (issue 4g-7): hours, then sleep or wait (RestView, the Rest rule).
     public static readonly RecordId RestScreen = new(ContentNamespace, "rest");
 
+    // The perks screen (issue #381): pick a perk with the points a level gave (PerksView, Perks.Pick).
+    public static readonly RecordId PerksScreen = new(ContentNamespace, "perks");
+
     // The mods screen (issue 4j-6): what was found, on or off, the order, and the conflicts (Sage.UI's ModsView).
     public static readonly RecordId ModsScreen = new(ContentNamespace, "mods");
 
@@ -118,6 +121,10 @@ public sealed class RpgKitModule : IModule
         ctx.Engine.Records.AddCheck<LevellingRecord>(LevellingRecord.Check);
         _progression = new ProgressionRules(ctx.Engine.Records);
         Skills.RegisterCommands(ctx.Engine);
+
+        // Perks and traits (issue #381): effects with prerequisites, picked with perk points or granted.
+        ctx.Engine.Records.AddCheck<PerkRecord>(PerkRecord.Check);
+        Perks.RegisterCommands(ctx.Engine);
 
         // Composing spells at the console (F21), the same rules a spellmaker screen calls.
         Spellmaker.RegisterCommands(ctx.Engine);
