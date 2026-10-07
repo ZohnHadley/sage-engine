@@ -15,7 +15,8 @@ using Assert = Xunit.Assert;
 // that adds a weapon and patches a trader loads, and its conflicts are reported. tests/games/mods has no C#: a
 // village with a trader (an NPC whose `inventory` part is his stock), a straw dummy and a player, and two mods
 // in its `mods/` folder, found and mounted as the host finds them. better_blades adds a falchion to the stock
-// and renames the trader; rival_trade adds a spear, renames him too, places a stall, has a cart to spawn and re-skins the falchion.
+// and renames the trader; rival_trade adds a spear, renames him too, places a stall, has a cart to spawn, a falchion of its own
+// drawn from its own textures/falchion.png (each mod sees its own, #398) and replaces the game's lantern picture on purpose.
 // The player buys through the RPG kit's shop screen (ShopView), driven by a gamepad, as RpgScreenTests does.
 public class ModsExitTests
 {
@@ -132,7 +133,7 @@ public class ModsExitTests
         Assert.True(report.Ok, string.Join("\n", report.Errors));
         Assert.Equal(new[] { "better_blades", "rival_trade" }, report.Mods.Active.Select(m => m.Id));
         Assert.Empty(report.Mods.Refused);
-        Assert.Equal(2, report.Conflicts);                                              // warnings, not errors
+        Assert.Equal(1, report.Conflicts);                                              // a warning, not an error; the two falchion.png are each mod's own (#398)
     }
 
     // Acceptance: both mods found in the game's mods/ folder and mounted after it; the falchion is a record of
@@ -179,20 +180,47 @@ public class ModsExitTests
         Assert.Equal(25f, world.Attribute(dummy, new RecordId("sage", "health")), 3);
     }
 
-    // `mod_conflicts`: both mods set the trader's name and rival_trade, later, won; both ship
-    // textures/falchion.png and rival_trade's is the one used. Both adding to the stock is no conflict.
+    // `mod_conflicts`: both mods set the trader's name and rival_trade, later, won. Both ship
+    // textures/falchion.png, which only mods have, so each is that mod's own (#398): no conflict, nothing
+    // shadowed. rival_trade's `@village/textures/lantern.png` replaces the game's lantern picture: an override. Both adding to
+    // the stock is no conflict.
     [Xunit.Fact]
-    public void ModsExit_ModConflictsReportsTheNameAndTheTexture()
+    public void ModsExit_ModConflictsReportsTheName_AndNeitherFalchionTexture()
     {
         using var app = Boot();
         var lines = ModConflicts(app);
-        Assert.Contains("2 conflict(s) between mods (the later mod wins):", lines);
+        Assert.Contains("1 conflict(s) between mods (the later mod wins):", lines);
         Assert.Contains("  prefab village:trader name: better_blades, rival_trade; rival_trade won", lines);
-        Assert.Contains("  asset textures/falchion.png: better_blades, rival_trade; rival_trade won", lines);
+        Assert.DoesNotContain(lines, l => l.Contains("falchion.png"));
         Assert.DoesNotContain(lines, l => l.Contains(" won") && l.Contains("items"));   // both `items+`: merged
-        Assert.Contains("  shadows textures/falchion.png in better_blades", lines);
+        Assert.Contains("  overrides textures/lantern.png in village/content", lines);
         Assert.Contains("  patched prefab village:trader (overrides village/content): set name, add parts.inventory.items", lines);
-        Assert.Equal("mods/rival_trade", app.Vfs.Which(VirtualPath.Parse("textures/falchion.png"))!.Name);
+    }
+
+    // Both mods ship textures/falchion.png and each mod's records get their own, whichever loads later; the
+    // game's lantern record gets rival_trade's replacement of it (#398).
+    [Xunit.Theory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("""{ "order": ["rival_trade", "better_blades"] }""")]
+    public void ModsExit_EachModSeesItsOwnFalchionTexture_AndTheGamesLanternPictureIsReplacedOnPurpose(string? order)
+    {
+        using var app = Boot(order);
+        string Texture(string ns, string id) => app.Records.Get<RpgItemRecord>(new RecordId(ns, id)).Icon.ToString();
+        string Bytes(string path) { using var s = app.Vfs.Open(VirtualPath.Parse(path)); using var m = new MemoryStream(); s.CopyTo(m); return Convert.ToBase64String(m.ToArray()); }
+        string OnDisk(params string[] parts) => Convert.ToBase64String(File.ReadAllBytes(Path.Combine(new[] { GameDirectory }.Concat(parts).ToArray())));
+
+        Assert.Equal("better_blades:textures/falchion.png", Texture("better_blades", "falchion"));
+        Assert.Equal("rival_trade:textures/falchion.png", Texture("rival_trade", "falchion"));
+        Assert.Equal("mods/better_blades", app.Vfs.Which(VirtualPath.Parse("better_blades:textures/falchion.png"))!.Name);
+        Assert.Equal("mods/rival_trade", app.Vfs.Which(VirtualPath.Parse("rival_trade:textures/falchion.png"))!.Name);
+        Assert.Equal(OnDisk("mods", "better_blades", "textures", "falchion.png"), Bytes(Texture("better_blades", "falchion")));
+        Assert.Equal(OnDisk("mods", "rival_trade", "textures", "falchion.png"), Bytes(Texture("rival_trade", "falchion")));
+
+        Assert.Equal("textures/lantern.png", Texture("village", "lantern"));
+        Assert.Equal("mods/rival_trade", app.Vfs.Which(VirtualPath.Parse("textures/lantern.png"))!.Name);
+        Assert.Equal(OnDisk("mods", "rival_trade", "@village", "textures", "lantern.png"), Bytes("textures/lantern.png"));
+        Assert.Equal(OnDisk("mods", "rival_trade", "@village", "textures", "lantern.png"), Bytes("village:textures/lantern.png"));   // named in full too
+        Assert.DoesNotContain(ModConflicts(app), l => l.StartsWith("  asset ", StringComparison.Ordinal));
     }
 
     // The player's list puts rival_trade first: better_blades now loads last and wins both.
@@ -208,8 +236,6 @@ public class ModsExitTests
 
         var lines = ModConflicts(app);
         Assert.Contains("  prefab village:trader name: rival_trade, better_blades; better_blades won", lines);
-        Assert.Contains("  asset textures/falchion.png: rival_trade, better_blades; better_blades won", lines);
-        Assert.Equal("mods/better_blades", app.Vfs.Which(VirtualPath.Parse("textures/falchion.png"))!.Name);
     }
 
     // rival_trade switched off in the player's list: not mounted, its spear and stall are gone, the trader is
@@ -231,7 +257,8 @@ public class ModsExitTests
         var lines = ModConflicts(app);
         Assert.Contains("No conflicts between mods.", lines);
         Assert.DoesNotContain(lines, l => l.Contains("rival_trade"));
-        Assert.Equal("mods/better_blades", app.Vfs.Which(VirtualPath.Parse("textures/falchion.png"))!.Name);
+        Assert.Equal("textures/lantern.png", app.Records.Get<RpgItemRecord>(Lantern).Icon.ToString());
+        Assert.Equal("village/content", app.Vfs.Which(VirtualPath.Parse("textures/lantern.png"))!.Name);   // the game's again
     }
 
     // A save made with both mods, loaded with rival_trade switched off: the slot and the load say the mod is

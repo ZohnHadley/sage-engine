@@ -19,6 +19,10 @@
     }
   },
 
+  // The lantern's picture in the kit's inventory grid: textures/lantern.png is the game's, which rival_trade
+  // replaces on purpose (its `@village/textures/lantern.png`, engine issue #398): an override, not a conflict.
+  { "type": "rpg_item", "id": "lantern", "icon": "textures/lantern.png" },
+
   // A straw dummy, to try a blade on: the engine's character with 40 health and nothing else.
   { "type": "effect", "id": "straw", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 40 } ] },
   {
