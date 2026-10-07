@@ -69,6 +69,7 @@ public sealed class DevTools : IDisposable
     private readonly LogPanel _log = new();
     private readonly RecordsPanel _records;   // the record browser (#224)
     private PalettePanel? _palette;   // #222
+    private BrushPanel? _brushes;     // blockout brushes (#61)
     private ProblemsPanel? _problems;   // #227
     private AudioPanel? _audioPanel;    // 4o-12
     private PlaySession? _play;       // play-in-editor (#226): ed_play, ed_stop
@@ -178,6 +179,7 @@ public sealed class DevTools : IDisposable
         _camera.EditorMove = _engine.Actions.Get("EditorMove");
         _wiring = new WiringPanel(_selection!, _pickable);
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
+        _brushes = new BrushPanel(_engine, _selection!, _tools, ViewportRay);
         _problems?.Dispose();
         _problems = new ProblemsPanel(new ProblemList(_engine, _document), _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
@@ -346,11 +348,12 @@ public sealed class DevTools : IDisposable
     {
         _menu?.Draw(_game);
         _layout.BeginFrame();
-        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
+        if (_world != null && _selection != null && _palette is not { IsArmed: true } && _brushes is not { IsArmed: true } && _wiring is not { IsPicking: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();
         _records.Draw();
         _palette?.Draw();
+        _brushes?.Draw();
         _playBar?.DrawButton();
         _wiring?.Draw();
         if (_world != null) _wiring?.DrawLines(_world);
@@ -364,6 +367,7 @@ public sealed class DevTools : IDisposable
         _visualLog.Draw();
         _layout.DrawStatusBar(StatusLine());
         _palette?.HandleViewport();
+        if (_world != null) _brushes?.HandleViewport(_world);
         if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);
     }
 

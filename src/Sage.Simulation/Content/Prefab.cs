@@ -86,6 +86,13 @@ public interface IPrefabPart
     void Apply(in PrefabPartContext ctx);
 }
 
+// A part whose options are checked beyond their fields' types when content loads (issue #61): a brush's
+// size and the faces its shape has. Called with the part's body as written and as read, at `path` in the record.
+internal interface ICheckedPart
+{
+    void Check(JsonNode body, string path, RecordCheck check);
+}
+
 // What a part is applying to, and where to report trouble.
 public readonly struct PrefabPartContext
 {
@@ -329,7 +336,9 @@ internal static class PrefabChecks
                 continue;
             }
             if (!check.CheckFields(options, part.Type, path)) continue;
-            if (Read(options, part.Type, json, path, check) is { } read) check.CheckValues(read, path);
+            if (Read(options, part.Type, json, path, check) is not { } read) continue;
+            check.CheckValues(read, path);
+            if (read is ICheckedPart checks) checks.Check(options, path, check);   // what its fields cannot say alone (a brush's faces, #61)
         }
     }
 
@@ -496,6 +505,7 @@ public static class PrefabExtensions
         transform.LocalPosition = placed.LocalPosition;
         transform.LocalRotation = placed.LocalRotation;
         if (scaled) transform.LocalScale = (transform.LocalScale == Vector3.Zero ? Vector3.One : transform.LocalScale) * scale;
+        if (scaled) BrushPart.Rescaled(world, entity);   // a brush's size is its options' times its scale (#61)
 
         // What it was spawned as, for a save to diff it against (4i-5): before its children, a name or
         // an id are added, none of which is the prefab's.
