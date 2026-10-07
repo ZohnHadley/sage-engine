@@ -47,6 +47,10 @@ public sealed class ClientModule : IModule
     // render target it declares here (issue #81). A module asks for it with `ctx.Get<Renderer>()` instead.
     public Renderer? Renderer => _renderer;
 
+    // The content service, from Start on (null before): for the host's own tools — the editor's asset browser
+    // draws textures it loads here as thumbnails and plays sounds (issue #366).
+    public ContentService? Content => _content;
+
     // The render passes (issue 4h-1, REDESIGN §4.7): the engine's own are added here in Init, a game's or
     // a plugin's in its Init (`ctx.Get<RenderPasses>().Add(new MyPass())`); sealed and ordered in Start.
     [System.Diagnostics.CodeAnalysis.Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]

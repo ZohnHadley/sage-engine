@@ -115,6 +115,7 @@ internal sealed class EditorLayout
         Native.igDockBuilderDockWindow(AnimationPanel.Title, right);   // the animation preview (#362)
         Native.igDockBuilderDockWindow(LogPanel.Title, bottom);
         Native.igDockBuilderDockWindow(ProblemsPanel.Title, bottom);   // #227
+        Native.igDockBuilderDockWindow(AssetsPanel.Title, bottom);   // the asset browser (#366)
         Native.igDockBuilderDockWindow(ConsoleTitle, bottom);
         Native.igDockBuilderFinish(dock);
     }

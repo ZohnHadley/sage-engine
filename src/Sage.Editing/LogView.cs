@@ -20,6 +20,8 @@ public sealed class LogView
     private readonly List<LogEntry> _shown = new();
     private readonly HashSet<string> _hidden = new(StringComparer.OrdinalIgnoreCase);
     private readonly SortedSet<string> _seen = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _texts = new();
+    private readonly Dictionary<LogEntry, string> _formatted = new();   // each entry's one-line text, made once (TODO #41)
     private long _ringVersion = -1;
     private bool _filterChanged = true;
     private LogLevel _minLevel = LogLevel.Info;
@@ -28,6 +30,10 @@ public sealed class LogView
 
     // The lines that pass the filter, oldest first, as of the last Refresh.
     public IReadOnlyList<LogEntry> Lines => _shown;
+
+    // `Lines`, formatted (`LogFormatter.FormatShort`), one string per line and parallel to it. A line is
+    // formatted once, when it first passes the filter; a frame where nothing changed allocates nothing.
+    public IReadOnlyList<string> Texts => _texts;
 
     // Every category the ring held at the last Refresh, by name: what the panel offers to hide.
     public IReadOnlyCollection<string> Categories => _seen;
@@ -72,6 +78,20 @@ public sealed class LogView
         _shown.Clear();
         foreach (var entry in _all)
             if (entry.Level >= _minLevel && !_hidden.Contains(entry.Category.Name)) _shown.Add(entry);
+
+        _texts.Clear();
+        foreach (var entry in _shown)
+        {
+            if (!_formatted.TryGetValue(entry, out var text)) _formatted[entry] = text = LogFormatter.FormatShort(entry);
+            _texts.Add(text);
+        }
+        // Forget lines the ring dropped (the cache never outgrows the ring).
+        if (_formatted.Count > Math.Max(_all.Count * 2, 64))
+        {
+            var keep = new HashSet<LogEntry>(_all);
+            foreach (var key in new List<LogEntry>(_formatted.Keys))
+                if (!keep.Contains(key)) _formatted.Remove(key);
+        }
         return true;
     }
 }

@@ -1,4 +1,5 @@
 #nullable enable
+Sage.Client.ClientModule.Content.get -> Sage.Client.ContentService?
 Sage.Client.GamepadListener.AnyButtonPressed.get -> bool
 Sage.Client.GamepadListener.GamepadListener(int index) -> void
 Sage.Client.GamepadListener.MaxAxis.get -> float

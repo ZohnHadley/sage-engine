@@ -1,0 +1,6 @@
+[
+  // What the editor places for a model dropped from the asset browser that no prefab of the game uses
+  // (issue #366, Sage.Editing's AssetPicking.StaticMesh): a mesh renderer and nothing more, the model an
+  // override of its `mesh`. A game gives a model collision, a material and a name with a prefab of its own.
+  { "type": "prefab", "id": "static_mesh", "name": "static mesh", "components": { "mesh_renderer": {} } }
+]
