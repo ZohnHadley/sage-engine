@@ -24,12 +24,26 @@ public sealed class RecordEditor
     // Opened, closed, or the open record changed.
     public event Action? Changed;
 
+    // Edits show in the game as they are made (RecordDocument.Live, issue #366): on in the editor, so a
+    // texture picked for a material is seen on the walls at once. `ed_rec_live` turns it off and on.
+    public bool Live
+    {
+        get => _live;
+        set
+        {
+            _live = value;
+            if (Current != null) Current.Live = value;
+        }
+    }
+    private bool _live = true;
+
     public bool Open(string type, RecordId id)
     {
         var document = RecordDocument.Open(Engine, type, id);
         if (document == null) return false;
         Close();
         Current = document;
+        document.Live = Live;
         document.Changed += OnChanged;
         Log.Info(LogCat.Editor, $"Opened {type} {id}");
         Changed?.Invoke();
@@ -39,6 +53,7 @@ public sealed class RecordEditor
     public void Close()
     {
         if (Current == null) return;
+        Current.Revert();   // unsaved edits leave the game too
         Current.Changed -= OnChanged;
         Current = null;
         Changed?.Invoke();
@@ -96,6 +111,13 @@ public sealed class RecordEditor
             a => Step(a, undo: true));
         cvars.RegisterCommand("ed_rec_redo", CVarFlags.DevOnly, "ed_rec_redo [count]: redo what was undone (or that many).",
             a => Step(a, undo: false));
+
+        cvars.RegisterCommand("ed_rec_live", CVarFlags.DevOnly,
+            "ed_rec_live [0|1]: show the open record's edits in the game as they are made, before a save (on by default).", a =>
+        {
+            if (a.Count > 0) Live = a[0] is "1" or "on" or "true" or "yes";
+            Log.Info(LogCat.Console, $"ed_rec_live {(Live ? 1 : 0)}" + (Current is { PreviewError.Length: > 0 } open ? $" (not shown: {open.PreviewError})" : ""));
+        });
 
         cvars.RegisterCommand("ed_rec_close", CVarFlags.DevOnly, "ed_rec_close: close the open record (unsaved edits are dropped).", _ => Close());
     }

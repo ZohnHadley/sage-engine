@@ -78,6 +78,9 @@ public sealed class DevTools : IDisposable
     private AnimationPanel? _animationPanel;
     private TerrainDocument? _terrain;        // the terrain tools (#372): ed_sculpt, ed_paint, ed_water, and their panel
     private TerrainPanel? _terrainPanel;
+    private readonly AssetBrowser _assetBrowser;   // the asset browser (#366): ed_assets*, and its panel
+    private readonly Thumbnails _thumbnails;
+    private AssetsPanel? _assets;
 
     public DevTools(Game game, Engine engine, InputDevices devices, InputActions actions)
     {
@@ -91,6 +94,9 @@ public sealed class DevTools : IDisposable
         _console = new DevConsoleWindow(cvars, engine.Core,
             () => engine.Records.TypeNames.SelectMany(t => engine.Records.Ids(t)).Select(i => i.ToString()));
         _records = new RecordsPanel(new RecordEditor(engine));
+        _assetBrowser = new AssetBrowser(engine);
+        _thumbnails = new Thumbnails(_gui, () => _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Content);
+        _records.Thumbnails = _thumbnails;
         _stats = new StatOverlay(cvars, engine.Core, () => _renderer, () => _world);
         _visualLog = new VisualLogWindow(cvars, () => _world);
         _badge = new ProblemsBadge(engine);
@@ -182,6 +188,8 @@ public sealed class DevTools : IDisposable
         _wiring = new WiringPanel(_selection!, _pickable);
         _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
         _terrainPanel = new TerrainPanel(() => _terrain, ViewportRay, () => _camera.Position.ToNumerics());   // #372
+        _assets = new AssetsPanel(_assetBrowser, _thumbnails, () => _document, _records.Editor,
+            () => _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Content, ViewportRay, entity => _selection?.SelectPlaced(entity));
         _problems?.Dispose();
         _problems = new ProblemsPanel(new ProblemList(_engine, _document), _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
         if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
@@ -244,6 +252,7 @@ public sealed class DevTools : IDisposable
         AnimationPreviewCommands.Register(cvars, () => _animation);   // anim_preview* (#362)
         TerrainCommands.Register(cvars, () => _terrain);   // ed_sculpt, ed_paint, ed_water, ed_terrain_* (#372)
         PrefabCommands.Register(cvars, () => _document, () => _selection?.Placements ?? Array.Empty<Placement>());   // ed_revert_all, ed_make_prefab (#372)
+        AssetCommands.Register(cvars, () => _assetBrowser, () => _document, () => _records.Editor);   // ed_assets, ed_asset_* (#366)
 
         cvars.RegisterCommand("ed_frame", CVarFlags.DevOnly, "ed_frame: move the free camera to look at the selection (F in the editor).", _ =>
         {
@@ -357,6 +366,7 @@ public sealed class DevTools : IDisposable
         _inspector?.Draw();
         _records.Draw();
         _palette?.Draw();
+        _assets?.Draw();
         _playBar?.DrawButton();
         _wiring?.Draw();
         if (_world != null) _wiring?.DrawLines(_world);
@@ -372,6 +382,7 @@ public sealed class DevTools : IDisposable
         _layout.DrawStatusBar(StatusLine());
         _palette?.HandleViewport();
         _terrainPanel?.HandleViewport();
+        _assets?.HandleViewport();
         if (_world != null && _document != null) _wiring?.HandleViewport(_world, _document, ViewportRay);
     }
 
@@ -422,6 +433,8 @@ public sealed class DevTools : IDisposable
     public void Dispose()
     {
         _animation.Dispose();
+        _thumbnails.Dispose();
+        _assetBrowser.Dispose();
         if (_boundTarget != null) _gui.UnbindTexture(_viewportTexture);
         _boundTarget = null;
     }
