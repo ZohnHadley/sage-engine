@@ -17,6 +17,8 @@
                                 folder when it has a game.json.
       SagePackageDirectory      where SagePackage writes the shippable folder; default bin/package/<config>.
       SageCook=false            SagePackage leaves the package's models and textures uncooked (issue #302).
+      SagePackageEditor=true    SagePackage puts the editor for modders beside the game (issue #375): the
+                                Development host in editor/ and edit.sh / edit.cmd, which open the game in it.
     Items:
       <SageKit Include="sage.kits.rpg" />   a kit the game is built on (issue #27): references its
                                 assembly (and, in a client half, its client half; Client="false" for a
@@ -42,6 +44,9 @@
     <SageCliDirectory Condition="'$(SageSdkFromPackage)' == 'true'">$(SageHostDirectory)</SageCliDirectory>
     <SageHostDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Host\bin\$(SageConfiguration)\net8.0\</SageHostDirectory>
     <SageCliDirectory Condition="'$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Cli\bin\$(SageConfiguration)\net8.0\</SageCliDirectory>
+    <!-- The host with the editor in it, which SagePackageEditor puts beside a Shipping game (issue #375). -->
+    <SageEditorHostDirectory Condition="'$(SageEditorHostDirectory)' == '' And '$(SageSdkFromPackage)' == 'true'">$(PkgSage_Player)\host\Development\</SageEditorHostDirectory>
+    <SageEditorHostDirectory Condition="'$(SageEditorHostDirectory)' == '' And '$(SageSdkFromPackage)' != 'true'">$(SageRepositoryRoot)src\Sage.Host\bin\Development\net8.0\</SageEditorHostDirectory>
     <!-- Run through `dotnet`, not the apphost: a NuGet package does not keep a file's executable bit. -->
     <SageDotnet Condition="'$(SageDotnet)' == ''">$(DOTNET_HOST_PATH)</SageDotnet>
     <SageDotnet Condition="'$(SageDotnet)' == ''">dotnet</SageDotnet>
@@ -251,9 +256,12 @@
       <_SagePackageOut>$([System.IO.Path]::GetFullPath('$(SagePackageDirectory)').TrimEnd('\').TrimEnd('/'))</_SagePackageOut>
       <_SagePackageHost>$(SageHostDirectory.TrimEnd('\').TrimEnd('/'))</_SagePackageHost>
       <_SagePackageCook Condition="'$(SageCook)' == 'false'"> --no-cook</_SagePackageCook>
+      <_SagePackageEditor Condition="'$(SagePackageEditor)' == 'true'"> --editor-host &quot;$(SageEditorHostDirectory.TrimEnd('\').TrimEnd('/'))&quot;</_SagePackageEditor>
     </PropertyGroup>
+    <Error Code="SAGE0112" Condition="'$(SagePackageEditor)' == 'true' And !Exists('$(SageEditorHostDirectory)Sage.Editor.dll')"
+           Text="SagePackageEditor: no editor host in $(SageEditorHostDirectory) (no Sage.Editor.dll). In this repository: dotnet build src/Sage.Host -c Development." />
     <Error Code="SAGE0112" Condition="!Exists('$(SageCliDirectory)sage.dll')"
            Text="No `sage` CLI for $(Configuration) in $(SageCliDirectory) (in this repository: dotnet build src/Sage.Cli -c $(Configuration))." />
-    <Exec Command="&quot;$(SageDotnet)&quot; &quot;$(SageCliDirectory)sage.dll&quot; package &quot;$(SageGameDirectory)&quot; --out &quot;$(_SagePackageOut)&quot; --host &quot;$(_SagePackageHost)&quot; --config $(Configuration)$(_SagePackageCook)" />
+    <Exec Command="&quot;$(SageDotnet)&quot; &quot;$(SageCliDirectory)sage.dll&quot; package &quot;$(SageGameDirectory)&quot; --out &quot;$(_SagePackageOut)&quot; --host &quot;$(_SagePackageHost)&quot; --config $(Configuration)$(_SagePackageCook)$(_SagePackageEditor)" />
   </Target>
 </Project>

@@ -48,8 +48,9 @@ internal sealed class EditorLayout
 
     // Docking on, then the host window that fills the screen between the menu bar and the status bar,
     // and the dock space in it. Call after the menu bar (it takes the work area's top) and before the
-    // panels, which dock into it by title.
-    public void BeginFrame()
+    // panels, which dock into it by title. `header` draws across the top of it, above the docked panels
+    // (the document tabs, #375).
+    public void BeginFrame(System.Action? header = null)
     {
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
@@ -67,6 +68,7 @@ internal sealed class EditorLayout
             | ImGuiWindowFlags.NoNavFocus | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoSavedSettings;
         ImGui.Begin(HostTitle, hostFlags);
         ImGui.PopStyleVar(3);
+        header?.Invoke();
 
         uint dock = ImGui.GetID("sage_editor_dock");
         if (_buildLayout)

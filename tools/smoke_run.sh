@@ -4,6 +4,7 @@
 #   tools/smoke_run.sh <host-output-dir> <game-dir> [seconds] [allowed-category ...]
 #   tools/smoke_run.sh --dotnet-run <game-dir> [seconds] [allowed-category ...]
 #   tools/smoke_run.sh --packaged <package-dir> [seconds] [allowed-category ...]
+#   tools/smoke_run.sh --packaged-editor <package-dir> [seconds] [allowed-category ...]
 #   tools/smoke_run.sh --sage-run <game-dir> [seconds] [allowed-category ...]
 #
 # The host is started under a virtual display (xvfb-run) with `+quit <seconds>`, so it boots the game,
@@ -22,7 +23,9 @@
 # check that something happened, not only that nothing went wrong (the mouse capture handoff, #334).
 #
 # --packaged runs a folder `sage package` wrote (issue #293): its ./Sage.Host with no -game, so the host finds
-# the game in the `game` folder beside it, as a player's would.
+# the game in the `game` folder beside it, as a player's would. --packaged-editor runs the editor for modders
+# a `sage package --editor` put beside it (issue #375): its ./edit.sh, the Development host in editor/ on the
+# same game folder with -edit.
 #
 # --sage-run runs `sage run <game-dir>` (issue #297): `dotnet run` on the game's Sage.Sdk project (its Client/
 # one first), or the host on the folder. The `sage` is $SAGE_CLI, else this repository's Debug build.
@@ -33,10 +36,12 @@
 set -euo pipefail
 
 packaged=false
+launcher=./Sage.Host
 sage_run=false
 if [ "$1" = "--dotnet-run" ]; then host_dir=; game_dir=$(cd "$2" && pwd)
 elif [ "$1" = "--sage-run" ]; then sage_run=true; host_dir=; game_dir=$(cd "$2" && pwd)
 elif [ "$1" = "--packaged" ]; then packaged=true; host_dir=$(cd "$2" && pwd); game_dir=$host_dir/game
+elif [ "$1" = "--packaged-editor" ]; then packaged=true; launcher=./edit.sh; host_dir=$(cd "$2" && pwd); game_dir=$host_dir/game
 else host_dir=$1; game_dir=$(cd "$2" && pwd); fi
 seconds=${3:-3}
 shift $(( $# < 3 ? $# : 3 ))
@@ -70,7 +75,7 @@ else
     game_option=(-game "$game_dir")
     $packaged && game_option=()
     ( cd "$host_dir" && timeout $((seconds + 60)) xvfb-run -a -s "-screen 0 1024x768x24" \
-        ./Sage.Host "${game_option[@]}" "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
+        "$launcher" "${game_option[@]}" "${options[@]}" "${commands[@]}" "+quit $seconds" > "$out" 2>&1 ) || status=$?
 fi
 
 # The log this run wrote: the one the host printed, else the newest one written since it started in the

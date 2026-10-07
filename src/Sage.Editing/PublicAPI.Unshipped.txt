@@ -54,6 +54,29 @@ Sage.Editing.AnimationSubject.Graph.get -> Sage.Core.RecordId
 Sage.Editing.AnimationSubject.Graph.init -> void
 Sage.Editing.AnimationSubject.Model.get -> Sage.Core.AssetPath
 Sage.Editing.AnimationSubject.Model.init -> void
+Sage.Editing.EditDocument.SavedTo.get -> string!
+Sage.Editing.EditDocument.SavesAsPatch.get -> bool
+Sage.Editing.EditDocument.Target.get -> Sage.Core.IMount?
+Sage.Editing.EditDocument.Target.set -> void
+Sage.Editing.EditorWorkspace
+Sage.Editing.EditorWorkspace.Activate(int index) -> bool
+Sage.Editing.EditorWorkspace.Activate(Sage.Editing.EditDocument! document) -> bool
+Sage.Editing.EditorWorkspace.Active.get -> Sage.Editing.EditDocument?
+Sage.Editing.EditorWorkspace.ActiveChanged -> System.Action<Sage.Editing.EditDocument?, Sage.Editing.EditDocument?>?
+Sage.Editing.EditorWorkspace.ActiveIndex.get -> int
+Sage.Editing.EditorWorkspace.Add(Sage.Simulation.World! world) -> Sage.Editing.EditDocument!
+Sage.Editing.EditorWorkspace.Changed -> System.Action?
+Sage.Editing.EditorWorkspace.Close(int index, bool force = false) -> bool
+Sage.Editing.EditorWorkspace.Count.get -> int
+Sage.Editing.EditorWorkspace.Documents.get -> System.Collections.Generic.IReadOnlyList<Sage.Editing.EditDocument!>!
+Sage.Editing.EditorWorkspace.EditorWorkspace(Sage.Simulation.Engine! engine) -> void
+Sage.Editing.EditorWorkspace.Engine.get -> Sage.Simulation.Engine!
+Sage.Editing.EditorWorkspace.IndexOf(Sage.Core.RecordId id) -> int
+Sage.Editing.EditorWorkspace.Mods() -> System.Collections.Generic.IEnumerable<Sage.Core.IMount!>!
+Sage.Editing.EditorWorkspace.New(Sage.Core.RecordId id = default(Sage.Core.RecordId)) -> Sage.Editing.EditDocument!
+Sage.Editing.EditorWorkspace.Open(Sage.Core.RecordId id) -> Sage.Editing.EditDocument?
+Sage.Editing.EditorWorkspace.SetTarget(string? id, out string! error) -> bool
+Sage.Editing.EditorWorkspace.Target.get -> Sage.Core.IMount?
 Sage.Editing.InspectorGroup.AddedByPlacement.get -> bool
 Sage.Editing.InspectorModel.AddableComponents() -> System.Collections.Generic.IEnumerable<string!>!
 Sage.Editing.InspectorModel.AddComponent(string! component, out string! error) -> bool
@@ -256,10 +279,12 @@ Sage.Editing.VocabularySetting.Text.get -> string!
 Sage.Editing.VocabularySetting.Value.get -> System.Text.Json.Nodes.JsonNode?
 Sage.Editing.VocabularySetting.Value.init -> void
 Sage.Editing.VocabularySetting.VocabularySetting(Sage.Editing.VocabularyParameter! Parameter, string! Path, System.Text.Json.Nodes.JsonNode? Value) -> void
+Sage.Editing.WorkspaceCommands
 static Sage.Editing.AnimationPreview.ModelFor(Sage.Core.RecordStore! records, Sage.Core.RecordId graph) -> Sage.Core.AssetPath
 static Sage.Editing.AnimationPreview.Subjects(Sage.Core.RecordStore! records) -> System.Collections.Generic.IReadOnlyList<Sage.Editing.AnimationSubject>!
 static Sage.Editing.AnimationPreviewCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.AnimationPreview?>! preview) -> void
 Sage.Editing.AnimationPreview.Opened -> System.Action?
+static Sage.Editing.EditorWorkspace.Describe(Sage.Editing.EditDocument! document) -> string!
 static Sage.Editing.VocabularyCatalog.All(Sage.Simulation.Engine! engine) -> System.Collections.Generic.IReadOnlyList<Sage.Core.Vocabulary!>!
 static Sage.Editing.VocabularyCatalog.Entries(Sage.Simulation.Engine! engine, Sage.Core.Vocabulary! vocabulary, string! search = "") -> System.Collections.Generic.IReadOnlyList<Sage.Editing.VocabularyChoice!>!
 static Sage.Editing.VocabularyCatalog.Entry(Sage.Simulation.Engine! engine, Sage.Core.Vocabulary! vocabulary, string! id) -> Sage.Editing.VocabularyChoice?
@@ -478,3 +503,5 @@ static Sage.Editing.AIGraph.Of(Sage.Editing.RecordDocument? document) -> Sage.Ed
 static Sage.Editing.AIGraph.Supports(string! type) -> bool
 static Sage.Editing.AIGraphCommands.Describe(Sage.Editing.AIGraph! graph) -> string!
 static Sage.Editing.AIGraphCommands.Register(Sage.Core.CVarRegistry! cvars, Sage.Editing.RecordEditor! records, System.Func<Sage.Simulation.World?>! world) -> void
+static Sage.Editing.WorkspaceCommands.Register(Sage.Core.CVarRegistry! cvars, System.Func<Sage.Editing.EditorWorkspace?>! workspace) -> void
+static Sage.Editing.WorkspaceCommands.Tabs(Sage.Editing.EditorWorkspace! workspace) -> string!
