@@ -14,11 +14,20 @@ override Sage.Kits.Rpg.DialogueView.Hint.get -> string!
 override Sage.Kits.Rpg.DialogueView.Refresh(in Sage.UI.UiBindContext context) -> void
 override Sage.Kits.Rpg.SpellbookView.Hint.get -> string!
 override Sage.Kits.Rpg.SpellmakerView.Hint.get -> string!
+Sage.Kits.Rpg.AttributeBonusStep
+Sage.Kits.Rpg.AttributeBonusStep.AttributeBonusStep() -> void
+Sage.Kits.Rpg.AttributeBonusStep.Gain -> float
+Sage.Kits.Rpg.AttributeBonusStep.Rises -> int
 Sage.Kits.Rpg.BagView
 Sage.Kits.Rpg.BagView.BagView() -> void
 Sage.Kits.Rpg.DialogueView
 Sage.Kits.Rpg.DialogueView.DialogueView() -> void
 Sage.Kits.Rpg.DialogueView.Speaker.get -> string!
+Sage.Kits.Rpg.GoverningRises
+Sage.Kits.Rpg.GoverningRises.Attribute -> Sage.Core.RecordId
+Sage.Kits.Rpg.GoverningRises.Count -> int
+Sage.Kits.Rpg.GoverningRises.GoverningRises() -> void
+Sage.Kits.Rpg.GoverningRises.Levelling -> Sage.Core.RecordId
 Sage.Kits.Rpg.GridCell.ColumnSpan.get -> int
 Sage.Kits.Rpg.GridCell.Icon.get -> string?
 Sage.Kits.Rpg.GridCell.IconTurned.get -> bool
@@ -36,6 +45,25 @@ Sage.Kits.Rpg.ItemGrid.Rotate(Sage.Simulation.World! world, Sage.Kits.Rpg.GridIt
 Sage.Kits.Rpg.ItemGrid.Split(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, out string! reason) -> bool
 Sage.Kits.Rpg.ItemGridView.Dragging.get -> bool
 Sage.Kits.Rpg.ItemGridView.HeldTurned.get -> bool
+Sage.Kits.Rpg.LevelledUp
+Sage.Kits.Rpg.LevelledUp.Entity.get -> Sage.Simulation.Entity
+Sage.Kits.Rpg.LevelledUp.Entity.init -> void
+Sage.Kits.Rpg.LevelledUp.Level.get -> float
+Sage.Kits.Rpg.LevelledUp.Level.init -> void
+Sage.Kits.Rpg.LevelledUp.LevelledUp() -> void
+Sage.Kits.Rpg.LevelledUp.LevelledUp(Sage.Simulation.Entity Entity, Sage.Core.RecordId Levelling, float Level) -> void
+Sage.Kits.Rpg.LevelledUp.Levelling.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.LevelledUp.Levelling.init -> void
+Sage.Kits.Rpg.LevellingRecord
+Sage.Kits.Rpg.LevellingRecord.AttributeBonus -> System.Collections.Generic.List<Sage.Kits.Rpg.AttributeBonusStep>!
+Sage.Kits.Rpg.LevellingRecord.BonusFor(int rises) -> float
+Sage.Kits.Rpg.LevellingRecord.Effects -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>>!
+Sage.Kits.Rpg.LevellingRecord.Growth -> float
+Sage.Kits.Rpg.LevellingRecord.Level -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Kits.Rpg.LevellingRecord.LevellingRecord() -> void
+Sage.Kits.Rpg.LevellingRecord.Points -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Kits.Rpg.LevellingRecord.Rate -> float
+Sage.Kits.Rpg.LevellingRecord.Threshold(float level) -> float
 Sage.Kits.Rpg.ListRow
 Sage.Kits.Rpg.ListRow.Detail.get -> string!
 Sage.Kits.Rpg.ListRow.DetailStyle.get -> string!
@@ -63,7 +91,30 @@ Sage.Kits.Rpg.PanelListView.Problem.get -> string!
 Sage.Kits.Rpg.PanelListView.Reason.get -> string!
 Sage.Kits.Rpg.PanelListView.Rows.get -> System.Collections.Generic.List<Sage.Kits.Rpg.ListRow!>!
 Sage.Kits.Rpg.PanelListView.Title.get -> string!
+Sage.Kits.Rpg.Progression
+Sage.Kits.Rpg.Progression.Progression() -> void
+Sage.Kits.Rpg.Progression.Rises -> System.Collections.Generic.List<Sage.Kits.Rpg.GoverningRises>?
 Sage.Kits.Rpg.RpgItemRecord.Icon -> Sage.Core.AssetPath
+Sage.Kits.Rpg.SkillRaised
+Sage.Kits.Rpg.SkillRaised.Entity.get -> Sage.Simulation.Entity
+Sage.Kits.Rpg.SkillRaised.Entity.init -> void
+Sage.Kits.Rpg.SkillRaised.Rank.get -> float
+Sage.Kits.Rpg.SkillRaised.Rank.init -> void
+Sage.Kits.Rpg.SkillRaised.Skill.get -> Sage.Core.RecordId
+Sage.Kits.Rpg.SkillRaised.Skill.init -> void
+Sage.Kits.Rpg.SkillRaised.SkillRaised() -> void
+Sage.Kits.Rpg.SkillRaised.SkillRaised(Sage.Simulation.Entity Entity, Sage.Core.RecordId Skill, float Rank) -> void
+Sage.Kits.Rpg.SkillRecord
+Sage.Kits.Rpg.SkillRecord.Experience -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Kits.Rpg.SkillRecord.Governing -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Kits.Rpg.SkillRecord.Growth -> float
+Sage.Kits.Rpg.SkillRecord.Levelling -> Sage.Core.RecordRef<Sage.Kits.Rpg.LevellingRecord!>
+Sage.Kits.Rpg.SkillRecord.LevelPoints -> float
+Sage.Kits.Rpg.SkillRecord.Rank -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
+Sage.Kits.Rpg.SkillRecord.Rate -> float
+Sage.Kits.Rpg.SkillRecord.SkillRecord() -> void
+Sage.Kits.Rpg.SkillRecord.Threshold(float rank) -> float
+Sage.Kits.Rpg.Skills
 Sage.Kits.Rpg.SpellbookView
 Sage.Kits.Rpg.SpellbookView.SpellbookView() -> void
 Sage.Kits.Rpg.SpellmakerView
@@ -82,6 +133,9 @@ static readonly Sage.Kits.Rpg.SpellmakerView.PowerRow -> Sage.Core.RecordId
 static Sage.Kits.Rpg.ItemGrid.Transfer(Sage.Simulation.World! world, Sage.Kits.Rpg.GridItem! item, Sage.Kits.Rpg.ItemGrid! to, int x, int y, bool rotated, out string! reason) -> bool
 static Sage.Kits.Rpg.PanelListView.Fold(int hash, int value) -> int
 static Sage.Kits.Rpg.RpgItemRecord.IconOf(Sage.Core.RecordStore! records, Sage.Core.RecordId item) -> string?
+static Sage.Kits.Rpg.Skills.ExperienceOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId skill) -> float
+static Sage.Kits.Rpg.Skills.Practise(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId skill, float amount) -> void
+static Sage.Kits.Rpg.Skills.RankOf(Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordId skill) -> float
 virtual Sage.Kits.Rpg.ItemGridView.CanDrop(int grid, in Sage.UI.UiBindContext context) -> bool
 virtual Sage.Kits.Rpg.ItemGridView.Command(Sage.UI.UiCommand command, Sage.UI.Widget? target, in Sage.UI.UiBindContext context) -> bool
 virtual Sage.Kits.Rpg.ItemGridView.DragMove(in Sage.UI.UiDrag drag, in Sage.UI.UiBindContext context) -> void

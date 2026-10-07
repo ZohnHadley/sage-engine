@@ -628,6 +628,14 @@
         }
       ]
     },
+    "progression": {
+      "description": "The component rpg:progression (Progression), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:progression"
+        }
+      ]
+    },
     "projectile": {
       "description": "The component sage:projectile (Projectile), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -689,6 +697,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/rpg:item_grid"
+        }
+      ]
+    },
+    "rpg:progression": {
+      "description": "Component rpg:progression (Progression).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/rpg:progression"
         }
       ]
     },
@@ -1847,6 +1863,103 @@
       },
       "additionalProperties": false,
       "description": "Component rpg:item_grid (ItemGridPlacements)."
+    },
+    "rpg:progression": {
+      "type": "object",
+      "properties": {
+        "rises": {
+          "description": "Rises since the last level, by levelling and governing attribute. (List<GoverningRises>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "levelling": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "attribute": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "rises+": {
+          "description": "Adds to \"rises\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "levelling": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "attribute": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "rises-": {
+          "description": "Removes these from \"rises\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "levelling": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "attribute": {
+                "description": "(RecordId)",
+                "allOf": [
+                  {
+                    "$ref": "ids.schema.json#/definitions/id"
+                  }
+                ]
+              },
+              "count": {
+                "description": "(int)",
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component rpg:progression (Progression)."
     },
     "sage:abilities": {
       "type": "object",
