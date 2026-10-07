@@ -2247,6 +2247,14 @@
             }
           ]
         },
+        "tree": {
+          "description": "A behaviour tree it runs in place of schedules; empty = schedules. Names a behaviour_tree record. Category: Brain. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:behaviour_tree"
+            }
+          ]
+        },
         "taskIndex": {
           "description": "Which task of the schedule it is on. At least 0. Category: Running. (int, default 0)",
           "default": 0,
@@ -2429,6 +2437,60 @@
           "description": "Not saved. (float, default 0)",
           "default": 0,
           "type": "number"
+        },
+        "blackboard": {
+          "description": "Named numbers its behaviour tree keeps (`set` and `check` nodes) Category: Running. (List<AIBlackboardEntry>)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "description": "Its name. (string)",
+                "type": "string"
+              },
+              "value": {
+                "description": "Its value. (float)",
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "blackboard+": {
+          "description": "Adds to \"blackboard\": what a base or an earlier definition listed, then these.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "description": "Its name. (string)",
+                "type": "string"
+              },
+              "value": {
+                "description": "Its value. (float)",
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "blackboard-": {
+          "description": "Removes these from \"blackboard\" (as a base or an earlier definition listed it).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "description": "Its name. (string)",
+                "type": "string"
+              },
+              "value": {
+                "description": "Its value. (float)",
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false,
