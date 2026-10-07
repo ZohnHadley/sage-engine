@@ -374,6 +374,7 @@ public sealed class RecordStore
         var warnedTypes = new HashSet<string>();
         var entries = new List<(int Mount, bool IsPatch, RecordSource Source, string Namespace, string Type, RecordId Id, JsonObject Obj)>();
         var mountIndex = vfs.Mounts.Select((m, i) => (m, i)).ToDictionary(x => x.m, x => x.i);
+        var ownAssets = new ModAssets(vfs);
 
         foreach (var (path, mount) in vfs.Enumerate(VirtualPath.Parse("data"), "*.json"))
         {
@@ -441,7 +442,12 @@ public sealed class RecordStore
             // of sage:physical is the game's hit_flesh. Such ids are written out in full here, before
             // the merge, because afterwards nothing knows which file a value came from.
             bool foreign = !string.Equals(ns, id.Namespace, StringComparison.OrdinalIgnoreCase);
-            if (foreign) fields = QualifyFields(fields, type, ns);
+            // A bare asset path a mod's file names, of an asset only that mod ships, is that mod's own
+            // (issue #398): `textures/falchion.png` becomes `better_blades:textures/falchion.png`, which
+            // another mod's file at the same path does not hide.
+            var assets = ownAssets.For(source.File.Mount);
+            if (foreign) fields = QualifyFields(fields, type, ns, assets);
+            else if (assets != null) fields = (JsonObject)Qualify(fields, _typesByName[type], ns, assets, ids: false)!;
 
             if (!raw.TryGetValue(key, out var existing))
             {
@@ -501,9 +507,9 @@ public sealed class RecordStore
 
     // `Qualify` for a record's top-level fields, which may also carry "base" and the "field+" /
     // "field-" list operations of a patch.
-    private JsonObject QualifyFields(JsonObject fields, string type, string ns)
+    private JsonObject QualifyFields(JsonObject fields, string type, string ns, Func<string, string?>? assets = null)
     {
-        var qualified = (JsonObject)Qualify(fields, _typesByName[type], ns)!;
+        var qualified = (JsonObject)Qualify(fields, _typesByName[type], ns, assets)!;
         if (qualified["base"] is JsonValue baseValue && baseValue.GetValueKind() == JsonValueKind.String &&
             (string?)baseValue is { Length: > 0 } baseText && !baseText.Contains(':'))
             qualified["base"] = $"{ns}:{baseText.Trim()}";
@@ -794,13 +800,23 @@ public sealed class RecordStore
     // that only ids are affected. Runs for an inherited record whose base is in another namespace, and
     // for a record written in a file of another namespace (a patch, R11), so it builds fresh nodes
     // rather than trying to re-parent the originals.
-    private JsonNode? Qualify(JsonNode? node, Type type, string ns)
+    //
+    // With `assets`, a bare AssetPath is rewritten too, to what `assets` makes of it (a mod's own asset,
+    // issue #398) when that is not null; `ids: false` leaves the record ids alone.
+    private JsonNode? Qualify(JsonNode? node, Type type, string ns, Func<string, string?>? assets = null, bool ids = true)
     {
         if (node == null) return null;
 
+        if (type == typeof(AssetPath))
+        {
+            if (assets == null || node.GetValueKind() != JsonValueKind.String) return node.DeepClone();
+            string? path = (string?)node;
+            return string.IsNullOrWhiteSpace(path) || path.Contains(':') || assets(path) is not { } own ? node.DeepClone() : JsonValue.Create(own);
+        }
+
         if (IsReference(type))
         {
-            if (node.GetValueKind() != JsonValueKind.String) return node.DeepClone();
+            if (!ids || node.GetValueKind() != JsonValueKind.String) return node.DeepClone();
             string? text = (string?)node;
             return string.IsNullOrWhiteSpace(text) || text.Contains(':') ? node.DeepClone() : JsonValue.Create($"{ns}:{text.Trim()}");
         }
@@ -815,7 +831,7 @@ public sealed class RecordStore
             var element = ElementType(type);
             if (element == null) return node.DeepClone();
             var result = new JsonArray();
-            foreach (var item in array) result.Add(Qualify(item, element, ns));
+            foreach (var item in array) result.Add(Qualify(item, element, ns, assets, ids));
             return result;
         }
 
@@ -836,11 +852,11 @@ public sealed class RecordStore
                 {
                     var qualified = new JsonObject();
                     foreach (var (key, body) in bodies)
-                        qualified[key] = typeOf(key, body, ns) is { } bodyType ? Qualify(body, bodyType, ns) : body?.DeepClone();
+                        qualified[key] = typeOf(key, body, ns) is { } bodyType ? Qualify(body, bodyType, ns, assets, ids) : body?.DeepClone();
                     result[name] = qualified;
                     continue;
                 }
-                result[name] = memberType == null ? value?.DeepClone() : Qualify(value, memberType, ns);
+                result[name] = memberType == null ? value?.DeepClone() : Qualify(value, memberType, ns, assets, ids);
             }
             return result;
         }

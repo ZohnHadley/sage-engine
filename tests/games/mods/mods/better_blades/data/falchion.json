@@ -7,7 +7,8 @@
     "reach": 2.4, "radius": 0.35, "arcDegrees": 90,
     "windupTime": 0.15, "recoverTime": 0.2, "cooldown": 0.5
   },
-  // How it looks lying on the ground: one frame of textures/falchion.png (which rival_trade re-skins).
+  // How it looks lying on the ground: one frame of this mod's own textures/falchion.png (rival_trade ships
+  // one at that path too, for its own falchion; each mod sees its own, engine issue #398).
   {
     "type": "sprite_sheet", "id": "falchion_flat", "texture": "textures/falchion.png", "directions": 1,
     "size": [0.4, 0.8], "material": "sage:sprite_lit", "frames": [ { "rect": [0, 0, 16, 32] } ]
@@ -16,6 +17,8 @@
     "type": "item", "id": "falchion", "label": "falchion", "slot": "MainHand", "attack": "falchion_cut",
     "sheet": "falchion_flat", "weight": 3, "value": 30
   },
+  // Its picture in the kit's inventory grid: the same file.
+  { "type": "rpg_item", "id": "falchion", "icon": "textures/falchion.png" },
 
   // The game's trader is patched, not redefined: its id is the game's (a bare `trader` would mean
   // `better_blades:trader`), and only the fields named change. `items+` adds to his stock instead of
