@@ -454,3 +454,80 @@ static Sage.Gameplay.Items.CanDrop(this Sage.Simulation.World! world, Sage.Core.
 static Sage.Gameplay.Quests.Fail(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.HoursLeft(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> double?
 static Sage.Gameplay.Quests.IsFailed(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
+const Sage.Gameplay.AIScheduleSelectors.Utility = "utility" -> string!
+const Sage.Gameplay.Squad.Leader = "leader" -> string!
+Sage.Gameplay.AIBlackboard
+Sage.Gameplay.AIBlackboardEntry
+Sage.Gameplay.AIBlackboardEntry.AIBlackboardEntry() -> void
+Sage.Gameplay.AIBlackboardEntry.Key -> string!
+Sage.Gameplay.AIBlackboardEntry.Value -> float
+Sage.Gameplay.AIConsideration
+Sage.Gameplay.AIConsideration.Add -> float
+Sage.Gameplay.AIConsideration.AIConsideration() -> void
+Sage.Gameplay.AIConsideration.From -> float
+Sage.Gameplay.AIConsideration.Measure -> string!
+Sage.Gameplay.AIConsideration.To -> float
+Sage.Gameplay.AIConsideration.Unless -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.AIConsideration.When -> System.Collections.Generic.List<string!>!
+Sage.Gameplay.AIMeasureAttribute
+Sage.Gameplay.AIMeasureAttribute.AIMeasureAttribute(string! id) -> void
+Sage.Gameplay.AIProfileRecord.Utility -> System.Collections.Generic.List<Sage.Gameplay.AIUtilityOption!>!
+Sage.Gameplay.AIScheduleChoice.Perception -> Sage.Gameplay.AIPerception
+Sage.Gameplay.AIState.Blackboard -> System.Collections.Generic.List<Sage.Gameplay.AIBlackboardEntry>?
+Sage.Gameplay.AIState.Tree -> Sage.Core.RecordId
+Sage.Gameplay.AIUtility
+Sage.Gameplay.AIUtilityOption
+Sage.Gameplay.AIUtilityOption.AIUtilityOption() -> void
+Sage.Gameplay.AIUtilityOption.Considerations -> System.Collections.Generic.List<Sage.Gameplay.AIConsideration!>!
+Sage.Gameplay.AIUtilityOption.Schedule -> Sage.Core.RecordRef<Sage.Gameplay.AIScheduleRecord!>
+Sage.Gameplay.AIUtilityOption.Score -> float
+Sage.Gameplay.BehaviourTreeNode
+Sage.Gameplay.BehaviourTreeNode.BehaviourTreeNode() -> void
+Sage.Gameplay.BehaviourTreeNode.Children.get -> System.Collections.Generic.IReadOnlyList<Sage.Gameplay.BehaviourTreeNode!>!
+Sage.Gameplay.BehaviourTreeNode.Kind.get -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNode.Name.get -> string!
+Sage.Gameplay.BehaviourTreeNode.Task.get -> Sage.Gameplay.AITaskStep
+Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Check = 3 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Condition = 1 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Cooldown = 10 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Invert = 7 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Repeat = 9 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Selector = 5 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Sequence = 4 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Set = 2 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Succeed = 8 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Task = 0 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeNodeKind.Utility = 6 -> Sage.Gameplay.BehaviourTreeNodeKind
+Sage.Gameplay.BehaviourTreeRecord
+Sage.Gameplay.BehaviourTreeRecord.BehaviourTreeRecord() -> void
+Sage.Gameplay.BehaviourTreeRecord.NodeCount.get -> int
+Sage.Gameplay.BehaviourTreeRecord.Root -> Sage.Gameplay.BehaviourTreeNode?
+Sage.Gameplay.IAIMeasure
+Sage.Gameplay.IAIMeasure.Measure(in Sage.Gameplay.AIPerception perception) -> float
+Sage.Gameplay.Squad
+Sage.Gameplay.Squad.IsLeader.get -> bool
+Sage.Gameplay.Squad.Name -> string!
+Sage.Gameplay.Squad.Range -> float
+Sage.Gameplay.Squad.Role -> string!
+Sage.Gameplay.Squad.Squad() -> void
+Sage.Gameplay.SquadInfo
+Sage.Gameplay.SquadInfo.CalledAt.get -> float
+Sage.Gameplay.SquadInfo.EngagedCount.get -> int
+Sage.Gameplay.SquadInfo.LastSeen.get -> System.Numerics.Vector3
+Sage.Gameplay.SquadInfo.Leader.get -> Sage.Simulation.Entity
+Sage.Gameplay.SquadInfo.Members.get -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.Entity>!
+Sage.Gameplay.SquadInfo.Name.get -> string!
+Sage.Gameplay.SquadInfo.SeenAt.get -> float
+Sage.Gameplay.SquadInfo.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.Squads
+Sage.Gameplay.Squads.All.get -> System.Collections.Generic.IEnumerable<Sage.Gameplay.SquadInfo!>!
+Sage.Gameplay.Squads.Find(string! name) -> Sage.Gameplay.SquadInfo?
+Sage.Gameplay.Squads.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.SquadInfo?
+static Sage.Gameplay.AIBlackboard.Get(in Sage.Gameplay.AIState state, string! key) -> float
+static Sage.Gameplay.AIBlackboard.Get(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! key) -> float
+static Sage.Gameplay.AIBlackboard.Set(ref Sage.Gameplay.AIState state, string! key, float value) -> void
+static Sage.Gameplay.AIBlackboard.Set(Sage.Simulation.World! world, Sage.Simulation.Entity entity, string! key, float value) -> bool
+static Sage.Gameplay.AIUtility.Curve(float value, float from, float to) -> float
+static Sage.Gameplay.AIUtility.Score(in Sage.Gameplay.AIPerception perception, Sage.Gameplay.AIConditions! names, float score, System.Collections.Generic.IReadOnlyList<Sage.Gameplay.AIConsideration!>! considerations) -> float
+static Sage.Gameplay.Squads.Of(Sage.Simulation.World! world) -> Sage.Gameplay.Squads!
