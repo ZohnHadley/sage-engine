@@ -73,15 +73,14 @@ public struct KnownTopics : IComponent
     public List<RecordId>? Topics;
 }
 
-// A topic was asked and answered (issue #392): who answered, who asked, which topic and the info given.
-// Sent by DialogueTopics.Ask, for a `talk` objective, a journal, a game's own rules.
-[GameEvent]
-[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // topics (#93): may change before 1.0
-public readonly record struct TopicAsked(Entity Speaker, Entity Listener, RecordId Topic);
-
 // One row of a topics list. The keyword is as stored (maybe `@key`).
 [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // topics (#93): may change before 1.0
 public readonly record struct AvailableTopic(RecordId Topic, string Keyword);
+
+// `listener` asked `speaker` about `topic` and was answered (DialogueTopics.Ask, issues #391, #392): what a
+// quest's `talk` objective with a `topic` counts.
+[GameEvent]
+public readonly record struct TopicAsked(Entity Speaker, Entity Listener, RecordId Topic);
 
 // The headless view model a topics screen reads (the RPG kit's is #98). The signatures were frozen on
 // issue #93 before the rest was built; change them only with that screen.

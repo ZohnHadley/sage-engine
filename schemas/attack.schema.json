@@ -237,6 +237,12 @@
       "type": "number",
       "minimum": 0
     },
+    "noiseRadius": {
+      "description": "How far its firing is heard; -1 = the conventions' for its delivery, 0 = silent. Unit: m. At least -1. (float, default -1)",
+      "default": -1,
+      "type": "number",
+      "minimum": -1
+    },
     "spread": {
       "description": "How far a shot may stray from the aim; empty = it flies true. Names a spread record. (RecordRef<SpreadRecord>)",
       "allOf": [
