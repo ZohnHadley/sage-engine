@@ -312,8 +312,7 @@ internal sealed class StreamedScene
                 if (baseline.IsTombstoned(source, item.Id) || !world.Resolve(item.Id).IsNull) continue;
 
                 var placement = item.Placement;
-                var entity = world.SpawnWithoutId(placement.Prefab.Id, world.PlacementPosition(placement, item.Origin, item.Frame),
-                                                  placement.Yaw, placement.Overrides, item.Label);
+                var entity = world.SpawnPlacementWithoutId(placement, world.PlacementPosition(placement, item.Origin, item.Frame), item.Label);
                 if (entity.IsNull) continue;   // `Spawn` said why
                 if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
                 PlacementWires.Attach(world, entity, placement);
@@ -418,8 +417,7 @@ internal sealed class StreamedScene
                 if (baseline.IsTombstoned(source, item.Id) || !world.Resolve(item.Id).IsNull) continue;
                 if (!_engine.Records.TryGet(item.Placement.Prefab.Id, out PrefabRecord prefab) || !wants(prefab, item.Placement.Overrides)) continue;
                 var placement = item.Placement;
-                var entity = world.SpawnWithoutId(placement.Prefab.Id, world.PlacementPosition(placement, item.Origin, item.Frame),
-                                                  placement.Yaw, placement.Overrides, item.Label);
+                var entity = world.SpawnPlacementWithoutId(placement, world.PlacementPosition(placement, item.Origin, item.Frame), item.Label);
                 if (entity.IsNull) continue;
                 if (!string.IsNullOrEmpty(placement.Name)) entity.Name = placement.Name;
                 PlacementWires.Attach(world, entity, placement);

@@ -237,7 +237,8 @@ internal sealed class EntityInspectorWindow
     {
         var fields = PlacementFields.Of(placement);
         var at = fields.At;
-        float yaw = fields.Yaw;
+        float yaw = fields.Yaw, pitch = fields.Pitch, roll = fields.Roll;
+        var scale = fields.Scale;
         string name = fields.Name;
         string[] frames = { "(document)", nameof(PlacementFrame.World), nameof(PlacementFrame.Origin), nameof(PlacementFrame.Ground) };
         int frame = fields.RelativeTo is { } f ? (int)f + 1 : 0;
@@ -245,11 +246,18 @@ internal sealed class EntityInspectorWindow
         bool changed = false;
         changed |= ImGui.DragFloat3("at##placement", ref at, 0.05f, 0f, 0f, "%.3f m");
         changed |= ImGui.DragFloat("yaw##placement", ref yaw, 0.5f, 0f, 0f, "%.1f deg");
+        changed |= ImGui.DragFloat("pitch##placement", ref pitch, 0.5f, 0f, 0f, "%.1f deg");
+        changed |= ImGui.DragFloat("roll##placement", ref roll, 0.5f, 0f, 0f, "%.1f deg");
+        changed |= ImGui.DragFloat3("scale##placement", ref scale, 0.01f, ScaleGizmo.MinFactor, 1000f, "%.3f");
         changed |= ImGui.InputText("name##placement", ref name, 128);
         changed |= ImGui.Combo("relativeTo##placement", ref frame, frames, frames.Length);
         if (!changed) return;
-        _document.Execute(new SetPlacement(_document, placement, new PlacementFields(
-            at, yaw, name, frame == 0 ? null : (PlacementFrame)(frame - 1))));
+        scale = Vector3.Max(scale, new Vector3(ScaleGizmo.MinFactor));
+        _document.Execute(new SetPlacement(_document, placement, fields with
+        {
+            At = at, Yaw = yaw, Pitch = pitch, Roll = roll, Scale = scale, Name = name,
+            RelativeTo = frame == 0 ? null : (PlacementFrame)(frame - 1),
+        }));
     }
 
     // ---- Live -------------------------------------------------------------------------------------------
