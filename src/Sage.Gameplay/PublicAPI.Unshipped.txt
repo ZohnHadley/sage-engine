@@ -1,9 +1,54 @@
 #nullable enable
+const Sage.Gameplay.DialogueBarks.Alert = "alert" -> string!
+const Sage.Gameplay.DialogueBarks.Hurt = "hurt" -> string!
+const Sage.Gameplay.DialogueBarks.Idle = "idle" -> string!
+const Sage.Gameplay.DialogueBarks.Lost = "lost" -> string!
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.Barked
+Sage.Gameplay.Barked.Barked() -> void
+Sage.Gameplay.Barked.Barked(Sage.Simulation.Entity Speaker, Sage.Simulation.Entity Target, string! Occasion, string! Text) -> void
+Sage.Gameplay.Barked.Occasion.get -> string!
+Sage.Gameplay.Barked.Occasion.init -> void
+Sage.Gameplay.Barked.Speaker.get -> Sage.Simulation.Entity
+Sage.Gameplay.Barked.Speaker.init -> void
+Sage.Gameplay.Barked.Target.get -> Sage.Simulation.Entity
+Sage.Gameplay.Barked.Target.init -> void
+Sage.Gameplay.Barked.Text.get -> string!
+Sage.Gameplay.Barked.Text.init -> void
+Sage.Gameplay.BarkLine
+Sage.Gameplay.BarkLine.BarkLine() -> void
+Sage.Gameplay.BarkLine.On -> string!
+Sage.Gameplay.BarkLine.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.BarkLine.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.BarkLine.Text -> string!
+Sage.Gameplay.BarkRecord
+Sage.Gameplay.BarkRecord.BarkRecord() -> void
+Sage.Gameplay.BarkRecord.Cooldown -> float
+Sage.Gameplay.BarkRecord.IdleSeconds -> float
+Sage.Gameplay.BarkRecord.Lines -> System.Collections.Generic.List<Sage.Gameplay.BarkLine!>!
+Sage.Gameplay.BarkRecord.Range -> float
+Sage.Gameplay.BarkRecord.Speaker -> string!
+Sage.Gameplay.Barks
+Sage.Gameplay.Barks.Barks() -> void
+Sage.Gameplay.Barks.Record -> Sage.Core.RecordId
+Sage.Gameplay.BarksPart
+Sage.Gameplay.BarksPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.BarksPart.BarksPart() -> void
+Sage.Gameplay.BarksPart.Id -> Sage.Core.RecordRef<Sage.Gameplay.BarkRecord!>
+Sage.Gameplay.Conversation.Greeting -> string!
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
+Sage.Gameplay.DialogueBarks
+Sage.Gameplay.DialogueGreeting
+Sage.Gameplay.DialogueGreeting.DialogueGreeting() -> void
+Sage.Gameplay.DialogueGreeting.Goto -> string!
+Sage.Gameplay.DialogueGreeting.Requires -> Sage.Simulation.ICondition?
+Sage.Gameplay.DialogueGreeting.Text -> string!
+Sage.Gameplay.DialogueGreeting.Then -> System.Collections.Generic.List<Sage.Simulation.IAction!>!
+Sage.Gameplay.DialogueRecord.Greetings -> System.Collections.Generic.List<Sage.Gameplay.DialogueGreeting!>!
+Sage.Gameplay.DialogueRecord.Topics -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.TopicRecord!>>!
 Sage.Gameplay.Durability
 Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
@@ -75,6 +120,16 @@ Sage.Gameplay.Pickup.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.PickupPart.Instance -> Sage.Gameplay.ItemInstance?
 Sage.Gameplay.QuestObjective.Target -> string!
 Sage.Gameplay.QuestStage.Target -> string!
+Sage.Gameplay.TopicAsked
+Sage.Gameplay.TopicAsked.Listener.get -> Sage.Simulation.Entity
+Sage.Gameplay.TopicAsked.Listener.init -> void
+Sage.Gameplay.TopicAsked.Speaker.get -> Sage.Simulation.Entity
+Sage.Gameplay.TopicAsked.Speaker.init -> void
+Sage.Gameplay.TopicAsked.Topic.get -> Sage.Core.RecordId
+Sage.Gameplay.TopicAsked.Topic.init -> void
+Sage.Gameplay.TopicAsked.TopicAsked() -> void
+Sage.Gameplay.TopicAsked.TopicAsked(Sage.Simulation.Entity Speaker, Sage.Simulation.Entity Listener, Sage.Core.RecordId Topic) -> void
+Sage.Gameplay.TopicRecord.Linked -> bool
 static Sage.Gameplay.Combat.HitSound(Sage.Core.RecordStore! records, in Sage.Gameplay.DamageInfo hit) -> Sage.Core.RecordId
 *REMOVED*Sage.Gameplay.EffectRecord.Cues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.Footstep.Kind.get -> Sage.Gameplay.FootstepKind
@@ -94,6 +149,10 @@ Sage.Gameplay.FootstepsPart.Right -> string!
 Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>
 Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
 Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
+static Sage.Gameplay.DialogueBarks.Bark(Sage.Simulation.World! world, Sage.Simulation.Entity speaker, string! occasion, Sage.Simulation.Entity target = default(Sage.Simulation.Entity)) -> bool
+static Sage.Gameplay.DialogueRules.Greeting(Sage.Simulation.World! world, Sage.Gameplay.DialogueRecord! record, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener) -> Sage.Gameplay.DialogueGreeting?
+static Sage.Gameplay.DialogueRules.Line(Sage.Simulation.World! world) -> string!
+static Sage.Gameplay.DialogueTopics.LearnLinks(Sage.Simulation.World! world, Sage.Simulation.Entity listener, string! text) -> int
 static Sage.Gameplay.Durability.CanRepair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float upTo = 1) -> bool
 static Sage.Gameplay.Durability.ConditionOf(in Sage.Gameplay.ItemStack stack) -> float
 static Sage.Gameplay.Durability.Repair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float amount, float upTo = 1) -> bool

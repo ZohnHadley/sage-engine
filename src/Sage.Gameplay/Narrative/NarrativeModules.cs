@@ -77,5 +77,9 @@ public sealed class DialogueModule : IModule
     // "sage.gameplay.dialogue"); generated code registers them (issues #16, #17).
     public void Init(ModuleContext ctx) => BridgeIO.RegisterDialogue(ctx.Engine);   // StartDialogue (issue #91)
 
-    public void OnWorldCreated(World world) => world.Resources.Add(new Conversation());
+    public void OnWorldCreated(World world)
+    {
+        world.Resources.Add(new Conversation());
+        world.AddSystem(new BarkSystem(world));   // lines said without a window (issue #392)
+    }
 }

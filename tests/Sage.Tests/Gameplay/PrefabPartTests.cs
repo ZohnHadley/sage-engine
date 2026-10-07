@@ -161,7 +161,7 @@ public class PrefabPartTests
             ["abilities"] = "sage.gameplay.abilities", ["aim_ik"] = "sage.core", ["animator"] = "sage.core", ["attributes"] = "sage.gameplay.attributes",
             ["bone_attachment"] = "sage.core", ["foot_ik"] = "sage.gameplay.animation", ["footsteps"] = "sage.gameplay.animation", ["hand_ik"] = "sage.core", ["look_at_ik"] = "sage.core", ["loot"] = "sage.gameplay.items", ["merchant"] = "sage.gameplay.items",
             ["body"] = "sage.physics3d", ["brush"] = "sage.core", ["camera"] = "sage.core", ["character"] = "sage.gameplay.character",
-            ["dialogue"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
+            ["dialogue"] = "sage.gameplay.dialogue", ["barks"] = "sage.gameplay.dialogue", ["effects"] = "sage.gameplay.attributes",
             ["faction"] = "sage.gameplay.factions", ["first_person_rig"] = "sage.core", ["hitboxes"] = "sage.gameplay.combat", ["hop"] = "sandbox", ["orbit"] = "sandbox", ["inventory"] = "sage.gameplay.items", ["container"] = "sage.gameplay.items",
             ["joint"] = "sage.physics3d", ["ladder"] = "sage.gameplay.character", ["light"] = "sage.gameplay.lights", ["melee"] = "sage.gameplay.combat", ["mover"] = "sage.gameplay.movers",
             ["logic_branch"] = "sage.core", ["logic_compare"] = "sage.core", ["logic_counter"] = "sage.core",
@@ -187,7 +187,7 @@ public class PrefabPartTests
         Assert.True(order.IndexOf("body") < order.IndexOf("pickup"));
         Assert.True(order.IndexOf("inventory") < order.IndexOf("container"));   // a chest's contents first (issue #378)
         Assert.True(order.IndexOf("skinned_mesh") < order.IndexOf("animator"));
-        Assert.Equal(new[] { "abilities", "aim_ik", "attributes", "body", "bone_attachment", "brush" }, order.Take(6));
+        Assert.Equal(new[] { "abilities", "aim_ik", "attributes", "barks", "body", "bone_attachment", "brush" }, order.Take(7));
     }
 
     private static string SandboxDirectory => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");

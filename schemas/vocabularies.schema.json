@@ -186,12 +186,13 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, change_standing, close_screen, command, cue, destroy, finish_quest, fire, give_item, grant_perk, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, bark, change_standing, close_screen, command, cue, destroy, finish_quest, fire, give_item, grant_perk, hit_stop, load_scene, log, message, music_intensity, open_screen, pass_time, play_music, play_sound, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
         "AddVar",
         "ApplyEffect",
+        "Bark",
         "ChangeStanding",
         "CloseScreen",
         "Command",
@@ -224,6 +225,7 @@
         "add_topic",
         "add_var",
         "apply_effect",
+        "bark",
         "change_standing",
         "close_screen",
         "command",
@@ -388,6 +390,40 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'apply_effect' (ApplyEffectAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "bark",
+                      "Bark"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: bark.",
+                    "enum": [
+                      "bark",
+                      "Bark"
+                    ]
+                  },
+                  "on": {
+                    "description": "The occasion: alert, lost, hurt, idle, or a game's own word. (string, default \"\")",
+                    "default": "",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'bark' (BarkAction)."
               }
             },
             {
@@ -1932,6 +1968,76 @@
           },
           "required": [
             "ApplyEffect"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "bark": {
+              "anyOf": [
+                {
+                  "description": "The occasion: alert, lost, hurt, idle, or a game's own word. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "on": {
+                      "description": "The occasion: alert, lost, hurt, idle, or a game's own word. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'bark' (BarkAction), in shorthand."
+            },
+            "on": {
+              "description": "The occasion: alert, lost, hurt, idle, or a game's own word. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "bark"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Bark": {
+              "anyOf": [
+                {
+                  "description": "The occasion: alert, lost, hurt, idle, or a game's own word. (string, default \"\")",
+                  "default": "",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "on": {
+                      "description": "The occasion: alert, lost, hurt, idle, or a game's own word. (string, default \"\")",
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'bark' (BarkAction), in shorthand."
+            },
+            "on": {
+              "description": "The occasion: alert, lost, hurt, idle, or a game's own word. (string, default \"\")",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Bark"
           ],
           "additionalProperties": false
         },
