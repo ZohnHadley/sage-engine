@@ -182,6 +182,11 @@
         },
         "additionalProperties": false
       }
+    },
+    "linked": {
+      "description": "Learnt when its keyword is said in an answer, a greeting or a node's line (Morrowind's hyperlinks); off = learnt only by add_topic. (bool, default false)",
+      "default": false,
+      "type": "boolean"
     }
   },
   "additionalProperties": false

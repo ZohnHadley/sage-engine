@@ -68,6 +68,14 @@
         }
       ]
     },
+    "barks": {
+      "description": "The component sage:barks (Barks), by its bare name: a bare name is this file's namespace, then sage.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:barks"
+        }
+      ]
+    },
     "blockout_brush": {
       "description": "The component sage:blockout_brush (BlockoutBrush), by its bare name: a bare name is this file's namespace, then sage.",
       "allOf": [
@@ -833,6 +841,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/sage:audio_source"
+        }
+      ]
+    },
+    "sage:barks": {
+      "description": "Component sage:barks (Barks).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/sage:barks"
         }
       ]
     },
@@ -3144,6 +3160,21 @@
       },
       "additionalProperties": false,
       "description": "Component sage:audio_source (AudioSource)."
+    },
+    "sage:barks": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "description": "The barks record it says lines from. (RecordId)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/id"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Component sage:barks (Barks)."
     },
     "sage:blockout_brush": {
       "type": "object",

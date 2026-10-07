@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Sage.UI;
 
 namespace Sage.Gameplay;
 
@@ -45,6 +46,8 @@ public sealed class TopicRecord
     public bool Known;
     [Property(Tooltip = "The answers, in order: the first whose requires holds is the one given")]
     public List<TopicInfo> Infos = new();
+    [Property(Tooltip = "Learnt when its keyword is said in an answer, a greeting or a node's line (Morrowind's hyperlinks); off = learnt only by add_topic")]
+    public bool Linked;
 
     public string KeywordOf(RecordId id) => Keyword.Length > 0 ? Keyword : id.Name;
 }
@@ -74,7 +77,7 @@ public struct KnownTopics : IComponent
 [Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // topics (#93): may change before 1.0
 public readonly record struct AvailableTopic(RecordId Topic, string Keyword);
 
-// `listener` asked `speaker` about `topic` and was answered (DialogueTopics.Ask, issue #391): what a
+// `listener` asked `speaker` about `topic` and was answered (DialogueTopics.Ask, issues #391, #392): what a
 // quest's `talk` objective with a `topic` counts.
 [GameEvent]
 public readonly record struct TopicAsked(Entity Speaker, Entity Listener, RecordId Topic);
@@ -102,6 +105,11 @@ public static class DialogueTopics
         for (int i = 0; i < common.Count; i++)
             Offer(records, common[i], in context, into);
 
+        // And what this speaker brings up, learnt or not (issue #392).
+        if (SpeakerTopics(world, records, speaker) is { } brought)
+            for (int i = 0; i < brought.Count; i++)
+                Offer(records, brought[i].Id, in context, into);
+
         if (into.Count > 1) into.Sort(ByKeyword);
         return into.Count;
     }
@@ -112,7 +120,7 @@ public static class DialogueTopics
     {
         if (Store(world) is not { } records) return null;
         if (!records.TryGet(topic, out TopicRecord record)) return null;
-        if (!record.Known && !Knows(world, listener, topic)) return null;
+        if (!record.Known && !Knows(world, listener, topic) && !Brings(world, records, speaker, topic)) return null;
         return First(record, new ConditionContext(world, listener, speaker));
     }
 
@@ -123,13 +131,76 @@ public static class DialogueTopics
     {
         var info = Answer(world, speaker, listener, topic);
         if (info == null) return null;
-        world.Events.Send(new TopicAsked(speaker, listener, topic));   // a quest's `talk` with a topic (issue #391)
-        if (info.Then.Count == 0) return info;
 
-        Conditions.Run(info.Then, new ActionContext(world, listener, speaker));
-        // As a node option does: an answer that took or gave something may have finished an errand.
-        Quests.Check(world);
+        // One the speaker brought up is the listener's now, to ask of others (issue #392).
+        Learn(world, listener, topic);
+        if (info.Then.Count > 0)
+        {
+            Conditions.Run(info.Then, new ActionContext(world, listener, speaker));
+            // As a node option does: an answer that took or gave something may have finished an errand.
+            Quests.Check(world);
+        }
+        LearnLinks(world, listener, info.Text);
+        world.Events.Send(new TopicAsked(speaker, listener, topic));
         return info;
+    }
+
+    // Morrowind's hyperlinks (issue #392): teaches `listener` every `linked` topic whose keyword is said in
+    // `text` — a whole word or phrase, ignoring case, both as shown (a `@key` is resolved by the world's
+    // Localisation when it has one). Returns how many were new. Ask, a greeting and a node's line call it.
+    public static int LearnLinks(World world, Entity listener, string text)
+    {
+        if (string.IsNullOrEmpty(text) || !world.IsAlive(listener)) return 0;
+        if (Store(world) is not { } records) return 0;
+        var linked = TopicIndex.Of(records).Linked;
+        if (linked.Count == 0) return 0;
+
+        world.Resources.TryGet<Localisation>(out var words);
+        string said = Shown(words, text);
+        int learnt = 0;
+        for (int i = 0; i < linked.Count; i++)
+        {
+            var topic = linked[i];
+            if (!records.TryGet(topic, out TopicRecord record)) continue;
+            if (Says(said, Shown(words, record.KeywordOf(topic))) && Learn(world, listener, topic)) learnt++;
+        }
+        return learnt;
+    }
+
+    // Whether `text` says `phrase` as words of its own: not "ward" inside "warden".
+    internal static bool Says(string text, string phrase)
+    {
+        if (phrase.Length == 0) return false;
+        int from = 0;
+        while (from <= text.Length - phrase.Length)
+        {
+            int at = text.IndexOf(phrase, from, StringComparison.OrdinalIgnoreCase);
+            if (at < 0) return false;
+            int end = at + phrase.Length;
+            if ((at == 0 || !char.IsLetterOrDigit(text[at - 1])) && (end == text.Length || !char.IsLetterOrDigit(text[end])))
+                return true;
+            from = at + 1;
+        }
+        return false;
+    }
+
+    private static string Shown(Localisation? words, string text) =>
+        words != null && Localisation.IsKey(text) ? words.Text(text) : text;
+
+    // The topics `speaker`'s dialogue brings up; null when it has none.
+    private static List<RecordRef<TopicRecord>>? SpeakerTopics(World world, RecordStore records, Entity speaker)
+    {
+        if (!world.IsAlive(speaker) || !world.TryGet<global::Sage.Gameplay.Dialogue>(speaker, out var dialogue) || dialogue.Record.IsEmpty) return null;
+        if (records.TypeNameOf(typeof(DialogueRecord)) == null || !records.TryGet(dialogue.Record, out DialogueRecord record)) return null;
+        return record.Topics.Count > 0 ? record.Topics : null;
+    }
+
+    private static bool Brings(World world, RecordStore records, Entity speaker, RecordId topic)
+    {
+        if (SpeakerTopics(world, records, speaker) is not { } brought) return false;
+        for (int i = 0; i < brought.Count; i++)
+            if (brought[i].Id == topic) return true;
+        return false;
     }
 
     // Whether `listener` knows it: learnt, or `known` by everyone.
@@ -199,6 +270,7 @@ internal sealed class TopicIndex
     private static readonly ConditionalWeakTable<RecordStore, TopicIndex> Indexes = new();
 
     public readonly List<RecordId> Common = new();
+    public readonly List<RecordId> Linked = new();   // `linked` topics, learnt by being said (issue #392)
     private int _count = -1;
     private bool _stale = true;
 
@@ -215,8 +287,13 @@ internal sealed class TopicIndex
             lock (index)
             {
                 index.Common.Clear();
+                index.Linked.Clear();
                 foreach (var id in records.Ids("dialogue_topic"))
-                    if (records.TryGet(id, out TopicRecord record) && record.Known) index.Common.Add(id);
+                {
+                    if (!records.TryGet(id, out TopicRecord record)) continue;
+                    if (record.Known) index.Common.Add(id);
+                    else if (record.Linked) index.Linked.Add(id);
+                }
                 index._count = records.Count;
                 index._stale = false;
             }
