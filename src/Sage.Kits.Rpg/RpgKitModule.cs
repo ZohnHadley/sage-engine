@@ -56,6 +56,9 @@ public sealed class RpgKitModule : IModule
     // The perks screen (issue #381): pick a perk with the points a level gave (PerksView, Perks.Pick).
     public static readonly RecordId PerksScreen = new(ContentNamespace, "perks");
 
+    // The factions screen (issue #389): your ranks, standing and bounty, and what the next rank asks (FactionsView).
+    public static readonly RecordId FactionsScreen = new(ContentNamespace, "factions");
+
     // The mods screen (issue 4j-6): what was found, on or off, the order, and the conflicts (Sage.UI's ModsView).
     public static readonly RecordId ModsScreen = new(ContentNamespace, "mods");
 
@@ -90,8 +93,9 @@ public sealed class RpgKitModule : IModule
 
     // Spells need abilities, the bag needs items; both bring attributes and combat with them. The
     // screens need sage.ui (a kit brings the base plugins it needs, even past game.json's `plugins`).
-    // Topics are the dialogue plugin's; without it the topics screen lists nothing.
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(AbilitiesModule), typeof(ItemsModule), typeof(UiModule) };
+    // Topics are the dialogue plugin's; without it the topics screen lists nothing. Faction ranks (#389) are
+    // ladders of the factions plugin's factions, asked by its standing and bounty.
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(AbilitiesModule), typeof(ItemsModule), typeof(UiModule), typeof(FactionsModule) };
 
     public void Init(ModuleContext ctx)
     {
@@ -125,6 +129,10 @@ public sealed class RpgKitModule : IModule
         // Perks and traits (issue #381): effects with prerequisites, picked with perk points or granted.
         ctx.Engine.Records.AddCheck<PerkRecord>(PerkRecord.Check);
         Perks.RegisterCommands(ctx.Engine);
+
+        // Faction ranks with promotion requirements (issue #389): a ladder per faction, climbed by its conditions.
+        ctx.Engine.Records.AddCheck<FactionRanksRecord>(FactionRanksRecord.Check);
+        FactionRanks.RegisterCommands(ctx.Engine);
 
         // Composing spells at the console (F21), the same rules a spellmaker screen calls.
         Spellmaker.RegisterCommands(ctx.Engine);

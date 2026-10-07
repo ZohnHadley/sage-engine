@@ -19,6 +19,15 @@
   { "type": "perk", "id": "keen_eye", "name": "Keen Eye", "cost": 0 },
   { "type": "perk", "id": "night_owl", "name": "Night Owl", "cost": 0, "requires": [ { "has_perk": "keen_eye" } ] },
 
+  // Faction ranks (rpg:factions, issue #389): a guild the player may join, and one that asks for standing first
+  // (greyed, with why).
+  { "type": "faction", "id": "lamplighters", "label": "Lamplighters" },
+  { "type": "faction", "id": "ferrymen", "label": "Ferrymen" },
+  { "type": "faction_ranks", "id": "lamplighters", "faction": "lamplighters",
+    "ranks": [ { "name": "Wick" }, { "name": "Keeper", "requires": [ { "standing": "lamplighters", "min": 20 } ] } ] },
+  { "type": "faction_ranks", "id": "ferrymen", "faction": "ferrymen",
+    "ranks": [ { "name": "Oar", "requires": [ { "standing": "ferrymen", "min": 10 } ] } ] },
+
   // The player: a bag with a few things in it, a dagger to wear, a spell and a trait.
   {
     "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],

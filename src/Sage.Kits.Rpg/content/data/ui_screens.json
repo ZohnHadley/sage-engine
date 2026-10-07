@@ -489,6 +489,8 @@
   { "type": "screen", "id": "bag", "layout": "list", "viewModel": "rpg_bag" },
   // The perks screen (issue #381): what you have, what you could take with your perk points, and why not.
   { "type": "screen", "id": "perks", "layout": "list", "viewModel": "rpg_perks" },
+  // The factions screen (issue #389): your rank in each faction with ranks, and what the next one asks.
+  { "type": "screen", "id": "factions", "layout": "list", "viewModel": "rpg_factions" },
   { "type": "ui_layout", "id": "list", "style": "panel",
     "nodes": {
       "window":  { "widget": "stack", "anchors": "center", "spacing": 6, "minSize": [480, 0] },

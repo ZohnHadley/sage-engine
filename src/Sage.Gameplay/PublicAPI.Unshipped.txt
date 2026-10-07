@@ -558,3 +558,96 @@ Sage.Gameplay.Squads.All.get -> System.Collections.Generic.IEnumerable<Sage.Game
 Sage.Gameplay.Squads.Find(string! name) -> Sage.Gameplay.SquadInfo?
 Sage.Gameplay.Squads.Of(Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> Sage.Gameplay.SquadInfo?
 static Sage.Gameplay.Squads.Of(Sage.Simulation.World! world) -> Sage.Gameplay.Squads!
+Sage.Gameplay.Bounties
+Sage.Gameplay.Bounties.Bounties() -> void
+Sage.Gameplay.Bounties.Entries.get -> System.Collections.Generic.List<Sage.Gameplay.Bounties.Owed!>!
+Sage.Gameplay.Bounties.Entries.set -> void
+Sage.Gameplay.Bounties.Of(Sage.Core.RecordId faction) -> float
+Sage.Gameplay.Bounties.Owed
+Sage.Gameplay.Bounties.Owed.Faction.get -> Sage.Core.RecordId
+Sage.Gameplay.Bounties.Owed.Faction.set -> void
+Sage.Gameplay.Bounties.Owed.Owed() -> void
+Sage.Gameplay.Bounties.Owed.Value.get -> float
+Sage.Gameplay.Bounties.Owed.Value.set -> void
+Sage.Gameplay.Bounties.Set(Sage.Core.RecordId faction, float value) -> void
+Sage.Gameplay.BountyChanged
+Sage.Gameplay.BountyChanged.BountyChanged() -> void
+Sage.Gameplay.BountyChanged.BountyChanged(Sage.Core.RecordId Faction, float Value, float Change) -> void
+Sage.Gameplay.BountyChanged.Change.get -> float
+Sage.Gameplay.BountyChanged.Change.init -> void
+Sage.Gameplay.BountyChanged.Faction.get -> Sage.Core.RecordId
+Sage.Gameplay.BountyChanged.Faction.init -> void
+Sage.Gameplay.BountyChanged.Value.get -> float
+Sage.Gameplay.BountyChanged.Value.init -> void
+Sage.Gameplay.Crime
+Sage.Gameplay.CrimeCommitted
+Sage.Gameplay.CrimeCommitted.Bounty.get -> float
+Sage.Gameplay.CrimeCommitted.Bounty.init -> void
+Sage.Gameplay.CrimeCommitted.Crime.get -> Sage.Core.RecordId
+Sage.Gameplay.CrimeCommitted.Crime.init -> void
+Sage.Gameplay.CrimeCommitted.CrimeCommitted() -> void
+Sage.Gameplay.CrimeCommitted.CrimeCommitted(Sage.Simulation.Entity Criminal, Sage.Core.RecordId Crime, Sage.Core.RecordId Faction, Sage.Simulation.Entity Witness, float Bounty) -> void
+Sage.Gameplay.CrimeCommitted.Criminal.get -> Sage.Simulation.Entity
+Sage.Gameplay.CrimeCommitted.Criminal.init -> void
+Sage.Gameplay.CrimeCommitted.Faction.get -> Sage.Core.RecordId
+Sage.Gameplay.CrimeCommitted.Faction.init -> void
+Sage.Gameplay.CrimeCommitted.Witness.get -> Sage.Simulation.Entity
+Sage.Gameplay.CrimeCommitted.Witness.init -> void
+Sage.Gameplay.CrimeKind
+Sage.Gameplay.CrimeKind.Assault = 2 -> Sage.Gameplay.CrimeKind
+Sage.Gameplay.CrimeKind.Murder = 3 -> Sage.Gameplay.CrimeKind
+Sage.Gameplay.CrimeKind.Other = 0 -> Sage.Gameplay.CrimeKind
+Sage.Gameplay.CrimeKind.Theft = 1 -> Sage.Gameplay.CrimeKind
+Sage.Gameplay.CrimeKind.Trespass = 4 -> Sage.Gameplay.CrimeKind
+Sage.Gameplay.CrimeRecord
+Sage.Gameplay.CrimeRecord.Bounty -> float
+Sage.Gameplay.CrimeRecord.CrimeRecord() -> void
+Sage.Gameplay.CrimeRecord.Describe(Sage.Core.RecordId id) -> string!
+Sage.Gameplay.CrimeRecord.Kind -> Sage.Gameplay.CrimeKind
+Sage.Gameplay.CrimeRecord.Label -> string!
+Sage.Gameplay.CrimeRecord.PerValue -> float
+Sage.Gameplay.CrimeRecord.Standing -> float
+Sage.Gameplay.CrimeRecord.Unwitnessed -> bool
+Sage.Gameplay.Guard
+Sage.Gameplay.Guard.Arrests -> float
+Sage.Gameplay.Guard.Guard() -> void
+Sage.Gameplay.Guard.Hears -> float
+Sage.Gameplay.Guard.Law -> Sage.Core.RecordId
+Sage.Gameplay.Guard.Tolerates -> float
+Sage.Gameplay.GuardPart
+Sage.Gameplay.GuardPart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.GuardPart.Arrests -> float
+Sage.Gameplay.GuardPart.GuardPart() -> void
+Sage.Gameplay.GuardPart.Hears -> float
+Sage.Gameplay.GuardPart.Law -> Sage.Core.RecordRef<Sage.Gameplay.FactionRecord!>
+Sage.Gameplay.GuardPart.Tolerates -> float
+Sage.Gameplay.OwnedPlace
+Sage.Gameplay.OwnedPlace.Crime -> Sage.Core.RecordId
+Sage.Gameplay.OwnedPlace.Faction -> Sage.Core.RecordId
+Sage.Gameplay.OwnedPlace.IsOpen(double hour) -> bool
+Sage.Gameplay.OwnedPlace.OpenFrom -> float
+Sage.Gameplay.OwnedPlace.OpenTo -> float
+Sage.Gameplay.OwnedPlace.OwnedPlace() -> void
+Sage.Gameplay.OwnedPlace.Owner -> string?
+Sage.Gameplay.OwnedPlace.Size -> System.Numerics.Vector3
+Sage.Gameplay.OwnedPlacePart
+Sage.Gameplay.OwnedPlacePart.Apply(in Sage.Simulation.PrefabPartContext ctx) -> void
+Sage.Gameplay.OwnedPlacePart.Crime -> Sage.Core.RecordRef<Sage.Gameplay.CrimeRecord!>
+Sage.Gameplay.OwnedPlacePart.Faction -> Sage.Core.RecordRef<Sage.Gameplay.FactionRecord!>
+Sage.Gameplay.OwnedPlacePart.OpenFrom -> float
+Sage.Gameplay.OwnedPlacePart.OpenTo -> float
+Sage.Gameplay.OwnedPlacePart.OwnedPlacePart() -> void
+Sage.Gameplay.OwnedPlacePart.Owner -> string!
+Sage.Gameplay.OwnedPlacePart.Size -> System.Numerics.Vector3
+static Sage.Gameplay.Crime.AddBounty(Sage.Simulation.World! world, Sage.Core.RecordId faction, float amount) -> void
+static Sage.Gameplay.Crime.BountyWith(Sage.Simulation.World! world, Sage.Core.RecordId faction) -> float
+static Sage.Gameplay.Crime.CanSee(Sage.Simulation.World! world, Sage.Simulation.Entity witness, Sage.Simulation.Entity target) -> bool
+static Sage.Gameplay.Crime.Commit(Sage.Simulation.World! world, Sage.Simulation.Entity criminal, Sage.Core.RecordId crime, Sage.Simulation.Entity victim = default(Sage.Simulation.Entity), Sage.Core.RecordId faction = default(Sage.Core.RecordId), float value = 0) -> bool
+static Sage.Gameplay.Crime.Commit(Sage.Simulation.World! world, Sage.Simulation.Entity criminal, Sage.Gameplay.CrimeKind kind, Sage.Simulation.Entity victim = default(Sage.Simulation.Entity), Sage.Core.RecordId faction = default(Sage.Core.RecordId), float value = 0) -> bool
+static Sage.Gameplay.Crime.IsOutlaw(Sage.Simulation.World! world, Sage.Simulation.Entity guard, Sage.Simulation.Entity other) -> bool
+static Sage.Gameplay.Crime.LawOf(Sage.Simulation.World! world, Sage.Simulation.Entity guard) -> Sage.Core.RecordId
+static Sage.Gameplay.Crime.OfKind(Sage.Simulation.World! world, Sage.Gameplay.CrimeKind kind) -> Sage.Core.RecordId
+static Sage.Gameplay.Crime.Pay(Sage.Simulation.World! world, Sage.Simulation.Entity payer, Sage.Core.RecordId faction, Sage.Core.RecordId currency, out string! why) -> bool
+static Sage.Gameplay.Crime.Pursues(Sage.Simulation.World! world, Sage.Simulation.Entity guard, Sage.Simulation.Entity other) -> bool
+static Sage.Gameplay.Crime.Reports(Sage.Simulation.World! world, Sage.Simulation.Entity witness, Sage.Core.RecordId wronged) -> bool
+static Sage.Gameplay.Crime.SetBounty(Sage.Simulation.World! world, Sage.Core.RecordId faction, float value) -> void

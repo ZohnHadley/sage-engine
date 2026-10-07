@@ -215,6 +215,14 @@
         }
       ]
     },
+    "guard": {
+      "description": "Prefab part 'guard' (GuardPart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/guard"
+        }
+      ]
+    },
     "hand_ik": {
       "description": "Prefab part 'hand_ik' (HandIkPart).",
       "allOf": [
@@ -454,6 +462,14 @@
       "allOf": [
         {
           "$ref": "#/definitions/orbit"
+        }
+      ]
+    },
+    "owned_place": {
+      "description": "Prefab part 'owned_place' (OwnedPlacePart).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/owned_place"
         }
       ]
     },
@@ -1570,6 +1586,39 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'footsteps' (FootstepsPart)."
+    },
+    "guard": {
+      "type": "object",
+      "properties": {
+        "law": {
+          "description": "Whose bounties it enforces; empty: its own faction's. Names a faction record. (RecordRef<FactionRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        },
+        "tolerates": {
+          "description": "Bounty it lets go; it pursues anybody who owes more. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "arrests": {
+          "description": "Bounty up to which it means to arrest; above it the target is an outlaw. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "hears": {
+          "description": "How far a reported crime reaches it; 0: only what it sees. Unit: m. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'guard' (GuardPart)."
     },
     "hand_ik": {
       "type": "object",
@@ -2856,6 +2905,62 @@
       },
       "additionalProperties": false,
       "description": "Prefab part 'orbit' (OrbitPart)."
+    },
+    "owned_place": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "The box it covers, centred on the entity. Unit: m. (Vector3, default [4,3,4])",
+          "default": [
+            4,
+            3,
+            4
+          ],
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "owner": {
+          "description": "The name of the entity it belongs to. (string, default \"\")",
+          "default": "",
+          "type": "string"
+        },
+        "faction": {
+          "description": "The faction it belongs to. Names a faction record. (RecordRef<FactionRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:faction"
+            }
+          ]
+        },
+        "openFrom": {
+          "description": "The hour it opens to everybody; the same as openTo: never. Unit: h. Range: 0 to 24. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "openTo": {
+          "description": "The hour it shuts. Unit: h. Range: 0 to 24. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "crime": {
+          "description": "The crime being found in it is; empty: the Trespass crime. Names a crime record. (RecordRef<CrimeRecord>)",
+          "allOf": [
+            {
+              "$ref": "ids.schema.json#/definitions/record:crime"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Prefab part 'owned_place' (OwnedPlacePart)."
     },
     "particles": {
       "type": "object",

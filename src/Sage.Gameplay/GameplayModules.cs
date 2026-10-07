@@ -706,6 +706,9 @@ public sealed class FactionsModule : IModule
         // The faction record, the saved Reputation and the `faction` prefab part are this plugin's by
         // their attributes (Plugin = "sage.gameplay.factions"); generated code registers them (#16, #17).
         BridgeIO.RegisterFactions(ctx.Engine);      // SetFaction (issue #91)
+        // Crime, witnesses and bounty (issue #389, Crime.cs): the crime record, the guard and owned_place parts.
+        ctx.Engine.Records.AddCheck<CrimeRecord>(CrimeRecord.Check);
+        Crime.RegisterCommands(ctx.Engine);
 
         ctx.Engine.CVars.RegisterCommand("rep", CVarFlags.None,
             "What every faction thinks of you, and what that makes them.", _ =>
@@ -749,5 +752,7 @@ public sealed class FactionsModule : IModule
     {
         world.Resources.Add(new Reputation());
         world.AddSystem(new FactionDeathSystem(world));
+        world.Resources.Add(new Bounties());           // what the player owes, for crimes seen (issue #389)
+        world.AddSystem(new CrimeSystem(world));
     }
 }

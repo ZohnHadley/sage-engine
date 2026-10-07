@@ -195,6 +195,11 @@
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
+    "record:crime": {
+      "description": "The id of a crime record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "record:cue": {
       "description": "The id of a cue record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
@@ -330,9 +335,13 @@
         "bandits",
         "beasts",
         "bunker:loners",
+        "ferrymen",
         "firebugs",
         "guards",
         "hermits",
+        "kitscreens:ferrymen",
+        "kitscreens:lamplighters",
+        "lamplighters",
         "loners",
         "openworld:bandits",
         "openworld:guards",
@@ -345,6 +354,16 @@
         "sandbox:village",
         "village",
         "villagers"
+      ]
+    },
+    "record:faction_ranks": {
+      "description": "The id of a faction_ranks record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
+      "type": "string",
+      "enum": [
+        "ferrymen",
+        "kitscreens:ferrymen",
+        "kitscreens:lamplighters",
+        "lamplighters"
       ]
     },
     "record:gameplay_conventions": {
@@ -1119,6 +1138,7 @@
         "crosshair",
         "dialogue",
         "equipment",
+        "factions",
         "hud",
         "inventory",
         "journal",
@@ -1135,6 +1155,7 @@
         "rpg:controls",
         "rpg:dialogue",
         "rpg:equipment",
+        "rpg:factions",
         "rpg:inventory",
         "rpg:journal",
         "rpg:load",
@@ -1784,6 +1805,11 @@
       "type": "string",
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
+    "base:crime": {
+      "description": "The id of a crime record (none is loaded).",
+      "type": "string",
+      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+    },
     "base:cue": {
       "description": "Another cue record to inherit every field from, abstract or not.",
       "type": "string",
@@ -1919,9 +1945,13 @@
         "bandits",
         "beasts",
         "bunker:loners",
+        "ferrymen",
         "firebugs",
         "guards",
         "hermits",
+        "kitscreens:ferrymen",
+        "kitscreens:lamplighters",
+        "lamplighters",
         "loners",
         "openworld:bandits",
         "openworld:guards",
@@ -1934,6 +1964,16 @@
         "sandbox:village",
         "village",
         "villagers"
+      ]
+    },
+    "base:faction_ranks": {
+      "description": "Another faction_ranks record to inherit every field from, abstract or not.",
+      "type": "string",
+      "enum": [
+        "ferrymen",
+        "kitscreens:ferrymen",
+        "kitscreens:lamplighters",
+        "lamplighters"
       ]
     },
     "base:gameplay_conventions": {
@@ -2710,6 +2750,7 @@
         "crosshair",
         "dialogue",
         "equipment",
+        "factions",
         "hud",
         "inventory",
         "journal",
@@ -2726,6 +2767,7 @@
         "rpg:controls",
         "rpg:dialogue",
         "rpg:equipment",
+        "rpg:factions",
         "rpg:inventory",
         "rpg:journal",
         "rpg:load",
