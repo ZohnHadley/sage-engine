@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+#pragma warning disable SAGE0132 // which file already patches the document is RecordStore.Writes: data mods' experimental API
 
 namespace Sage.Editing;
 
@@ -24,7 +25,15 @@ namespace Sage.Editing;
 // holds on to across undo and redo), so a tool that selected an entity finds the same placement after its
 // entity was replaced (`Respawned` says which entity became which).
 //
-// One document per world: the world it was made for is the one it spawns into.
+// One document per world: the world it was made for is the one it spawns into. Several documents open at
+// once are several worlds, one per tab (EditorWorkspace, issue #375).
+//
+// **Where a save goes** (`Target`, issue #375): with no target, into the record's own file, or a new one in
+// the mount of its namespace — the game developer's editor. With a target (a mod's folder, `ed_mod`), the
+// target is the only folder the editor writes: a document defined there saves in place, a new one is made
+// there, and one defined anywhere else (the shipped game's own level) is read-only and saves as a
+// `"patch": true` record of it in the target's `data/patches/`, its whole placement list, which is how a mod
+// changes a game's level (docs/MODDING.md §5: a patch replaces a list it names).
 [Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
 public sealed class EditDocument
 {
@@ -49,13 +58,24 @@ public sealed class EditDocument
 
     public RecordId Id { get; private set; }
     public string Path { get; private set; } = "";      // where a save will write, "" before it knows
+
+    // The one folder saves go into (issue #375): a mod's mount while modding, null otherwise (each record
+    // back into its own file). Set by the workspace for every open document.
+    public IMount? Target { get; set; }
+
+    // True when the document is defined somewhere other than the target (the shipped game), so it is not the
+    // target's to change in place and a save writes a patch of it there.
+    public bool SavesAsPatch => IsOpen && Target != null && Engine.Records.MountOf("placements", Id) is { } home && !ReferenceEquals(home, Target);
+
+    // Where the last save wrote: the document's file, or the target's patch of it; "" before a save.
+    public string SavedTo { get; private set; } = "";
     public bool IsOpen => !Id.IsEmpty;
     public bool Dirty => IsOpen && (_neverSaved || History.Dirty);
 
     // The scene a new level made for this document (NewLevel); empty otherwise.
     public RecordId Scene { get; private set; }
 
-    public string Title => IsOpen ? $"{Id}{(Dirty ? " *" : "")}" : "(no document)";
+    public string Title => IsOpen ? $"{Id}{(SavesAsPatch ? " (patch)" : "")}{(Dirty ? " *" : "")}" : "(no document)";
 
     // The document's own copy of the record: read it freely, change it only through commands.
     public PlacementsRecord Record => _record;
@@ -92,7 +112,7 @@ public sealed class EditDocument
     public void New(RecordId id = default)
     {
         Close();
-        if (id.IsEmpty) id = new RecordId(GameNamespace(Engine), "untitled");
+        if (id.IsEmpty) id = new RecordId(NewNamespace, "untitled");
         Begin(id, new PlacementsRecord(), "");
         _saved = null;
         _neverSaved = true;
@@ -105,7 +125,7 @@ public sealed class EditDocument
     // game's to change (its maps, its player, its weather), and the editor writes only the document.
     public RecordId NewLevel(RecordId scene)
     {
-        if (scene.IsEmpty) scene = new RecordId(GameNamespace(Engine), "untitled");
+        if (scene.IsEmpty) scene = new RecordId(NewNamespace, "untitled");
         var document = new RecordId(scene.Namespace, scene.Name + "_placements");
         New(document);
         Scene = _newScene = scene;
@@ -130,7 +150,7 @@ public sealed class EditDocument
         Id = default;
         Scene = _newScene = default;
         _saved = null;
-        Path = "";
+        Path = SavedTo = "";
         _neverSaved = false;
         History.Clear();
         Changed?.Invoke();
@@ -272,6 +292,13 @@ public sealed class EditDocument
     public bool Save()
     {
         if (!IsOpen) return false;
+        if (SavesAsPatch) return SavePatch(Target!);
+        if (Target != null && !Engine.Records.Exists("placements", Id) && !InTarget(Id))
+        {
+            Log.Error(LogCat.Editor, $"Nowhere to save '{Id}': only {Target.Name} is written to (ed_mod), and '{Id.Namespace}' is not its namespace " +
+                                     $"('{Target.RecordNamespace}'): start the document as {Target.RecordNamespace}:{Id.Name}");
+            return false;
+        }
 
         string path = Path.Length > 0 ? Path : FileFor(Id);
         if (path.Length == 0)
@@ -309,12 +336,83 @@ public sealed class EditDocument
         }
 
         _saved = current;
-        Path = path;
+        Path = SavedTo = path;
         _neverSaved = false;
         _newScene = default;
         Log.Info(LogCat.Editor, $"Saved '{Id}' ({_record.Place.Count} placement(s)) to {path}");
         History.MarkSaved();
         return true;
+    }
+
+    // The namespace a new document is made in: the target's while modding, else the game's.
+    private string NewNamespace => Target?.RecordNamespace ?? GameNamespace(Engine);
+
+    private bool InTarget(RecordId id) => Target != null && string.Equals(id.Namespace, Target.RecordNamespace, StringComparison.OrdinalIgnoreCase);
+
+    // The document is defined somewhere the target is not (the shipped game, another mod): the change is a
+    // patch of it in the target. The patch says the whole record — every placement, the frame — because a
+    // patch replaces a list it names, and a placement list is one value; ids are written in full, prefabs and
+    // the record ids inside overrides alike, since a bare id in the target's file could be read as the
+    // target's namespace (R11).
+    private bool SavePatch(IMount target)
+    {
+        string virtualFile = PatchFileOf(target) ?? $"data/patches/placements_{Id.Namespace}_{Id.Name}.json";
+        string? path = target.WritablePath(VirtualPath.Parse(virtualFile));
+        if (path == null)
+        {
+            Log.Error(LogCat.Editor, $"Nowhere to save the patch of '{Id}': {target.Name} cannot be written to");
+            return false;
+        }
+
+        var json = PlacementsJson();
+        var dialect = new JsonFileEdit("", Engine.Records.Json);
+        var patch = new JsonObject { ["type"] = "placements", ["id"] = Id.ToString(), ["patch"] = true };
+        patch["origin"] = dialect.ToNode(_record.Origin);
+        patch["relativeTo"] = dialect.ToNode(_record.RelativeTo);
+        var place = json["place"]!.DeepClone().AsArray();
+        // And the ids inside an override, which mean the prefab's namespace (OverrideIds).
+        for (int i = 0; i < place.Count && i < _record.Place.Count; i++)
+            if (place[i]?["overrides"] is JsonObject overrides && !_record.Place[i].Prefab.Id.IsEmpty)
+                OverrideIds.Qualify(Engine, overrides, _record.Place[i].Prefab.Id.Namespace);
+        patch["place"] = place;
+        try
+        {
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+            var edit = JsonFileEdit.Open(path, Engine.Records.Json);
+            edit.SetRecord("placements", Id, patch);
+            edit.Save(path);
+        }
+        catch (JsonException ex)
+        {
+            Log.Error(LogCat.Editor, $"Could not save '{Id}' to {path}: it is not a record file ({ex.Message})");
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Error(LogCat.Editor, $"Could not save '{Id}' to {path}: {ex.Message}");
+            return false;
+        }
+
+        // `Path` and the last-saved copy stay the document's own file's: the patch is where this target's saves
+        // go, not the record's home, and the file itself was not written.
+        SavedTo = path;
+        _neverSaved = false;
+        Log.Info(LogCat.Editor, $"'{Id}' is defined in {Engine.Records.MountOf("placements", Id)?.Name ?? "another mount"}, which {target.Name} " +
+                                $"does not own: saved it ({_record.Place.Count} placement(s)) as a patch in {path}");
+        History.MarkSaved();
+        return true;
+    }
+
+    // A file of the target's that already patches the document: the next save changes it, not a second one.
+    private string? PatchFileOf(IMount target)
+    {
+        foreach (var write in Engine.Records.Writes("placements", Id))
+        {
+            if (write.Op == RecordWriteOp.Define || write.Mount != target) continue;
+            int colon = write.File.IndexOf(':');
+            if (colon >= 0) return write.File[(colon + 1)..];
+        }
+        return null;
     }
 
     // **The one place a record reaches a file** (issue #218's JsonFileEdit): into the file as it stands,
@@ -370,10 +468,15 @@ public sealed class EditDocument
     // that has never been written picks its own name.
     private string FileFor(RecordId id, string type = "placements")
     {
+        // In the mount that defined it: a later mount with a file of the same name (a mod's own
+        // `data/placements.json`) is another file.
         if (Engine.Records.FileOf(type, id) is { } existing)
+        {
+            if (Engine.Records.MountOf(type, id)?.PhysicalPath(VirtualPath.Parse(existing)) is { } own) return own;
             foreach (var mount in Engine.Vfs.Mounts)
                 if (mount.PhysicalPath(VirtualPath.Parse(existing)) is { } path)
                     return path;
+        }
 
         foreach (var mount in Engine.Vfs.Mounts)
         {

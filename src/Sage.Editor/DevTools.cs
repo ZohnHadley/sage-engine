@@ -58,6 +58,12 @@ public sealed class DevTools : IDisposable
     private IntPtr _viewportTexture;
     private bool _viewportFocused, _viewportHovered;   // last frame's, for the free camera's input
 
+    // The open documents, one tab each (issue #375): `_world` and `_document` are the active tab's, and
+    // everything below that is bound to a world is made again for it when the tab changes (Bind).
+    private EditorWorkspace? _workspace;
+    private DocumentTabs? _tabs;
+    private readonly Action _drawTabs;   // made once: the layout draws it above the dock space every frame
+    private readonly System.Collections.Generic.Dictionary<EditDocument, (Vector3 Position, Quaternion Rotation)> _views = new();
     private World? _world;
     private EditDocument? _document;
     private EditorUI? _menu;
@@ -80,6 +86,7 @@ public sealed class DevTools : IDisposable
     private AnimationPanel? _animationPanel;
     private TerrainDocument? _terrain;        // the terrain tools (#372): ed_sculpt, ed_paint, ed_water, and their panel
     private TerrainPanel? _terrainPanel;
+    private readonly System.Collections.Generic.Dictionary<EditDocument, TerrainDocument> _terrains = new();   // per open tab
     private readonly VocabularyEditor _vocab;       // the conditions and actions form (#370): ed_vocab*
     private readonly VocabularyPanel _vocabPanel;
     private AIGraphPanel? _aiGraph;   // the AI graph view (#369): ed_ai_*, and its panel
@@ -95,6 +102,7 @@ public sealed class DevTools : IDisposable
         var cvars = engine.CVars;
 
         _gui = new ImGuiRenderer(game);
+        _drawTabs = () => _tabs?.Draw();
         _pickable = e => e != _freeCamera && e != _viewportCamera;
         _camera = new DevCamera(devices, actions, new Vector3(0, 0, 0), new Vector3(0, 0, 0)) { Position = new Vector3(0, 0, 1) };
         _console = new DevConsoleWindow(cvars, engine.Core,
@@ -162,12 +170,37 @@ public sealed class DevTools : IDisposable
     public void CloseConsole() => _console.Close();
     public void ToggleConsole() => _console.Toggle();
 
-    // The editor's document and windows belong to a world, because a document is opened *into* one.
+    // The editor's document and windows belong to a world, because a document is opened *into* one: the
+    // host's world is the first tab's, and each tab opened later brings a world of its own (#375).
     public void OnWorldCreated(World world)
     {
+        // The client's renderer, for the viewport's target: there is none in a host without the client.
+        _renderer ??= _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Renderer;
+        _workspace = new EditorWorkspace(_engine);
+        _workspace.ActiveChanged += (_, now) => { if (now != null) Bind(now); };
+        _tabs = new DocumentTabs(_workspace);
+        _workspace.Add(world);
+    }
+
+    // The active tab's document and its world: the selection, the outliner and inspector, the menu and play
+    // are made for them, the free camera goes back to where it last was in that tab, and its world has the screen.
+    private void Bind(EditDocument document)
+    {
+        var world = document.World;
+        var old = _document;
+        if (old != null)
+        {
+            if (_play is { IsPlaying: true }) _play.Stop();
+            _views[old] = (_camera.Position, _camera.Rotation);
+            foreach (var closed in _views.Keys.Where(d => !_workspace!.Documents.Contains(d)).ToList()) _views.Remove(closed);   // tabs since closed
+            foreach (var closed in _terrains.Keys.Where(d => !_workspace!.Documents.Contains(d)).ToList()) _terrains.Remove(closed);
+            if (_world != null && _world.IsAlive(_freeCamera)) _world.Destroy(_freeCamera);
+            if (_world != null && _world.IsAlive(_viewportCamera)) _world.Destroy(_viewportCamera);
+            if (_renderer != null) _renderer.ScreenWorld = world;
+        }
         _world = world;
-        _document = new EditDocument(world);
-        _terrain = new TerrainDocument(world);
+        _document = document;
+        if (!_terrains.TryGetValue(document, out _terrain)) _terrains[document] = _terrain = new TerrainDocument(world);   // its own sculpt and undo per tab (#372)
         // The selection holds a placement, so it follows its re-spawns to the new entity (#221).
         _selection = new EditorSelection(_document);
         _outliner = new EntityOutlinerWindow(world, _selection);
@@ -177,24 +210,36 @@ public sealed class DevTools : IDisposable
         _playBar = new PlayBar(_play, () => _renderer, _console, _engine.CVars);
         _freeCamera = default;
         _viewportCamera = default;
-        // The client's renderer, for the viewport's target: there is none in a host without the client.
-        _renderer ??= _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Renderer;
+        if (old == null)
+        {
+            // The free camera keeps its own position, so it has to be told when the world moves under it
+            // (R6): without this, `cam_free` after a rebase leaves it a sector behind what it was looking at.
+            world.Origin().Rebased += offset => { if (_world == world) _camera.Position += new Vector3(offset.X, offset.Y, offset.Z); };
+            return;
+        }
 
-        // The free camera keeps its own position, so it has to be told when the world moves under it
-        // (R6): without this, `cam_free` after a rebase leaves it a sector behind what it was looking at.
-        world.Origin().Rebased += offset => _camera.Position += new Vector3(offset.X, offset.Y, offset.Z);
+        if (_editing)
+        {
+            if (_menu != null) _menu.Editing = true;
+            BindPanels();
+        }
+        if (_views.TryGetValue(document, out var view))
+        {
+            _camera.Position = view.Position;
+            _camera.LookAlong(view.Rotation);
+        }
+        else
+        {
+            world.Origin().Rebased += offset => { if (_world == world) _camera.Position += new Vector3(offset.X, offset.Y, offset.Z); };
+            StandAtStart(world);
+        }
+        _placed = true;
     }
 
-    // The editor mode (`-edit`, issue #219), once the edit world exists and OnWorldCreated has seen it: the
-    // free camera on the screen for good, flying on the Editor context's EditorMove, the docked layout,
-    // and `target`'s document open.
-    public void BeginEditing(EditTarget target)
+    // The editor's panels that hold the selection or the document rather than asking for it (-edit).
+    private void BindPanels()
     {
-        if (_world == null || _document == null) throw new InvalidOperationException("BeginEditing needs the edit world: call OnWorldCreated first");
-        _editing = true;
-        _outliner = new EntityOutlinerWindow(_world, _selection, EditorLayout.OutlinerTitle);
-        if (_menu != null) _menu.Editing = true;
-        _camera.EditorMove = _engine.Actions.Get("EditorMove");
+        _outliner = new EntityOutlinerWindow(_world!, _selection, EditorLayout.OutlinerTitle);
         _wiring = new WiringPanel(_selection!, _pickable)
         {
             EditRequires = (placement, index) =>
@@ -203,19 +248,17 @@ public sealed class DevTools : IDisposable
                 Report(_document is { } doc && _vocab.OpenWire(doc, placement, index, out error), error);
             },
         };
-        _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
-        _terrainPanel = new TerrainPanel(() => _terrain, ViewportRay, () => _camera.Position.ToNumerics());   // #372
-        _brushes = new BrushPanel(_engine, _selection!, _tools, ViewportRay);
-        _assets = new AssetsPanel(_assetBrowser, _thumbnails, () => _document, _records.Editor,
-            () => _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Content, ViewportRay, entity => _selection?.SelectPlaced(entity));
+        _brushes = new BrushPanel(_engine, _selection!, _tools, ViewportRay);   // per tab: it holds the selection (#61)
         _problems?.Dispose();
-        var problems = new ProblemList(_engine, _document);
+        var problems = new ProblemList(_engine, _document!);
         problems.Add(_vocab);   // the conditions form's checks, live (#370)
         _problems = new ProblemsPanel(problems, _selection) { OpenRecord = id => _records.OpenById(id) };   // #227
-        if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
+    }
 
-        // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
-        if (_world.PlayerStart() is { } start)
+    // Somewhere to stand: the scene's player start at eye height, else a little back from the origin.
+    private void StandAtStart(World world)
+    {
+        if (world.PlayerStart() is { } start)
         {
             _camera.Position = new Vector3(start.X, start.Y + 1.7f, start.Z);
             _camera.SetLook(0f, -10f);
@@ -225,6 +268,25 @@ public sealed class DevTools : IDisposable
             _camera.Position = new Vector3(0, 3, 8);
             _camera.SetLook(0f, -15f);
         }
+    }
+
+    // The editor mode (`-edit`, issue #219), once the edit world exists and OnWorldCreated has seen it: the
+    // free camera on the screen for good, flying on the Editor context's EditorMove, the docked layout,
+    // and `target`'s document open.
+    public void BeginEditing(EditTarget target)
+    {
+        if (_world == null || _document == null) throw new InvalidOperationException("BeginEditing needs the edit world: call OnWorldCreated first");
+        _editing = true;
+        if (_menu != null) _menu.Editing = true;
+        _camera.EditorMove = _engine.Actions.Get("EditorMove");
+        BindPanels();
+        _palette = new PalettePanel(new PrefabPalette(_engine.Records), () => _document, ViewportRay, entity => _selection?.SelectPlaced(entity));
+        _assets = new AssetsPanel(_assetBrowser, _thumbnails, () => _document, _records.Editor,
+            () => _engine.Modules.Modules.OfType<ClientModule>().FirstOrDefault()?.Content, ViewportRay, entity => _selection?.SelectPlaced(entity));
+        _terrainPanel = new TerrainPanel(() => _terrain, ViewportRay, () => _camera.Position.ToNumerics());   // #372
+        if (!_console.IsOpen) _console.Toggle();   // docked beside the log; `~` still closes it
+
+        StandAtStart(_world);
         _placed = true;
 
         // **The one place the editor's document is opened from a launch line**: the EditDocument (#217)
@@ -281,6 +343,7 @@ public sealed class DevTools : IDisposable
         // The document's commands (doc_*, ed_undo, ed_redo, ed_history) are Sage.Editing's, so tests press
         // them too (issue #217).
         EditorCommands.Register(cvars, () => _document);
+        WorkspaceCommands.Register(cvars, () => _workspace);   // ed_tab*, ed_mod (#375)
         _records.Editor.Register(cvars);   // ed_rec_* (#224)
         InspectorCommands.Register(cvars, () => _document);   // ed_set, ed_revert, ed_inspect (#223)
         // Selecting and moving (issue #221): ed_select, ed_move, ed_rotate, ed_delete, ed_duplicate, the snapping.
@@ -402,7 +465,7 @@ public sealed class DevTools : IDisposable
     private void DrawEditor(float frameSeconds)
     {
         _menu?.Draw(_game);
-        _layout.BeginFrame();
+        _layout.BeginFrame(_drawTabs);
         if (_world != null && _selection != null && _palette is not { IsArmed: true } && _brushes is not { IsArmed: true } && _wiring is not { IsPicking: true } && _terrainPanel is not { IsArmed: true }) _gizmo.Draw(_world, _selection, _pickable);
         _outliner?.Draw();
         _inspector?.Draw();

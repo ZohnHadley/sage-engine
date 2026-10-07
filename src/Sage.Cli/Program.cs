@@ -11,7 +11,7 @@ using System.Linq;
 //   sage schema <game> [<game> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...]
 //               [--engine-content <dir>] [--client <Sage.Client.dll>]
 //   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
-//   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook]
+//   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]
 //   sage cook <game> [--force] [--clean]
 //   sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]
 //   sage run <game> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]
@@ -33,7 +33,10 @@ using System.Linq;
 // program, as in the Player package, else this repository's src/Sage.Host/bin/<config>/net8.0); --config is
 // the configuration the game was built in (default Shipping). The written folder's content is then checked as
 // `validate` would, with the host's Content/ as engine content, unless --no-validate. The package's mounts are
-// cooked (below) unless --no-cook.
+// cooked (below) unless --no-cook. --editor packages the editor for modders beside it (issue #375): a Development
+// host in editor/ and edit.sh / edit.cmd, which start it on the same game with -edit; --editor-host is that host
+// (default: the Player package's Development folder beside this program's, else this repository's
+// src/Sage.Host/bin/Development/net8.0).
 //
 // `cook` (issue #302, GameCook.cs) writes a cooked .sgmesh beside every .glb and a .sgtex beside every .png/.jpg/.tga
 // in the game's mounts, in place, which the client then reads instead of the loose files. It is for a packaged
@@ -63,7 +66,7 @@ static int Usage()
     Console.Error.WriteLine("usage: sage validate <game folder> [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage schema <game folder> [<game folder> ...] [--out <dir>] [--mods <dir> ...] [--game-mods] [--mounts <dir>[=<namespace>] ...] [--engine-content <dir>] [--client <Sage.Client.dll>]");
     Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
-    Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook]");
+    Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]");
     Console.Error.WriteLine("       sage cook <game folder> [--force] [--clean]");
     Console.Error.WriteLine("       sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]");
     Console.Error.WriteLine("       sage run <game folder> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]");
@@ -225,8 +228,8 @@ static int Schema(string[] args)
 // The game and a Shipping host, into one folder a player runs; then that folder's content validated.
 static int Package(string[] args)
 {
-    string? game = null, output = null, host = null, config = "Shipping";
-    bool validate = true, cook = true;
+    string? game = null, output = null, host = null, config = "Shipping", editorHost = null;
+    bool validate = true, cook = true, editor = false;
     for (int i = 0; i < args.Length; i++)
     {
         switch (args[i])
@@ -236,6 +239,8 @@ static int Package(string[] args)
             case "--host" when i + 1 < args.Length: host = args[++i]; break;
             case "--config" when i + 1 < args.Length: config = args[++i]; break;
             case "--no-validate": validate = false; break;
+            case "--editor": editor = true; break;
+            case "--editor-host" when i + 1 < args.Length: editor = true; editorHost = args[++i]; break;
             default:
                 if (args[i].StartsWith("--", StringComparison.Ordinal) || game != null) return Usage();
                 game = args[i];
@@ -243,6 +248,13 @@ static int Package(string[] args)
         }
     }
     if (game == null || output == null) return Usage();
+    if (editor && (editorHost ??= Options.FindEditorHost()) == null)
+    {
+        Console.WriteLine("ERROR no editor host found (a Development host with Sage.Editor.dll: the Player package's host/Development, or " +
+                          "src/Sage.Host/bin/Development/net8.0 in a repository above here): build it with dotnet build src/Sage.Host -c Development, " +
+                          "or pass --editor-host <dir>");
+        return 1;
+    }
     host ??= Options.FindHost(config);
     if (host == null)
     {
@@ -254,11 +266,13 @@ static int Package(string[] args)
     var result = Headless(() => Sage.Cli.GamePackage.Run(new Sage.Cli.PackageOptions
     {
         GameDirectory = game, OutputDirectory = output, HostDirectory = host, Configuration = config, Cook = cook,
+        EditorHostDirectory = editor ? editorHost : null,
     }));
     foreach (string warning in result.Cook?.Warnings ?? new List<string>()) Console.WriteLine($"WARN  {warning}");
     foreach (string error in result.Errors) Console.WriteLine($"ERROR {error}");
     if (!result.Ok) return 1;
     Console.WriteLine($"{Path.GetFullPath(output)}: {result.Files.Count} file(s), the {config} host from {Path.GetFullPath(host)} and the game in game/");
+    if (editor) Console.WriteLine($"The editor for modders from {Path.GetFullPath(editorHost!)} in editor/: edit.sh / edit.cmd start it on the game");
     if (result.Cook != null) Console.WriteLine($"Cooked: {result.Cook.Summary()}");
     if (!validate) return 0;
 
@@ -399,6 +413,24 @@ sealed class Options
             {
                 string candidate = Path.Combine(dir.FullName, "src", "Sage.Host", "bin", configuration, "net8.0");
                 if (File.Exists(Path.Combine(candidate, "Sage.Host.dll"))) return candidate;
+            }
+        return null;
+    }
+
+    // A host with the editor in it, for `package --editor` (issue #375): the Player package keeps one folder per
+    // configuration (host/<config>/, this program in each), so its Development folder beside this one; else this
+    // repository's Development build above the current folder or this program.
+    public static string? FindEditorHost()
+    {
+        static bool HasEditor(string dir) => File.Exists(Path.Combine(dir, "Sage.Host.dll")) && File.Exists(Path.Combine(dir, "Sage.Editor.dll"));
+        string here = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+        foreach (string candidate in new[] { here, Path.Combine(Path.GetDirectoryName(here) ?? here, "Development") })
+            if (HasEditor(candidate)) return candidate;
+        foreach (string start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+            for (var dir = new DirectoryInfo(start); dir != null; dir = dir.Parent)
+            {
+                string candidate = Path.Combine(dir.FullName, "src", "Sage.Host", "bin", "Development", "net8.0");
+                if (HasEditor(candidate)) return candidate;
             }
         return null;
     }

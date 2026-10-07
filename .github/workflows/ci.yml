@@ -435,6 +435,20 @@ jobs:
           test -x "$out/Sage.Host" && test -s "$out/game/game.json" && test -s "$out/game/bin/MyGame.dll" && test -s "$out/game/bin/MyGame.Client.dll"
           tools/smoke_run.sh --packaged "$out" 4 Shaders Audio
 
+      # The editor for modders beside the Shipping game (issue #375): SagePackageEditor puts the Player's
+      # Development host in editor/ and edit.sh beside the game; the player's host at the top still has nothing
+      # of the editor. edit.sh then opens the packaged game (built in Shipping) in the editor under Xvfb.
+      - name: Package the template game with the editor for modders and open it
+        run: |
+          set -euo pipefail
+          game="$RUNNER_TEMP/sage-games/MyGame"
+          out="$RUNNER_TEMP/sage-package/MyGameEditor"
+          ( cd "$game" && dotnet msbuild -t:SagePackage -p:Configuration=Shipping -p:SagePackageEditor=true -p:SagePackageDirectory="$out" -nologo )
+          dev=$(find "$out" -path "$out/editor" -prune -o \( -iname 'Sage.Editor*' -o -iname 'Sage.Editing*' -o -iname '*imgui*' -o -iname 'sage.dll' \) -print)
+          if [ -n "$dev" ]; then echo "::error::the player's half of the package has developer files in it: $dev"; exit 1; fi
+          test -x "$out/edit.sh" && test -s "$out/edit.cmd" && test -s "$out/editor/Sage.Editor.dll" && test ! -e "$out/editor/sage.dll"
+          SAGE_SMOKE_COMMANDS='+ed_tabs' SAGE_SMOKE_EXPECT=$'Editing .edit.: scene\n1 tab\\(s\\)' tools/smoke_run.sh --packaged-editor "$out" 4 Shaders Audio
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

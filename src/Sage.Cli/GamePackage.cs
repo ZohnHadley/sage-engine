@@ -26,6 +26,18 @@ namespace Sage.Cli;
 // refused rather than stripped, because its own code still names them. The `sage` CLI, which the Player
 // package keeps beside its host, is left out: a player has no use for it.
 //
+// **The editor for modders** (issue #375, `--editor`): a Shipping host has no editor, so a game that ships tools
+// to its modders packages a second host beside the first — a Debug or Development build, the editor in it — into
+// `<out>/editor/`, and two launchers that start it on the same game folder with `-edit`:
+//
+//   <out>/editor/Sage.Host(.exe), Sage.Editor.dll, ImGui, ...           the editor host, as built, less the CLI
+//   <out>/edit.sh, <out>/edit.cmd                                         editor/Sage.Host -game game -edit [args]
+//
+// The player's host at the top is the Shipping one either way, with nothing of the editor in it; the game is
+// one copy, built in Shipping, which the editor host loads as it is (game.json's paths name no configuration
+// once packaged). A modder runs `./edit.sh +ed_mod <their mod>`: the mod's folder is then the only one the
+// editor writes, and the game's own levels save as patches in it.
+//
 // The game must have been built in the same configuration: "{config}" in game.json is that configuration
 // when its files are found, and the written manifest names the copies with no "{config}" left in it.
 internal sealed class PackageOptions
@@ -39,6 +51,10 @@ internal sealed class PackageOptions
 
     // Cook the packaged mounts (issue #302, GameCook.cs): cooked meshes and textures beside the loose files.
     public bool Cook { get; init; } = true;
+
+    // A host with the editor in it (Debug or Development) to package beside the game in editor/, for modders
+    // (issue #375); null for none.
+    public string? EditorHostDirectory { get; init; }
 }
 
 internal sealed class PackageResult
@@ -65,6 +81,10 @@ internal static class GamePackage
 
     public static bool IsDevTool(string fileName) => DevToolPatterns.Any(pattern => Matches(fileName, pattern));
 
+    // Where the editor host goes in a package, and the launchers that start it (issue #375).
+    public const string EditorFolder = "editor";
+    public static readonly string[] EditorLaunchers = { "edit.sh", "edit.cmd" };
+
     public static PackageResult Run(PackageOptions options)
     {
         var result = new PackageResult();
@@ -85,6 +105,27 @@ internal static class GamePackage
             result.Errors.Add($"The host in {host} has developer tools in it ({string.Join(", ", devTools.Take(4))}): it is a Debug or " +
                               "Development build. A package takes a Shipping host (dotnet build src/Sage.Host -c Shipping).");
             return result;
+        }
+
+        string? editor = options.EditorHostDirectory is { } editorHost ? Path.GetFullPath(editorHost) : null;
+        if (editor != null)
+        {
+            if (!File.Exists(Path.Combine(editor, "Sage.Host.dll")))
+            {
+                result.Errors.Add($"No editor host in {editor} (no Sage.Host.dll): build it with dotnet build src/Sage.Host -c Development, or pass --editor-host.");
+                return result;
+            }
+            if (!File.Exists(Path.Combine(editor, "Sage.Editor.dll")))
+            {
+                result.Errors.Add($"The host in {editor} has no editor in it (no Sage.Editor.dll): it is a Shipping build. The editor beside a game " +
+                                  "is a Debug or Development host (dotnet build src/Sage.Host -c Development).");
+                return result;
+            }
+            if (editor == host)
+            {
+                result.Errors.Add($"The editor host and the game's host are the same folder ({host}): the game's is a Shipping build, the editor's a Development one.");
+                return result;
+            }
         }
 
         GameManifest manifest;
@@ -172,6 +213,7 @@ internal static class GamePackage
         }
 
         if (output == game || Inside(output, game) || Inside(output, host) || Inside(host, output)
+            || editor != null && (Inside(output, editor) || Inside(editor, output))
             || Inside(game, output) && mounts.Select(m => m.Source).Append(mods).OfType<string>().Any(source => source == output || Inside(source, output)))
             result.Errors.Add($"The output folder {output} overlaps the game or the host it is made from: package somewhere else.");
         if (Directory.Exists(output) && Directory.EnumerateFileSystemEntries(output).Any() && !IsPackage(output))
@@ -192,10 +234,7 @@ internal static class GamePackage
         }
         // The apphost starts the game, and a host from the Player package may have lost its executable bits
         // (NuGet does not keep them): anyone may run it.
-        string apphost = Path.Combine(output, "Sage.Host");
-        if (!OperatingSystem.IsWindows() && File.Exists(apphost))
-            File.SetUnixFileMode(apphost, File.GetUnixFileMode(apphost) | UnixFileMode.UserRead | UnixFileMode.UserExecute
-                                          | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        MakeRunnable(Path.Combine(output, "Sage.Host"));
 
         foreach (var (source, target) in assemblies)
         {
@@ -217,6 +256,7 @@ internal static class GamePackage
             result.Cook = cook;
         }
         if (mods != null) CopyTree(mods, "game/" + Relative(game, mods));
+        if (editor != null) WriteEditor(editor);
 
         // The manifest, everything as the game wrote it except the paths, which name the copies.
         if (assembly != null) Set(json, "assembly", JsonValue.Create(assembly));
@@ -238,12 +278,52 @@ internal static class GamePackage
             result.Files.Add(relative.Replace('\\', '/'));
         }
 
+        // The editor host into editor/, less the CLI and any game beside it, and the launchers beside game/.
+        void WriteEditor(string source)
+        {
+            foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            {
+                string relative = Relative(source, file);
+                if (!relative.Contains('/') && CliFiles.Contains(relative, StringComparer.OrdinalIgnoreCase)) continue;
+                if (relative.StartsWith("game/", StringComparison.OrdinalIgnoreCase)) continue;
+                Copy(file, EditorFolder + "/" + relative);
+            }
+            MakeRunnable(Path.Combine(output, EditorFolder, "Sage.Host"));
+
+            WriteText("edit.sh",
+                "#!/bin/sh\n" +
+                "# The editor for modders (written by `sage package --editor`, issue #375): the editor host in editor/ on the\n" +
+                "# game in game/. ./edit.sh [placements-or-scene] [+ed_mod <your mod>] [-mods <dir>] ...\n" +
+                "here=$(cd \"$(dirname \"$0\")\" && pwd)\n" +
+                "exec \"$here/" + EditorFolder + "/Sage.Host\" -game \"$here/game\" -edit \"$@\"\n");
+            MakeRunnable(Path.Combine(output, "edit.sh"));
+            WriteText("edit.cmd",
+                "@echo off\r\n" +
+                "rem The editor for modders (written by `sage package --editor`, issue #375): the editor host in editor\\ on the\r\n" +
+                "rem game in game\\. edit.cmd [placements-or-scene] [+ed_mod <your mod>] [-mods <dir>] ...\r\n" +
+                "\"%~dp0" + EditorFolder + "\\Sage.Host.exe\" -game \"%~dp0game\" -edit %*\r\n");
+        }
+
+        void WriteText(string relative, string text)
+        {
+            File.WriteAllText(Path.Combine(output, relative), text);
+            result.Files.Add(relative);
+        }
+
         void CopyTree(string source, string relative)
         {
             Directory.CreateDirectory(Path.Combine(output, relative));
             foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
                 Copy(file, relative + "/" + Relative(source, file));
         }
+    }
+
+    // Anyone may run it (an apphost, a launcher); nothing on Windows, which has no such bits.
+    private static void MakeRunnable(string file)
+    {
+        if (OperatingSystem.IsWindows() || !File.Exists(file)) return;
+        File.SetUnixFileMode(file, File.GetUnixFileMode(file) | UnixFileMode.UserRead | UnixFileMode.UserExecute
+                                   | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
     }
 
     // A folder this command wrote: the host and a game beside it.
