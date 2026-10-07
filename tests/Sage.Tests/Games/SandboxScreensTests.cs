@@ -374,8 +374,6 @@ public class SandboxHudAllocationTests
         Assert.False(stack.IsOpen);                                          // a HUD is not a screen that has the input
         Assert.Null(stack.Top);
 
-        world.Say("A message for the log.");
-        world.Say("A good one.", MessageKind.Good);
         // A HUD frame: the stack's update (the view-model's Refresh, the bindings, layout) and the plan.
         // The simulation ticks between them, outside the measurement — the Sandbox's own fights are not
         // the HUD's to answer for — so what the HUD reads keeps moving (messages age out, the log fades).
@@ -390,6 +388,13 @@ public class SandboxHudAllocationTests
             world.RunFrame(1f / 60f, 1f);
             Frame();
         }
+        // The Sandbox's fights say things too (a firebug's bolt flies past its allies to the player since
+        // #393): what they said is cleared, so the two lines below are the log's.
+        world.Messages().Clear();
+        world.Say("A message for the log.");
+        world.Say("A good one.", MessageKind.Good);
+        world.RunFrame(1f / 60f, 1f);
+        Frame();
 
         var view = Assert.IsType<HudView>(hud.Screen!.ViewModel);
         Assert.True(view.HasPlayer);

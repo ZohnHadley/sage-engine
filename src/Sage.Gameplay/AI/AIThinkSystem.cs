@@ -144,6 +144,7 @@ internal sealed class AIThinkSystem : ISystem
             bool had = !state.Target.IsNull;
             state.Target = default;
             state.Spell = default;
+            state.SpellTarget = default;
             state.Conditions = conditions | (ulong)(had ? AICondition.LostEnemy : AICondition.NoEnemy);
             return;
         }
@@ -155,7 +156,8 @@ internal sealed class AIThinkSystem : ISystem
             state.ForgetAt = time + MathF.Max(profile.MemorySeconds, 0f);
             conditions |= (ulong)AICondition.SeeEnemy;
             if (distance <= profile.MeleeRange) conditions |= (ulong)AICondition.EnemyInMeleeRange;
-            state.Spell = ChooseSpell(world, self, distance, out bool comingBack, out bool busy);
+            state.Spell = ChooseSpell(world, self, transform.LocalPosition, target, distance, ref state.SpellTarget,
+                                      out bool comingBack, out bool busy);
             if (busy) conditions |= (ulong)AICondition.Casting;
             else if (!state.Spell.IsEmpty) conditions |= (ulong)AICondition.CanCastAtEnemy;
             if (comingBack) conditions |= (ulong)AICondition.SpellComingBack;
@@ -173,7 +175,7 @@ internal sealed class AIThinkSystem : ISystem
         {
             conditions |= (ulong)AICondition.NoEnemy;
         }
-        if ((conditions & (ulong)(AICondition.CanCastAtEnemy | AICondition.Casting)) == 0) state.Spell = default;
+        if ((conditions & (ulong)(AICondition.CanCastAtEnemy | AICondition.Casting)) == 0) { state.Spell = default; state.SpellTarget = default; }
         state.Conditions = conditions;
     }
 
@@ -185,11 +187,15 @@ internal sealed class AIThinkSystem : ISystem
     // It picks the **dearest** one it can cast: a creature uses its best spell first and falls back to
     // cheaper ones as its mana goes. Utility scoring belongs here when there is more to weigh than
     // cost (16 §3.4), and nothing about the tasks changes when it arrives.
-    private RecordId ChooseSpell(World world, Entity self, float distance, out bool comingBack, out bool busy)
+    //
+    // Support comes first (issue #393; AISupport): a heal for itself or an ally whose health is low, then a
+    // buff one of them lacks, then the dearest attack. `on` is who the chosen spell is cast at.
+    private RecordId ChooseSpell(World world, Entity self, Vector3 position, Entity enemy, float distance, ref Entity on,
+                                 out bool comingBack, out bool busy)
     {
         comingBack = false;
         busy = false;
-        if (!world.TryGet<Abilities>(self, out var abilities) || abilities.Known is not { Count: > 0 }) return default;
+        if (!world.TryGet<Abilities>(self, out var abilities) || abilities.Known is not { Count: > 0 }) { on = default; return default; }
 
         // Already winding one up: there is nothing to choose, and every gate would answer
         // `AlreadyCasting` anyway. Saying so keeps the agent in its cast schedule until the spell
@@ -197,6 +203,8 @@ internal sealed class AIThinkSystem : ISystem
         if (!abilities.Casting.IsEmpty) { busy = true; return abilities.Casting; }
 
         RecordId best = default;
+        Entity bestOn = default;
+        int bestRank = -1;
         float dearest = -1f;
         foreach (var ability in abilities.Known)
         {
@@ -209,17 +217,29 @@ internal sealed class AIThinkSystem : ISystem
                     comingBack = true;
                 continue;
             }
-            // A self-targeted spell is a buff, not an attack: casting one *at* an enemy is a decision
-            // of its own, and a creature that healed itself instead of fighting would be worse than
-            // one that does not try (16 §3.4, left for the ranged/support behaviours).
-            if (AbilityDeliveries.OnCaster(world, record)) continue;
+            // A heal or a buff is cast on whoever needs it, and only then: a creature that healed itself
+            // at full health instead of fighting would be worse than one that does not try (16 §3.4).
+            var use = AISupport.UseOf(world, record);
+            if (use == AbilityAIUse.Never) continue;
+            Entity at = enemy;
+            int rank = AISupport.AttackRank;
+            if (use is AbilityAIUse.Heal or AbilityAIUse.Buff)
+            {
+                rank = use == AbilityAIUse.Heal ? AISupport.HealRank : AISupport.BuffRank;
+                if (rank < bestRank) continue;
+                at = AISupport.Patient(world, _records, self, position, record, use, _candidates);
+                if (at.IsNull) continue;
+            }
             // A little short of the full range: at the very edge a projectile's flight time runs out
             // just as it arrives, and a touch sweep grazes past.
-            if (distance > record.Range * 0.9f) continue;
-            if (record.Cost <= dearest) continue;
+            else if (distance > record.Range * 0.9f) continue;
+            if (rank < bestRank || (rank == bestRank && record.Cost <= dearest)) continue;
             best = ability;
+            bestOn = at;
+            bestRank = rank;
             dearest = record.Cost;
         }
+        on = bestOn;
         return best;
     }
 
