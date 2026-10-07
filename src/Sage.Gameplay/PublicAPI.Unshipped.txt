@@ -2,17 +2,36 @@
 Sage.Gameplay.ActionConventions.Block -> string!
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Sound -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
+Sage.Gameplay.Burden
+Sage.Gameplay.Burden.Burden() -> void
+Sage.Gameplay.Burden.Level -> int
+Sage.Gameplay.Burden.Rules -> Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!>
+Sage.Gameplay.BurdenLevel
+Sage.Gameplay.BurdenLevel.BurdenLevel() -> void
+Sage.Gameplay.BurdenLevel.Effect -> Sage.Core.RecordRef<Sage.Gameplay.EffectRecord!>
+Sage.Gameplay.BurdenLevel.Load -> float
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
 Sage.Gameplay.EffectRecord.AppliedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.RemovedCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
 Sage.Gameplay.EffectRecord.TickCues -> System.Collections.Generic.List<Sage.Core.RecordRef<Sage.Gameplay.CueRecord!>>!
+Sage.Gameplay.Encumbrance
+Sage.Gameplay.EncumbranceRecord
+Sage.Gameplay.EncumbranceRecord.EncumbranceRecord() -> void
+Sage.Gameplay.EncumbranceRecord.Levels -> System.Collections.Generic.List<Sage.Gameplay.BurdenLevel!>!
+Sage.Gameplay.EncumbranceRecord.MaxLoad -> float
+Sage.Gameplay.EquipSlotRecord
+Sage.Gameplay.EquipSlotRecord.EquipSlotRecord() -> void
+Sage.Gameplay.EquipSlotRecord.Name -> string!
+Sage.Gameplay.EquipSlotRecord.NameOf(Sage.Core.RecordId id) -> string!
+Sage.Gameplay.EquipSlotRecord.Order -> int
 Sage.Gameplay.FootIk.LeftTilt -> float
 Sage.Gameplay.FootIk.MaxFootTilt -> float
 Sage.Gameplay.FootIk.PelvisSmoothing -> float
 Sage.Gameplay.FootIk.RightTilt -> float
 Sage.Gameplay.FootIkPart.MaxFootTilt -> float
 Sage.Gameplay.FootIkPart.PelvisSmoothing -> float
+Sage.Gameplay.InventoryPart.Encumbrance -> Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!>
 Sage.Gameplay.Journal.Entry.History.get -> System.Collections.Generic.List<string!>!
 Sage.Gameplay.Journal.Entry.History.set -> void
 Sage.Gameplay.Journal.Entry.Tracked.get -> bool
@@ -51,6 +70,9 @@ Sage.Gameplay.FootstepsPart.Right -> string!
 Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>
 Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
 Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
+static Sage.Gameplay.Encumbrance.AddBurden(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, Sage.Core.RecordRef<Sage.Gameplay.EncumbranceRecord!> rules) -> void
+static Sage.Gameplay.Encumbrance.BurdenLevelOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> int
+static Sage.Gameplay.Encumbrance.CarryLimitOf(this Sage.Simulation.World! world, Sage.Simulation.Entity entity) -> float
 static Sage.Gameplay.Quests.IsTracked(Sage.Simulation.World! world, Sage.Core.RecordId quest) -> bool
 static Sage.Gameplay.Quests.Track(Sage.Simulation.World! world, Sage.Core.RecordId quest, bool tracked = true) -> bool
 virtual Sage.Gameplay.QuestObjective.TryGetPlace(out System.Numerics.Vector3 at) -> bool

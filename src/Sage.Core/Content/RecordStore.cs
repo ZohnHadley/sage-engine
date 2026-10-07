@@ -770,6 +770,9 @@ public sealed class RecordStore
         type == null ? (_checkingIds?.Contains(id) ?? Exists(id))
                      : (_checking?.ContainsKey((type, id)) ?? Exists(type, id));
 
+    internal IEnumerable<RecordId> IdsWhileChecking(string type) =>
+        _checking != null ? _checking.Keys.Where(k => k.Item1 == type).Select(k => k.Item2).ToList() : Ids(type);
+
     internal bool TryGetWhileChecking<T>(RecordId id, out T? record) where T : class
     {
         record = null;

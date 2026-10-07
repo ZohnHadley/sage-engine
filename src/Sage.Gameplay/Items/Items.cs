@@ -23,13 +23,14 @@ namespace Sage.Gameplay;
 
 // The slots items may name (ItemRecord.Slot), registered in Init by a kit or a game and checked as
 // content loads: an item for a slot nobody has is a load error, not a sword that cannot be drawn.
-public sealed class EquipSlots
+public sealed partial class EquipSlots
 {
     private readonly List<string> _names = new();
+    private readonly List<string> _all = new();    // those, then the equip_slot records' (Slots.cs, issue #384)
 
     public RegistrationSeal Seal { get; } = new("equipment slot", "items that name it were checked without it");
 
-    public IReadOnlyList<string> Names => _names;
+    public IReadOnlyList<string> Names => _all;
 
     public void Register(string name)
     {
@@ -37,10 +38,11 @@ public sealed class EquipSlots
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("An equipment slot needs a name.", nameof(name));
         if (Find(name) != null) throw new InvalidOperationException($"The equipment slot '{name}' is already registered.");
         _names.Add(name);
+        _all.Insert(_names.Count - 1, name);
     }
 
     // The registered spelling of a slot, found ignoring case; null for one nobody registered.
-    public string? Find(string name) => _names.FirstOrDefault(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+    public string? Find(string name) => _all.FirstOrDefault(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
 }
 
 [Record("item", Plugin = "sage.gameplay.items")]
@@ -213,7 +215,8 @@ public static class Items
         }
 
         ref var inventory = ref world.Get<Inventory>(entity);
-        if (inventory.Capacity > 0f && world.WeightOf(entity) + record.Weight * count > inventory.Capacity)
+        float limit = world.CarryLimitOf(entity);   // its capacity, or past it with encumbrance rules (#384)
+        if (limit > 0f && world.WeightOf(entity) + record.Weight * count > limit)
         {
             Log.Info(LogCat.Gameplay, $"{World.Describe(entity)} cannot carry {count}x {record.Describe(item)}: too heavy");
             return false;

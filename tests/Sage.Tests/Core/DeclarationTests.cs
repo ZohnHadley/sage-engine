@@ -43,6 +43,7 @@ public class DeclarationTests
             ["dialogue"] = "sage.gameplay.dialogue", ["dialogue_topic"] = "sage.gameplay.dialogue", ["faction"] = "sage.gameplay.factions",
             ["quest"] = "sage.gameplay.quests",
             ["item"] = "sage.gameplay.items",
+            ["equip_slot"] = "sage.gameplay.items", ["encumbrance"] = "sage.gameplay.items",   // slots and burden in data (#384)
             ["map"] = "sage.maps",
             ["physics_layers"] = "sage.physics3d",
             ["physics_material"] = "sage.physics3d",   // issue #270
