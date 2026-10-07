@@ -293,8 +293,62 @@ public sealed class ClearOverride : IEditorCommand
             if (section[key] is JsonObject body)
             {
                 Overrides.RemoveField(body, Field);
-                if (body.Count == 0) section.Remove(key);
+                // An empty body of a component the prefab does not name is what adds it (#368): it stays.
+                if (body.Count == 0 && (Section == OverrideSection.Part || Overrides.PrefabNames(_document.Engine, Placement, key)))
+                    section.Remove(key);
             }
+        }
+        if (overrides.Components is { Count: 0 }) overrides.Components = null;
+        if (overrides.Parts is { Count: 0 }) overrides.Parts = null;
+        Placement.Overrides = overrides.IsEmpty ? null : overrides;
+        _document.Respawn(Placement);
+    }
+
+    public void Undo()
+    {
+        Placement.Overrides = _before;
+        _document.Respawn(Placement);
+    }
+}
+
+// A whole body of a placement's overrides set, or taken away (null): how the inspector adds a component
+// the prefab does not name to this placement alone (an empty body is the component at its defaults, #368)
+// and removes it again with whatever of it was overridden.
+[Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
+public sealed class SetOverrideBody : IEditorCommand
+{
+    private readonly EditDocument _document;
+    private readonly PrefabOverrides? _before;
+    private readonly JsonObject? _body;
+
+    public SetOverrideBody(EditDocument document, Placement placement, OverrideSection section, string id, JsonObject? body)
+    {
+        _document = document;
+        Placement = placement;
+        Section = section;
+        Id = id;
+        _body = (JsonObject?)body?.DeepClone();
+        _before = placement.Overrides;
+    }
+
+    public Placement Placement { get; }
+    public OverrideSection Section { get; }
+    public string Id { get; }
+    public JsonObject? Body => _body;
+
+    public string Description => _body == null
+        ? $"Remove {Id} from {AddPlacement.Label(Placement)}"
+        : $"Add {Id} to {AddPlacement.Label(Placement)}";
+
+    public void Do()
+    {
+        var overrides = _before?.Clone() ?? new PrefabOverrides();
+        var section = Overrides.Section(overrides, Section, create: _body != null);
+        if (section != null)
+        {
+            string key = Overrides.KeyFor(_document.Engine, section, Section, Id, Placement.Prefab.Id.Namespace);
+            if (_body == null) section.Remove(key);
+            else section[key] = _body.DeepClone();
         }
         if (overrides.Components is { Count: 0 }) overrides.Components = null;
         if (overrides.Parts is { Count: 0 }) overrides.Parts = null;
@@ -364,6 +418,19 @@ internal static class Overrides
                 if (engine.Components.TryResolveComponent(key, prefabNamespace, out var other, out _) && other == type)
                     return key;
         return id;
+    }
+
+    // Whether the placement's prefab names the component `key` resolves to in its own `components`.
+    public static bool PrefabNames(Engine engine, Placement placement, string key)
+    {
+        string ns = placement.Prefab.Id.Namespace;
+        if (!engine.Records.TryGet(placement.Prefab.Id, out PrefabRecord prefab)) return true;
+        if (prefab.Components == null) return false;
+        if (!engine.Components.TryResolveComponent(key, ns, out var type, out _))
+            return prefab.Components.Any(kv => string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase));
+        foreach (var (name, _) in prefab.Components)
+            if (engine.Components.TryResolveComponent(name, ns, out var other, out _) && other == type) return true;
+        return false;
     }
 
     public static void RemoveField(JsonObject body, string field)
