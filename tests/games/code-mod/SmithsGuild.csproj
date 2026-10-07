@@ -1,0 +1,17 @@
+<Project>
+  <!--
+    The code of the smiths_guild mod (phase 9, engine issue #396): an example code mod, built by the solution.
+    Built with Sage.Sdk like a game's simulation half, with the engine and the RPG kit compile-time only
+    (Private=false): at run time the host's own copies are shared with the mod (its load context defers every
+    Sage.* assembly to the host). The output is bin/<config>/SmithsGuild.dll with nothing beside it, which is
+    what mod.json's "assemblies" names. There is no game.json here, so the SDK's game checks do not apply.
+  -->
+  <Import Project="..\..\..\sdk\Sage.Sdk\Sdk\Sdk.props" />
+
+  <PropertyGroup>
+    <RootNamespace>SmithsGuild</RootNamespace>
+    <SageSimulationOnly>true</SageSimulationOnly>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\sdk\Sage.Sdk\Sdk\Sdk.targets" />
+</Project>

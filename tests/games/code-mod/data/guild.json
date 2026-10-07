@@ -1,0 +1,9 @@
+[
+  // A record of the mod's own type, `guild_order` (declared in SmithsGuild.cs): `smiths_guild:falchion_order`.
+  { "type": "guild_order", "id": "falchion_order", "commission": "a falchion for the reeve", "price": 45 },
+  { "type": "guild_order", "id": "lantern_order", "commission": "a lantern bracket", "price": 6 },
+
+  // The game's trader renamed, as better_blades renames him too: the later mod wins, and `mod_conflicts` says
+  // field `name` of village:trader was written by both.
+  { "type": "prefab", "id": "village:trader", "patch": true, "name": "The Smiths' Guild forge" }
+]

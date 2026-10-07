@@ -16,6 +16,10 @@ internal static class EcsSchema
     private static readonly object Lock = new();
     private static bool _initialized;
 
+    // Whether the process has built its component schema: an assembly loaded after that (a code mod in a
+    // second app of the same process) adds no component or tag types to it.
+    public static bool Built { get { lock (Lock) return _initialized; } }
+
     public static void EnsureInitialized()
     {
         lock (Lock)

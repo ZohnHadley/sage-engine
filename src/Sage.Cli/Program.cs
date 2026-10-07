@@ -24,6 +24,9 @@ using System.Linq;
 // `mods` lists the order and the refusals and prints the content report (what each mod added and patched,
 // where mods conflict, which assets are shadowed): it uses the game's own mods too, exits 1 on a refusal
 // or a content error, and a conflict is a warning (phase 4j, 4j-5).
+// A code mod (mod.json names "assemblies", phase 9, issue #396) is loaded and run as the game would load it
+// (its modules' Init and the validation world's OnWorldCreated), so `validate` checks its code too; `mods`
+// flags it "[contains code: not sandboxed]". Nothing is downloaded: a mod is a folder the player installed.
 //
 // `validate` boots the game headlessly and runs every content check (issue #22). `schema` boots each
 // game the same way and writes JSON Schemas for its records, components and parts, with the ids its
@@ -191,7 +194,9 @@ static int Mods(string[] args)
         Console.WriteLine($"WARN  {warning}");
     foreach (string error in report.Errors) Console.WriteLine($"ERROR {error}");
     int refused = report.Mods.Refused.Count;
-    Console.WriteLine($"{Path.GetFullPath(game)}: {report.Mods.Active.Count} mod(s) active, {refused} refused, {report.Conflicts} conflict(s), " +
+    // Code mods (phase 9, issue #396) are flagged in the list above; the count says it once more.
+    int code = report.Mods.Active.Count(m => m.AsksForCode);
+    Console.WriteLine($"{Path.GetFullPath(game)}: {report.Mods.Active.Count} mod(s) active{(code > 0 ? $" ({code} with code, not sandboxed)" : "")}, {refused} refused, {report.Conflicts} conflict(s), " +
                       $"{report.Errors.Count} error(s)");
     return refused == 0 && report.Ok ? 0 : 1;
 }

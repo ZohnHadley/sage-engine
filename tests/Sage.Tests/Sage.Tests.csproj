@@ -61,6 +61,9 @@
     <ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
     <!-- The `sage` CLI, headless like the rest: its packager (`sage package`, issue #293) is tested here. -->
     <ProjectReference Include="..\..\src\Sage.Cli\Sage.Cli.csproj" />
+    <!-- The example code mod (phase 9, issue #396), built first and never referenced: the tests load it from its
+         mod folder into a load context of its own, as the host does. -->
+    <ProjectReference Include="..\games\code-mod\SmithsGuild.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
   <ItemGroup>
     <!-- The host's launch options (issue #298), compiled in: the host is a MonoGame executable, which a

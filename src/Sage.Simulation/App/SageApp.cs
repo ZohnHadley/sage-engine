@@ -165,6 +165,7 @@ public sealed class SageApp : IDisposable
         catch
         {
             engineMade.Dispose();
+            engineMade.ModManager.UnloadCode();
             created.Dispose();
             environment.Dispose();
             throw;
@@ -224,7 +225,8 @@ public sealed class SageApp : IDisposable
         }
     }
 
-    // Mods, after the game (phase 4j, issue 4j-3): found or named, ordered, and each active one mounted as
+    // Mods, after the game (phase 4j, issue 4j-3): found or named, ordered, a code mod's modules added (phase
+    // 9), and each active one mounted as
     // `mods/<id>` in the namespace `<id>`. A bare engine (no game) has none unless a list names some. A mod
     // may not take the engine's, the game's or a loaded plugin's content namespace (`rpg`).
     private void MountMods()
@@ -235,6 +237,10 @@ public sealed class SageApp : IDisposable
             .OfType<string>();
         var mods = ModManager.Discover(_options, Game, reserved);
         Engine.ModManager = mods;
+        // Code mods (phase 9, issue #396): their assemblies now, before any Init and any world, and their
+        // modules after every other one, the game's included. A mod whose code can't be used is refused.
+        foreach (var module in mods.LoadCode(Engine.Modules.Modules, _options.Host))
+            Engine.Modules.Add(module);
         Engine.Mods = mods.Loaded;
         mods.Mount(Engine.Vfs);
         mods.LogSummary();
@@ -295,7 +301,7 @@ public sealed class SageApp : IDisposable
         return game.Kits.SelectMany(kit => ModuleManager.LoadKit(kit, folders, _options.LoadKitClients)).ToList();
     }
 
-    private static bool KindBelongs(ModuleKind kind, HostKind host) => kind switch
+    internal static bool KindBelongs(ModuleKind kind, HostKind host) => kind switch
     {
         ModuleKind.Editor => host == HostKind.Editor,
         ModuleKind.Tool => host == HostKind.Tool,
@@ -511,6 +517,7 @@ public sealed class SageApp : IDisposable
         {
             Engine.Dispose();
             Engine.Modules.ShutdownAll();
+            Engine.ModManager.UnloadCode();   // code mods' load contexts (phase 9), once their modules shut down
             if (registered && _options.ConfigFile is { } config)
             {
                 try { CVars.SaveArchived(config); }
