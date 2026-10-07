@@ -331,6 +331,10 @@
         "Hostile",
         "Allies"
       ]
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

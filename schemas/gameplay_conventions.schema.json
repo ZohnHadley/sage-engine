@@ -191,6 +191,10 @@
               "$ref": "ids.schema.json#/definitions/record:ai_schedule"
             }
           ]
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -258,6 +262,10 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -293,6 +301,10 @@
         "block": {
           "description": "The button held to guard: sets the fighter's AttackStance.Blocking, which an anim_graph reads (`from: Blocking`) to pick its block (issue #359) (string)",
           "type": "string"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -324,9 +336,17 @@
         "magIn": {
           "description": "The clip event that puts the magazine in: a reload completes on it, else after the attack's reloadTime (issue #135) (string)",
           "type": "string"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

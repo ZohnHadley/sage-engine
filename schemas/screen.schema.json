@@ -76,6 +76,10 @@
       "description": "The world's time stands still while it is open (a pause menu), and runs again when the last such screen closes. (bool, default false)",
       "default": false,
       "type": "boolean"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

@@ -109,6 +109,10 @@
     "sculpt": {
       "description": "The editor's sculpt and paint over the generator (a .sterrain file). Empty: terrain/<id>.sterrain, if there is one. A terrain_sculpt path. (AssetPath)",
       "type": "string"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

@@ -35,11 +35,12 @@ internal readonly struct FieldWrite
         Op = op;
     }
 
-    // Whether `path` is top-level field `field` or inside it ("stats.agility" is under "stats").
+    // Whether `path` is top-level field `field` or inside it ("stats.agility" is under "stats", and an
+    // entry of a keyed list, "items[village:lantern].count", under "items").
     public static bool IsUnder(string path, string field) =>
         path.Length >= field.Length && field.Length > 0 &&
         string.Compare(path, 0, field, 0, field.Length, StringComparison.OrdinalIgnoreCase) == 0 &&
-        (path.Length == field.Length || path[field.Length] == '.');
+        (path.Length == field.Length || path[field.Length] is '.' or '[');
 
     // Whether one path is the other or inside it, either way round: a set of "stats" and a set of
     // "stats.agility" write the same value. "" is the whole record and overlaps everything.
@@ -48,8 +49,18 @@ internal readonly struct FieldWrite
 
     public static string TopLevel(string path)
     {
-        int dot = path.IndexOf('.');
+        int dot = path.IndexOfAny(Separators);
         return dot < 0 ? path : path[..dot];
+    }
+
+    private static readonly char[] Separators = { '.', '[' };
+
+    // Whether `add` is an add to a list that `path` is inside one entry of (issue #399): an entry added
+    // to a keyed list and another entry edited in place by key are not the same write.
+    public static bool IsIntoEntryOf(string path, string add)
+    {
+        return add.Length > 0 && path.Length > add.Length + 1 && path[add.Length] == '[' &&
+               string.Compare(path, 0, add, 0, add.Length, StringComparison.OrdinalIgnoreCase) == 0;
     }
 }
 
@@ -310,7 +321,9 @@ public sealed class ContentReport
         foreach (var set in mods)
         {
             if (set.Op != RecordWriteOp.Set || found.Any(f => f.Path == set.Path)) continue;
-            var touching = mods.Where(w => w.Op != RecordWriteOp.Disable && FieldWrite.Overlaps(w.Path, set.Path)).ToList();
+            // An add to a keyed list doesn't touch an entry another mod edits by key (issue #399).
+            var touching = mods.Where(w => w.Op != RecordWriteOp.Disable && FieldWrite.Overlaps(w.Path, set.Path) &&
+                                           !(w.Op == RecordWriteOp.Add && FieldWrite.IsIntoEntryOf(set.Path, w.Path))).ToList();
             var writers = touching.Select(w => w.Source.File.Mount!).Distinct().ToList();
             if (writers.Count < 2) continue;
             // One conflict for one clash: a set of "stats" against "stats.agility" is said once, at the
@@ -322,7 +335,7 @@ public sealed class ContentReport
         }
         foreach (var (path, writers, winner) in found)
             _conflicts.Add(new ContentConflict(ContentConflictKind.Value, type, id, path, writers, winner,
-                $"{type} {id} {path}: {string.Join(", ", writers.Select(NameOf))}; {NameOf(winner)} won"));
+                $"{type} {id} {(path.Length == 0 ? "(record)" : path)}: {string.Join(", ", writers.Select(NameOf))}; {NameOf(winner)} won"));
     }
 
     // The report as text: the conflicts, then each mount's part. With `mount` (a mount's name or a

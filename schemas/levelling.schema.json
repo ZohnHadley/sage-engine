@@ -86,6 +86,10 @@
           "gain": {
             "description": "What the governing attribute gains at the level. (float)",
             "type": "number"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -105,6 +109,10 @@
           "gain": {
             "description": "What the governing attribute gains at the level. (float)",
             "type": "number"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -124,6 +132,10 @@
           "gain": {
             "description": "What the governing attribute gains at the level. (float)",
             "type": "number"
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -149,6 +161,10 @@
       "items": {
         "$ref": "ids.schema.json#/definitions/record:effect"
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

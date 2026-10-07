@@ -62,6 +62,10 @@
     "icon": {
       "description": "Its picture in an inventory grid, drawn across its footprint (turned with it); none: its name only. A texture path. (AssetPath)",
       "type": "string"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

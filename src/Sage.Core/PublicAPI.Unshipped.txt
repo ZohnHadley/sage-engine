@@ -104,3 +104,6 @@ Sage.Core.RecordCheck.Ids(string! type) -> System.Collections.Generic.IEnumerabl
 static Sage.Core.ModManifest.IsPackagePath(string! path) -> bool
 static Sage.Core.ModPackage.DefaultFileName(Sage.Core.ModManifest! mod) -> string!
 static Sage.Core.ModPackage.Pack(string! folder, string? output = null) -> (Sage.Core.ModManifest! Mod, int Files, string! Output)
+Sage.Core.ListKeyAttribute
+Sage.Core.ListKeyAttribute.Key.get -> string!
+Sage.Core.ListKeyAttribute.ListKeyAttribute(string! key) -> void

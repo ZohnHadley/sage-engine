@@ -193,6 +193,10 @@
       "description": "Who says the caption, shown before it: text or @key; empty: a caption of the sound, not a line. Category: Accessibility. (string, default \"\")",
       "default": "",
       "type": "string"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false
