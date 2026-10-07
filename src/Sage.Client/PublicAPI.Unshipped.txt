@@ -17,6 +17,11 @@ Sage.Client.InputDevices.InputDevices(Sage.Simulation.PadAssignment? pads, Sage.
 Sage.Client.InputDevices.LastDevice.get -> Sage.Simulation.LastUsedDevice!
 Sage.Client.InputDevices.PadFor(int player) -> Sage.Client.GamepadListener!
 Sage.Client.InputDevices.Pads.get -> Sage.Simulation.PadAssignment!
+Sage.Client.IWorkshop
+Sage.Client.IWorkshop.Available.get -> bool
+Sage.Client.IWorkshop.Installed() -> System.Collections.Generic.IReadOnlyList<Sage.Client.WorkshopItem!>!
+Sage.Client.IWorkshop.Name.get -> string!
+Sage.Client.IWorkshop.PublishAsync(Sage.Client.WorkshopUpload! upload, System.Threading.CancellationToken cancel = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Sage.Client.WorkshopPublishResult!>!
 Sage.Client.MouseListener.ApplyCapture(bool want, Microsoft.Xna.Framework.Point centre) -> Sage.Simulation.MouseCaptureFrame
 Sage.Client.MouseListener.Captured.get -> bool
 Sage.Client.RenderStats.LodCulled -> int
@@ -26,6 +31,30 @@ Sage.Client.RenderStats.Instanced -> int
 Sage.Client.RenderStats.InstancedDraws -> int
 Sage.Client.RenderStats.InstancedSprites -> int
 Sage.Client.RenderStats.ShadowMaps -> int
+Sage.Client.WorkshopItem
+Sage.Client.WorkshopItem.ItemId.get -> string!
+Sage.Client.WorkshopItem.Path.get -> string!
+Sage.Client.WorkshopItem.Title.get -> string!
+Sage.Client.WorkshopItem.Updated.get -> System.DateTimeOffset
+Sage.Client.WorkshopItem.WorkshopItem(string! itemId, string! title, string! path, System.DateTimeOffset updated) -> void
+Sage.Client.WorkshopPublishResult
+Sage.Client.WorkshopPublishResult.ItemId.get -> string!
+Sage.Client.WorkshopPublishResult.Message.get -> string!
+Sage.Client.WorkshopPublishResult.Succeeded.get -> bool
+Sage.Client.WorkshopPublishResult.WorkshopPublishResult(bool succeeded, string! itemId, string! message) -> void
+Sage.Client.WorkshopUpload
+Sage.Client.WorkshopUpload.ChangeNote.get -> string!
+Sage.Client.WorkshopUpload.ChangeNote.init -> void
+Sage.Client.WorkshopUpload.Description.get -> string!
+Sage.Client.WorkshopUpload.Description.init -> void
+Sage.Client.WorkshopUpload.ItemId.get -> string!
+Sage.Client.WorkshopUpload.ItemId.init -> void
+Sage.Client.WorkshopUpload.Path.get -> string!
+Sage.Client.WorkshopUpload.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Sage.Client.WorkshopUpload.Tags.init -> void
+Sage.Client.WorkshopUpload.Title.get -> string!
+Sage.Client.WorkshopUpload.Title.init -> void
+Sage.Client.WorkshopUpload.WorkshopUpload(string! path) -> void
 static readonly Sage.Client.GamepadListener.None -> Sage.Client.GamepadListener!
 *REMOVED*Sage.Client.ClientModule.Screens.get -> Sage.Client.ScreenRegistry!
 *REMOVED*Sage.Client.PanelView

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
@@ -14,7 +15,11 @@ namespace Sage.Editing;
 [Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
 public sealed class RecordEditor
 {
-    public RecordEditor(Engine engine) => Engine = engine;
+    public RecordEditor(Engine engine)
+    {
+        Engine = engine;
+        engine.Records.Reloaded += () => _conflicts = null;
+    }
 
     public Engine Engine { get; }
 
@@ -60,6 +65,25 @@ public sealed class RecordEditor
     }
 
     private void OnChanged() => Changed?.Invoke();
+
+    // The open record's fields that mods conflict over (issue #401): each with every mod's value and the
+    // winner. Worked out when first asked after an open or a reload, not every frame; empty when no
+    // record is open or no two mods wrote the same field of it.
+    public IReadOnlyList<FieldConflict> Conflicts
+    {
+        get
+        {
+            if (Current == null) return Array.Empty<FieldConflict>();
+            if (_conflicts == null || _conflictsFor != Current)
+            {
+                _conflicts = RecordConflicts.Find(Engine, Current.Type, Current.Id);
+                _conflictsFor = Current;
+            }
+            return _conflicts;
+        }
+    }
+    private IReadOnlyList<FieldConflict>? _conflicts;
+    private RecordDocument? _conflictsFor;
 
     // The record types that have records, and then those that have none: what the browser lists.
     public string[] Types() => Engine.Records.TypeNames.ToArray();
@@ -117,6 +141,18 @@ public sealed class RecordEditor
         {
             if (a.Count > 0) Live = a[0] is "1" or "on" or "true" or "yes";
             Log.Info(LogCat.Console, $"ed_rec_live {(Live ? 1 : 0)}" + (Current is { PreviewError.Length: > 0 } open ? $" (not shown: {open.PreviewError})" : ""));
+        });
+
+        cvars.RegisterCommand("ed_rec_conflicts", CVarFlags.None,
+            "ed_rec_conflicts: the open record's fields that two or more mods wrote, each mod's value, and which one won.", _ =>
+        {
+            if (!HasRecord(out var record)) return;
+            var conflicts = Conflicts;
+            Log.Info(LogCat.Console, conflicts.Count == 0
+                ? $"{record.Type} {record.Id}: no conflicts between mods"
+                : $"{record.Type} {record.Id}: {conflicts.Count} field(s) mods conflict over (the later mod wins; * is the write that stands):");
+            foreach (var conflict in conflicts)
+                foreach (var line in RecordConflicts.Lines(conflict)) Log.Info(LogCat.Console, "  " + line);
         });
 
         cvars.RegisterCommand("ed_rec_close", CVarFlags.DevOnly, "ed_rec_close: close the open record (unsaved edits are dropped).", _ => Close());
