@@ -341,9 +341,13 @@ public sealed class EditDocument
         if (_record.Origin != default) file["origin"] = dialect.ToNode(_record.Origin);
         if (_record.RelativeTo != PlacementFrame.World) file["relativeTo"] = dialect.ToNode(_record.RelativeTo);
         var place = dialect.ToNode(_record.Place)!.AsArray();
-        // What a placement leaves out is what it does not have: no id (one derived from its place), no wires.
+        // What a placement leaves out is what it does not have: no id (one derived from its place), no wires,
+        // no pitch or roll and a scale of 1 (#367), so a yaw-only placement is written as it always was.
         foreach (var placement in place.OfType<JsonObject>())
         {
+            if (placement["pitch"] is JsonValue pitch && pitch.GetValue<float>() == 0f) placement.Remove("pitch");
+            if (placement["roll"] is JsonValue roll && roll.GetValue<float>() == 0f) placement.Remove("roll");
+            if (placement["scale"] is JsonNode scale && JsonNode.DeepEquals(scale, dialect.ToNode(System.Numerics.Vector3.One))) placement.Remove("scale");
             if ((string?)placement["id"] == "") placement.Remove("id");
             if (placement["outputs"] is JsonArray { Count: 0 }) placement.Remove("outputs");
         }
@@ -406,6 +410,9 @@ public sealed class EditDocument
         Prefab = placement.Prefab,
         At = placement.At,
         Yaw = placement.Yaw,
+        Pitch = placement.Pitch,
+        Roll = placement.Roll,
+        Scale = placement.Scale,
         Name = placement.Name,
         Id = placement.Id,
         RelativeTo = placement.RelativeTo,

@@ -7,7 +7,8 @@ namespace Sage.Editing;
 
 // The handles of the move gizmo: three axes and the three planes between them (world-aligned).
 [Experimental("SAGE0133", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the editor's model (phase 10a)
-public enum GizmoHandle { None, X, Y, Z, XY, XZ, YZ }
+// `All` is the scale gizmo's centre (issue #367): every axis at once.
+public enum GizmoHandle { None, X, Y, Z, XY, XZ, YZ, All }
 
 // The translate gizmo's maths (docs/design/15 §6), with no drawing: the editor draws handles of length
 // `size` at `origin` (see GizmoMath.ScreenConstantSize) and asks this which one the pointer is on and
@@ -45,7 +46,13 @@ public static class TranslateGizmo
             planeDistance = t;
         }
         if (plane != GizmoHandle.None) return plane;
+        return AxisHit(ray, origin, size);
+    }
 
+    // The axis handle under `ray` (nearest first), or None: the move gizmo's axes, and the scale gizmo's.
+    internal static GizmoHandle AxisHit(in EditorRay ray, Vector3 origin, float size)
+    {
+        if (size <= 0f) return GizmoHandle.None;
         GizmoHandle axis = GizmoHandle.None;
         float nearest = float.MaxValue;
         foreach (GizmoHandle h in new[] { GizmoHandle.X, GizmoHandle.Y, GizmoHandle.Z })
@@ -91,6 +98,29 @@ public static class TranslateGizmo
             if (delta.Z != 0f) delta.Z = Snap.ToGrid(target.Z, grid) - origin.Z;
         }
         return delta;
+    }
+
+    // ---- Local space (issue #367) --------------------------------------------------------------------
+
+    // The same, with the handles turned by `orientation` (a placement's rotation, in local space): the
+    // pointer is taken into the gizmo's own frame and asked there.
+    public static GizmoHandle HitTest(in EditorRay ray, Vector3 origin, float size, Quaternion orientation) =>
+        orientation.IsIdentity ? HitTest(ray, origin, size) : HitTest(Local(ray, origin, orientation), Vector3.Zero, size);
+
+    // The same, along the turned axes. `grid` snaps how far it moved along each of them (in local space
+    // there is no world grid to land on), and the answer is in origin space as before.
+    public static Vector3? Drag(GizmoHandle handle, in EditorRay startRay, in EditorRay currentRay, Vector3 origin, Quaternion orientation, float grid = 0f)
+    {
+        if (orientation.IsIdentity) return Drag(handle, startRay, currentRay, origin, grid);
+        if (Drag(handle, Local(startRay, origin, orientation), Local(currentRay, origin, orientation), Vector3.Zero, grid) is not { } local) return null;
+        return Vector3.Transform(local, orientation);
+    }
+
+    // `ray` seen from a frame at `origin` turned by `orientation`: lengths along it are unchanged.
+    internal static EditorRay Local(in EditorRay ray, Vector3 origin, Quaternion orientation)
+    {
+        var inverse = Quaternion.Inverse(Quaternion.Normalize(orientation));
+        return new EditorRay(Vector3.Transform(ray.Origin - origin, inverse), Vector3.Transform(ray.Direction, inverse));
     }
 
     private static (Vector3 U, Vector3 V, Vector3 Normal) PlaneBasis(GizmoHandle handle) => handle switch
