@@ -64,11 +64,19 @@
             "name": {
               "description": "Its name: what AnimationEvent carries, OnAnimEvent hands on, and a same-named trigger param is set by. (string)",
               "type": "string"
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
         }
       }
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

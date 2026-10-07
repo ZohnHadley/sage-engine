@@ -545,6 +545,8 @@ public static class RecordSchemas
                     properties[field.JsonName + "-"] = Annotated(schema, $"Removes these from \"{field.JsonName}\" (as a base or an earlier definition listed it).");
                 }
             }
+            // In a patch, any object may be replaced rather than merged into (issue #399).
+            if (!properties.ContainsKey("replace")) properties["replace"] = ReplaceSchema();
             return new JsonObject
             {
                 ["type"] = "object",
@@ -552,6 +554,12 @@ public static class RecordSchemas
                 ["additionalProperties"] = false,
             };
         }
+
+        private static JsonObject ReplaceSchema() => new()
+        {
+            ["description"] = "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            ["type"] = "boolean",
+        };
 
         // A field: its value's schema, with the description (tooltip, unit, range, default) and bounds.
         private JsonObject FieldSchema(FieldMetadata field, Type? declaringType, TypeMetadata? owner, int depth)
@@ -586,6 +594,16 @@ public static class RecordSchemas
 
             var type = Nullable.GetUnderlyingType(field.Type) ?? field.Type;
             var schema = KindSchema(field, type, depth);
+            // A keyed list's entry may say "$remove" in a patch (issue #399).
+            if (field.Kind == ValueKind.List && declaringType != null && Member(declaringType, field.Name)?.GetCustomAttribute<ListKeyAttribute>(false) is { } key &&
+                schema["items"] is JsonObject { } entry && entry["properties"] is JsonObject entryFields)
+            {
+                entryFields["$remove"] = new JsonObject
+                {
+                    ["description"] = $"true (in a patch): remove the entry whose \"{key.Key}\" is this one's.",
+                    ["type"] = "boolean",
+                };
+            }
             return Nullable.GetUnderlyingType(field.Type) != null
                 ? new JsonObject { ["anyOf"] = new JsonArray(schema, new JsonObject { ["type"] = "null" }) }
                 : schema;

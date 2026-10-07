@@ -118,7 +118,7 @@ public sealed class QuestRecord
 {
     public string Label = "";
     public string Start = "";                       // empty = the first stage
-    public List<QuestStage> Stages = new();
+    [ListKey("id")] public List<QuestStage> Stages = new();
 
     public QuestStage? Stage(string id)
     {

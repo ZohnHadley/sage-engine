@@ -53,6 +53,10 @@
       "description": "Where it comes among the data's slots on an equipment screen: lower first. (int, default 0)",
       "default": 0,
       "type": "integer"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

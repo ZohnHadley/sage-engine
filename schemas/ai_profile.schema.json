@@ -141,6 +141,10 @@
                 "$ref": "ids.schema.json#/definitions/record:ai_schedule"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -201,6 +205,10 @@
                 "$ref": "ids.schema.json#/definitions/record:ai_schedule"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -261,6 +269,10 @@
                 "$ref": "ids.schema.json#/definitions/record:ai_schedule"
               }
             ]
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -354,6 +366,10 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -429,6 +445,10 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -504,10 +524,18 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -601,6 +629,10 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -676,6 +708,10 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -751,10 +787,18 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -848,6 +892,10 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -923,6 +971,10 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -998,10 +1050,18 @@
                 "add": {
                   "description": "What it adds to the score, at most (negative to count against) (float)",
                   "type": "number"
+                },
+                "replace": {
+                  "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false
             }
+          },
+          "replace": {
+            "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -1034,6 +1094,10 @@
       "default": 15,
       "type": "number",
       "minimum": 0
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

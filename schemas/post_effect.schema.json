@@ -66,6 +66,10 @@
       "description": "Reads the scene's depth: the engine hands it SceneDepth (z/w, 1 is the sky) and DepthParams (near, far, orthographic) (bool, default false)",
       "default": false,
       "type": "boolean"
+    },
+    "replace": {
+      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false
