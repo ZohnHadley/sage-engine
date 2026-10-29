@@ -3,7 +3,7 @@
   // makes the noise of the surface under the foot, picked by the ground's physics_material. No C#: the
   // `footsteps` part on the player (a step every stride walked, and a noise when it jumps and lands) and
   // on the hut's walker (a step on each of its walk clip's foot events), the surfaces' cues below, and
-  // the sounds' variations so a walk is not one sample on repeat. Sounds: tools/make_placeholder_audio.py.
+  // the sounds' variations so a walk is not one sample on repeat. Sounds: from OpenGameArt (THIRD_PARTY_NOTICES.md).
 
   // ---- what the ground is made of -----------------------------------------------------------------
   //
