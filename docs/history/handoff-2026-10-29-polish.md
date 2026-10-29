@@ -28,9 +28,9 @@ traps; [`handoff-2026-09-28.md`](handoff-2026-09-28.md) §3 for how to build and
 | #600 (Polish-4) | #620 | **The kit's screens on keys**: P perks, G factions, N map, I inventory, Escape pause (the host leaves Menu to a screen bound to it rather than quitting); Controls in the pause menu; **`Sage.Kits.Rpg.Client` deleted** (the owner's choice), the SDK references a kit's client half only with `Client="true"` | — |
 | #586, #590 (Polish-5) | #621 | The audio backend's dispose at quit no longer throws; a Development host compiles a folder mod's shaders on load with `asset_hotreload` off. The compile time is measured and written down: ~0.5 s to start, ~0.85 s a technique (lit.fx, 17 techniques, ~15 s) | — |
 | #591 (Polish-5) | #623 | **An `onTerrain` level flattens the ground under its brushes** (`Terrain.Flatten`, written into the sculpt, loaded sectors refreshed; `flattenTerrain: false` opts out). The hut stands on a level pad | The pad is ~40 m across (8 m terrain cells); the crypt door near the hut is inside it and was not walked up to |
-| — | (assets) | The generated game assets replaced with OpenGameArt ones, by a background agent on its own branch: see its PR | See its PR |
+| #622 | #624 | **The Sandbox's generated art and sound replaced with OpenGameArt assets** (owner's request, a background agent on its own branch): the brick wall's albedo, normal and spec maps, the hut's four textures, terrain rock and detail, clouds, moon, tree, sword, fireball, the UI frame, all 20 sounds and the four music tracks. Every one CC0, same paths and formats, credited in `THIRD_PARTY_NOTICES.md` "Game content" | Kept: `creature.png` (no fitting 8-rotation sprite), `hands.png` and `sword_fp.png` (their 3-frame layout), `map_main.png` (it is this scene), every `.glb` (rigs, clips, sockets and hitboxes records depend on). Nobody listened to the sounds: chosen by name, length and onset; the wander drum layer is not hand-aligned with the wander track |
 
-Issues filed: #617 (styled runs in a label). #592 has the lake's findings as a comment.
+Issues filed: #617 (styled runs in a label), #622 (the asset replacement). #592 has the lake's findings as a comment.
 
 ## 2. Known limits and what is not verified
 
@@ -72,3 +72,7 @@ was checked with a WCAG ratio script before any record was written.
 - **A host is a Windows program**: a `/c/Users/...` path in a command lands at `C:\c\Users\...`; pass `cygpath -m`.
 - **A `&&` chain ending in `grep` succeeds when the test run fails**: read the result before committing.
 - **`warp` keeps the player's facing; a warp into water floats them to the surface.**
+- **The Sandbox's old art generators still write over the new assets**: `make_brick_wall.py`, `make_hut.py`,
+  `make_placeholder_art.py`, `make_ui_art.py`, `make_sky_art.py`, `make_terrain_art.py` and
+  `make_placeholder_audio.py` each still make something that was kept, or are named in the docs. Do not run them
+  over `games/Sandbox/content`; trimming them to what was kept is a small job for a later pack.
