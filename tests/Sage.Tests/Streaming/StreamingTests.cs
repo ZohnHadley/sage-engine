@@ -19,7 +19,7 @@ public class StreamingTests
 {
     public StreamingTests() { _ = TestEnv.UserRoot; }
 
-    private sealed class FlatGround : ITerrainGenerator
+    internal sealed class FlatGround : ITerrainGenerator
     {
         // Every generation, by sector and resolution: since #277 Generate runs on worker threads too
         // (the sectors just past the ring, and the far ring's coarse copies), so this is concurrent.
@@ -34,7 +34,7 @@ public class StreamingTests
         }
     }
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         public readonly Engine Engine;
         public readonly World World;
@@ -337,36 +337,6 @@ public class StreamingTests
         Assert.Equal(-2 * 1024f + 40f, propWhenCalled.X, 3);       // already shifted when called
     }
 
-    // Streaming runs every tick in the fixed schedule, where the engine's rule is that a steady state
-    // allocates nothing (02 §4.6). Loading a sector allocates — it makes a heightfield — so the claim
-    // is about the ticks in between, which is all of them once the ring is up.
-    //
-    // Measured as a **difference**, with streaming off and then on, so that only streaming is counted:
-    // a flat zero here would be answering for every other plugin of the fixture's tick. (The physics
-    // step, once thought to allocate 40 bytes a tick inside Bepu, allocates nothing since #273.)
-    [Xunit.Fact]
-    public void StandingStillCostsNothingPerTick()
-    {
-        using var fx = new Fixture();
-        fx.Player(new Vector3(10, 0, 10));
-        fx.Tick(5);                                  // the ring, its meshes and its collision are up
-
-        var enabled = fx.Engine.CVars.Find("stream_enabled")!;
-
-        Assert.True(enabled.TrySet("0", out _));
-        fx.Tick(10);                                 // settle, and let anything one-off happen
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        fx.Tick(60);
-        long without = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        Assert.True(enabled.TrySet("1", out _));
-        fx.Tick(10);
-        before = GC.GetAllocatedBytesForCurrentThread();
-        fx.Tick(60);
-        long with = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        Assert.True(with - without <= 0, $"streaming added {with - without} bytes over 60 ticks");
-    }
 
     // Walking back and forth across a sector edge must not load and unload the world each time: that
     // is what the margin is for, and it is the failure that would show up as a stutter every few steps.
@@ -412,5 +382,43 @@ public class StreamingTests
         foreach (var entity in fx.World.Query<SectorOwned>().Entities)
             if (fx.World.Get<SectorOwned>(entity).Sector == sector) n++;
         return n;
+    }
+}
+
+// Measured per thread, so not beside the rest of the suite (issue #587).
+[Collection(MeasurementsCollection.Name)]
+public class StreamingAllocationTests
+{
+    public StreamingAllocationTests() { _ = TestEnv.UserRoot; }
+
+    // Streaming runs every tick in the fixed schedule, where the engine's rule is that a steady state
+    // allocates nothing (02 §4.6). Loading a sector allocates — it makes a heightfield — so the claim
+    // is about the ticks in between, which is all of them once the ring is up.
+    //
+    // Measured as a **difference**, with streaming off and then on, so that only streaming is counted:
+    // a flat zero here would be answering for every other plugin of the fixture's tick. (The physics
+    // step, once thought to allocate 40 bytes a tick inside Bepu, allocates nothing since #273.)
+    [Xunit.Fact]
+    public void StandingStillCostsNothingPerTick()
+    {
+        using var fx = new StreamingTests.Fixture();
+        fx.Player(new Vector3(10, 0, 10));
+        fx.Tick(5);                                  // the ring, its meshes and its collision are up
+
+        var enabled = fx.Engine.CVars.Find("stream_enabled")!;
+
+        Assert.True(enabled.TrySet("0", out _));
+        fx.Tick(10);                                 // settle, and let anything one-off happen
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        fx.Tick(60);
+        long without = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(enabled.TrySet("1", out _));
+        fx.Tick(10);
+        before = GC.GetAllocatedBytesForCurrentThread();
+        fx.Tick(60);
+        long with = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(with - without <= 0, $"streaming added {with - without} bytes over 60 ticks");
     }
 }
