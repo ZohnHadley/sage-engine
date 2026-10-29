@@ -102,6 +102,7 @@
         "claws",
         "crossbow_shot",
         "crowbar_swing",
+        "cut",
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
@@ -116,6 +117,7 @@
         "skills:practice_cut",
         "staff_blow",
         "sword_swing",
+        "vvardenfelllite:cut",
         "weapons:crossbow_shot",
         "weapons:pistol_shot",
         "weapons:sword_swing"
@@ -155,6 +157,9 @@
         "skills:strength",
         "stamina",
         "strength",
+        "vvardenfelllite:blade",
+        "vvardenfelllite:blade_xp",
+        "vvardenfelllite:strength",
         "weapons:armor_head"
       ]
     },
@@ -163,7 +168,8 @@
       "type": "string",
       "enum": [
         "blade_practice",
-        "skills:blade_practice"
+        "skills:blade_practice",
+        "vvardenfelllite:blade_practice"
       ]
     },
     "record:barks": {
@@ -253,13 +259,15 @@
       "description": "The id of a dialogue record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "elder_talk",
         "ferryman_talk",
         "hermit_talk",
         "keeper_talk",
         "kitscreens:ferryman_talk",
         "sandbox:hermit_talk",
         "scriptedsequence:keeper_talk",
-        "topicsgame:ferryman_talk"
+        "topicsgame:ferryman_talk",
+        "vvardenfelllite:elder_talk"
       ]
     },
     "record:dialogue_topic": {
@@ -267,12 +275,14 @@
       "type": "string",
       "enum": [
         "kitscreens:the_river",
+        "rats",
         "sandbox:the_lanterns",
         "sandbox:the_watchers",
         "the_lanterns",
         "the_river",
         "the_watchers",
-        "topicsgame:the_river"
+        "topicsgame:the_river",
+        "vvardenfelllite:rats"
       ]
     },
     "record:effect": {
@@ -296,6 +306,7 @@
         "mend",
         "openworld:skeleton_build",
         "padding",
+        "rat_build",
         "rest_heal",
         "sage:burning",
         "sage:damage",
@@ -320,6 +331,7 @@
         "tough_hide",
         "vigour",
         "village:straw",
+        "vvardenfelllite:rat_build",
         "weapons:helmet",
         "weapons:padding",
         "zombie_build"
@@ -364,8 +376,10 @@
         "sandbox:hermits",
         "sandbox:village",
         "staff",
+        "vermin",
         "village",
-        "villagers"
+        "villagers",
+        "vvardenfelllite:vermin"
       ]
     },
     "record:faction_ranks": {
@@ -470,6 +484,7 @@
         "crowbar",
         "dagger",
         "flesh_eye",
+        "gold",
         "hammer",
         "jellyfish",
         "kitscreens:bread",
@@ -484,6 +499,7 @@
         "pistol",
         "pistol_round",
         "pistol_rounds",
+        "potion",
         "practice_sword",
         "ring",
         "rope",
@@ -504,6 +520,9 @@
         "sword",
         "village:bread",
         "village:lantern",
+        "vvardenfelllite:gold",
+        "vvardenfelllite:potion",
+        "vvardenfelllite:sword",
         "weapons:bolt",
         "weapons:crossbow",
         "weapons:pistol",
@@ -531,6 +550,8 @@
         "bunker:bunker_stock",
         "bunker_stock",
         "sandbox:watcher_loot",
+        "trader_stock",
+        "vvardenfelllite:trader_stock",
         "watcher_loot"
       ]
     },
@@ -651,7 +672,8 @@
       "type": "string",
       "enum": [
         "bunker:trader",
-        "trader"
+        "trader",
+        "vvardenfelllite:trader"
       ]
     },
     "record:mesh_lod": {
@@ -836,6 +858,7 @@
         "editor:light",
         "editor:plate",
         "editor:player",
+        "elder",
         "eye",
         "fan",
         "fence",
@@ -905,6 +928,7 @@
         "player",
         "player_camera",
         "rain",
+        "rat",
         "rendercheck:eye",
         "reward_check",
         "ring_on_floor",
@@ -1038,6 +1062,11 @@
         "village:floor",
         "village:player",
         "village:trader",
+        "vvardenfelllite:elder",
+        "vvardenfelllite:floor",
+        "vvardenfelllite:player",
+        "vvardenfelllite:rat",
+        "vvardenfelllite:trader",
         "walker",
         "wall_lamp",
         "watcher",
@@ -1056,10 +1085,12 @@
       "description": "The id of a quest record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "cellar_rats",
         "crossing",
         "kitscreens:crossing",
         "sandbox:thin_the_wood",
-        "thin_the_wood"
+        "thin_the_wood",
+        "vvardenfelllite:cellar_rats"
       ]
     },
     "record:ragdoll": {
@@ -1166,10 +1197,12 @@
         "skeletal:yard",
         "skills:yard",
         "topicsgame:ferry",
+        "town",
         "valley",
         "vault",
         "village",
         "village:village",
+        "vvardenfelllite:town",
         "weapons:range",
         "wilds",
         "yard"
@@ -1251,7 +1284,8 @@
       "type": "string",
       "enum": [
         "blade",
-        "skills:blade"
+        "skills:blade",
+        "vvardenfelllite:blade"
       ]
     },
     "record:sky": {
@@ -1758,6 +1792,7 @@
         "claws",
         "crossbow_shot",
         "crowbar_swing",
+        "cut",
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
@@ -1772,6 +1807,7 @@
         "skills:practice_cut",
         "staff_blow",
         "sword_swing",
+        "vvardenfelllite:cut",
         "weapons:crossbow_shot",
         "weapons:pistol_shot",
         "weapons:sword_swing"
@@ -1811,6 +1847,9 @@
         "skills:strength",
         "stamina",
         "strength",
+        "vvardenfelllite:blade",
+        "vvardenfelllite:blade_xp",
+        "vvardenfelllite:strength",
         "weapons:armor_head"
       ]
     },
@@ -1819,7 +1858,8 @@
       "type": "string",
       "enum": [
         "blade_practice",
-        "skills:blade_practice"
+        "skills:blade_practice",
+        "vvardenfelllite:blade_practice"
       ]
     },
     "base:barks": {
@@ -1909,13 +1949,15 @@
       "description": "Another dialogue record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "elder_talk",
         "ferryman_talk",
         "hermit_talk",
         "keeper_talk",
         "kitscreens:ferryman_talk",
         "sandbox:hermit_talk",
         "scriptedsequence:keeper_talk",
-        "topicsgame:ferryman_talk"
+        "topicsgame:ferryman_talk",
+        "vvardenfelllite:elder_talk"
       ]
     },
     "base:dialogue_topic": {
@@ -1923,12 +1965,14 @@
       "type": "string",
       "enum": [
         "kitscreens:the_river",
+        "rats",
         "sandbox:the_lanterns",
         "sandbox:the_watchers",
         "the_lanterns",
         "the_river",
         "the_watchers",
-        "topicsgame:the_river"
+        "topicsgame:the_river",
+        "vvardenfelllite:rats"
       ]
     },
     "base:effect": {
@@ -1952,6 +1996,7 @@
         "mend",
         "openworld:skeleton_build",
         "padding",
+        "rat_build",
         "rest_heal",
         "sage:burning",
         "sage:damage",
@@ -1976,6 +2021,7 @@
         "tough_hide",
         "vigour",
         "village:straw",
+        "vvardenfelllite:rat_build",
         "weapons:helmet",
         "weapons:padding",
         "zombie_build"
@@ -2020,8 +2066,10 @@
         "sandbox:hermits",
         "sandbox:village",
         "staff",
+        "vermin",
         "village",
-        "villagers"
+        "villagers",
+        "vvardenfelllite:vermin"
       ]
     },
     "base:faction_ranks": {
@@ -2126,6 +2174,7 @@
         "crowbar",
         "dagger",
         "flesh_eye",
+        "gold",
         "hammer",
         "jellyfish",
         "kitscreens:bread",
@@ -2140,6 +2189,7 @@
         "pistol",
         "pistol_round",
         "pistol_rounds",
+        "potion",
         "practice_sword",
         "ring",
         "rope",
@@ -2160,6 +2210,9 @@
         "sword",
         "village:bread",
         "village:lantern",
+        "vvardenfelllite:gold",
+        "vvardenfelllite:potion",
+        "vvardenfelllite:sword",
         "weapons:bolt",
         "weapons:crossbow",
         "weapons:pistol",
@@ -2187,6 +2240,8 @@
         "bunker:bunker_stock",
         "bunker_stock",
         "sandbox:watcher_loot",
+        "trader_stock",
+        "vvardenfelllite:trader_stock",
         "watcher_loot"
       ]
     },
@@ -2307,7 +2362,8 @@
       "type": "string",
       "enum": [
         "bunker:trader",
-        "trader"
+        "trader",
+        "vvardenfelllite:trader"
       ]
     },
     "base:mesh_lod": {
@@ -2493,6 +2549,7 @@
         "editor:light",
         "editor:plate",
         "editor:player",
+        "elder",
         "eye",
         "fan",
         "fence",
@@ -2562,6 +2619,7 @@
         "player",
         "player_camera",
         "rain",
+        "rat",
         "rendercheck:eye",
         "reward_check",
         "ring_on_floor",
@@ -2696,6 +2754,11 @@
         "village:floor",
         "village:player",
         "village:trader",
+        "vvardenfelllite:elder",
+        "vvardenfelllite:floor",
+        "vvardenfelllite:player",
+        "vvardenfelllite:rat",
+        "vvardenfelllite:trader",
         "walker",
         "wall_lamp",
         "watcher",
@@ -2714,10 +2777,12 @@
       "description": "Another quest record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "cellar_rats",
         "crossing",
         "kitscreens:crossing",
         "sandbox:thin_the_wood",
-        "thin_the_wood"
+        "thin_the_wood",
+        "vvardenfelllite:cellar_rats"
       ]
     },
     "base:ragdoll": {
@@ -2824,10 +2889,12 @@
         "skeletal:yard",
         "skills:yard",
         "topicsgame:ferry",
+        "town",
         "valley",
         "vault",
         "village",
         "village:village",
+        "vvardenfelllite:town",
         "weapons:range",
         "wilds",
         "yard"
@@ -2909,7 +2976,8 @@
       "type": "string",
       "enum": [
         "blade",
-        "skills:blade"
+        "skills:blade",
+        "vvardenfelllite:blade"
       ]
     },
     "base:sky": {

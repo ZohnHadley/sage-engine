@@ -1,0 +1,14 @@
+{
+  // Phase 5's second sample (issue #577, REDESIGN §5 Stage C): a Morrowind-style town, data only, on the RPG
+  // kit. Ask the elder about "rats" and he gives you a quest; kill the two rats in his cellar with your sword
+  // (each hit raises your blade skill); ask him again and he pays you; spend the reward at the trader. V
+  // switches between first and third person.
+  // tests/Sage.Tests/Games/VvardenfellLiteTests.cs plays it headlessly.
+  "name": "Vvardenfell lite",
+  "id": "vvardenfelllite",
+  "plugins": ["sage.gameplay.io", "sage.gameplay.character", "sage.gameplay.attributes", "sage.gameplay.combat",
+              "sage.gameplay.items", "sage.gameplay.factions", "sage.gameplay.dialogue", "sage.gameplay.quests"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "town"
+}
