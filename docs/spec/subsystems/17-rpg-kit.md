@@ -41,7 +41,7 @@ Not responsible for: the ability, item, quest and dialogue models, effects, comb
 | Item | Value |
 |---|---|
 | Simulation half | `src/Sage.Kits.Rpg`, namespace `Sage.Kits.Rpg`, plugin id `sage.kits.rpg` (`RpgKitModule`). |
-| Client half | `src/Sage.Kits.Rpg.Client`, plugin id `sage.kits.rpg.client` (`RpgKitClientModule`). The only half that may use MonoGame types; empty since #350, which moved its screens to the simulation half. |
+| Client half | None: the empty `Sage.Kits.Rpg.Client` (`sage.kits.rpg.client`) was deleted in #600, since #350 had moved every screen to the simulation half. The SDK references a kit's client half only when the kit says `Client="true"`. |
 | References | The simulation half depends on `AbilitiesModule`, `ItemsModule` and `UiModule`; the client half on `ClientModule` and the simulation half. |
 | Referenced by | Games only, through `<SageKit Include="sage.kits.rpg" />` and `"kits"` in `game.json` (SAGE0114 if they disagree). Never by the base: SAGE0025 forbids it. |
 | Loaded | Only when a game names it; it is not in `BasePlugins.All()`. The client half loads with it in a host that has a window. |

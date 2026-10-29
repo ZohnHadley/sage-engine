@@ -296,7 +296,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `src/Sage.Physics3D` | Bepu physics and the character controller, a base plugin. **No MonoGame.** |
 | `src/Sage.Gameplay` | Generic gameplay plugins: attributes, combat and weapons, items, abilities, AI, navigation, factions, animation. **No MonoGame.** |
 | `src/Sage.UI` | Retained game-UI widgets, layout, focus and screen records on the simulation, headless (issue #95). **No MonoGame**; the client draws its render plan |
-| `src/Sage.Kits.Rpg`, `src/Sage.Kits.Rpg.Client` | The action-RPG kit (issue #27), *not* part of the base: the readied spell, the spellmaker, two hands, the bag, spellbook, journal and conversation screens. A game opts in with `"kits": ["sage.kits.rpg"]` in `game.json` (MAKING_A_GAME §2) |
+| `src/Sage.Kits.Rpg` | The action-RPG kit (issue #27), *not* part of the base: the readied spell, the spellmaker, two hands, the bag, spellbook, journal and conversation screens; no client half since #600. A game opts in with `"kits": ["sage.kits.rpg"]` in `game.json` (MAKING_A_GAME §2) |
 | `src/Sage.Client` | Rendering, input devices, assets, sprite batching — the MonoGame half |
 | `src/Sage.Editing` | The editor's model, headless (phases 10a and 10b): documents in tabs, the command log and undo, picking and gizmo maths, several selected, the palette, the inspector on overrides, the record browser, wiring, play-in-editor, problems, the asset browser, brushes, terrain tools, the AI graph view and the conditions form, and their `ed_*`/`doc_*` commands. **No MonoGame.** |
 | `src/Sage.Editor` | Dev camera, console window, the editor's panels (`-edit`, [`docs/EDITOR.md`](docs/EDITOR.md)), stat overlay (ImGui): they draw `Sage.Editing` |

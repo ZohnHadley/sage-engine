@@ -33,7 +33,7 @@ and so on). References point down only.
 ```
   games / mods        MyGame (sim) . MyGame.Client . data mods (mod.json)
         |
-  kits (optional)     Sage.Kits.Rpg  <-  Sage.Kits.Rpg.Client
+  kits (optional)     Sage.Kits.Rpg  (a kit may have a .Client half; the RPG kit has none since #600)
         |                    |                  |
   ----- base engine, headless (SageSimulationOnly, no MonoGame) -------------------------
         |

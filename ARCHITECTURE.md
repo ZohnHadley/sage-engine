@@ -83,7 +83,7 @@ sage-engine/
     Sage.Gameplay/          optional gameplay modules, simulation side  (no MonoGame)
     Sage.UI/                retained game-UI widgets, layout, focus; on Simulation, headless (no MonoGame; #95)
     Sage.Kits.Rpg/          the action-RPG kit: spellmaker, readied spell, RPG screens (no MonoGame;
-    Sage.Kits.Rpg.Client/   and its client half)   not part of the base: a game names it in game.json (#27)
+    (no client half since #600)                    not part of the base: a game names it in game.json (#27)
     Sage.Client/            rendering, materials/shaders, input, audio, dev UI     (MonoGame)
     Sage.Framework.Client/  camera rigs, cue playback, HUD helpers
     Sage.Editor/            editor host + panels

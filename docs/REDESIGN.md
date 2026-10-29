@@ -218,7 +218,7 @@ developer. It doesn't count as an error for a designer or modder.
                 └───────▲──────────────▲──────────────────────────────▲───────────────┘
    Kits (optional) ─────┤              │                              │
    Sage.Kits.Rpg        │  (spellmaker, readied spell, journal, dialogue/quest screens,
-   Sage.Kits.Rpg.Client │   Daggerfall sprite conventions)
+   (client half: none)  │   Daggerfall sprite conventions)
    Sage.Kits.Shooter…   │  (later: HL1 weapons, Lugaru melee, Warband battles)
                         │
    Sage.Gameplay ───────┤  attributes/tags/effects, damage, inventory, interaction, factions,
@@ -319,7 +319,7 @@ Sandbox) are the same as before the split. Where it differs from the diagram abo
   starts inside something is a hit now rather than nothing, which was the "overlapped sweeps are
   discarded" gap (test: ASwingHitsATargetPressedAgainstTheAttacker).
 - *As built (issue #27, 2026-09-29): the RPG kit.* **`Sage.Kits.Rpg`** (plugin `sage.kits.rpg`,
-  simulation-only) and **`Sage.Kits.Rpg.Client`** (`sage.kits.rpg.client`) sit on the base and are not
+  simulation-only) and **`Sage.Kits.Rpg.Client`** (`sage.kits.rpg.client`, deleted in #600 once it held nothing) sit on the base and are not
   part of it: not base assemblies, not in `BasePlugins.All()`, loaded only for a game whose `game.json`
   says `"kits": ["sage.kits.rpg"]` (test: HelloHasNoKitAndTheSandboxHasTheRpgKit). The kit has the
   spellmaker and its saved `spellbook`, the readied spell and the `Cast` button that fires it through
