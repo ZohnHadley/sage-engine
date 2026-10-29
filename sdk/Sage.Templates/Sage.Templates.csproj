@@ -16,7 +16,7 @@
   <PropertyGroup>
     <PackageId>Sage.Templates</PackageId>
     <PackageType>Template</PackageType>
-    <Description>dotnet new templates for Sage games and mods: sage-game, sage-game-data, sage-game-client, sage-mod-data.</Description>
+    <Description>dotnet new templates for Sage games and mods: sage-game, sage-game-data, sage-game-client, sage-mod-data, sage-mod-code, and the phase 5 samples (sage-sample-*).</Description>
   </PropertyGroup>
 
   <ItemGroup>

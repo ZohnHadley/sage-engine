@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Sage",
+  "classifications": [
+    "Game",
+    "Sage",
+    "Mod",
+    "Code"
+  ],
+  "identity": "Sage.Templates.ModCode",
+  "name": "Sage code mod",
+  "description": "A code mod for a Sage game: mod.json (\"kind\": \"code\"), a C# module built with Sage.Sdk that registers a console command, and a record of its own. Code mods are trusted, not sandboxed. Build it, then put it in the game's mods folder.",
+  "shortName": "sage-mod-code",
+  "sourceName": "MyMod",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "symbols": {
+    "game": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "mygame",
+      "replaces": "targetgame",
+      "description": "The id of the game this mod is for (its game.json's \"id\")."
+    },
+    "sdkVersion": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "SAGE_PACKED_VERSION",
+      "replaces": "SAGE_SDK_VERSION",
+      "description": "The Sage.Sdk version the projects name (Sage.Sdk/version in each Sdk attribute). The pack sets the default to the version packed (build/Sage.Version.props, from git tags); pass it when installing the template straight from its folder."
+    },
+    "feed": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "",
+      "replaces": "SAGE_FEED_PATH",
+      "description": "A local NuGet feed holding Sage.Sdk and Sage.Player (tools/pack_sdk.sh writes one). Writes a nuget.config that names it; without it, the feed must already be a package source."
+    },
+    "hasFeed": {
+      "type": "computed",
+      "value": "(feed != \"\")"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!hasFeed)",
+          "exclude": [
+            "nuget.config"
+          ]
+        }
+      ]
+    }
+  ]
+}

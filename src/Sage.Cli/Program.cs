@@ -13,7 +13,7 @@ using System.Linq;
 //   sage mods <game> [--mods <dir> ...] [--engine-content <dir>]
 //   sage mods pack <mod folder> [--out <file.sagemod>] [--engine-content <dir>]
 //   sage mods build <mod folder> [--engine-content <dir>]
-//   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]
+//   sage package <game> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--zip] [--editor [--editor-host <dir>]]
 //   sage cook <game> [--force] [--clean]
 //   sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]
 //   sage run <game> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]
@@ -73,7 +73,7 @@ static int Usage()
     Console.Error.WriteLine("       sage mods <game folder> [--mods <dir> ...] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage mods pack <mod folder> [--out <file.sagemod>] [--engine-content <dir>]");
     Console.Error.WriteLine("       sage mods build <mod folder> [--engine-content <dir>]");
-    Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--editor [--editor-host <dir>]]");
+    Console.Error.WriteLine("       sage package <game folder> --out <dir> [--host <dir>] [--config <name>] [--no-validate] [--no-cook] [--zip] [--editor [--editor-host <dir>]]");
     Console.Error.WriteLine("       sage cook <game folder> [--force] [--clean]");
     Console.Error.WriteLine("       sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]");
     Console.Error.WriteLine("       sage run <game folder> [--config <name>] [--host <dir>] [--dry-run] [-- <host arguments> ...]");
@@ -305,13 +305,14 @@ static int Schema(string[] args)
 static int Package(string[] args)
 {
     string? game = null, output = null, host = null, config = "Shipping", editorHost = null;
-    bool validate = true, cook = true, editor = false;
+    bool validate = true, cook = true, editor = false, zip = false;
     for (int i = 0; i < args.Length; i++)
     {
         switch (args[i])
         {
             case "--out" when i + 1 < args.Length: output = args[++i]; break;
             case "--no-cook": cook = false; break;
+            case "--zip": zip = true; break;
             case "--host" when i + 1 < args.Length: host = args[++i]; break;
             case "--config" when i + 1 < args.Length: config = args[++i]; break;
             case "--no-validate": validate = false; break;
@@ -341,7 +342,7 @@ static int Package(string[] args)
 
     var result = Headless(() => Sage.Cli.GamePackage.Run(new Sage.Cli.PackageOptions
     {
-        GameDirectory = game, OutputDirectory = output, HostDirectory = host, Configuration = config, Cook = cook,
+        GameDirectory = game, OutputDirectory = output, HostDirectory = host, Configuration = config, Cook = cook, Zip = zip,
         EditorHostDirectory = editor ? editorHost : null,
     }));
     foreach (string warning in result.Cook?.Warnings ?? new List<string>()) Console.WriteLine($"WARN  {warning}");

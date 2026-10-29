@@ -1,0 +1,17 @@
+{
+  // A code mod (docs/MODDING.md §8c): C# that the game loads into a load context of the mod's own, before any
+  // module's Init. Code is trusted, NOT sandboxed: wherever mods are listed it is flagged "contains code".
+  // Build it (dotnet build, every configuration you ship), then put this folder in the game's `mods/` folder
+  // (or user://mods), or pack it with `sage mods pack`. Check it with
+  //   sage validate <game folder> --mods <this folder>
+  // `id` is the mod's record namespace and its plugin id: what data/ defines is `mymod:...`.
+  "id": "mymod",
+  "name": "MyMod",
+  "version": "0.1.0",
+  "author": "",
+  "description": "A console command and a record type of its own.",
+  "game": "targetgame",
+  "sage": ">=0.1",
+  "kind": "code",
+  "assemblies": ["bin/{config}/MyMod.dll"]
+}

@@ -195,6 +195,8 @@
       "place":      { "widget": "label", "parent": "mod", "style": "hint", "bind": "place", "minSize": [24, 0] },
       "name":       { "widget": "label", "parent": "mod", "style": "text", "text": "@rpg.mods.name",
                       "args": { "name": "name", "version": "version" }, "expand": 1 },
+      "code":       { "widget": "label", "parent": "mod", "style": "warning", "text": "@rpg.mods.contains_code",
+                      "bindings": { "visible": "containsCode" } },
       "reason":     { "widget": "label", "parent": "mod", "style": "warning", "bind": "reason", "bindings": { "visible": "hasReason" } },
       "state":      { "widget": "label", "parent": "mod", "style": "hint", "bind": "state" },
       "earlier":    { "widget": "button", "parent": "mod", "style": "button", "text": "@rpg.mods.earlier", "bindings": { "visible": "canMove" } },

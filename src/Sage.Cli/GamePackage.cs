@@ -18,6 +18,7 @@ namespace Sage.Cli;
 //   <out>/game/<mount>/                                                  each mount, copied, then cooked (issue
 //                                                                        #302): a .sgmesh beside each .glb and a
 //                                                                        .sgtex beside each .png/.jpg (GameCook.cs)
+//   <out>/game/<mount>.zip                                              instead, with --zip (issue #581)
 //   <out>/game/<modsDirectory>/                                          the game's own mods, when it has any
 //
 // The host runs the `game` folder beside it when no -game is given (GameManifest.Locate), so the folder starts
@@ -51,6 +52,9 @@ internal sealed class PackageOptions
 
     // Cook the packaged mounts (issue #302, GameCook.cs): cooked meshes and textures beside the loose files.
     public bool Cook { get; init; } = true;
+
+    // Each mount packed into one zip once it is cooked (`--zip`, issue #581): game.json names `<mount>.zip`.
+    public bool Zip { get; init; }
 
     // A host with the editor in it (Debug or Development) to package beside the game in editor/, for modders
     // (issue #375); null for none.
@@ -255,6 +259,18 @@ internal static class GamePackage
             result.Errors.AddRange(cook.Errors);
             result.Cook = cook;
         }
+        if (options.Zip)
+            for (int i = 0; i < mounts.Count; i++)
+            {
+                string folder = Path.Combine(output, "game", mounts[i].Target), zip = folder + ".zip";
+                System.IO.Compression.ZipFile.CreateFromDirectory(folder, zip);
+                Directory.Delete(folder, recursive: true);
+                using (new ZipMount("package", zip, manifest.Id)) { }   // read back as the game reads it: the limits
+                string prefix = "game/" + mounts[i].Target + "/";
+                result.Files.RemoveAll(f => f.StartsWith(prefix, StringComparison.Ordinal));
+                result.Files.Add("game/" + mounts[i].Target + ".zip");
+                mounts[i] = (mounts[i].Source, mounts[i].Target + ".zip");
+            }
         if (mods != null) CopyTree(mods, "game/" + Relative(game, mods));
         if (editor != null) WriteEditor(editor);
 

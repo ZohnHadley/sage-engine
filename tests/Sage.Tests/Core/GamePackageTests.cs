@@ -116,6 +116,24 @@ public class GamePackageTests
         Assert.False(File.Exists(Path.Combine(output, "stale.txt")));
     }
 
+    // `--zip` (issue #581): each mount is one zip, the manifest names it, and the game reads its files from it.
+    [Fact]
+    public void WithZipEachMountIsOneZipTheManifestNames()
+    {
+        string host = Host(), root = TestEnv.NewTempDir(), game = Game(root), output = Path.Combine(root, "out");
+
+        var result = GamePackage.Run(new PackageOptions { GameDirectory = game, OutputDirectory = output, HostDirectory = host, Zip = true });
+        Assert.True(result.Ok, string.Join("\n", result.Errors));
+
+        Assert.Equal(new[] { "content.zip", "mounts/art.zip" }, GameManifest.Load(Path.Combine(output, "game")).Mounts);
+        Assert.False(Directory.Exists(Path.Combine(output, "game/content")));
+        Assert.Contains("game/content.zip", result.Files);
+        Assert.DoesNotContain(result.Files, f => f.StartsWith("game/content/", StringComparison.Ordinal));
+        using var art = new ZipMount("art", Path.Combine(output, "game/mounts/art.zip"), "mygame");
+        Assert.True(art.Exists(VirtualPath.Parse("textures/sky.png")));
+        Assert.True(File.Exists(Path.Combine(output, "game/mods/hats/mod.json")));   // the game's mods stay loose
+    }
+
     [Fact]
     public void AHostWithTheEditorOrImGuiInItIsRefused()
     {

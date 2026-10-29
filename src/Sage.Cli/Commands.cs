@@ -23,7 +23,7 @@ internal sealed record ProcessPlan(string FileName, IReadOnlyList<string> Argume
 
 // `sage new <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options> ...]`:
 // `dotnet new sage-<template>`, the templates of the Sage.Templates package. A short name (game, game-data,
-// game-client, mod-data, sample-blackmesa, sample-vvardenfell, sample-zone) or the full one (sage-game, ...). Whatever this does not know goes to `dotnet new` as it
+// game-client, mod-data, mod-code, sample-blackmesa, sample-vvardenfell, sample-zone) or the full one (sage-game, ...). Whatever this does not know goes to `dotnet new` as it
 // is (--feed, --sdkVersion, ...). --game is for the two templates that belong to a game:
 //   mod-data     a game folder: its id is the mod's "game", its path the one the mod's .vscode/tasks.json checks
 //                against, and after `dotnet new` the mod's schemas are written (sage schema <game> --mods <mod>
@@ -39,6 +39,7 @@ internal sealed class NewRequest
         ("game-data", "sage-game-data", "a game with no C#: game.json and records"),
         ("game-client", "sage-game-client", "a client half (a HUD, screens) for a game that has none, in its Client/ folder"),
         ("mod-data", "sage-mod-data", "a data mod: mod.json, records, schemas mapped for VS Code"),
+        ("mod-code", "sage-mod-code", "a code mod: mod.json and a C# module (trusted, not sandboxed); build it, then add it"),
         // Phase 5's samples (games/Samples, issue #579): whole small games to start from.
         ("sample-blackmesa", "sage-sample-blackmesa", "sample: a Half-Life-style chapter in data, base engine only"),
         ("sample-vvardenfell", "sage-sample-vvardenfell", "sample: a Morrowind-style town in data, on the RPG kit"),

@@ -84,6 +84,11 @@ public class ModsScreenTests
         Assert.True(view.Mods[2].Refused);
         Assert.Contains("code", view.Mods[2].Reason);
         Assert.False(view.Mods[2].CanToggle);
+        // A mod that asks for code says so in its row (issue #581), as `mod_list` and `sage mods` do.
+        var code = Assert.IsType<Label>(Button(layer, view, "coder", "code"));
+        Assert.True(code.Visible);
+        Assert.Equal("contains code: not sandboxed", code.Text);
+        Assert.False(Button(layer, view, "aaa", "code").Visible);
         Assert.False(view.RestartNeeded);
         Assert.False(File.Exists(list));
 
