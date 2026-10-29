@@ -434,6 +434,10 @@ Sage.UI.UiScreenStack.DialogButtonStyle.get -> string?
 Sage.UI.UiScreenStack.DialogButtonStyle.set -> void
 Sage.UI.UiScreenStack.DialogStyle.get -> string?
 Sage.UI.UiScreenStack.DialogStyle.set -> void
+Sage.UI.UiScreenStack.DialogTextStyle.get -> string?
+Sage.UI.UiScreenStack.DialogTextStyle.set -> void
+Sage.UI.UiScreenStack.DialogTitleStyle.get -> string?
+Sage.UI.UiScreenStack.DialogTitleStyle.set -> void
 Sage.UI.UiScreenStack.Message(string! title, string! message, System.Action? closed = null, string! ok = "OK") -> Sage.UI.UiDialog!
 Sage.UI.UiScreenStack.SubtitleLayer.get -> Sage.UI.UiLayer?
 Sage.UI.UiScreenStack.Subtitles.get -> Sage.UI.Subtitles?

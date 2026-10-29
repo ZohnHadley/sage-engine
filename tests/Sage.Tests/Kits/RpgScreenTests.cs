@@ -222,7 +222,7 @@ public class RpgScreenTests
         Assert.Equal("Ten gold, friend.", Text(talk.Screen, "answer"));                    // the guard's own answer
     }
 
-    // A long answer is a paragraph (#338): the topics screen's answer wraps inside its 420 units, a line
+    // A long answer is a paragraph (#338): the topics screen's answer wraps inside its 480 units, a line
     // under another, and the window grows down to hold it rather than off the side of the screen.
     [Fact]
     public void ALongAnswerWrapsInsideTheTopicsScreensAnswerBox()
@@ -243,7 +243,7 @@ public class RpgScreenTests
         Assert.True(answer.Wrap);
         talk.Root.Layout();
         float line = talk.Root.Text.LineHeight * answer.TextScale;
-        Assert.True(answer.Rect.Width <= 420f + 0.01f, $"the answer is {answer.Rect.Width} wide");
+        Assert.True(answer.Rect.Width <= 480f + 0.01f, $"the answer is {answer.Rect.Width} wide");
         Assert.True(answer.DesiredSize.Y >= 3 * line, $"the answer is {answer.DesiredSize.Y / line} line(s)");
 
         var plan = new UiRenderPlan();
@@ -379,8 +379,8 @@ public class RpgScreenTests
     private static Vector2 At(Grid cells, int column, int row)
     {
         var second = cells.Child(1).Rect;
-        float pitch = second.Width + cells.Spacing.X;
-        return new Vector2(second.X + pitch * (column - 1) + second.Width / 2f, second.Y + pitch * row + second.Height / 2f);
+        return new Vector2(second.X + (second.Width + cells.Spacing.X) * (column - 1) + second.Width / 2f,
+                           second.Y + (second.Height + cells.Spacing.Y) * row + second.Height / 2f);
     }
 
     // The acceptance test of issue #346 for the mouse: the sword's picture spans its three squares; the

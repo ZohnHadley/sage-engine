@@ -120,6 +120,8 @@ internal sealed class LayoutBuilder
         {
             var tab = tabs.Tab(i);
             tab.TextScale = node.TextScale ?? style.TextScale;
+            tab.Font = style.Font;   // as a label node takes it; tabs drew in the engine font (#597)
+            tab.FontSize = style.FontSize;
             if (!node.TabStyle.IsEmpty) tab.Padding = style.Padding;
         }
         if (node.Selected is { } selected) tabs.Selected = selected;

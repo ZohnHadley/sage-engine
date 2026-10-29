@@ -1,23 +1,19 @@
 # rpg:rest: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on less
-rect 460,284.75 360x150.5 #141414e0 @window
-border 460,284.75 360x150.5 #5a4a30ff width 1 @window
-text 468,294.75 36x13.5 #f0e0b0ff scale 1.5 "Rest" @title
-text 468,316.25 72x9 #e0d8c8ff scale 1 "Day 0, 12:00" @now
-text 468,331.25 42x9 #e0d8c8ff scale 1 "8 hours" @hours
-rect 468,346.25 18x15 #2a2620ff>#5a4a30ff @less
-border 468,346.25 18x15 #5a4a30ff>#f0e0b0ff width 1 @less
-text 474,349.25 6x9 #e0d8c8ff scale 1 "<" @less
-rect 492,349.75 296x8 #202020ff @bar
-border 492,349.75 296x8 #5a4a30ff width 1 @bar
-rect 492,349.75 98.67x8 #b09050ff @bar
-rect 794,346.25 18x15 #2a2620ff @more
-border 794,346.25 18x15 #5a4a30ff width 1 @more
-text 800,349.25 6x9 #e0d8c8ff scale 1 ">" @more
-rect 468,367.25 42x15 #2a2620ff @sleep
-border 468,367.25 42x15 #5a4a30ff width 1 @sleep
-text 474,370.25 30x9 #e0d8c8ff scale 1 "Sleep" @sleep
-rect 518,367.25 36x15 #2a2620ff @wait
-border 518,367.25 36x15 #5a4a30ff width 1 @wait
-text 524,370.25 24x9 #e0d8c8ff scale 1 "Wait" @wait
-text 468,418.25 270x9 #908878ff scale 1 "< >: how long    A: sleep or wait    B: close" @hint
+rect 460,193.55 360x332.9 #1b1915f2 @window
+border 460,193.55 360x332.9 #4a4336ff width 1 @window
+text 484,217.55 49.73x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Rest" @title
+text 484,264.75 91.76x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Day 0, 12:00" @now
+text 484,297.55 54.18x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "8 hours" @hours
+rect 484,330.35 33.6x32.8 #25221cff>#3a2f1cff @less
+border 484,330.35 33.6x32.8 #00000000>#e8be6aff width 1 @less
+text 496,336.35 9.6x20.8 #ede6d8ff>#f6eedcff scale 1 font fonts/plex-sans.ttf size 16 "<" @less
+rect 523.6,342.75 232.8x8 #25221cff @bar
+rect 523.6,342.75 77.6x8 #c9a04eff @bar
+rect 762.4,330.35 33.6x32.8 #25221cff @more
+text 774.4,336.35 9.6x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 ">" @more
+rect 484,375.15 64.5x32.8 #25221cff @sleep
+text 496,381.15 40.5x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Sleep" @sleep
+rect 556.5,375.15 56.26x32.8 #25221cff @wait
+text 568.5,381.15 32.26x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Wait" @wait
+text 484,485.55 303.91x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Left Right How long    Enter Sleep or wait    Esc Close" @hint

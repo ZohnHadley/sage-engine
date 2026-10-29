@@ -1,16 +1,17 @@
 # rpg:bag: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on row
-rect 400,197.75 480x324.5 #141414e0 @window
-border 400,197.75 480x324.5 #5a4a30ff width 1 @window
-text 408,207.75 198x13.5 #f0e0b0ff scale 1.5 "Carrying — 4.5 / 30 kg" @title
-pushclip 408,229.25 464x240 @page
-rect 408,229.25 464x11 #00000000>#5a4a30ff @row
-text 430,230.25 48x9 #787882ff scale 1 "bread ×3" @name
-text 832,230.25 36x9 #787882ff scale 1 "1.5 kg" @detail
-text 430,242.25 24x9 #787882ff scale 1 "rope" @name
-text 844,242.25 24x9 #787882ff scale 1 "2 kg" @detail
-text 430,254.25 36x9 #e0d8c8ff scale 1 "dagger" @name
-text 844,254.25 24x9 #a0afc8ff scale 1 "1 kg" @detail
+rect 400,145.15 480x429.7 #1b1915f2 @window
+border 400,145.15 480x429.7 #4a4336ff width 1 @window
+text 424,169.15 243.05x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Carrying — 4.5 / 30 kg" @title
+pushclip 424,216.35 432x240 @page
+rect 424,216.35 432x26.8 #00000000>#3a2f1cff @row
+border 424,216.35 432x26.8 #00000000>#e8be6aff width 1 @row
+text 450,219.35 64.66x20.8 #a89e8cff scale 1 font fonts/plex-sans.ttf size 16 "bread ×3" @name
+text 803.95,219.35 44.05x20.8 #a89e8cff scale 1 font fonts/plex-sans.ttf size 16 "1.5 kg" @detail
+text 450,248.15 32.82x20.8 #a89e8cff scale 1 font fonts/plex-sans.ttf size 16 "rope" @name
+text 817.9,248.15 30.1x20.8 #a89e8cff scale 1 font fonts/plex-sans.ttf size 16 "2 kg" @detail
+text 450,276.95 49.31x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "dagger" @name
+text 817.9,276.95 30.1x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "1 kg" @detail
 popclip 0,0 0x0 @page
-text 408,475.25 210x9 #e07050ff scale 1 "not something you can wear or wield" @reason
-text 408,505.25 390x9 #908878ff scale 1 "D-pad: choose    A: equip / take off    X / Del: drop    B: close" @hint
+text 424,468.35 262.64x20.8 #ee8e72ff scale 1 font fonts/plex-sans.ttf size 16 "not something you can wear or wield" @reason
+text 424,533.95 260.9x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Enter Equip or take off    Del Drop    Esc Close" @hint

@@ -50,7 +50,7 @@
       "type": "string"
     },
     "highContrast": {
-      "description": "Promises text at least 7:1 against what is behind it in every layout while the set is in use; checked when content loads. (bool, default false)",
+      "description": "Promises text at least 7:1 against what is behind it in every layout of its own namespace while the set is in use; checked when content loads. (bool, default false)",
       "default": false,
       "type": "boolean"
     },

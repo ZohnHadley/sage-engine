@@ -17,7 +17,7 @@ public class FormRecordTests
 
     internal const string Records = """
     [
-      { "type": "ui_style", "id": "tab", "padding": [6, 2], "states": { "selected": { "textColour": "#FFD000" } } },
+      { "type": "ui_style", "id": "tab", "padding": [6, 2], "fontSize": 12, "states": { "selected": { "textColour": "#FFD000" } } },
       { "type": "ui_layout", "id": "settings",
         "nodes": {
           "pages":     { "widget": "tabs", "anchors": "center", "spacing": 4, "tabStyle": "tab", "bind": "page" },
@@ -80,6 +80,7 @@ public class FormRecordTests
         Assert.Equal("General", tabs.Tab(0).Text);                    // a page's title, localised
         Assert.Equal("uitest:tab", tabs.Tab(1).Style);
         Assert.Equal(new Thickness(6f, 2f), tabs.Tab(1).Padding);
+        Assert.Equal(12f, tabs.Tab(1).FontSize);                       // its style's letters too (#597)
         Assert.Same(tabs.Tab(0), layer.Root.Focused);                  // the first tab, for a gamepad
         Assert.Equal("Your name", view.Find<TextBox>("name")!.Placeholder);
         Assert.Equal(12, view.Find<TextBox>("name")!.MaxLength);

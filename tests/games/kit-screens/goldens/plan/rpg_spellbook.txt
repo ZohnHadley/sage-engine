@@ -1,12 +1,13 @@
 # rpg:spellbook: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on row
-rect 400,197.75 480x324.5 #141414e0 @window
-border 400,197.75 480x324.5 #5a4a30ff width 1 @window
-text 408,207.75 54x13.5 #f0e0b0ff scale 1.5 "Spells" @title
-pushclip 408,229.25 464x240 @page
-rect 408,229.25 464x11 #00000000>#5a4a30ff @row
-text 412,230.25 6x9 #ebd778ff scale 1 "•" @tick
-text 430,230.25 30x9 #e0d8c8ff scale 1 "Light" @name
-text 844,230.25 24x9 #a0afc8ff scale 1 "free" @detail
+rect 400,145.15 480x429.7 #1b1915f2 @window
+border 400,145.15 480x429.7 #4a4336ff width 1 @window
+text 424,169.15 68.38x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Spells" @title
+pushclip 424,216.35 432x240 @page
+rect 424,216.35 432x26.8 #00000000>#3a2f1cff @row
+border 424,216.35 432x26.8 #00000000>#e8be6aff width 1 @row
+text 432,219.35 6.34x20.8 #e8be6aff scale 1 font fonts/plex-sans.ttf size 16 "•" @tick
+text 450,219.35 35.17x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Light" @name
+text 819.46,219.35 28.54x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "free" @detail
 popclip 0,0 0x0 @page
-text 408,505.25 222x9 #908878ff scale 1 "D-pad: choose    A: ready    B: close" @hint
+text 424,533.95 138.83x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Enter Ready    Esc Close" @hint

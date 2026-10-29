@@ -194,6 +194,12 @@ public sealed class RpgKitModule : IModule
             widgets.Bind(_actions!.Get("Spellmaker"), SpellmakerScreen);
             widgets.Bind(_actions!.Get("Journal"), JournalScreen);
             widgets.Bind(_actions!.Get("Rest"), RestScreen);
+            // Its tooltips and confirm prompts in its own look (ui_styles.json); unset, they drew unstyled (#597).
+            widgets.TooltipStyle = "rpg:tooltip";
+            widgets.DialogStyle = "rpg:dialog";
+            widgets.DialogTitleStyle = "rpg:title";
+            widgets.DialogTextStyle = "rpg:text";
+            widgets.DialogButtonStyle = "rpg:button";
         }
 #pragma warning restore SAGE0125
         // The equipment screen lists the slots there are.

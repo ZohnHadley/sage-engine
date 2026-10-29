@@ -323,8 +323,11 @@ public sealed class UiScreenStack
     // The style id new layers' tooltips are drawn in.
     public string? TooltipStyle { get; set; }
 
-    // The style ids a confirm prompt's or message box's window and buttons are drawn in (Confirm, Message).
+    // The style ids a confirm prompt's or message box's window, title, message and buttons are drawn in
+    // (Confirm, Message). The labels and buttons take their style's font, size and scale.
     public string? DialogStyle { get; set; }
+    public string? DialogTitleStyle { get; set; }
+    public string? DialogTextStyle { get; set; }
     public string? DialogButtonStyle { get; set; }
 
     // The subtitles shown over every layer (issue #351): the world's, set by UiModule; null shows none.
@@ -438,7 +441,7 @@ public sealed class UiScreenStack
         string T(string s) => text?.Text(s) ?? s;
         var padding = _styles != null && DialogStyle != null ? _styles.Get(DialogStyle).Padding : new Thickness(12f);
         var dialog = new UiDialog(this, answered, T(title), T(message), T(confirm), cancel == null ? null : T(cancel),
-                                  DialogStyle, DialogButtonStyle, padding);
+                                  DialogStyle, DialogTitleStyle, DialogTextStyle, DialogButtonStyle, padding, _styles);
         var layer = Add(dialog.Window, null, modal: true, focus: dialog.CancelButton ?? dialog.ConfirmButton);
         layer.CloseOnClickOutside = false;   // a press beside it is on its backdrop, never an answer
         layer.Dialog = dialog;

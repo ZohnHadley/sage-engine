@@ -1,10 +1,11 @@
 # rpg:topics: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on topic
-rect 306,172.75 668x374.5 #141414e0 @window
-border 306,172.75 668x374.5 #5a4a30ff width 1 @window
-text 314,182.75 72x13.5 #f0e0b0ff scale 1.5 "ferryman" @title
-pushclip 314,204.25 220x320 @scroll
-rect 314,204.25 220x15 #00000000>#5a4a30ff @topic
-text 320,207.25 54x9 #f0d890ff scale 1 "the river" @topic
+rect 260,137.95 760x444.1 #1b1915f2 @window
+border 260,137.95 760x444.1 #4a4336ff width 1 @window
+text 284,161.95 102.17x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "ferryman" @title
+pushclip 284,209.15 220x320 @scroll
+rect 284,209.15 220x26.8 #00000000>#3a2f1cff @topic
+border 284,209.15 220x26.8 #00000000>#e8be6aff width 1 @topic
+text 292,212.15 59.54x20.8 #e8be6aff>#f6eedcff scale 1 font fonts/plex-sans.ttf size 16 "the river" @topic
 popclip 0,0 0x0 @scroll
-text 314,530.25 108x9 #908878ff scale 1 "A: ask    B: leave" @hint
+text 284,541.15 125.54x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Enter Ask    Esc Leave" @hint

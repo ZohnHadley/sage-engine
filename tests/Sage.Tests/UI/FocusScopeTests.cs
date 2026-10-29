@@ -211,6 +211,12 @@ public class FocusScopeTests
         stack.Update(UiInput.Cancel);
         Assert.Equal(2, closed);
         Assert.Same(menu, stack.Top);
+
+        // A long message wraps inside the window rather than running off the screen (#597).
+        var wordy = stack.Message("Saved", string.Concat(Enumerable.Repeat("a long explanation ", 40)));
+        stack.Update(UiInput.Wait(0f));
+        Assert.InRange(wordy.Message.Rect.Width, 1f, 480f);
+        Assert.True(wordy.Message.Rect.Height > 3f * UiFonts.DefaultSize);
     }
 
     // Back while a focus scope shows inside a screen is for whatever showed it, not a cue to close the layer.

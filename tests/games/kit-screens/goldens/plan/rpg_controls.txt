@@ -1,94 +1,48 @@
 # rpg:controls: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on tabGameplay
-rect 360,184.25 560x351.5 #141414e0 @window
-border 360,184.25 560x351.5 #5a4a30ff width 1 @window
-text 368,194.25 72x13.5 #f0e0b0ff scale 1.5 "Controls" @title
-rect 368,215.75 60x15 #2a2620ff>#5a4a30ff @tabGameplay
-border 368,215.75 60x15 #5a4a30ff>#f0e0b0ff width 1 @tabGameplay
-text 374,218.75 48x9 #e0d8c8ff scale 1 "Gameplay" @tabGameplay
-rect 436,215.75 42x15 #2a2620ff @tabUI
-border 436,215.75 42x15 #5a4a30ff width 1 @tabUI
-text 442,218.75 30x9 #e0d8c8ff scale 1 "Menus" @tabUI
-rect 486,215.75 48x15 #2a2620ff @tabEditor
-border 486,215.75 48x15 #5a4a30ff width 1 @tabEditor
-text 492,218.75 36x9 #e0d8c8ff scale 1 "Editor" @tabEditor
-rect 542,215.75 54x15 #2a2620ff @tabConsole
-border 542,215.75 54x15 #5a4a30ff width 1 @tabConsole
-text 548,218.75 42x9 #e0d8c8ff scale 1 "Console" @tabConsole
-text 368,236.75 48x9 #908878ff scale 1 "Gameplay" @context
-pushclip 368,251.75 544x240 @list
-text 368,254.75 54x9 #e0d8c8ff scale 1 "Spellbook" @action
-text 536,254.75 6x9 #908878ff scale 1 "B" @bindings
-rect 864,251.75 48x15 #2a2620ff @rebind
-border 864,251.75 48x15 #5a4a30ff width 1 @rebind
-text 870,254.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,271.75 60x9 #e0d8c8ff scale 1 "Spellmaker" @action
-text 536,271.75 6x9 #908878ff scale 1 "M" @bindings
-rect 864,268.75 48x15 #2a2620ff @rebind
-border 864,268.75 48x15 #5a4a30ff width 1 @rebind
-text 870,271.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,288.75 42x9 #e0d8c8ff scale 1 "Journal" @action
-text 536,288.75 6x9 #908878ff scale 1 "J" @bindings
-rect 864,285.75 48x15 #2a2620ff @rebind
-border 864,285.75 48x15 #5a4a30ff width 1 @rebind
-text 870,288.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,305.75 24x9 #e0d8c8ff scale 1 "Rest" @action
-text 536,305.75 6x9 #908878ff scale 1 "T" @bindings
-rect 864,302.75 48x15 #2a2620ff @rebind
-border 864,302.75 48x15 #5a4a30ff width 1 @rebind
-text 870,305.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,322.75 24x9 #e0d8c8ff scale 1 "Jump" @action
-text 536,322.75 72x9 #908878ff scale 1 "Space, Pad A" @bindings
-rect 864,319.75 48x15 #2a2620ff @rebind
-border 864,319.75 48x15 #5a4a30ff width 1 @rebind
-text 870,322.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,339.75 36x9 #e0d8c8ff scale 1 "Attack" @action
-text 536,339.75 168x9 #908878ff scale 1 "Mouse Left, Pad RightTrigger" @bindings
-rect 864,336.75 48x15 #2a2620ff @rebind
-border 864,336.75 48x15 #5a4a30ff width 1 @rebind
-text 870,339.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,356.75 36x9 #e0d8c8ff scale 1 "Reload" @action
-text 536,356.75 114x9 #908878ff scale 1 "R, Pad LeftShoulder" @bindings
-rect 864,353.75 48x15 #2a2620ff @rebind
-border 864,353.75 48x15 #5a4a30ff width 1 @rebind
-text 870,356.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,373.75 30x9 #e0d8c8ff scale 1 "Block" @action
-text 536,373.75 168x9 #908878ff scale 1 "Mouse Right, Pad LeftTrigger" @bindings
-rect 864,370.75 48x15 #2a2620ff @rebind
-border 864,370.75 48x15 #5a4a30ff width 1 @rebind
-text 870,373.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,390.75 18x9 #e0d8c8ff scale 1 "Use" @action
-text 536,390.75 48x9 #908878ff scale 1 "E, Pad X" @bindings
-rect 864,387.75 48x15 #2a2620ff @rebind
-border 864,387.75 48x15 #5a4a30ff width 1 @rebind
-text 870,390.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,407.75 18x9 #e0d8c8ff scale 1 "Run" @action
-text 536,407.75 180x9 #908878ff scale 1 "LeftShift, Pad LeftStickButton" @bindings
-rect 864,404.75 48x15 #2a2620ff @rebind
-border 864,404.75 48x15 #5a4a30ff width 1 @rebind
-text 870,407.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,424.75 36x9 #e0d8c8ff scale 1 "Crouch" @action
-text 536,424.75 108x9 #908878ff scale 1 "LeftControl, Pad B" @bindings
-rect 864,421.75 48x15 #2a2620ff @rebind
-border 864,421.75 48x15 #5a4a30ff width 1 @rebind
-text 870,424.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,441.75 60x9 #e0d8c8ff scale 1 "ToggleView" @action
-text 536,441.75 138x9 #908878ff scale 1 "V, Pad RightStickButton" @bindings
-rect 864,438.75 48x15 #2a2620ff @rebind
-border 864,438.75 48x15 #5a4a30ff width 1 @rebind
-text 870,441.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,458.75 54x9 #e0d8c8ff scale 1 "QuickSave" @action
-text 536,458.75 12x9 #908878ff scale 1 "F5" @bindings
-rect 864,455.75 48x15 #2a2620ff @rebind
-border 864,455.75 48x15 #5a4a30ff width 1 @rebind
-text 870,458.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
-text 368,475.75 54x9 #e0d8c8ff scale 1 "QuickLoad" @action
-text 536,475.75 12x9 #908878ff scale 1 "F9" @bindings
-rect 864,472.75 48x15 #2a2620ff @rebind
-border 864,472.75 48x15 #5a4a30ff width 1 @rebind
-text 870,475.75 36x9 #e0d8c8ff scale 1 "Rebind" @rebind
+rect 360,118.7 560x482.6 #1b1915f2 @window
+border 360,118.7 560x482.6 #4a4336ff width 1 @window
+text 384,142.7 93.86x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Controls" @title
+rect 384,189.9 96.5x32.8 #25221cff>#3a2f1cff @tabGameplay
+border 384,189.9 96.5x32.8 #00000000>#e8be6aff width 1 @tabGameplay
+text 396,195.9 72.5x20.8 #ede6d8ff>#f6eedcff scale 1 font fonts/plex-sans.ttf size 16 "Gameplay" @tabGameplay
+rect 488.5,189.9 71.74x32.8 #25221cff @tabUI
+text 500.5,195.9 47.74x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Menus" @tabUI
+rect 568.24,189.9 66.83x32.8 #25221cff @tabEditor
+text 580.24,195.9 42.83x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Editor" @tabEditor
+rect 643.07,189.9 81.87x32.8 #25221cff @tabConsole
+text 655.07,195.9 57.87x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Console" @tabConsole
+text 384,234.7 58.9x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Gameplay" @context
+pushclip 384,263.6 512x240 @list
+text 384,269.6 71.62x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Spellbook" @action
+text 552,271.55 8.49x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "B" @bindings
+rect 821.57,263.6 74.43x32.8 #25221cff @rebind
+text 833.57,269.6 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
+text 384,304.4 81.31x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Spellmaker" @action
+text 552,306.35 10.56x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "M" @bindings
+rect 821.57,298.4 74.43x32.8 #25221cff @rebind
+text 833.57,304.4 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
+text 384,339.2 54.06x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Journal" @action
+text 552,341.15 6.63x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "J" @bindings
+rect 821.57,333.2 74.43x32.8 #25221cff @rebind
+text 833.57,339.2 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
+text 384,374 32.08x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rest" @action
+text 552,375.95 7.44x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "T" @bindings
+rect 821.57,368 74.43x32.8 #25221cff @rebind
+text 833.57,374 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
+text 384,408.8 40.5x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Jump" @action
+text 552,410.75 75.61x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Space, Pad A" @bindings
+rect 821.57,402.8 74.43x32.8 #25221cff @rebind
+text 833.57,408.8 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
+text 384,443.6 46.3x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Attack" @action
+text 552,445.55 167.06x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Mouse Left, Pad RightTrigger" @bindings
+rect 821.57,437.6 74.43x32.8 #25221cff @rebind
+text 833.57,443.6 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
+text 384,478.4 49.92x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Reload" @action
+text 552,480.35 115.1x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "R, Pad LeftShoulder" @bindings
+rect 821.57,472.4 74.43x32.8 #25221cff @rebind
+text 833.57,478.4 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 popclip 0,0 0x0 @list
-rect 368,497.75 544x15 #2a2620ff @resetAll
-border 368,497.75 544x15 #5a4a30ff width 1 @resetAll
-text 613,500.75 54x9 #e0d8c8ff scale 1 "Reset all" @resetAll
-text 368,518.75 204x9 #908878ff scale 1 "Changes apply at once.    B: close" @hint
+rect 384,515.6 512x32.8 #25221cff @resetAll
+text 609.04,521.6 61.92x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Reset all" @resetAll
+text 384,560.4 202.34x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Changes apply at once.    Esc Close" @hint

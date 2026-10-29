@@ -46,6 +46,7 @@ public class FontTests
         Assert.Equal(3f, font.Advance(' ', 9f), 3);
         Assert.True(font.HasGlyph('A'));
         Assert.True(font.HasGlyph('…'));
+        Assert.True(font.HasGlyph('—'));   // hint lines use dashes; they drew as a gap (#597)
         Assert.False(font.HasGlyph('ж'));   // not in it: measured as its missing-glyph box, never thrown
 
         var measure = new FontTextMeasure(font, 18f);

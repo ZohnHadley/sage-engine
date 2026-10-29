@@ -1,16 +1,14 @@
 # rpg:equipment: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on slot
-rect 430,291.25 420x137.5 #141414e0 @window
-border 430,291.25 420x137.5 #5a4a30ff width 1 @window
-text 438,301.25 81x13.5 #f0e0b0ff scale 1.5 "Equipment" @title
-rect 438,322.75 404x15 #2a2620ff>#5a4a30ff @slot
-border 438,322.75 404x15 #5a4a30ff>#f0e0b0ff width 1 @slot
-text 444,325.75 108x9 #e0d8c8ff scale 1 "Main hand: nothing" @slot
-rect 438,339.75 404x15 #2a2620ff @slot
-border 438,339.75 404x15 #5a4a30ff width 1 @slot
-text 444,342.75 102x9 #e0d8c8ff scale 1 "Off hand: nothing" @slot
-text 438,360.75 60x9 #e0d8c8ff scale 1 "Could wear" @wearable
-rect 438,375.75 404x15 #2a2620ff @candidate
-border 438,375.75 404x15 #5a4a30ff width 1 @candidate
-text 444,378.75 108x9 #e0d8c8ff scale 1 "dagger (Main hand)" @candidate
-text 438,411.75 378x9 #908878ff scale 1 "A on a slot: take it off    A on an item: put it on    B: close" @hint
+rect 430,208.95 420x302.1 #1b1915f2 @window
+border 430,208.95 420x302.1 #4a4336ff width 1 @window
+text 454,232.95 121.49x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Equipment" @title
+rect 454,280.15 372x32.8 #25221cff>#3a2f1cff @slot
+border 454,280.15 372x32.8 #00000000>#e8be6aff width 1 @slot
+text 466,286.15 137.14x20.8 #ede6d8ff>#f6eedcff scale 1 font fonts/plex-sans.ttf size 16 "Main hand: nothing" @slot
+rect 454,314.95 372x32.8 #25221cff @slot
+text 466,320.95 124.21x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Off hand: nothing" @slot
+text 454,359.75 80.8x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Could wear" @wearable
+rect 454,392.55 372x32.8 #25221cff @candidate
+text 466,398.55 138.21x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "dagger (Main hand)" @candidate
+text 454,470.15 289.87x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Enter Take off a slot, or put on an item    Esc Close" @hint

@@ -25,7 +25,7 @@ public sealed class BitmapFont
     private const int FirstCode = 32;
 
     // Past the printable ASCII the tool appends the few characters the engine's own hint lines use.
-    private static readonly char[] Extras = { '↑', '↓', '•', '×', '…' };
+    private static readonly char[] Extras = { '↑', '↓', '•', '×', '…', '–', '—' };
 
     private readonly Texture2D _texture;
 
