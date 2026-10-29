@@ -402,6 +402,11 @@ jobs:
           dotnet new sage-game-data -n MyData -o "$games/MyData" --feed "$feed"
           ( cd "$games/MyGame" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
           ( cd "$games/MyData" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
+          # Phase 5's samples (issue #579): each is a template, made, built and validated outside the repository.
+          for sample in blackmesa vvardenfell zone; do
+            dotnet new "sage-sample-$sample" -n "Sample_$sample" -o "$games/Sample_$sample" --feed "$feed"
+            ( cd "$games/Sample_$sample" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
+          done
           sage=src/Sage.Cli/bin/Debug/net8.0/sage
           # `sage new` (issue #297): the mod made for the built game, so its schemas are written into it (what its
           # .vscode/settings.json maps data/ and mod.json onto) and it is validated against the game; then a client

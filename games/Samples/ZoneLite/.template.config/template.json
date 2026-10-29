@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Sage",
+  "classifications": [
+    "Game",
+    "Sage",
+    "Data",
+    "Sample"
+  ],
+  "identity": "Sage.Templates.Sample.ZoneLite",
+  "name": "Sage sample: Zone lite (S.T.A.L.K.E.R.-style zone)",
+  "description": "A S.T.A.L.K.E.R.-style streamed zone in data only, on the RPG kit: a pistol with spread and recoil, a weight limit, a trader, and factions that fight off-screen by day and night. Phase 5 sample (issue #578). dotnet run starts it.",
+  "shortName": "sage-sample-zone",
+  "sourceName": "MyGame",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "symbols": {
+    "sdkVersion": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "SAGE_PACKED_VERSION",
+      "replaces": "SAGE_SDK_VERSION",
+      "description": "The Sage.Sdk version the projects name (Sage.Sdk/version in each Sdk attribute). The pack sets the default to the version packed (build/Sage.Version.props, from git tags); pass it when installing the template straight from its folder."
+    },
+    "feed": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "",
+      "replaces": "SAGE_FEED_PATH",
+      "description": "A local NuGet feed holding Sage.Sdk and Sage.Player (tools/pack_sdk.sh writes one). Writes a nuget.config that names it; without it, the feed must already be a package source."
+    },
+    "hasFeed": {
+      "type": "computed",
+      "value": "(feed != \"\")"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!hasFeed)",
+          "exclude": [
+            "nuget.config"
+          ]
+        }
+      ]
+    }
+  ]
+}

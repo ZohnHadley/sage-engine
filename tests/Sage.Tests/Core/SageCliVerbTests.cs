@@ -118,10 +118,12 @@ public class SageCliVerbTests
     }
 
     // Every template `sage new` names is one the Sage.Templates package has, by its shortName, and the other way round.
+    // The package also packs each of phase 5's samples (games/Samples, issue #579) as a template.
     [Fact]
     public void New_KnowsEveryTemplateThePackageHas()
     {
-        var packaged = Directory.GetDirectories(Templates)
+        var samples = Directory.GetDirectories(Path.Combine(TestEnv.FolderAbove("engine_content"), "games", "Samples"));
+        var packaged = Directory.GetDirectories(Templates).Concat(samples)
             .Select(dir => (string)SchemaValidator.ReadData(Path.Combine(dir, ".template.config", "template.json"))!["shortName"]!)
             .OrderBy(n => n).ToList();
         Assert.Equal(packaged, NewRequest.Templates.Select(t => t.Template).OrderBy(n => n).ToList());

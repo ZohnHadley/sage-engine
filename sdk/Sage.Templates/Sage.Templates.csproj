@@ -27,6 +27,20 @@
     <_SageTemplateProject Include="content\**\*.csproj" Exclude="content\**\bin\**;content\**\obj\**" />
   </ItemGroup>
 
+  <!-- Phase 5's samples (issue #579): each games/Samples/<name> is a template too (sage-sample-<short>). Its
+       files are the sample's own; its project and nuget.config are sage-game-data's, so a sample keeps no copy. -->
+  <ItemGroup>
+    <_SageTemplateJson Include="..\..\games\Samples\*\.template.config\template.json" />
+    <_SageSample Include="..\..\games\Samples\**\game.json" />
+    <Content Include="..\..\games\Samples\**\*" Exclude="..\..\games\Samples\**\bin\**;..\..\games\Samples\**\obj\**;..\..\games\Samples\*\.template.config\**"
+             Pack="true" PackagePath="content/" />
+  </ItemGroup>
+  <Target Name="SageSampleProjects" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <None Include="content\sage-game-data\MyGame.csproj;content\sage-game-data\nuget.config" Pack="true" PackagePath="content/%(_SageSample.RecursiveDir)" />
+    </ItemGroup>
+  </Target>
+
   <!-- A copy with one token replaced. A task rather than WriteLinesToFile, which would split the text at
        semicolons and, off Windows, turn the JSON's backslashes into slashes. -->
   <UsingTask TaskName="SageStampFile" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
