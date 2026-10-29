@@ -1,0 +1,102 @@
+[
+  // ---- weapons -------------------------------------------------------------------------------------
+  // One hand to hold them in (an equip_slot record: no kit needed), a crowbar that sweeps and a pistol
+  // that fires a ray. Picking either up puts it in hand (the `equip` action, wired to OnPickedUp below).
+  { "type": "equip_slot", "id": "hand", "name": "Hand" },
+  {
+    "type": "attack", "id": "crowbar_swing", "damage": 15, "damageType": "sage:physical",
+    "reach": 2.2, "radius": 0.35, "arcDegrees": 70,
+    "windupTime": 0.1, "recoverTime": 0.2, "cooldown": 0.4
+  },
+  {
+    "type": "attack", "id": "pistol_shot", "delivery": "ray", "damage": 12, "damageType": "sage:physical", "range": 50,
+    "windupTime": 0, "recoverTime": 0.08, "cooldown": 0.25,
+    "ammo": "pistol_round", "magazine": 12, "reloadTime": 1.0
+  },
+  { "type": "item", "id": "crowbar", "label": "crowbar", "slot": "hand", "attack": "crowbar_swing", "weight": 2 },
+  { "type": "item", "id": "pistol", "label": "pistol", "slot": "hand", "attack": "pistol_shot", "weight": 1 },
+  { "type": "item", "id": "pistol_round", "label": "9mm rounds", "maxStack": 100, "weight": 0.01 },
+
+  { "type": "prefab", "id": "crowbar", "name": "crowbar", "parts": { "pickup": { "item": "crowbar" } } },
+  { "type": "prefab", "id": "pistol", "name": "pistol", "parts": { "pickup": { "item": "pistol" } } },
+  { "type": "prefab", "id": "take_crowbar", "name": "take crowbar",
+    "parts": { "logic_relay": { "then": [ { "equip": "crowbar" } ] } } },
+  { "type": "prefab", "id": "take_pistol", "name": "take pistol",
+    "parts": { "logic_relay": { "then": [ { "give_item": "pistol_round", "count": 36 }, { "equip": "pistol" } ] } } },
+
+  // ---- people --------------------------------------------------------------------------------------
+  {
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": { "character": { "layer": "player" }, "attributes": {}, "inventory": {} }
+  },
+
+  // A zombie is the engine's character with 30 health and no AI: two crowbar blows, or three shots.
+  { "type": "effect", "id": "zombie_build", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 30 } ] },
+  { "type": "prefab", "id": "zombie", "name": "zombie",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "effects": ["zombie_build"] } },
+
+  // The scientist follows the player: a routine anchored on the player all day. He walks to within two
+  // metres, stands, and when the player is more than three away StayAt fails and he walks again. The
+  // `follower` part brings him along on a journey (a load door or travel).
+  { "type": "ai_schedule", "id": "follow", "tasks": [ { "task": "MoveToAnchor", "distance": 2 }, { "task": "StayAt", "distance": 3 } ] },
+  { "type": "routine", "id": "follow_player", "entries": [ { "from": 0, "to": 24, "schedule": "follow", "at": "player" } ] },
+  // Without a faction an AI takes the player for an enemy and chases them; the staff mind nobody.
+  { "type": "faction", "id": "staff", "label": "research staff" },
+  {
+    "type": "prefab", "id": "scientist", "name": "scientist", "components": { "ai_state": {} },
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "faction": "staff", "routine": "follow_player", "follower": {} }
+  },
+
+  // ---- the level's machinery -----------------------------------------------------------------------
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 60] } } },
+  // Locked, so nobody (the scientist least of all: AI opens doors on its path) opens it before its time.
+  { "type": "prefab", "id": "door", "name": "door", "parts": { "body": { "size": [3, 3, 0.2] }, "mover": { "open": [3, 0, 0], "seconds": 1, "locked": true } } },
+  { "type": "prefab", "id": "lift", "name": "lift", "parts": { "body": { "size": [4, 0.2, 4] }, "mover": { "open": [0, 4, 0], "seconds": 3 } } },
+  { "type": "prefab", "id": "lift_zone", "name": "lift zone", "parts": { "body": { "size": [3, 2, 3], "trigger": true } } },
+  { "type": "prefab", "id": "kills", "name": "kills", "parts": { "logic_counter": { "min": 0, "max": 2 } } },
+  { "type": "prefab", "id": "greeting", "name": "greeting",
+    "parts": { "logic_relay": { "then": [ { "message": "Scientist: Thank goodness you're here! I'll follow you to the lift." }, { "set_var": "scientist_met", "value": 1 } ] } } },
+  { "type": "prefab", "id": "chapter_end", "name": "chapter end",
+    "parts": { "logic_relay": { "then": [ { "message": "Chapter complete." }, { "set_var": "chapter_done", "value": 1 } ] } } },
+
+  {
+    // Walked north (-Z): the crowbar and the first zombie in the corridor, the pistol and the second zombie
+    // further up, the lab door, the scientist behind it, and the lift at the end.
+    "type": "scene",
+    "id": "chapter",
+    "player": { "prefab": "player", "at": [0, 0.1, 24] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0] },
+
+      // 1. The crowbar, and a zombie to use it on.
+      { "prefab": "crowbar", "at": [0, 0.3, 21], "name": "crowbar",
+        "outputs": [ { "output": "OnPickedUp", "target": "take crowbar", "input": "Trigger" } ] },
+      { "prefab": "take_crowbar", "at": [0, 0, 0], "name": "take crowbar" },
+      { "prefab": "zombie", "at": [0, 0, 16], "yaw": 180, "name": "zombie 1",
+        "outputs": [ { "output": "OnDeath", "target": "kills", "input": "Add" } ] },
+
+      // 2. The pistol, and a zombie ten metres off.
+      { "prefab": "pistol", "at": [2, 0.3, 14], "name": "pistol",
+        "outputs": [ { "output": "OnPickedUp", "target": "take pistol", "input": "Trigger" } ] },
+      { "prefab": "take_pistol", "at": [0, 0, 0], "name": "take pistol" },
+      { "prefab": "zombie", "at": [2, 0, 4], "yaw": 180, "name": "zombie 2",
+        "outputs": [ { "output": "OnDeath", "target": "kills", "input": "Add" } ] },
+
+      // 3. Both down: the lab door opens, and the scientist behind it greets you.
+      { "prefab": "kills", "at": [0, 0, 0], "name": "kills",
+        "outputs": [ { "output": "OnHitMax", "target": "lab door", "input": "Unlock" },
+                     { "output": "OnHitMax", "target": "lab door", "input": "Open" } ] },
+      { "prefab": "door", "at": [0, 1.5, 0], "name": "lab door",
+        "outputs": [ { "output": "OnFullyOpen", "target": "greeting", "input": "Trigger" } ] },
+      { "prefab": "greeting", "at": [0, 0, 0], "name": "greeting" },
+      { "prefab": "scientist", "at": [0, 0, -3], "name": "scientist" },
+
+      // 4. The lift: step into its zone and it carries you up; at the top the chapter ends.
+      { "prefab": "lift", "at": [0, 0.1, -14], "name": "lift",
+        "outputs": [ { "output": "OnFullyOpen", "target": "chapter end", "input": "Trigger" } ] },
+      { "prefab": "lift_zone", "at": [0, 1.2, -14], "name": "lift zone",
+        "outputs": [ { "output": "OnStartTouch", "target": "lift", "input": "Open", "times": 1 } ] },
+      { "prefab": "chapter_end", "at": [0, 0, 0], "name": "chapter end" }
+    ]
+  }
+]

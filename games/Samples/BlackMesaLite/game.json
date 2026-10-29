@@ -1,0 +1,13 @@
+{
+  // Phase 5's first sample (issue #576, REDESIGN §5 Stage C): a linear Half-Life-style chapter, data only, on
+  // the base engine with no kit. Pick up a crowbar and kill a zombie with it, pick up a pistol and shoot a
+  // second; with both down the lab door opens, the scientist greets you and follows you onto the lift, and the
+  // lift carries you up and ends the chapter.
+  // tests/Sage.Tests/Games/BlackMesaLiteTests.cs plays it headlessly.
+  "name": "Black Mesa lite",
+  "id": "blackmesalite",
+  "plugins": ["sage.gameplay.character", "sage.gameplay.io", "sage.gameplay.movers", "sage.gameplay.attributes",
+              "sage.gameplay.combat", "sage.gameplay.items", "sage.gameplay.ai", "sage.gameplay.factions"],
+  "mounts": ["content"],
+  "scene": "chapter"
+}

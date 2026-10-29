@@ -156,6 +156,8 @@ jobs:
           "$sage" validate tests/games/saves --mounts tests/games/saves/rebalance=rebalance
           "$sage" validate tests/games/skills
           "$sage" validate tests/games/open-world
+          # Phase 5's first sample (issue #576): a Half-Life-style chapter, data only, no kit.
+          "$sage" validate games/Samples/BlackMesaLite
           # Phase 4f's trader (issue #380): a merchant record, rubles as an item, a loot table for his goods, no C#.
           "$sage" validate tests/games/trader
           # Phase 4j's exit (issue #200): the village alone, then with the two mods in its own mods/ folder,
@@ -182,11 +184,11 @@ jobs:
       - name: Check the committed JSON Schemas are current (sage schema)
         run: |
           set -euo pipefail
-          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/skills tests/games/trader --out schemas
+          src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/skills tests/games/trader games/Samples/BlackMesaLite --out schemas
           if ! git diff --exit-code --stat -- schemas || [ -n "$(git status --porcelain -- schemas)" ]; then
             git status --porcelain -- schemas
             git diff -- schemas | head -200
-            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/skills tests/games/trader --out schemas' and commit the result"
+            echo "::error::schemas/ is stale: run 'sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/skills tests/games/trader games/Samples/BlackMesaLite --out schemas' and commit the result"
             exit 1
           fi
 
@@ -305,6 +307,7 @@ jobs:
           # Phase 4b's exit (issue #94): a trigger, door, lift, NPC line, counter and relay chain, and a
           # conditional topic, both in data only. Same allowances as above.
           tools/smoke_run.sh "$host" tests/games/scripted-sequence 3 Shaders Audio Records Input
+          tools/smoke_run.sh "$host" games/Samples/BlackMesaLite 3 Shaders Audio Records Input
           tools/smoke_run.sh "$host" tests/games/topics 3 Shaders Audio Records Input
           # Phase 4d's exit (issue #122): box mannequins that walk, jog and run their lanes, and aim, strike
           # and reload, blended, in data only (a graph, prefabs, state machines sending tweens and params);
