@@ -201,7 +201,6 @@ jobs:
           set -euo pipefail
           host=src/Sage.Host/bin/Development/net8.0
           tools/smoke_run.sh "$host" games/Hello 3 Shaders
-          tools/smoke_run.sh "$host" games/Samples/BlackMesaLite 3 Shaders
           tools/smoke_run.sh "$host" games/Sandbox 3 Shaders Audio
           # Phase 4h's exit (issue 4h-7): the Sandbox opens at dusk under its sky with sun shadows on (its
           # own default); post-processing at half scale, the clock run through sunset into the night (the
@@ -308,6 +307,7 @@ jobs:
           # Phase 4b's exit (issue #94): a trigger, door, lift, NPC line, counter and relay chain, and a
           # conditional topic, both in data only. Same allowances as above.
           tools/smoke_run.sh "$host" tests/games/scripted-sequence 3 Shaders Audio Records Input
+          tools/smoke_run.sh "$host" games/Samples/BlackMesaLite 3 Shaders Audio Records Input
           tools/smoke_run.sh "$host" tests/games/topics 3 Shaders Audio Records Input
           # Phase 4d's exit (issue #122): box mannequins that walk, jog and run their lanes, and aim, strike
           # and reload, blended, in data only (a graph, prefabs, state machines sending tweens and params);
