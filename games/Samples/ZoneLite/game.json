@@ -1,0 +1,15 @@
+{
+  // Phase 5's third sample (issue #578, REDESIGN §5 Stage C): a S.T.A.L.K.E.R.-style zone, data only, on the RPG
+  // kit. A streamed valley on the built-in hills with a day and a night: the rookie camp with its trader, a blind
+  // dog to shoot with a pistol that kicks and spreads, a pack with a weight limit, and a sector north a
+  // checkpoint the loners hold, which the bandits raid by day whether or not anybody is there to see it.
+  // tests/Sage.Tests/Games/ZoneLiteTests.cs plays it headlessly.
+  "name": "Zone lite",
+  "id": "zonelite",
+  "plugins": ["sage.physics3d", "sage.streaming", "sage.gameplay.io", "sage.gameplay.character",
+              "sage.gameplay.attributes", "sage.gameplay.combat", "sage.gameplay.items", "sage.gameplay.ai",
+              "sage.gameplay.factions"],
+  "kits": ["sage.kits.rpg"],
+  "mounts": ["content"],
+  "scene": "zone"
+}

@@ -50,7 +50,8 @@
         "sage:idle",
         "sage:investigate",
         "sage:melee_attack",
-        "sandbox:keep_routine"
+        "sandbox:keep_routine",
+        "zonelite:keep_to_routine"
       ]
     },
     "record:anim_events": {
@@ -106,6 +107,7 @@
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
+        "pm_shot",
         "practice_cut",
         "sage:default_attack",
         "sandbox:claws",
@@ -120,7 +122,8 @@
         "vvardenfelllite:cut",
         "weapons:crossbow_shot",
         "weapons:pistol_shot",
-        "weapons:sword_swing"
+        "weapons:sword_swing",
+        "zonelite:pm_shot"
       ]
     },
     "record:attribute": {
@@ -293,6 +296,7 @@
         "brute",
         "burning",
         "damage",
+        "dog_build",
         "ember_cooldown",
         "ember_font",
         "fireball_cooldown",
@@ -334,7 +338,8 @@
         "vvardenfelllite:rat_build",
         "weapons:helmet",
         "weapons:padding",
-        "zombie_build"
+        "zombie_build",
+        "zonelite:dog_build"
       ]
     },
     "record:encumbrance": {
@@ -366,6 +371,7 @@
         "kitscreens:lamplighters",
         "lamplighters",
         "loners",
+        "mutants",
         "openworld:bandits",
         "openworld:guards",
         "openworld:villagers",
@@ -379,7 +385,10 @@
         "vermin",
         "village",
         "villagers",
-        "vvardenfelllite:vermin"
+        "vvardenfelllite:vermin",
+        "zonelite:bandits",
+        "zonelite:loners",
+        "zonelite:mutants"
       ]
     },
     "record:faction_ranks": {
@@ -483,6 +492,7 @@
         "crossbow",
         "crowbar",
         "dagger",
+        "dog_tail",
         "flesh_eye",
         "gold",
         "hammer",
@@ -499,6 +509,8 @@
         "pistol",
         "pistol_round",
         "pistol_rounds",
+        "pm",
+        "pm_round",
         "potion",
         "practice_sword",
         "ring",
@@ -517,6 +529,7 @@
         "saves:ring",
         "saves:sword",
         "skills:sword",
+        "slab",
         "sword",
         "village:bread",
         "village:lantern",
@@ -527,7 +540,14 @@
         "weapons:crossbow",
         "weapons:pistol",
         "weapons:pistol_round",
-        "weapons:sword"
+        "weapons:sword",
+        "zonelite:dog_tail",
+        "zonelite:jellyfish",
+        "zonelite:medkit",
+        "zonelite:pm",
+        "zonelite:pm_round",
+        "zonelite:rubles",
+        "zonelite:slab"
       ]
     },
     "record:language": {
@@ -549,10 +569,12 @@
       "enum": [
         "bunker:bunker_stock",
         "bunker_stock",
+        "camp_stock",
         "sandbox:watcher_loot",
         "trader_stock",
         "vvardenfelllite:trader_stock",
-        "watcher_loot"
+        "watcher_loot",
+        "zonelite:camp_stock"
       ]
     },
     "record:map": {
@@ -673,7 +695,8 @@
       "enum": [
         "bunker:trader",
         "trader",
-        "vvardenfelllite:trader"
+        "vvardenfelllite:trader",
+        "zonelite:trader"
       ]
     },
     "record:mesh_lod": {
@@ -849,6 +872,7 @@
         "crypt_torch",
         "cylinder",
         "dial",
+        "dog",
         "done",
         "door",
         "dummy",
@@ -909,6 +933,7 @@
         "logic_spawner",
         "logic_state_machine",
         "logic_timer",
+        "loner",
         "marker",
         "math_remap",
         "npc",
@@ -1078,7 +1103,13 @@
         "weapons:player",
         "wedge",
         "well",
-        "zombie"
+        "zombie",
+        "zonelite:bandit",
+        "zonelite:dog",
+        "zonelite:loner",
+        "zonelite:marker",
+        "zonelite:player",
+        "zonelite:trader"
       ]
     },
     "record:quest": {
@@ -1106,8 +1137,10 @@
       "type": "string",
       "enum": [
         "pistol_recoil",
+        "pm_recoil",
         "sandbox:pistol_recoil",
-        "weapons:pistol_recoil"
+        "weapons:pistol_recoil",
+        "zonelite:pm_recoil"
       ]
     },
     "record:reverb": {
@@ -1134,7 +1167,8 @@
         "openworld:smith",
         "raid",
         "sandbox:smith",
-        "smith"
+        "smith",
+        "zonelite:raid"
       ]
     },
     "record:rpg_conventions": {
@@ -1205,7 +1239,9 @@
         "vvardenfelllite:town",
         "weapons:range",
         "wilds",
-        "yard"
+        "yard",
+        "zone",
+        "zonelite:zone"
       ]
     },
     "record:screen": {
@@ -1339,8 +1375,10 @@
       "type": "string",
       "enum": [
         "pistol_spread",
+        "pm_spread",
         "sandbox:pistol_spread",
-        "weapons:pistol_spread"
+        "weapons:pistol_spread",
+        "zonelite:pm_spread"
       ]
     },
     "record:sprite_sheet": {
@@ -1410,7 +1448,8 @@
       "type": "string",
       "enum": [
         "hills",
-        "openworld:hills"
+        "openworld:hills",
+        "zonelite:hills"
       ]
     },
     "record:terrain_material": {
@@ -1740,7 +1779,8 @@
         "sage:idle",
         "sage:investigate",
         "sage:melee_attack",
-        "sandbox:keep_routine"
+        "sandbox:keep_routine",
+        "zonelite:keep_to_routine"
       ]
     },
     "base:anim_events": {
@@ -1796,6 +1836,7 @@
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
+        "pm_shot",
         "practice_cut",
         "sage:default_attack",
         "sandbox:claws",
@@ -1810,7 +1851,8 @@
         "vvardenfelllite:cut",
         "weapons:crossbow_shot",
         "weapons:pistol_shot",
-        "weapons:sword_swing"
+        "weapons:sword_swing",
+        "zonelite:pm_shot"
       ]
     },
     "base:attribute": {
@@ -1983,6 +2025,7 @@
         "brute",
         "burning",
         "damage",
+        "dog_build",
         "ember_cooldown",
         "ember_font",
         "fireball_cooldown",
@@ -2024,7 +2067,8 @@
         "vvardenfelllite:rat_build",
         "weapons:helmet",
         "weapons:padding",
-        "zombie_build"
+        "zombie_build",
+        "zonelite:dog_build"
       ]
     },
     "base:encumbrance": {
@@ -2056,6 +2100,7 @@
         "kitscreens:lamplighters",
         "lamplighters",
         "loners",
+        "mutants",
         "openworld:bandits",
         "openworld:guards",
         "openworld:villagers",
@@ -2069,7 +2114,10 @@
         "vermin",
         "village",
         "villagers",
-        "vvardenfelllite:vermin"
+        "vvardenfelllite:vermin",
+        "zonelite:bandits",
+        "zonelite:loners",
+        "zonelite:mutants"
       ]
     },
     "base:faction_ranks": {
@@ -2173,6 +2221,7 @@
         "crossbow",
         "crowbar",
         "dagger",
+        "dog_tail",
         "flesh_eye",
         "gold",
         "hammer",
@@ -2189,6 +2238,8 @@
         "pistol",
         "pistol_round",
         "pistol_rounds",
+        "pm",
+        "pm_round",
         "potion",
         "practice_sword",
         "ring",
@@ -2207,6 +2258,7 @@
         "saves:ring",
         "saves:sword",
         "skills:sword",
+        "slab",
         "sword",
         "village:bread",
         "village:lantern",
@@ -2217,7 +2269,14 @@
         "weapons:crossbow",
         "weapons:pistol",
         "weapons:pistol_round",
-        "weapons:sword"
+        "weapons:sword",
+        "zonelite:dog_tail",
+        "zonelite:jellyfish",
+        "zonelite:medkit",
+        "zonelite:pm",
+        "zonelite:pm_round",
+        "zonelite:rubles",
+        "zonelite:slab"
       ]
     },
     "base:language": {
@@ -2239,10 +2298,12 @@
       "enum": [
         "bunker:bunker_stock",
         "bunker_stock",
+        "camp_stock",
         "sandbox:watcher_loot",
         "trader_stock",
         "vvardenfelllite:trader_stock",
-        "watcher_loot"
+        "watcher_loot",
+        "zonelite:camp_stock"
       ]
     },
     "base:map": {
@@ -2363,7 +2424,8 @@
       "enum": [
         "bunker:trader",
         "trader",
-        "vvardenfelllite:trader"
+        "vvardenfelllite:trader",
+        "zonelite:trader"
       ]
     },
     "base:mesh_lod": {
@@ -2540,6 +2602,7 @@
         "crypt_torch",
         "cylinder",
         "dial",
+        "dog",
         "done",
         "door",
         "dummy",
@@ -2600,6 +2663,7 @@
         "logic_spawner",
         "logic_state_machine",
         "logic_timer",
+        "loner",
         "marker",
         "math_remap",
         "npc",
@@ -2770,7 +2834,13 @@
         "weapons:player",
         "wedge",
         "well",
-        "zombie"
+        "zombie",
+        "zonelite:bandit",
+        "zonelite:dog",
+        "zonelite:loner",
+        "zonelite:marker",
+        "zonelite:player",
+        "zonelite:trader"
       ]
     },
     "base:quest": {
@@ -2798,8 +2868,10 @@
       "type": "string",
       "enum": [
         "pistol_recoil",
+        "pm_recoil",
         "sandbox:pistol_recoil",
-        "weapons:pistol_recoil"
+        "weapons:pistol_recoil",
+        "zonelite:pm_recoil"
       ]
     },
     "base:reverb": {
@@ -2826,7 +2898,8 @@
         "openworld:smith",
         "raid",
         "sandbox:smith",
-        "smith"
+        "smith",
+        "zonelite:raid"
       ]
     },
     "base:rpg_conventions": {
@@ -2897,7 +2970,9 @@
         "vvardenfelllite:town",
         "weapons:range",
         "wilds",
-        "yard"
+        "yard",
+        "zone",
+        "zonelite:zone"
       ]
     },
     "base:screen": {
@@ -3031,8 +3106,10 @@
       "type": "string",
       "enum": [
         "pistol_spread",
+        "pm_spread",
         "sandbox:pistol_spread",
-        "weapons:pistol_spread"
+        "weapons:pistol_spread",
+        "zonelite:pm_spread"
       ]
     },
     "base:sprite_sheet": {
@@ -3102,7 +3179,8 @@
       "type": "string",
       "enum": [
         "hills",
-        "openworld:hills"
+        "openworld:hills",
+        "zonelite:hills"
       ]
     },
     "base:terrain_material": {

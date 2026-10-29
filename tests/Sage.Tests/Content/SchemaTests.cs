@@ -45,7 +45,8 @@ public class SchemaTests
                                                                       ("tests/games/skills", null),
                                                                       ("tests/games/trader", null),
                                                                       ("games/Samples/BlackMesaLite", null),
-                                                                      ("games/Samples/VvardenfellLite", null) })
+                                                                      ("games/Samples/VvardenfellLite", null),
+                                                                      ("games/Samples/ZoneLite", null) })
         {
             var report = ContentValidation.Run(new ValidateOptions
             {
