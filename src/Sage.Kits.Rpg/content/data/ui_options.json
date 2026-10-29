@@ -70,5 +70,11 @@
     "cvar": "lang", "choicesFrom": "languages" },
   { "type": "ui_option", "id": "crosshair", "page": "gameplay", "order": 30, "label": "@rpg.options.crosshair", "kind": "toggle", "cvar": "ui_crosshair" },
   { "type": "ui_option", "id": "damage_numbers", "page": "gameplay", "order": 40, "label": "@rpg.options.damage_numbers", "kind": "toggle", "cvar": "ui_damagenumbers" },
-  { "type": "ui_option", "id": "autosave", "page": "gameplay", "order": 50, "label": "@rpg.options.autosave", "kind": "toggle", "cvar": "save_autosave" }
+  { "type": "ui_option", "id": "autosave", "page": "gameplay", "order": 50, "label": "@rpg.options.autosave", "kind": "toggle", "cvar": "save_autosave" },
+  // Reading (issue #597): text size over the design's, and the kit's high-contrast styles (ui_styles.json).
+  { "type": "ui_option", "id": "text_size", "page": "gameplay", "order": 60, "label": "@rpg.options.text_size", "kind": "slider",
+    "cvar": "ui_text_scale", "min": 0.75, "max": 2, "step": 0.25, "percent": true },
+  { "type": "ui_option", "id": "high_contrast", "page": "gameplay", "order": 70, "label": "@rpg.options.high_contrast", "kind": "choice",
+    "choices": [ { "label": "@rpg.options.off", "set": { "ui_style_set": "" } },
+                 { "label": "@rpg.options.on", "set": { "ui_style_set": "rpg:high_contrast" } } ] }
 ]

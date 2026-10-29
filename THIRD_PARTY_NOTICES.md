@@ -19,6 +19,10 @@ licences were read from each package's metadata (NuGet `nuspec`), not assumed; u
 | [StbTrueTypeSharp](https://github.com/StbSharp/StbTrueTypeSharp) | 1.26.12 | Public Domain (the project's README; the nuspec names no licence) | `Sage.UI` — TrueType/OpenType fonts, measured and rasterised headlessly (issue #338) |
 | [SharpGLTF.Core](https://github.com/vpenades/SharpGLTF) | 1.0.7 | MIT | `Sage.Simulation` — glTF skins and clips, read headlessly (issue #116); `Sage.Client` — glTF meshes, through it |
 
+| Font | Version | Licence | Used by |
+|---|---|---|---|
+| [IBM Plex Sans](https://github.com/IBM/plex) Regular and SemiBold (`engine_content/fonts/plex-sans*.ttf`, unmodified) | 1.1.0 | SIL OFL 1.1 (`engine_content/fonts/plex-sans-OFL.txt`; Reserved Font Name "Plex") | the RPG kit's screens and the engine's dialogs (issue #597) |
+
 **LGPL note.** The three Friflo.Json packages are LGPL-3.0-only. They are used as unmodified,
 dynamically linked .NET assemblies, which the LGPL permits in a program under another licence, provided
 a player can replace those assemblies with their own build (they ship as separate DLLs, which satisfies

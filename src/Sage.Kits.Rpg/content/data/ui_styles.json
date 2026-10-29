@@ -1,61 +1,102 @@
 [
-  // The RPG kit's look (issue #98): what its screens' layouts name. A game restyles them with a patch
-  // in its own mount — `{ "type": "ui_style", "id": "rpg:panel", "patch": true, "background": "#101830E0" }`.
-  { "type": "ui_style", "id": "panel", "padding": 8, "background": "#141414E0", "border": "#5A4A30", "borderWidth": 1,
-    "textColour": "#E0D8C8", "states": { "disabled": { "textColour": "#707070" } } },
-  { "type": "ui_style", "id": "title", "base": "panel", "background": "#00000000", "borderWidth": 0, "textScale": 1.5,
-    "padding": [0, 2], "textColour": "#F0E0B0" },
+  // The RPG kit's look (issue #98; redrawn in #597 to the rules in docs/design/13, "The kit's look"). A game
+  // restyles it with a patch in its own mount — `{ "type": "ui_style", "id": "rpg:panel", "patch": true,
+  // "background": "#101830F0" }` — or swaps the font with one patch of `rpg:panel` (every style but the
+  // title's and the map's dots is based on it).
+  //
+  // The roles, so a patch keeps them apart: paper #1B1915 (the window), well #25221C (a control at rest),
+  // raised #302C24 (hovered, a tooltip), rule #4A4336 (hairlines), ink #EDE6D8 (body text), ink-2 #BDB3A0
+  // (details), muted #9A9080 (hints) and #A89E8C (greyed, read: it sits on the focus fill too), accent #E8BE6A (focus, the open tab, topics),
+  // focus fill #3A2F1C. Text is IBM Plex Sans, 16 for body, 24 for titles, 13 for hints and cells; spacing is
+  // on a 4-unit step. Every pair of text and what is behind it is 4.5:1 or more (UiAccessibility checks it on
+  // load); rpg:high_contrast below holds 7:1.
+  { "type": "ui_style", "id": "panel", "font": "fonts/plex-sans.ttf", "fontSize": 16, "padding": 24,
+    "background": "#1B1915F2", "border": "#4A4336", "borderWidth": 1,
+    "textColour": "#EDE6D8", "states": { "disabled": { "textColour": "#7A7264" } } },
   { "type": "ui_style", "id": "text", "base": "panel", "background": "#00000000", "borderWidth": 0, "padding": 0 },
-  { "type": "ui_style", "id": "hint", "base": "text", "textColour": "#908878" },
-  { "type": "ui_style", "id": "warning", "base": "text", "textColour": "#E07050" },
-  { "type": "ui_style", "id": "button", "base": "panel", "padding": [6, 3], "background": "#2A2620",
-    "states": { "hover": { "background": "#3A3428" }, "focused": { "background": "#5A4A30", "border": "#F0E0B0" },
-                "pressed": { "background": "#806A40" } } },
-  { "type": "ui_style", "id": "weight_bar", "base": "panel", "padding": 0, "background": "#202020", "fill": "#B09050" },
+  { "type": "ui_style", "id": "title", "base": "text", "font": "fonts/plex-sans-semibold.ttf", "fontSize": 24, "padding": [0, 0, 0, 4] },
+  { "type": "ui_style", "id": "hint", "base": "text", "fontSize": 13, "textColour": "#9A9080" },
+  { "type": "ui_style", "id": "warning", "base": "text", "textColour": "#EE8E72" },
+
+  // A control: a well at rest, one step lighter under the pointer, the accent's edge and fill when focused.
+  // Its border is always one unit, transparent at rest, so focus never moves anything.
+  { "type": "ui_style", "id": "button", "base": "panel", "padding": [12, 6], "background": "#25221C", "border": "#00000000",
+    "states": { "hover": { "background": "#302C24" },
+                "focused": { "background": "#3A2F1C", "border": "#E8BE6A", "textColour": "#F6EEDC" },
+                "pressed": { "background": "#5C4824", "textColour": "#F6EEDC" } } },
+  // A menu's entries (the title, the pause menu): no well at rest, so the menu reads as a list, not a stack of boxes.
+  { "type": "ui_style", "id": "menu_item", "base": "button", "background": "#00000000" },
+  { "type": "ui_style", "id": "weight_bar", "base": "panel", "padding": 0, "background": "#25221C", "border": "#00000000", "fill": "#C9A04E" },
+  { "type": "ui_style", "id": "tooltip", "base": "panel", "fontSize": 13, "padding": [8, 4], "background": "#302C24" },
+  { "type": "ui_style", "id": "dialog", "base": "panel", "background": "#1B1915" },
 
   // A square of an inventory grid: empty, with a stack on it, or with the stack in the hand on it.
-  { "type": "ui_style", "id": "cell", "base": "button", "padding": 2, "background": "#1C1A16", "border": "#3A3428",
-    "textScale": 0.75 },
-  { "type": "ui_style", "id": "cell_item", "base": "cell", "background": "#3A3020", "textColour": "#F0E8D8" },
-  { "type": "ui_style", "id": "cell_held", "base": "cell", "background": "#4A5A30", "border": "#C0F080" },
+  { "type": "ui_style", "id": "cell", "base": "button", "padding": 2, "fontSize": 12, "background": "#211F1A", "border": "#2E2A22" },
+  { "type": "ui_style", "id": "cell_item", "base": "cell", "background": "#3A3122", "textColour": "#F6EEDC" },
+  { "type": "ui_style", "id": "cell_held", "base": "cell", "background": "#34452A", "border": "#A8D88A" },
   // Where the stack in the hand would go (issue #346): the squares it would take, where it fits and where not.
-  { "type": "ui_style", "id": "cell_target", "base": "cell", "background": "#2E4A2A", "border": "#80E080" },
-  { "type": "ui_style", "id": "cell_blocked", "base": "cell", "background": "#5A2420", "border": "#F07060" },
+  { "type": "ui_style", "id": "cell_target", "base": "cell", "background": "#2A4228", "border": "#8FD07A" },
+  { "type": "ui_style", "id": "cell_blocked", "base": "cell", "background": "#5A2820", "border": "#E8705C" },
 
-  // A topic, before and after it was asked (Morrowind greys what you have heard).
-  { "type": "ui_style", "id": "topic", "base": "button", "background": "#00000000", "borderWidth": 0, "textColour": "#F0D890" },
-  { "type": "ui_style", "id": "topic_asked", "base": "topic", "textColour": "#A09880" },
+  // A topic, before and after it was asked (Morrowind greys what you have heard): words, not buttons.
+  { "type": "ui_style", "id": "topic", "base": "button", "background": "#00000000", "padding": [8, 3], "textColour": "#E8BE6A" },
+  { "type": "ui_style", "id": "topic_asked", "base": "topic", "textColour": "#A89E8C" },
 
   // The form widgets of the options screen (issue #339): a tab, drawn `selected` while its page is open,
-  // and a slider, a bar the player moves (bordered while focused).
-  { "type": "ui_style", "id": "tab", "base": "button", "states": { "selected": { "background": "#5A4A30", "textColour": "#F0E0B0" } } },
-  { "type": "ui_style", "id": "slider", "base": "weight_bar", "borderWidth": 1, "border": "#3A3428",
-    "states": { "focused": { "border": "#F0E0B0" } } },
+  // and a slider, a bar the player moves (edged in the accent while focused).
+  { "type": "ui_style", "id": "tab", "base": "button", "background": "#00000000",
+    "states": { "selected": { "background": "#302C24", "textColour": "#E8BE6A" } } },
+  { "type": "ui_style", "id": "slider", "base": "weight_bar", "borderWidth": 1, "border": "#4A4336",
+    "states": { "focused": { "border": "#E8BE6A" } } },
 
   // A discovered travel point on a map that has no map_marker of its own to draw it with (issue 4g-7).
   { "type": "ui_style", "id": "map_travel", "background": "#60A0F0" },
 
   // The journal and the map (issue #349): a line of the journal (a row you can choose, to track its quest),
   // a quest's name, and the map's ground, fog, dots and words. A tracked quest's target is `map_quest`.
-  { "type": "ui_style", "id": "journal_line", "base": "button", "background": "#00000000", "borderWidth": 0, "padding": [4, 1] },
-  { "type": "ui_style", "id": "journal_quest", "base": "text", "textColour": "#F0D890" },
-  { "type": "ui_style", "id": "map_area", "base": "panel", "padding": 0, "background": "#0A0C14E6", "border": "#3A3E52" },
-  { "type": "ui_style", "id": "map_fog", "background": "#0A0C14F0" },
-  { "type": "ui_style", "id": "map_label", "base": "text", "textColour": "#D8D8E0" },
-  { "type": "ui_style", "id": "map_dot", "background": "#F0D890" },
+  { "type": "ui_style", "id": "journal_line", "base": "button", "background": "#00000000", "padding": [8, 3] },
+  { "type": "ui_style", "id": "journal_quest", "base": "text", "textColour": "#E8BE6A" },
+  { "type": "ui_style", "id": "map_area", "base": "panel", "padding": 0, "background": "#0E0F14", "border": "#4A4336" },
+  { "type": "ui_style", "id": "map_fog", "background": "#0E0F14F0" },
+  { "type": "ui_style", "id": "map_label", "base": "text", "fontSize": 13, "textColour": "#D8D8E0" },
+  { "type": "ui_style", "id": "map_dot", "background": "#E8BE6A" },
   { "type": "ui_style", "id": "map_you", "background": "#60C0FF" },
-  { "type": "ui_style", "id": "map_quest", "background": "#F0B020", "border": "#FFFFFF", "borderWidth": 1 }
-  ,
+  { "type": "ui_style", "id": "map_quest", "background": "#F0B020", "border": "#FFFFFF", "borderWidth": 1 },
 
-  // The lists that were panels (issue #350): a row (highlighted while focused), its name and detail, greyed
+  // The lists that were panels (issue #350): a row (the focus fill while focused), its name and detail, greyed
   // (`_off`) while it cannot be used, the tick on what is readied, equipped or chosen, and the spellmaker's
   // name field.
-  { "type": "ui_style", "id": "list_row", "base": "button", "background": "#00000000", "borderWidth": 0, "padding": [4, 1] },
+  { "type": "ui_style", "id": "list_row", "base": "button", "background": "#00000000", "padding": [8, 3] },
   { "type": "ui_style", "id": "list_text", "base": "text" },
-  { "type": "ui_style", "id": "list_text_off", "base": "text", "textColour": "#787882" },
-  { "type": "ui_style", "id": "list_detail", "base": "text", "textColour": "#A0AFC8" },
-  { "type": "ui_style", "id": "list_detail_off", "base": "text", "textColour": "#787882" },
-  { "type": "ui_style", "id": "list_tick", "base": "text", "textColour": "#EBD778" },
-  { "type": "ui_style", "id": "field", "base": "button", "background": "#1C1A16", "border": "#3A3428", "borderWidth": 1,
-    "states": { "focused": { "background": "#24201A", "border": "#F0E0B0" } } }
+  { "type": "ui_style", "id": "list_text_off", "base": "text", "textColour": "#A89E8C" },
+  { "type": "ui_style", "id": "list_detail", "base": "text", "textColour": "#BDB3A0" },
+  { "type": "ui_style", "id": "list_detail_off", "base": "text", "textColour": "#A89E8C" },
+  { "type": "ui_style", "id": "list_tick", "base": "text", "textColour": "#E8BE6A" },
+  { "type": "ui_style", "id": "field", "base": "button", "background": "#211F1A", "border": "#4A4336",
+    "states": { "focused": { "background": "#25221C", "border": "#E8BE6A" } } },
+
+  // High contrast (issue #351, the options' Gameplay page): near-black paper, brighter words, and focus as a
+  // white edge on the focus fill (a list row's words are labels of their own, drawn over that fill, so it
+  // stays dark). `highContrast` makes the load hold every layout to 7:1 with it.
+  { "type": "ui_style", "id": "panel_hc", "base": "panel", "background": "#0B0A08", "border": "#BDB3A0", "textColour": "#FFFFFF" },
+  { "type": "ui_style", "id": "text_hc", "base": "panel_hc", "background": "#00000000", "borderWidth": 0, "padding": 0 },
+  { "type": "ui_style", "id": "hint_hc", "base": "text_hc", "fontSize": 13, "textColour": "#E0D8C8" },
+  { "type": "ui_style", "id": "warning_hc", "base": "text_hc", "textColour": "#FFB8A0" },
+  { "type": "ui_style", "id": "button_hc", "base": "button", "background": "#1E1C18", "border": "#BDB3A0", "textColour": "#FFFFFF",
+    "states": { "hover": { "background": "#2E2A22" },
+                "focused": { "background": "#3A2F1C", "border": "#FFFFFF", "textColour": "#FFFFFF" },
+                "pressed": { "background": "#5C4824", "textColour": "#FFFFFF" } } },
+  { "type": "ui_style", "id": "quiet_hc", "base": "text_hc", "textColour": "#E0D8C8" },
+  { "type": "ui_style", "id": "accent_hc", "base": "text_hc", "textColour": "#F6D890" },
+  { "type": "ui_style_set", "id": "high_contrast", "label": "@rpg.options.high_contrast", "highContrast": true,
+    "swaps": [
+      { "from": "panel", "to": "panel_hc" }, { "from": "dialog", "to": "panel_hc" }, { "from": "text", "to": "text_hc" },
+      { "from": "hint", "to": "hint_hc" }, { "from": "warning", "to": "warning_hc" },
+      { "from": "button", "to": "button_hc" }, { "from": "menu_item", "to": "button_hc" }, { "from": "tab", "to": "button_hc" },
+      { "from": "topic", "to": "button_hc" }, { "from": "list_row", "to": "button_hc" }, { "from": "journal_line", "to": "button_hc" },
+      { "from": "field", "to": "button_hc" },
+      { "from": "topic_asked", "to": "quiet_hc" }, { "from": "list_text_off", "to": "quiet_hc" },
+      { "from": "list_detail", "to": "quiet_hc" }, { "from": "list_detail_off", "to": "quiet_hc" },
+      { "from": "list_tick", "to": "accent_hc" }, { "from": "journal_quest", "to": "accent_hc" }
+    ] }
 ]

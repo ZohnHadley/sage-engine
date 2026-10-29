@@ -1,25 +1,25 @@
 # rpg:spellmaker: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on name
-rect 330,194.75 620x330.5 #141414e0 @window
-border 330,194.75 620x330.5 #5a4a30ff width 1 @window
-text 338,204.75 189x13.5 #f0e0b0ff scale 1.5 "Make a spell — 1 mana" @title
-rect 338,226.25 604x15 #1c1a16ff>#24201aff @name
-border 338,226.25 604x15 #3a3428ff>#f0e0b0ff width 1 @name
-text 344,229.25 78x9 #e0d8c880 scale 1 "a name for it" @name
-rect 344,229.25 1x9 #e0d8c8ff @name
-pushclip 338,247.25 604x240 @page
-text 360,248.25 48x9 #e0d8c8ff scale 1 "Delivery" @label
-text 908,248.25 30x9 #a0afc8ff scale 1 "Touch" @detail
-text 360,260.25 30x9 #e0d8c8ff scale 1 "Power" @label
-text 926,260.25 12x9 #a0afc8ff scale 1 "×1" @detail
-text 360,272.25 24x9 #e0d8c8ff scale 1 "glow" @label
-text 932,272.25 6x9 #a0afc8ff scale 1 "5" @detail
-text 360,284.25 42x9 #e0d8c8ff scale 1 "burning" @label
-text 926,284.25 12x9 #a0afc8ff scale 1 "10" @detail
-text 360,296.25 24x9 #e0d8c8ff scale 1 "mend" @label
-text 932,296.25 6x9 #a0afc8ff scale 1 "6" @detail
-text 360,308.25 36x9 #e0d8c8ff scale 1 "vigour" @label
-text 932,308.25 6x9 #a0afc8ff scale 1 "8" @detail
-text 360,320.25 66x9 #787882ff scale 1 "— make it —" @label
+rect 330,139.15 620x441.7 #1b1915f2 @window
+border 330,139.15 620x441.7 #4a4336ff width 1 @window
+text 354,163.15 250.13x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Make a spell — 1 mana" @title
+rect 354,210.35 572x32.8 #211f1aff>#25221cff @name
+border 354,210.35 572x32.8 #4a4336ff>#e8be6aff width 1 @name
+text 366,216.35 89.82x20.8 #ede6d880>#f6eedc80 scale 1 font fonts/plex-sans.ttf size 16 "a name for it" @name
+rect 366,216.35 1x20.8 #ede6d8ff>#f6eedcff @name
+pushclip 354,255.15 572x240 @page
+text 380,258.15 58.42x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Delivery" @label
+text 873.66,258.15 44.34x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "Touch" @detail
+text 380,286.95 45.12x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Power" @label
+text 898.8,286.95 19.2x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "×1" @detail
+text 380,315.75 33.97x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "glow" @label
+text 908.4,315.75 9.6x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "5" @detail
+text 380,344.55 54.86x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "burning" @label
+text 898.8,344.55 19.2x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "10" @detail
+text 380,373.35 41.12x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "mend" @label
+text 908.4,373.35 9.6x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "6" @detail
+text 380,402.15 44.14x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "vigour" @label
+text 908.4,402.15 9.6x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "8" @detail
+text 380,430.95 85.36x20.8 #a89e8cff scale 1 font fonts/plex-sans.ttf size 16 "— make it —" @label
 popclip 0,0 0x0 @page
-text 338,508.25 354x9 #908878ff scale 1 "Type a name    D-pad: choose    A: add / change    B: close" @hint
+text 354,539.95 273.13x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Type a name    Enter Add or change    Esc Close" @hint

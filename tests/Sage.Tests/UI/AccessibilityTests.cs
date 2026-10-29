@@ -42,9 +42,14 @@ public class AccessibilityTests
 
     private static RecordId Id(string name) => new("uitest", name);
 
-    private static HeadlessApp Boot(string records = Records)
+    private static HeadlessApp Boot(string records = Records, string? otherGame = null)
     {
         var fixture = new MountFixture();
+        if (otherGame != null)
+        {
+            fixture.Write("othergame", "data/ui.json", otherGame);
+            fixture.Mount("othergame", "othergame");
+        }
         fixture.Write("uitest", "data/ui.json", records);
         fixture.Write("uitest", "audio/a.wav", "RIFF");
         fixture.Mount("uitest", "uitest");
@@ -252,8 +257,11 @@ public class AccessibilityTests
               "box":   { "widget": "stack" },
               "dim":   { "widget": "label", "parent": "box", "text": "dim" },
               "fine":  { "widget": "label", "parent": "box", "text": "fine", "style": "good" },
-              "press": { "widget": "button", "parent": "box", "text": "go", "style": "grey_button" }
+              "press": { "widget": "button", "parent": "box", "text": "go", "style": "grey_button" },
+              "pages": { "widget": "tabs", "parent": "box", "style": "good", "tabStyle": "grey_tab" }
             } },
+          { "type": "ui_style", "id": "grey_tab", "background": "#000000", "textColour": "#FFFFFF",
+            "states": { "selected": { "background": "#909090", "textColour": "#A0A0A0" } } },
           { "type": "ui_layout", "id": "over_world",
             "nodes": { "note": { "widget": "label", "text": "faint", "style": "hud" } } }
         ]
@@ -264,9 +272,35 @@ public class AccessibilityTests
 
         Assert.Contains(lines, e => e.Level == LogLevel.Warn && e.Message.Contains("node 'dim'") && e.Message.Contains("#606060 text on #404040") && e.Message.Contains("WCAG"));
         Assert.Contains(lines, e => e.Level == LogLevel.Warn && e.Message.Contains("node 'press'") && e.Message.Contains("when focused"));
+        // A tabs widget's tabs are made from its tabStyle, not nodes; they are judged all the same (#597).
+        Assert.Contains(lines, e => e.Level == LogLevel.Warn && e.Message.Contains("node 'pages' (uitest:grey_tab)") && e.Message.Contains("when selected"));
         Assert.DoesNotContain(lines, e => e.Message.Contains("node 'fine'"));
         Assert.DoesNotContain(lines, e => e.Message.Contains("node 'note'"));
         Assert.Contains(lines, e => e.Level == LogLevel.Error && e.Message.Contains("ui_style_set uitest:claims is high contrast") && e.Message.Contains("node 'dim'"));
+    }
+
+    // A high-contrast set vouches for its own namespace's layouts only (#597): a kit's set is no load error
+    // in a game's own menus, which only the 4.5:1 warning judges.
+    [Fact]
+    public void AHighContrastSetHoldsOnlyItsOwnNamespacesLayoutsTo7To1()
+    {
+        const string records = """
+        [
+          { "type": "ui_style", "id": "panel", "background": "#000000", "textColour": "#FFFFFF" },
+          { "type": "ui_style_set", "id": "claims", "highContrast": true, "swaps": [ { "from": "panel", "to": "panel" } ] },
+          { "type": "ui_layout", "id": "own", "style": "panel", "nodes": { "words": { "widget": "label", "text": "fine" } } }
+        ]
+        """;
+        const string game = """
+        [
+          { "type": "ui_style", "id": "dim", "background": "#101018", "textColour": "#9098A8" },
+          { "type": "ui_layout", "id": "menu", "style": "dim", "nodes": { "words": { "widget": "label", "text": "6.5:1" } } }
+        ]
+        """;
+        using var capture = new CaptureSink();
+        using var app = Boot(records, game);
+        Assert.DoesNotContain(capture.Entries, e => e.Level >= LogLevel.Error && e.Message.Contains("is high contrast"));
+        Assert.DoesNotContain(capture.Entries, e => e.Message.Contains("othergame:menu"));   // 6.5:1 passes AA
     }
 
     [Fact]

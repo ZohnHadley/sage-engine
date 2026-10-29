@@ -22,7 +22,7 @@ public sealed class UiStyleSetRecord
     [Property(Tooltip = "What an options screen calls it: text or @key")]
     public string Label = "";
 
-    [Property(Tooltip = "Promises text at least 7:1 against what is behind it in every layout while the set is in use; checked when content loads")]
+    [Property(Tooltip = "Promises text at least 7:1 against what is behind it in every layout of its own namespace while the set is in use; checked when content loads")]
     public bool HighContrast;
 
     [Property(Tooltip = "Each style drawn as another while the set is in use")]
@@ -104,7 +104,8 @@ internal static class UiAccessibilityChecks
         foreach (var id in records.Ids("ui_style_set"))
         {
             if (!records.TryGet(id, out UiStyleSetRecord set) || !set.HighContrast) continue;
-            foreach (var problem in Once(Problems(records, Styles(records, set), UiContrast.HighContrast)))
+            // A set vouches for its own namespace's layouts: a kit's set is no load error in a game's own menus (#597).
+            foreach (var problem in Once(Problems(records, Styles(records, set), UiContrast.HighContrast, id.Namespace)))
                 Log.Error(LogCat.Records, $"{records.Where("ui_style_set", id, "HighContrast")}: ui_style_set {id} is high contrast, and with it {problem.Message} " +
                                           $"({problem.Where}); it needs {UiContrast.HighContrast.ToString(CultureInfo.InvariantCulture)}:1");
         }
@@ -154,12 +155,12 @@ internal static class UiAccessibilityChecks
         }
     }
 
-    private static IEnumerable<Problem> Problems(RecordStore records, Dictionary<RecordId, UiStyle> styles, double minimum)
+    private static IEnumerable<Problem> Problems(RecordStore records, Dictionary<RecordId, UiStyle> styles, double minimum, string? only = null)
     {
         UiStyle StyleOf(RecordId id) => !id.IsEmpty && styles.TryGetValue(id, out var style) ? style : UiStyles.Default;
         foreach (var id in records.Ids("ui_layout"))
         {
-            if (!records.TryGet(id, out UiLayoutRecord layout)) continue;
+            if (only != null && id.Namespace != only || !records.TryGet(id, out UiLayoutRecord layout)) continue;
             var tree = new LayoutTree(layout);
             // Each node's background chain, from it out to the layout's own root (its style's background).
             var behind = new List<uint> { StyleOf(layout.Style.Id).Colours(UiState.Normal).Background };
@@ -178,30 +179,40 @@ internal static class UiAccessibilityChecks
             bool owns = styleId != inherited;
             // A node whose style is chosen by a binding is judged by the style it starts with.
             bool shows = Array.IndexOf(TextWidgets, node.Widget) >= 0 && (node.Text.Length > 0 || node.Bind.Length > 0 || node.Bindings.Keys.Any(k => string.Equals(k, UiBindings.Text, StringComparison.OrdinalIgnoreCase)));
-            if (shows)
-            {
-                double worst = double.MaxValue;
-                UiState at = UiState.Normal;
-                uint text = 0, back = 0;
-                foreach (var state in States)
-                {
-                    if (state != UiState.Normal && Array.IndexOf(Focusable, node.Widget) < 0) break;
-                    var colours = style.Colours(state);
-                    if (!Behind(behind, owns ? colours.Background : 0u, out uint backdrop)) continue;
-                    uint drawn = UiContrast.Over(colours.Text, backdrop);
-                    double ratio = UiContrast.Ratio(drawn, backdrop);
-                    if (ratio < worst) { worst = ratio; at = state; text = colours.Text; back = backdrop; }
-                }
-                if (worst < minimum)
-                    yield return new Problem(records.Where("ui_layout", layoutId, $"Nodes['{name}']"),
-                        $"ui_layout {layoutId} node '{name}' ({styleId}) draws {Hex(text)} text on {Hex(back)}" +
-                        (at == UiState.Normal ? "" : $" when {at.ToString().ToLowerInvariant()}") +
-                        $", {worst.ToString("0.0", CultureInfo.InvariantCulture)}:1", (styleId, text, back));
-            }
+            if (shows && Judge(records, layoutId, name, styleId, style, owns, Array.IndexOf(Focusable, node.Widget) >= 0, behind, minimum) is { } own)
+                yield return own;
             behind.Add(owns ? style.Colours(UiState.Normal).Background : 0u);
+            // A tabs widget's buttons are no nodes: its tabStyle is judged as theirs, over the tabs (#597).
+            if (node.Widget == "tabs" && !node.TabStyle.IsEmpty &&
+                Judge(records, layoutId, name, node.TabStyle.Id, styleOf(node.TabStyle.Id), node.TabStyle.Id != styleId, true, behind, minimum) is { } tabs)
+                yield return tabs;
             foreach (var problem in Walk(records, layoutId, tree, name, styleId, behind, styleOf, minimum)) yield return problem;
             behind.RemoveAt(behind.Count - 1);
         }
+    }
+
+    // The worst text-on-backdrop ratio `style` gives in the states the player reads it in, as a problem when
+    // it is under `minimum`.
+    private static Problem? Judge(RecordStore records, RecordId layoutId, string name, RecordId styleId, UiStyle style, bool owns,
+                                  bool focusable, List<uint> behind, double minimum)
+    {
+        double worst = double.MaxValue;
+        UiState at = UiState.Normal;
+        uint text = 0, back = 0;
+        foreach (var state in States)
+        {
+            if (state != UiState.Normal && !focusable) break;
+            var colours = style.Colours(state);
+            if (!Behind(behind, owns ? colours.Background : 0u, out uint backdrop)) continue;
+            uint drawn = UiContrast.Over(colours.Text, backdrop);
+            double ratio = UiContrast.Ratio(drawn, backdrop);
+            if (ratio < worst) { worst = ratio; at = state; text = colours.Text; back = backdrop; }
+        }
+        if (worst >= minimum) return null;
+        return new Problem(records.Where("ui_layout", layoutId, $"Nodes['{name}']"),
+            $"ui_layout {layoutId} node '{name}' ({styleId}) draws {Hex(text)} text on {Hex(back)}" +
+            (at == UiState.Normal ? "" : $" when {at.ToString().ToLowerInvariant()}") +
+            $", {worst.ToString("0.0", CultureInfo.InvariantCulture)}:1", (styleId, text, back));
     }
 
     // What the text is drawn on: its own background over its parents', inside out; false when that is not

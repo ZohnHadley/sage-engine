@@ -1,14 +1,15 @@
 # rpg:factions: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on row
-rect 400,197.75 480x324.5 #141414e0 @window
-border 400,197.75 480x324.5 #5a4a30ff width 1 @window
-text 408,207.75 72x13.5 #f0e0b0ff scale 1.5 "Factions" @title
-pushclip 408,229.25 464x240 @page
-rect 408,229.25 464x11 #00000000>#5a4a30ff @row
-text 430,230.25 48x9 #787882ff scale 1 "Ferrymen" @name
-text 724,230.25 144x9 #787882ff scale 1 "not a member, standing 0" @detail
-text 430,242.25 72x9 #e0d8c8ff scale 1 "Lamplighters" @name
-text 724,242.25 144x9 #a0afc8ff scale 1 "not a member, standing 0" @detail
+rect 400,145.15 480x429.7 #1b1915f2 @window
+border 400,145.15 480x429.7 #4a4336ff width 1 @window
+text 424,169.15 93.82x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Factions" @title
+pushclip 424,216.35 432x240 @page
+rect 424,216.35 432x26.8 #00000000>#3a2f1cff @row
+border 424,216.35 432x26.8 #00000000>#e8be6aff width 1 @row
+text 450,219.35 69.06x20.8 #a89e8cff scale 1 font fonts/plex-sans.ttf size 16 "Ferrymen" @name
+text 665.62,219.35 182.38x20.8 #a89e8cff scale 1 font fonts/plex-sans.ttf size 16 "not a member, standing 0" @detail
+text 450,248.15 93.68x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Lamplighters" @name
+text 665.62,248.15 182.38x20.8 #bdb3a0ff scale 1 font fonts/plex-sans.ttf size 16 "not a member, standing 0" @detail
 popclip 0,0 0x0 @page
-text 408,475.25 156x9 #e07050ff scale 1 "Oar: they do not trust you" @reason
-text 408,505.25 258x9 #908878ff scale 1 "D-pad: choose    A: join / rise    B: close" @hint
+text 424,468.35 182.42x20.8 #ee8e72ff scale 1 font fonts/plex-sans.ttf size 16 "Oar: they do not trust you" @reason
+text 424,533.95 166.82x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Enter Join or rise    Esc Close" @hint

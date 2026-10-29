@@ -21,7 +21,8 @@ public sealed class UiDialog
     private readonly Action<bool>? _answered;
 
     internal UiDialog(UiScreenStack stack, Action<bool>? answered, string title, string message, string confirm, string? cancel,
-                      string? windowStyle, string? buttonStyle, Thickness padding)
+                      string? windowStyle, string? titleStyle, string? textStyle, string? buttonStyle, Thickness padding,
+                      UiStyles? styles)
     {
         _stack = stack;
         _answered = answered;
@@ -36,16 +37,29 @@ public sealed class UiDialog
             FocusScope = true,
             HitTestable = true,   // a press on the window's empty part is on the window
         };
-        Title = Window.Add(new Label(title) { Name = "title", Visible = title.Length > 0 });
-        Message = Window.Add(new Label(message) { Name = "message" });
+        Title = Window.Add(Styled(new Label(title) { Name = "title", Visible = title.Length > 0 }, titleStyle, styles));
+        // A long question wraps rather than widening the window past the screen (#597).
+        Message = Window.Add(Styled(new Label(message) { Name = "message", Wrap = true, MaxWidth = 480f }, textStyle, styles));
         var buttons = Window.Add(new Stack { Name = "buttons", Direction = Orientation.Row, Spacing = 8f, HAlign = Align.End });
-        ConfirmButton = buttons.Add(new Button(confirm) { Name = "confirm", Style = buttonStyle, MinSize = new Vector2(80f, 0f) });
+        ConfirmButton = buttons.Add(Styled(new Button(confirm) { Name = "confirm", MinSize = new Vector2(80f, 0f) }, buttonStyle, styles));
         ConfirmButton.Pressed += _ => Confirm();
         if (cancel != null)
         {
-            CancelButton = buttons.Add(new Button(cancel) { Name = "cancel", Style = buttonStyle, MinSize = new Vector2(80f, 0f) });
+            CancelButton = buttons.Add(Styled(new Button(cancel) { Name = "cancel", MinSize = new Vector2(80f, 0f) }, buttonStyle, styles));
             CancelButton.Pressed += _ => Cancel();
         }
+    }
+
+    // A style's letters, as a layout node's label takes them (UiView): no layout builds a dialog.
+    private static T Styled<T>(T label, string? style, UiStyles? styles) where T : Label
+    {
+        label.Style = style;
+        if (style == null || styles == null) return label;
+        var resolved = styles.Get(style);
+        label.Font = resolved.Font;
+        label.FontSize = resolved.FontSize;
+        label.TextScale = resolved.TextScale;
+        return label;
     }
 
     // The layer it is shown in (UiScreenStack.Layers).

@@ -5,7 +5,7 @@
     "title": "Inventory",
     "weight": "Weight {current} / {max} kg",
     "weight_unlimited": "Weight {current} kg",
-    "hint": "D-pad: move    A: pick up / put down    LB / R: turn    LT / F: split    X / Del: drop    B: put back, close"
+    "hint": "{action:MenuConfirm} Pick up or put down    {action:MenuRotate} Turn    {action:MenuSplit} Split    {action:MenuAlternate} Drop    {action:MenuBack} Put back and close"
   },
   // The screens that were panels (issue #350): their titles and rows are the panels' own (GameplayPanels,
   // DialogueRules, Spellmaker), so only the words around them are here.
@@ -13,23 +13,23 @@
     "empty": "(nothing)"
   },
   "spellbook": {
-    "hint": "D-pad: choose    A: ready    B: close"
+    "hint": "{action:MenuConfirm} Ready    {action:MenuBack} Close"
   },
   "bag": {
-    "hint": "D-pad: choose    A: equip / take off    X / Del: drop    B: close"
+    "hint": "{action:MenuConfirm} Equip or take off    {action:MenuAlternate} Drop    {action:MenuBack} Close"
   },
   "dialogue": {
-    "hint": "D-pad: choose    A: say    B: leave"
+    "hint": "{action:MenuConfirm} Say    {action:MenuBack} Leave"
   },
   "perks": {
-    "hint": "D-pad: choose    A: take    B: close"
+    "hint": "{action:MenuConfirm} Take    {action:MenuBack} Close"
   },
   "factions": {
-    "hint": "D-pad: choose    A: join / rise    B: close"
+    "hint": "{action:MenuConfirm} Join or rise    {action:MenuBack} Close"
   },
   "spellmaker": {
     "name": "a name for it",
-    "hint": "Type a name    D-pad: choose    A: add / change    B: close"
+    "hint": "Type a name    {action:MenuConfirm} Add or change    {action:MenuBack} Close"
   },
   "grid": {
     "stack": "{item} ×{count}",
@@ -50,7 +50,7 @@
     "empty": "Nothing left.",
     "take_all": "Take all",
     "left": { "one": "Left {item}: too heavy.", "other": "Left {count} things, {item} among them: too heavy." },
-    "hint": "A: pick up / put down    Take all: everything that fits    B: close"
+    "hint": "{action:MenuConfirm} Pick up or put down    {action:MenuBack} Close"
   },
   "ammo": {
     "magazine": "{loaded} / {carried}",
@@ -63,7 +63,7 @@
     "candidate": "{item} ({slot})",
     "wearable": "Could wear",
     "ammo": "Rounds: {rounds}",
-    "hint": "A on a slot: take it off    A on an item: put it on    B: close"
+    "hint": "{action:MenuConfirm} Take off a slot, or put on an item    {action:MenuBack} Close"
   },
   "slots": {
     "mainhand": "Main hand",
@@ -73,7 +73,7 @@
     "title": "{who}",
     "none": "They have nothing to talk about.",
     "no_answer": "They have nothing to say about that.",
-    "hint": "A: ask    B: leave"
+    "hint": "{action:MenuConfirm} Ask    {action:MenuBack} Leave"
   },
   "shop": {
     "title": "{who}'s goods",
@@ -86,7 +86,7 @@
     "merchant_too_poor": "{who} cannot afford {item}: it fetches {price} and they have {gold}.",
     "not_bought": "{who} does not buy {item}.",
     "too_heavy": "{item} cannot be carried.",
-    "hint": "A: pick up / put down on the other side to trade    B: close"
+    "hint": "{action:MenuConfirm} Pick up, put down on the other side to trade    {action:MenuBack} Close"
   },
   "rest": {
     "title": "Rest",
@@ -103,7 +103,7 @@
     "nobody": "There is nobody to rest.",
     "hours_range": "That is not a time you can rest for.",
     "no_clock": "Time does not pass here.",
-    "hint": "< >: how long    A: sleep or wait    B: close"
+    "hint": "{action:MenuLeft} {action:MenuRight} How long    {action:MenuConfirm} Sleep or wait    {action:MenuBack} Close"
   },
   "mods": {
     "title": "Mods",
@@ -127,7 +127,7 @@
     "at_end": "{mod} cannot go further.",
     "cannot_save": "Could not save the list of mods; see the log.",
     "restart": "Restart to apply: mods are loaded once, at start.",
-    "hint": "Later mods win over earlier ones where they conflict.    B: close"
+    "hint": "Later mods win over earlier ones where they conflict.    {action:MenuBack} Close"
   },
   "controls": {
     "title": "Controls",
@@ -148,7 +148,7 @@
     "saved": "Saved.",
     "invalid": "Cannot bind that: {others}",
     "cannot_save": "Could not save your controls; see the log.",
-    "hint": "Changes apply at once.    B: close"
+    "hint": "Changes apply at once.    {action:MenuBack} Close"
   },
   "journal": {
     "title": "Journal",
@@ -156,7 +156,7 @@
     "empty": "(nothing yet)",
     "done": "done",
     "tracked": ">",
-    "hint": "A on a quest: track it or stop    B: close"
+    "hint": "{action:MenuConfirm} Track a quest, or stop    {action:MenuBack} Close"
   },
   "options": {
     "title": "Options",
@@ -194,6 +194,10 @@
     "crosshair": "Crosshair",
     "damage_numbers": "Damage numbers",
     "autosave": "Autosave",
+    "text_size": "Text size",
+    "high_contrast": "High contrast",
+    "off": "Off",
+    "on": "On",
     "apply": "Apply",
     "revert": "Revert",
     "defaults": "Defaults",
@@ -202,7 +206,7 @@
     "invalid": "Some settings were refused: {problems}",
     "unsaved_title": "Unapplied changes",
     "unsaved": "Apply the changes you made?",
-    "hint": "Changes take effect on Apply.    B: close"
+    "hint": "Changes take effect on Apply.    {action:MenuBack} Close"
   },
   "map": {
     "title": "Map",
@@ -218,7 +222,7 @@
     "east": "E",
     "west": "W",
     "recentre": "Centre",
-    "hint": "North is up. Choose a waystone to travel.    B: close"
+    "hint": "North is up. Choose a waystone to travel.    {action:MenuBack} Close"
   },
   "menu": {
     "game_title": "A New Adventure",
@@ -235,7 +239,7 @@
     "quit_unsaved": "Anything since your last save will be lost.",
     "quit_yes": "Quit",
     "no": "Cancel",
-    "hint": "B: resume"
+    "hint": "{action:MenuBack} Resume"
   },
   "saves": {
     "save_title": "Save",
@@ -265,6 +269,6 @@
     "delete_question": "{slot} will be gone for good.",
     "load_title_question": "Load this save?",
     "load_question": "Anything since your last save will be lost when {slot} loads.",
-    "hint": "B: back"
+    "hint": "{action:MenuBack} Back"
   }
 }
