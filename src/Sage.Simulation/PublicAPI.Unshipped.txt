@@ -899,3 +899,4 @@ Sage.Simulation.CharacterController.SpeedScale -> float
 const Sage.Simulation.ModManager.ContainsCodeFlag = "[contains code: not sandboxed]" -> string!
 static Sage.Simulation.ModManager.ContainsCode(Sage.Core.ModManifest! mod) -> bool
 Sage.Simulation.ModManager.CodeOf(string! id) -> System.Collections.Generic.IReadOnlyList<System.Reflection.Assembly!>!
+Sage.Simulation.MapRecord.FlattenTerrain -> bool
