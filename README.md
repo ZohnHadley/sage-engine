@@ -19,7 +19,7 @@ the `games/Sandbox` test game in the same commit.
 - [`TODO.md`](TODO.md) — the roadmap, with every item's id (F7, R9…) as the docs reference them.
 - [`docs/REDESIGN.md`](docs/REDESIGN.md) — the plan the engine is following now: a base engine for
   designers, developers and modders, action RPGs first, 2D and 3D. Tracked as GitHub issues.
-- [`docs/history/handoff-2026-09-30.md`](docs/history/handoff-2026-09-30.md) — **start here after a
+- [`docs/history/handoff-2026-10-29.md`](docs/history/handoff-2026-10-29.md) — **start here after a
   break**: what landed, how to build, test and verify it now, what is next, and the traps that have
   already cost a session.
 - [`docs/history/code-review-log.md`](docs/history/code-review-log.md) — every bug worth remembering,
@@ -68,7 +68,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Modding | Data mods that patch records field by field (keyed lists merged by key, `$remove`, `replace`), a load order and a conflict report that names the winner, per-mod namespaced assets, mod shaders, one-file `.sagemod` packages loaded through a hardened zip mount (`sage mods pack`, `sage mods build`), trusted code mods in their own collectible load context (flagged, not sandboxed, never downloaded), saves that survive toggling a mod, and a per-field conflict view in the editor |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; TrueType fonts with wrap, form widgets, focus scopes and confirm prompts, non-Latin scripts, UI scale and subtitles; the kit's title, pause, save, load and options screens, its inventory grid with drag and drop, equipment, loot and shop reachable from play, topics, a journal and a map under fog, and the HUD — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices; written in the background, optionally compressed, with a thumbnail and a title |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2655 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2666 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: multiplayer, and a Workshop service (the interface exists). The level editor (phases 10a and 10b)
 is a mode of the dev host, with brushes, terrain tools and an asset browser ([`docs/EDITOR.md`](docs/EDITOR.md)),
@@ -307,7 +307,7 @@ dependency. That is the same property a dedicated server would need, so it is ch
 | `games/Sandbox` | The test game's **simulation**: its module, scene records, placeholder art and tools. References only the base engine (`Sage.Core` … `Sage.Gameplay`) and the RPG kit it is built on, so it is testable headlessly |
 | `games/Sandbox.Client` | The same game's **client half**: the HUD, and the prefab part that needs a renderer |
 | `engine_content` | Engine-owned data and shaders, mounted under the `sage:` namespace |
-| `sdk/` | `Sage.Sdk`, the MSBuild SDK a game builds with (`<Project Sdk="Sage.Sdk/<version>">`), and the packing of it, of `Sage.Player` (the host and `sage`, per configuration) and of the `dotnet new` templates (`sage-game`, `sage-game-data`, `sage-game-client`, `sage-mod-data`) |
+| `sdk/` | `Sage.Sdk`, the MSBuild SDK a game builds with (`<Project Sdk="Sage.Sdk/<version>">`), and the packing of it, of `Sage.Player` (the host and `sage`, per configuration) and of the `dotnet new` templates (`sage-game`, `sage-game-data`, `sage-game-client`, `sage-mod-data`, `sage-mod-code`, and the phase 5 samples `sage-sample-*`) |
 | `tests/Sage.Tests` | xUnit, headless, in folders by subject (`Core`, `Ecs`, `Gameplay`, `Maps`, `UI`…) |
 | `tests/Sage.Testing` | The harness tests boot through — `HeadlessApp`, `MountFixture`, `EventProbe`, `CaptureSink` — for the engine's tests and a game's |
 | `tools/` | Content tools that are not part of the build (the Daggerfall importer) |
