@@ -16,7 +16,7 @@ document has a bug.
 
 | Surface | Where it is defined | Checked by |
 |---|---|---|
-| Public C# API of `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D`, `Sage.Gameplay`, `Sage.UI`, `Sage.Editing`, `Sage.Client`, `Sage.Kits.Rpg`, `Sage.Kits.Rpg.Client` | `src/<Assembly>/PublicAPI.*.txt` | PublicApiAnalyzers (RS0016/RS0017) on every build |
+| Public C# API of `Sage.Core`, `Sage.Simulation`, `Sage.Physics3D`, `Sage.Gameplay`, `Sage.UI`, `Sage.Editing`, `Sage.Client`, `Sage.Kits.Rpg` | `src/<Assembly>/PublicAPI.*.txt` | PublicApiAnalyzers (RS0016/RS0017) on every build |
 | Stable ids: components, tags, record types, saved resources, prefab parts, systems, render passes, vocabulary entries, plugins | The declaring attribute (§4) | Sage.Generators (SAGE00xx), the registry dump |
 | Data formats: `game.json`, `mod.json`, records, prefabs, scenes, saves | Record classes and their metadata; JSON Schemas in `schemas/` | Strict loading, `sage validate`, golden saves |
 | Console vocabulary: commands, cvars, entity inputs and outputs, input actions | Registrations in modules' `Init` | The registry dump and `tools/check_docs.py` |

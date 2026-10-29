@@ -83,7 +83,7 @@ sage-engine/
     Sage.Gameplay/          optional gameplay modules, simulation side  (no MonoGame)
     Sage.UI/                retained game-UI widgets, layout, focus; on Simulation, headless (no MonoGame; #95)
     Sage.Kits.Rpg/          the action-RPG kit: spellmaker, readied spell, RPG screens (no MonoGame;
-    Sage.Kits.Rpg.Client/   and its client half)   not part of the base: a game names it in game.json (#27)
+    (no client half since #600)                    not part of the base: a game names it in game.json (#27)
     Sage.Client/            rendering, materials/shaders, input, audio, dev UI     (MonoGame)
     Sage.Framework.Client/  camera rigs, cue playback, HUD helpers
     Sage.Editor/            editor host + panels
@@ -319,7 +319,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **264 console commands, 78 record types, 2666 headless tests.** <!-- counts -->
+and audible: **264 console commands, 78 record types, 2678 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight

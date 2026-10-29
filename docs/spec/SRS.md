@@ -16,7 +16,7 @@ quality attributes and the functional scope against which every subsystem is jud
 
 ### 1.2 Scope
 
-In scope: the engine assemblies under `src/`, the RPG kit (`Sage.Kits.Rpg`, `Sage.Kits.Rpg.Client`), the
+In scope: the engine assemblies under `src/`, the RPG kit (`Sage.Kits.Rpg`), the
 SDK and templates under `sdk/`, the `sage` command-line tool, the editor host, and the reference content
 that proves them (`games/`, `tests/games/`).
 

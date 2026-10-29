@@ -237,23 +237,24 @@ A **kit** is the shared rules and screens of a family of games, built on the bas
 and never part of it (issue #27): the base must not assume a genre, so a platformer does not carry a
 spellbook. `Sage.Kits.Rpg` is the action-RPG kit (Daggerfall, Morrowind, S.T.A.L.K.E.R.):
 
-| | `sage.kits.rpg` (`Sage.Kits.Rpg`, simulation) | `sage.kits.rpg.client` (`Sage.Kits.Rpg.Client`) |
-|---|---|---|
-| Casting | the **readied spell** — `world.Ready(e, id)`, `world.Readied(e)` — which the `Cast` button fires; `ready`, `spells` | |
-| Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects`; the `rpg:spellmaker` screen | |
-| Things you carry | the two hands, `MainHand` and `OffHand`, as equipment slots; `inv` | |
-| Screens | `rpg:spellbook`, `rpg:bag`, `rpg:dialogue` and `rpg:spellmaker` over `SpellbookView`, `BagView`, `DialogueView` and `SpellmakerView`, whose rows are `GameplayPanels`' and the rules' (#350); the `Spellbook`, `Spellmaker`, `Journal` and `Rest` actions with default keys (B, M, J, T) in its `rpg:ui` and `rpg:gameplay` input maps (#354), bound to `rpg:spellbook`, `rpg:spellmaker`, `rpg:journal` and `rpg:rest`; using somebody with a `dialogue` opens `rpg:dialogue` | nothing since #350; a client module may still depend on it |
-| Screens from records (#98) | `rpg:inventory` (a grid with weight), `rpg:equipment`, `rpg:loot` (take all), `rpg:topics`: `screen`/`ui_layout` records in the kit's content over `InventoryView`, `EquipmentView`, `LootView`, `TopicsView`; `ItemGrid`, the `rpg_item` record (`grid` footprint, `icon` picture since #346) and the saved `rpg:item_grid` | drawing them is #97's |
-| Journal, map, shop (#99, #349) | `rpg:journal` over `rpg_journal` (`JournalView`: a line per quest, stage and objective, the stages it moved on from, tracking), `rpg:map` over `rpg_map` (`MapView`: the scene's `area_map` picture under fog the saved `map_discovery` lifts, markers round the player, north up, zoom and pan, a tracked quest's targets) over the `sage:map_marker` component, and `rpg:shop` over `rpg_shop` (`ShopView`: two grids; at an entity with the base's `merchant` part a move across is a trade, with money, the merchant's purse and refusals in words (#380), and at one without, the `StubPriceRule` shell) | |
-| Menus (#342, #339) | `rpg:title`, `rpg:pause` (`"pauses": true`), `rpg:save` and `rpg:load` over `rpg_title`, `rpg_pause`, `rpg_save` and `rpg_load`; `rpg:options` over the base's `ui_options`, with the kit's `ui_option` records; `rpg:controls` | |
-| From play (#344, #378) | the `use_screen` part (Use on it opens its screen about it), and any of the base's containers, bodies included, which open the loot screen | |
-| Skills and levels (#377) | the `skill` record (a rank and its use-XP, each an attribute; `governing`, `rate`, `growth`, `levelling`, `levelPoints`) and the `levelling` record (`level`, `points`, `rate`, `growth`, `attributeBonus`, `effects`), raised from the base's `attribute_gain`; `SkillRaised`, `LevelledUp`; `Skills.RankOf`, `ExperienceOf`, `Practise`; `skills`, `practise` | |
-| Perks and traits (#381) | the `perk` record (`effects`, `requires`, `cost`, `trait`), the `perks` part, the conditions `has_perk`, `skill` and `level`, the action `grant_perk`, `PerkGranted`; `Perks.CanPick`, `Pick`, `Grant`; `perks`, `perk`, `grant_perk`; the `rpg:perks` screen (no key: `ui_open rpg:perks`) | |
-| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`), `castAction` (`"Cast"`), `inventoryGrid` (`[8, 6]`), `lootScreen` (`rpg:loot`) and `perkPoints` (the attribute perks are bought with); the `rpg` string table | |
+| | `sage.kits.rpg` (`Sage.Kits.Rpg`) |
+|---|---|
+| Casting | the **readied spell** — `world.Ready(e, id)`, `world.Readied(e)` — which the `Cast` button fires; `ready`, `spells` |
+| Spellmaker | `Spellmaker.Compose`, the saved `spellbook`, `spell_make`/`spell_list`/`spell_forget`/`spell_effects`; the `rpg:spellmaker` screen |
+| Things you carry | the two hands, `MainHand` and `OffHand`, as equipment slots; `inv` |
+| Screens | `rpg:spellbook`, `rpg:bag`, `rpg:dialogue` and `rpg:spellmaker` over `SpellbookView`, `BagView`, `DialogueView` and `SpellmakerView`, whose rows are `GameplayPanels`' and the rules' (#350); the `Spellbook`, `Spellmaker`, `Journal`, `Rest`, `Perks`, `Factions` and `Map` actions with default keys (B, M, J, T, P, G, N) in its `rpg:ui` and `rpg:gameplay` input maps (#354, #600), bound to `rpg:spellbook`, `rpg:spellmaker`, `rpg:journal`, `rpg:rest`, `rpg:perks`, `rpg:factions` and `rpg:map`, and the engine's `Inventory` (I) and `Menu` (Escape) to `rpg:inventory` and `rpg:pause`; using somebody with a `dialogue` opens `rpg:dialogue` |
+| Screens from records (#98) | `rpg:inventory` (a grid with weight), `rpg:equipment`, `rpg:loot` (take all), `rpg:topics`: `screen`/`ui_layout` records in the kit's content over `InventoryView`, `EquipmentView`, `LootView`, `TopicsView`; `ItemGrid`, the `rpg_item` record (`grid` footprint, `icon` picture since #346) and the saved `rpg:item_grid` |
+| Journal, map, shop (#99, #349) | `rpg:journal` over `rpg_journal` (`JournalView`: a line per quest, stage and objective, the stages it moved on from, tracking), `rpg:map` over `rpg_map` (`MapView`: the scene's `area_map` picture under fog the saved `map_discovery` lifts, markers round the player, north up, zoom and pan, a tracked quest's targets) over the `sage:map_marker` component, and `rpg:shop` over `rpg_shop` (`ShopView`: two grids; at an entity with the base's `merchant` part a move across is a trade, with money, the merchant's purse and refusals in words (#380), and at one without, the `StubPriceRule` shell) |
+| Menus (#342, #339) | `rpg:title`, `rpg:pause` (`"pauses": true`), `rpg:save` and `rpg:load` over `rpg_title`, `rpg_pause`, `rpg_save` and `rpg_load`; `rpg:options` over the base's `ui_options`, with the kit's `ui_option` records; `rpg:controls` |
+| From play (#344, #378) | the `use_screen` part (Use on it opens its screen about it), and any of the base's containers, bodies included, which open the loot screen |
+| Skills and levels (#377) | the `skill` record (a rank and its use-XP, each an attribute; `governing`, `rate`, `growth`, `levelling`, `levelPoints`) and the `levelling` record (`level`, `points`, `rate`, `growth`, `attributeBonus`, `effects`), raised from the base's `attribute_gain`; `SkillRaised`, `LevelledUp`; `Skills.RankOf`, `ExperienceOf`, `Practise`; `skills`, `practise` |
+| Perks and traits (#381) | the `perk` record (`effects`, `requires`, `cost`, `trait`), the `perks` part, the conditions `has_perk`, `skill` and `level`, the action `grant_perk`, `PerkGranted`; `Perks.CanPick`, `Pick`, `Grant`; `perks`, `perk`, `grant_perk`; the `rpg:perks` screen (no key: `ui_open rpg:perks`) |
+| Its words | an optional `rpg_conventions` record: `spellNamespace` (`"custom"`), `castAction` (`"Cast"`), `inventoryGrid` (`[8, 6]`), `lootScreen` (`rpg:loot`) and `perkPoints` (the attribute perks are bought with); the `rpg` string table |
 
 To build on it, name it in `game.json` and reference it, compile-time only, like the base. With
-`Sage.Sdk` that is one item in each project that uses it; in a client half it brings the kit's client
-half too, and the kit's namespace becomes a global using:
+`Sage.Sdk` that is one item in each project that uses it (a kit with a client half of its own says
+`Client="true"`, and a client half then brings that too; the RPG kit has none since #600), and the kit's
+namespace becomes a global using:
 
 ```json
 "kits": ["sage.kits.rpg"]
@@ -269,14 +270,13 @@ half too, and the kit's namespace becomes a global using:
 The build checks that `game.json` names every kit the project in the game folder is built on
 (SAGE0114): a kit that is referenced but not named compiles and is then never loaded. A project
 without the SDK (the Sandbox, for now) references the kit's projects by path instead —
-`<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />`, and
-`Sage.Kits.Rpg.Client` too in a client half.
+`<ProjectReference Include="..\..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" Private="false" />`.
 
 The host finds a kit by its id: `sage.kits.rpg` is `Sage.Kits.Rpg.dll` (each part capitalised), looked
 for beside your game's assembly, its `modules.add` assemblies and the host itself — the kits ship
 beside `Sage.Host` and `sage`, built by `build/Sage.Kits.targets`. It is loaded before your assemblies,
-and a host with a window loads its client half, `Sage.Kits.Rpg.Client.dll`, too; `sage validate`, a
-server or a test loads the simulation half only. A kit that is not there stops the game with a message
+and a host with a window loads a kit's client half (`<kit>.Client.dll`) too when the kit has one (the RPG kit
+has none since #600); `sage validate`, a server or a test loads the simulation half only. A kit that is not there stops the game with a message
 naming the file and where it looked (test: AKitThatIsNotThereIsAnErrorThatSaysWhere). `games/Sandbox`
 is built on the RPG kit; `games/Hello` is not, and runs on the base alone
 (test: HelloHasNoKitAndTheSandboxHasTheRpgKit).
@@ -1067,7 +1067,12 @@ their `skeleton_sockets` — named by the attack in the player's hands:
 
 The player's camera shows them (its `viewmodel` part: `fovY`, `near`, `far` of their own) only in first
 person, drawn after the world with depth cleared, so they never sink into a wall. A swing sets the graph's
-`attack` trigger and the `Reload` action (R) its `reload` trigger; ammunition is yours. An attack with no
+`attack` trigger and the `Reload` action (R) its `reload` trigger; ammunition is yours. **Switching weapons**
+(#599) needs no code: `NextWeapon` (wheel down, D-pad right), `PreviousWeapon` (wheel up, D-pad left) and
+`Weapon1`–`Weapon9` (the number keys) wield the carried items with an `attack` and a `slot`, once each in
+inventory order, through `Items.Equip`; not mid-swing (test: ThePlayerSwitchesBetweenTheCrowbarAndThePistol).
+A button may be bound to the wheel, `{ "mouse": "Wheel", "scale": -1 }` for down (test:
+TheWheelPressesAButtonForTheWayItTurns); `gameplay_conventions.actions` renames them. An attack with no
 `arms` keeps its sprite `viewmodel`, which the game's HUD draws (`Viewmodels.IsDrawn(world)` says when
 not to). The Sandbox's `tools/make_mannequin.py` generates a placeholder pair (and the box mannequin of §5's
 "Animation graphs").
@@ -1474,6 +1479,10 @@ Then name the level in a record and load it from your scene (`"maps": ["tavern"]
 ```json
 { "type": "map", "id": "tavern", "file": "maps/tavern.map", "at": [520, 0, 490], "onTerrain": true }
 ```
+
+A level standing on the terrain flattens the ground under its brushes to the bottom of its lowest one, blended
+back over the next 8 m cell, so a hillside never comes up through its floor (#591, test:
+ALevelOnTerrainFlattensTheGroundUnderItsBrushes); `"flattenTerrain": false` leaves the ground as it is.
 
 In the editor:
 

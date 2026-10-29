@@ -407,6 +407,10 @@ engine's, the game's); the mod's own headers win.
   the new effect is swapped in. The output goes beside the source **in the mod's own folder**, never over the
   game's `.mgfxo`. A compile error is an Error in the `Shaders` log with the compiler's file and line, the last
   good `.mgfxo` is kept, and with none the material draws as flat magenta (`sage:error`) until it compiles.
+  This happens with `asset_hotreload` off too (a Development host's default): the effects stale on load are
+  compiled and loaded, and then nothing more is watched (#590). It takes seconds: mgfxc starts in about half a
+  second, then about 0.85 s a technique, so a copy of the engine's `lit.fx` (17 techniques) takes about 15 s and
+  a small effect of your own about 1 s; one effect compiles in one process (measured on Windows, #601).
   Where the compiler cannot run (Linux without Wine, `MGFXC_WINE_PATH`) that is said once and nothing compiles
   (tests: ADevBuildCompilesAModsEffectsOnLoad_AndAgainWhenOneIsEdited, AModsEffectIncludesTheEnginesHeaders_AndItsOwnWin,
   AFailedCompileKeepsTheCompiledFile_AndItsMessageNamesTheModsFile,

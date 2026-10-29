@@ -33,7 +33,7 @@ Not responsible for: window and device polling, the content of any phase (the sy
 | Generators and analyzers | `Sage.Generators` | Compile-time only: registration, vocabulary, metadata, component and part generators; SAGE00xx and SAGE01xx diagnostics. |
 | `Program`, `Game1` | `Sage.Host` | Decides what the app is made of (host modules, kit clients, mods, launch commands). |
 
-The base plugins, by id: `sage.physics3d`, `sage.streaming`, `sage.maps`, the `sage.gameplay.*` family (abilities, ai, animation, attributes, character, combat, dialogue, factions, io, items, lights, movers, quests) and the UI module; the host adds `sage.client`; a kit adds `sage.kits.rpg` and `sage.kits.rpg.client`. The base never references a kit (SAGE0025, test: NoBaseAssemblyReferencesALayerAboveIt). `Sage.Simulation` cannot name Gameplay, which is why the host passes `AvailablePlugins` in.
+The base plugins, by id: `sage.physics3d`, `sage.streaming`, `sage.maps`, the `sage.gameplay.*` family (abilities, ai, animation, attributes, character, combat, dialogue, factions, io, items, lights, movers, quests) and the UI module; the host adds `sage.client`; a kit adds `sage.kits.rpg` (and its client half's plugin, when it has one; the RPG kit has none since #600). The base never references a kit (SAGE0025, test: NoBaseAssemblyReferencesALayerAboveIt). `Sage.Simulation` cannot name Gameplay, which is why the host passes `AvailablePlugins` in.
 
 ## 4. Interfaces
 
