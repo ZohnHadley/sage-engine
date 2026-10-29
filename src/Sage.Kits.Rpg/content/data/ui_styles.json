@@ -84,6 +84,7 @@
   { "type": "ui_style", "id": "warning_hc", "base": "text_hc", "textColour": "#FFB8A0" },
   { "type": "ui_style", "id": "button_hc", "base": "button", "background": "#1E1C18", "border": "#BDB3A0", "textColour": "#FFFFFF",
     "states": { "hover": { "background": "#2E2A22" },
+                "selected": { "background": "#3A2F1C", "textColour": "#F6D890" },
                 "focused": { "background": "#3A2F1C", "border": "#FFFFFF", "textColour": "#FFFFFF" },
                 "pressed": { "background": "#5C4824", "textColour": "#FFFFFF" } } },
   { "type": "ui_style", "id": "quiet_hc", "base": "text_hc", "textColour": "#E0D8C8" },
