@@ -30,6 +30,10 @@ namespace Sage.Simulation;
 // it (ShaderIncludes.Dependents). The compile runs on a background task, one batch at a time: mgfxc takes
 // seconds, and a frame must not wait for it. Where the compiler cannot run (mgfxc without Wine), this says so
 // once, under `Shaders`, and the shaders already compiled stay as they are.
+//
+// What it costs (#601, measured on Windows 10, 2026-10-29): mgfxc starts in about half a second, then about 0.85 s
+// a technique; a copy of the engine's lit.fx (17 techniques) takes 15 s, a small effect of its own about 1 s.
+// One process writes one .mgfxo per effect, so the techniques cannot be compiled in parallel here.
 internal sealed class ShaderHotCompile : IDisposable
 {
     private sealed class Source
@@ -56,6 +60,19 @@ internal sealed class ShaderHotCompile : IDisposable
     // How many effects were queued on load because their `.mgfxo` was missing or out of date.
     public int StaleOnLoad { get; }
 
+    // Something waits to be compiled, or is compiling.
+    public bool Busy
+    {
+        get
+        {
+            if (Volatile.Read(ref _running) != 0) return true;
+            foreach (var source in _sources)
+                lock (source.Changed)
+                    if (source.Changed.Count > 0) return true;
+            return false;
+        }
+    }
+
     public ShaderHotCompile(VirtualFileSystem vfs, IShaderCompiler compiler, string? engineShaders, bool watch = true)
     {
         _vfs = vfs;
@@ -80,7 +97,7 @@ internal sealed class ShaderHotCompile : IDisposable
             }
         }
         if (StaleOnLoad > 0)
-            Log.Info(LogCat.Shaders, $"{StaleOnLoad} shader(s) not compiled yet or out of date: compiling " +
+            Log.Info(LogCat.Shaders, $"{StaleOnLoad} shader(s) not compiled yet or out of date (seconds each, off the frame): compiling " +
                                      string.Join(", ", _sources.SelectMany(s => s.Changed.Select(e => Describe(s, e)))));
         Log.Debug(LogCat.Shaders, $"Shader compile watching {_sources.Count} shader folder(s)");
     }

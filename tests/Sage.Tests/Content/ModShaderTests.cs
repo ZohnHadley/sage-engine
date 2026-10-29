@@ -259,7 +259,9 @@ public class ModShaderTests
 
         using var shaders = new ShaderHotCompile(fx.Vfs, compiler, engineShaders: null, watch: false);
         Assert.Equal(1, shaders.StaleOnLoad);
+        Assert.True(shaders.Busy);    // what the client polls for with asset_hotreload off (#590)
         Assert.Equal(new[] { ("mods/glowing:shaders/lit.fx", true) }, shaders.CompilePending().ToArray());
+        Assert.False(shaders.Busy);
         Assert.Equal("compiled:engine common\ntint 1\nmod lit\n", Text(fx.Dir("mods/glowing"), "shaders/lit.mgfxo"));
         Assert.Equal("game lit compiled", Text(fx.Dir("game"), "shaders/lit.mgfxo"));
         Assert.Equal("glowing:shaders/lit.mgfxo", VirtualPath.InNamespace("glowing", VirtualPath.Parse("shaders/lit.mgfxo")).Value);

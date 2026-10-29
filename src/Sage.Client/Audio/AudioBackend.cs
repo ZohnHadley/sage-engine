@@ -244,7 +244,14 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
 
     public void Dispose()
     {
-        foreach (var instance in _instances.Values) { instance.Stop(immediate: true); instance.Dispose(); }
+        // At quit MonoGame may have torn its audio down first and disposed these already (#586): skip
+        // those, and let no one voice stop the streams and effects below from being released.
+        foreach (var instance in _instances.Values)
+        {
+            if (instance.IsDisposed) continue;
+            try { instance.Stop(immediate: true); instance.Dispose(); }
+            catch (ObjectDisposedException) { }
+        }
         foreach (var stream in _streams.Values) stream.Streamer.Dispose();
         _instances.Clear();
         _streams.Clear();

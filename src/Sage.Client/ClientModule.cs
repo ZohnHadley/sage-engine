@@ -564,19 +564,34 @@ internal sealed class AssetReloadSystem : ISystem
     private readonly AssetHotReload _watcher;
     private readonly ShaderHotCompile _shaders;
     private readonly CVar<bool> _enabled;
+    private bool _loading;   // the effects stale on load are still compiling, or not yet reloaded
+    private double _busyAt;  // when the compile or the reload last had something to do (real time)
 
     public AssetReloadSystem(AssetHotReload watcher, ShaderHotCompile shaders, CVar<bool> enabled)
     {
         _watcher = watcher;
         _shaders = shaders;
         _enabled = enabled;
+        _loading = shaders.StaleOnLoad > 0;
     }
 
     public void Run(in SystemContext ctx)
     {
-        if (!_enabled.Value) return;
-        _watcher.Poll();
+        if (_enabled.Value)
+        {
+            _watcher.Poll();
+            _shaders.Poll();
+            return;
+        }
+        // Hot reload off (a Development host's default): a folder mod's `.fx` is still compiled on load and
+        // its effect loaded when it is done (#590, MODDING §8b); then nothing more is watched.
+        if (!_loading) return;
         _shaders.Poll();
+        _watcher.Poll();
+        // A second of quiet after the last of it: the compiled file's change reaches the watcher a moment later.
+        double now = ctx.Frame.RealTime;
+        if (_shaders.Busy || _watcher.Pending) _busyAt = now;
+        else if (now - _busyAt > 1d) _loading = false;
     }
 }
 
