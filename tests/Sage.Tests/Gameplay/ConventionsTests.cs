@@ -28,7 +28,7 @@ public class ConventionsTests
     [Fact]
     public void NoGameplayCodeNamesAnEngineRecordId()
     {
-        var folders = new[] { "src/Sage.Gameplay", "src/Sage.Physics3D", "src/Sage.Kits.Rpg", "src/Sage.Kits.Rpg.Client", "games" }
+        var folders = new[] { "src/Sage.Gameplay", "src/Sage.Physics3D", "src/Sage.Kits.Rpg", "games" }
             .Select(f => Path.Combine(Repository, f));
         var found = folders
             .SelectMany(f => Directory.EnumerateFiles(f, "*.cs", SearchOption.AllDirectories))

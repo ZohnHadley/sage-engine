@@ -21,8 +21,8 @@
                                 Development host in editor/ and edit.sh / edit.cmd, which open the game in it.
     Items:
       <SageKit Include="sage.kits.rpg" />   a kit the game is built on (issue #27): references its
-                                assembly (and, in a client half, its client half; Client="false" for a
-                                kit without one) and its namespace, compile-time only. game.json must name
+                                assembly (and, in a client half, the kit's own client half when it
+                                has one: Client="true"; the RPG kit has none since #600) and its namespace, compile-time only. game.json must name
                                 it in "kits" too, which is what makes the host load it (SAGE0114).
     SDK diagnostics are SAGE0110-0119 (docs/MAKING_A_GAME.md §10a).
   -->
@@ -104,7 +104,7 @@
   </ItemGroup>
 
   <!-- Kits (issue #27): the assembly is the id with each part capitalised (sage.kits.rpg is
-       Sage.Kits.Rpg), and its client half is that plus .Client, in the same namespace (one using). From
+       Sage.Kits.Rpg), and a client half (Client="true") is that plus .Client, in the same namespace (one using). From
        source, src/<assembly>; from the package, the Player's host folder, where the host keeps its kits. -->
   <ItemGroup>
     <SageKit Update="@(SageKit)">
@@ -113,7 +113,7 @@
     <SageKit Update="@(SageKit)">
       <SageAssembly>Sage.Kits.$([System.String]::Copy('%(SageKitName)').Substring(0, 1).ToUpperInvariant())$([System.String]::Copy('%(SageKitName)').Substring(1))</SageAssembly>
     </SageKit>
-    <_SageKitClient Include="@(SageKit)" Exclude="@(SageKit->WithMetadataValue('Client', 'false'))" Condition="'$(SageSimulationOnly)' != 'true'" />
+    <_SageKitClient Include="@(SageKit->WithMetadataValue('Client', 'true'))" Condition="'$(SageSimulationOnly)' != 'true'" />
     <Using Include="@(SageKit->'%(SageAssembly)')" />
   </ItemGroup>
   <ItemGroup Condition="'$(SageSdkFromPackage)' != 'true'">

@@ -17,7 +17,7 @@ namespace Sandbox;   // the Sage.* and Friflo.Engine.ECS usings come from games/
 public sealed class SandboxClientModule : IModule
 {
     // The kit's client half comes with the kit in a host with a window (issue #27).
-    public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule), typeof(RpgKitClientModule) };
+    public IReadOnlyList<Type> Dependencies => new[] { typeof(ClientModule), typeof(RpgKitModule) };
 
     // `box_mesh` (BoxMeshPart, below) is declared, so Init has nothing to register (issue #17).
     //

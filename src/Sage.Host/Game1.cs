@@ -72,6 +72,17 @@ public class Game1 : Game
     private World PlayerWorld => world;
 #endif
 
+    // Whether the player's world binds a screen to Menu (UiScreenStack.Bind): then Escape is that screen's.
+    private bool MenuOpensAScreen()
+    {
+#pragma warning disable SAGE0125   // widget screens (#97): the host asks the stack what Menu opens, nothing more
+        if (!PlayerWorld.Resources.TryGet<Sage.UI.UiScreenStack>(out var widgets) || widgets == null) return false;
+        foreach (var action in widgets.OpenActions)
+            if (action.Index == menuAction.Index) return true;
+#pragma warning restore SAGE0125
+        return false;
+    }
+
     internal Game1(SageApp app, string? dumpRegistry = null, string? edit = null)
     {
         this.app = app;
@@ -374,8 +385,9 @@ public class Game1 : Game
         UpdateMouseCapture(uiWantsMouse, playing);
         actions.Update(realDt);
 
-        // Menu closes the console first; otherwise it quits (until there is a menu). Not in the editor,
-        // where Escape is too easy a key to lose work to: File > Exit (or `quit`) leaves it.
+        // Menu closes the console first; then, when the game binds a screen to it (the RPG kit's pause menu,
+        // #600), it is that screen's (ScreenSystem opens it); otherwise it quits. Not in the editor, where
+        // Escape is too easy a key to lose work to: File > Exit (or `quit`) leaves it.
 #if SAGE_DEV
         if (actions.Pressed(toggleConsoleAction)) dev.ToggleConsole();
 #else
@@ -387,11 +399,12 @@ public class Game1 : Game
         {
 #if SAGE_DEV
             if (dev.ConsoleIsOpen) dev.CloseConsole();
+            else if (MenuOpensAScreen()) { }
             else if (playing) dev.StopPlaying();   // Escape leaves play, not the editor (#226)
             else if (!Editing) Exit();
 #else
             if (dropConsole.IsOpen) dropConsole.Close();
-            else Exit();
+            else if (!MenuOpensAScreen()) Exit();
 #endif
         }
 

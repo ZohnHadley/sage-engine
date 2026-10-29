@@ -39,7 +39,11 @@ public class KitInputMapTests
             Assert.Equal(new[] { "Spellmaker" }, Fires(app, context, "M"));
             Assert.Equal(new[] { "Journal" }, Fires(app, context, "J"));
             Assert.Equal(new[] { "Rest" }, Fires(app, context, "T"));
+            Assert.Equal(new[] { "Perks" }, Fires(app, context, "P"));          // #600
+            Assert.Equal(new[] { "Factions" }, Fires(app, context, "G"));
+            Assert.Equal(new[] { "Map" }, Fires(app, context, "N"));
         }
+        Assert.Contains("Inventory", Fires(app, InputContext.UI, "I"));         // closes what it opened
         Assert.Equal(RpgKitModule.Id, app.Engine.Registrations.OwnerOf("input action", "Journal"));
     }
 
@@ -50,6 +54,35 @@ public class KitInputMapTests
 #pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI
         var stack = app.World.Resources.Get<UiScreenStack>();
         Assert.Contains(app.Engine.Actions.Get("Rest"), stack.OpenActions);
+#pragma warning restore SAGE0125
+    }
+
+    // Issue #600: in a game that only names the kit, each of its screens opens from its key's action (what
+    // the client's ScreenSystem does with a press) and closes with Back; Menu opens the pause menu.
+    [Theory]
+    [InlineData("Perks", "perks")]
+    [InlineData("Factions", "factions")]
+    [InlineData("Map", "map")]
+    [InlineData("Inventory", "inventory")]
+    [InlineData("Spellbook", "spellbook")]
+    [InlineData("Journal", "journal")]
+    [InlineData("Rest", "rest")]
+    [InlineData("Menu", "pause")]
+    public void EachKitKeyOpensItsScreenAndBackClosesIt(string action, string screen)
+    {
+        using var app = Boot();
+        var world = app.World;
+#pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI
+        var stack = world.Resources.Get<UiScreenStack>();
+        var player = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>()).Entities.ToEntityList().FirstOrDefault();
+        var id = app.Engine.Actions.Get(action);
+        Assert.Contains(id, stack.OpenActions);
+        Assert.True(stack.Toggle(id, new UiBindContext(world, player)));
+        stack.Update(UiInput.Wait(1f));
+        Assert.Equal(new RecordId(RpgKitModule.ContentNamespace, screen), stack.Top?.Screen?.Id);
+        stack.Update(UiInput.Cancel);
+        stack.Update(UiInput.Wait(1f));
+        Assert.False(stack.IsOpen);
 #pragma warning restore SAGE0125
     }
 

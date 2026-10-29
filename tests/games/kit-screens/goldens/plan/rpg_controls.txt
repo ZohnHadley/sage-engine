@@ -30,16 +30,16 @@ text 384,374 32.08x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rest
 text 552,375.95 7.44x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "T" @bindings
 rect 821.57,368 74.43x32.8 #25221cff @rebind
 text 833.57,374 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
-text 384,408.8 40.5x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Jump" @action
-text 552,410.75 75.61x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Space, Pad A" @bindings
+text 384,408.8 40.1x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Perks" @action
+text 552,410.75 7.88x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "P" @bindings
 rect 821.57,402.8 74.43x32.8 #25221cff @rebind
 text 833.57,408.8 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
-text 384,443.6 46.3x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Attack" @action
-text 552,445.55 167.06x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Mouse Left, Pad RightTrigger" @bindings
+text 384,443.6 60.35x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Factions" @action
+text 552,445.55 9.04x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "G" @bindings
 rect 821.57,437.6 74.43x32.8 #25221cff @rebind
 text 833.57,443.6 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
-text 384,478.4 49.92x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Reload" @action
-text 552,480.35 115.1x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "R, Pad LeftShoulder" @bindings
+text 384,478.4 30.82x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Map" @action
+text 552,480.35 9.19x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "N" @bindings
 rect 821.57,472.4 74.43x32.8 #25221cff @rebind
 text 833.57,478.4 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 popclip 0,0 0x0 @list

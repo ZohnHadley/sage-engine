@@ -86,7 +86,7 @@ public class ControlsScreenTests
 
             // Gameplay's buttons, with what they have (the game's, then the kit's default keys, issue #354);
             // Move is an axis and not listed.
-            Assert.Equal(new[] { "Jump", "Use", "Attack", "Spellbook", "Spellmaker", "Journal", "Rest" }, view.Rows.Select(r => r.Action).ToArray());
+            Assert.Equal(new[] { "Jump", "Use", "Attack", "Spellbook", "Spellmaker", "Journal", "Rest", "Perks", "Factions", "Map" }, view.Rows.Select(r => r.Action).ToArray());
             Assert.Equal("Space, Pad A", view.Rows[0].Bindings);
             Assert.Equal("Mouse Left", view.Rows[2].Bindings);
             Assert.False(view.Rows[1].Overridden);
@@ -184,7 +184,7 @@ public class ControlsScreenTests
         Click(stack, layer, layer.Content.Find("tabUI")!);
         Assert.Equal(InputContext.UI, view.Context);
         Assert.Equal("MenuConfirm", view.Rows[0].Action);
-        Assert.Equal(5, view.Rows.Count);                                   // and the kit's four
+        Assert.Equal(9, view.Rows.Count);                                   // and the kit's eight (#600)
         Assert.Equal("Space", view.Rows[0].Bindings);
         Assert.Equal("@rpg.controls.ctx_UI", view.ContextLabel);
 
@@ -193,6 +193,6 @@ public class ControlsScreenTests
         Assert.Equal("Enter", view.Rows[0].Bindings);
         Click(stack, layer, layer.Content.Find("tabGameplay")!);
         Assert.Equal(InputContext.Gameplay, view.Context);
-        Assert.Equal(7, view.Rows.Count);
+        Assert.Equal(10, view.Rows.Count);                                  // the kit's three more (#600)
     }
 }

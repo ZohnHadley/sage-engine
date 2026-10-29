@@ -29,7 +29,8 @@ namespace Sage.Kits.Rpg;
 public static class RpgMenus
 {
     public const string NewGameButton = "new_game", ContinueButton = "continue", LoadButton = "load", SaveButton = "save",
-                        OptionsButton = "options", ModsButton = "mods", QuitButton = "quit", ResumeButton = "resume";
+                        OptionsButton = "options", ModsButton = "mods", QuitButton = "quit", ResumeButton = "resume",
+                        ControlsButton = "controls";
 
     // `screen` on top of the world's stack; false when the world has no stack or there is no such screen.
     public static bool Open(World world, RecordId screen)
@@ -146,6 +147,7 @@ public sealed class PauseView : IViewModel
 
     public bool HasOptions { get; private set; }
     public bool HasMods { get; private set; }
+    public bool HasControls { get; private set; }
 
     // The quit question is up (UiScreenStack.Confirm), and what it was answered, once it has been.
     public UiDialog? QuitQuestion { get; private set; }
@@ -156,6 +158,7 @@ public sealed class PauseView : IViewModel
         _looked = true;
         HasOptions = RpgMenus.HasScreen(context, RpgKitModule.OptionsScreen);
         HasMods = RpgMenus.HasScreen(context, RpgKitModule.ModsScreen);
+        HasControls = RpgMenus.HasScreen(context, RpgKitModule.ControlsScreen);
     }
 
     public bool Activate(Widget widget, in UiBindContext context)
@@ -163,6 +166,7 @@ public sealed class PauseView : IViewModel
         if (context.World is not { Engine: { } engine } world) return false;
         switch (widget.Name)
         {
+            case RpgMenus.ControlsButton: return HasControls && RpgMenus.Open(world, RpgKitModule.ControlsScreen);
             case RpgMenus.ResumeButton:
                 if (RpgMenus.Stack(world) is { } stack) stack.CloseTop();
                 return true;
