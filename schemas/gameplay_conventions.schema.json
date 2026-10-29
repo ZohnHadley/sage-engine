@@ -302,6 +302,18 @@
           "description": "The button held to guard: sets the fighter's AttackStance.Blocking, which an anim_graph reads (`from: Blocking`) to pick its block (issue #359) (string)",
           "type": "string"
         },
+        "nextWeapon": {
+          "description": "The button that wields the next weapon carried, in inventory order (issue #599) (string)",
+          "type": "string"
+        },
+        "previousWeapon": {
+          "description": "The button that wields the previous weapon carried (issue #599) (string)",
+          "type": "string"
+        },
+        "weaponSlot": {
+          "description": "The buttons that wield the 1st to 9th weapon carried, this name and the number: Weapon1 to Weapon9 (issue #599) (string)",
+          "type": "string"
+        },
         "replace": {
           "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
           "type": "boolean"

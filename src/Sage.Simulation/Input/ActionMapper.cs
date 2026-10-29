@@ -289,6 +289,8 @@ internal sealed class ActionMapper
             // A trigger is analogue, so "down" needs two thresholds or it chatters where it rests (#60).
             Source.PadButton when b.IsTrigger => InputEdges.TriggerDown(input.Trigger(b.RightSide), b.TriggerWasDown),
             Source.PadButton => input.PadDown(b.PadButton),
+            // A button on the wheel is down for the frame it turns the way its scale says: up, or down at -1 (#599).
+            Source.MouseWheel => input.WheelDelta * b.Desc.Scale > 0f,
             _ => false,
         };
         if (b.IsTrigger) b.TriggerWasDown = down;
@@ -491,7 +493,7 @@ internal sealed class ActionMapper
 
         bool fits = action.Kind switch
         {
-            ActionKind.Button => b.Source is Source.Key or Source.MouseButton or Source.PadButton,
+            ActionKind.Button => b.Source is Source.Key or Source.MouseButton or Source.PadButton or Source.MouseWheel,
             ActionKind.Axis1D => b.Source is not (Source.MouseDelta or Source.PadStick or Source.Composite),
             _ => b.Source is Source.MouseDelta or Source.PadStick or Source.Composite,
         };
@@ -500,20 +502,27 @@ internal sealed class ActionMapper
     }
 
     // Two actions bound to the same input in one context: both fire. Warn, since it's usually a mistake.
-    private void WarnConflicts()
+    internal void WarnConflicts()
     {
         for (int c = 0; c < _bindings.Length; c++)
         {
-            var seen = new Dictionary<int, Binding>();
+            // Every binding so far on each input: wheel buttons turning opposite ways share one without clashing.
+            var seen = new Dictionary<int, List<Binding>>();
             foreach (var b in _bindings[c])
                 foreach (int slot in b.Slots)
                 {
-                    if (seen.TryGetValue(slot, out var other) && other.Action != b.Action)
-                        Log.Warn(LogCat.Input, $"{(InputContext)c}: {b.Where} and {other.Where} use the same input ({b.Desc})");
-                    else seen[slot] = b;
+                    if (!seen.TryGetValue(slot, out var earlier)) seen[slot] = earlier = new List<Binding>();
+                    var other = earlier.Find(o => o.Action != b.Action && !OppositeWheelButtons(b, o));
+                    if (other != null) Log.Warn(LogCat.Input, $"{(InputContext)c}: {b.Where} and {other.Where} use the same input ({b.Desc})");
+                    earlier.Add(b);
                 }
         }
     }
+
+    // Buttons on the wheel turning opposite ways (next and previous weapon, #599) never fire together.
+    private static bool OppositeWheelButtons(Binding a, Binding b) =>
+        a.Source == Source.MouseWheel && b.Source == Source.MouseWheel && a.Action.Kind == ActionKind.Button &&
+        b.Action.Kind == ActionKind.Button && a.Desc.Scale * b.Desc.Scale < 0f;
 
     public void ListBindings()
     {

@@ -113,11 +113,21 @@ public sealed class ActionConventions
     public string Reload = "Reload";
     [Property(Tooltip = "The button held to guard: sets the fighter's AttackStance.Blocking, which an anim_graph reads (`from: Blocking`) to pick its block (issue #359)")]
     public string Block = "Block";
+    [Property(Tooltip = "The button that wields the next weapon carried, in inventory order (issue #599)")]
+    public string NextWeapon = "NextWeapon";
+    [Property(Tooltip = "The button that wields the previous weapon carried (issue #599)")]
+    public string PreviousWeapon = "PreviousWeapon";
+    [Property(Tooltip = "The buttons that wield the 1st to 9th weapon carried, this name and the number: Weapon1 to Weapon9 (issue #599)")]
+    public string WeaponSlot = "Weapon";
+
+    // The weapon slot buttons: WeaponSlot then 1 to 9.
+    public const int WeaponSlots = 9;
 
     internal (string Field, string Name)[] All() => new[]
     {
         (nameof(Attack), Attack), (nameof(Use), Use), (nameof(Jump), Jump), (nameof(Run), Run), (nameof(Crouch), Crouch),
-        (nameof(Reload), Reload), (nameof(Block), Block),
+        (nameof(Reload), Reload), (nameof(Block), Block), (nameof(NextWeapon), NextWeapon), (nameof(PreviousWeapon), PreviousWeapon),
+        (nameof(WeaponSlot), string.IsNullOrEmpty(WeaponSlot) ? "" : WeaponSlot + "1"),
     };
 }
 
