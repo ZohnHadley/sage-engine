@@ -40,6 +40,41 @@ include this file. Whether to keep this dependency is part of the ECS-ownership 
 | xunit, xunit.runner.visualstudio | 2.9.3, 3.1.4 | Apache-2.0 | tests |
 | Microsoft.NET.Test.Sdk, coverlet.collector | 17.14.1, 6.0.4 | MIT | tests |
 
+## Game content
+
+The Sandbox's art and sound below come from [OpenGameArt.org](https://opengameart.org). Each licence was
+read on the asset's own page. Every one is **CC0 1.0** (public domain dedication,
+<https://creativecommons.org/publicdomain/zero/1.0/>), which asks for no attribution and no notice; the
+authors are credited here anyway. The files were converted to the size and format the game's records expect
+(resized, cropped, mono 22.05 kHz audio, short loops cut from longer recordings, peaks matched); where a
+file was changed further, the row says how. Paths are under `games/Sandbox/content/`.
+
+| File(s) | Asset | Author | Source | Licence |
+|---|---|---|---|---|
+| `textures/brick_wall.png`, `brick_wall_normal.png` (X and Y flipped, so the bricks stand out from the mortar), `brick_wall_spec.png` (derived from the colour map) | 50 free textures-4 + normalmaps, texture 154 | rubberduck | <https://opengameart.org/content/50-free-textures-4-normalmaps> | CC0 |
+| `textures/hut_wall.png` (stone wall 3), `hut_floor.png` (wood floor 1), `hut_roof.png` (thatch 1), `hut_door.png` (planks), `terrain_rock.png` (rock 6) | Wall, grass, rock, stone, wood and dirt (480) | West (submitted by qubodup) | <https://opengameart.org/content/wall-grass-rock-stone-wood-and-dirt-480> | CC0 |
+| `textures/terrain_detail.png` (Super Perlin 1), `clouds.png` (Super Perlin 12); greyscale, levels matched to the maps they replace | 700+ Noise Textures | Screaming Brain Studios | <https://opengameart.org/content/700-noise-textures> | CC0 |
+| `textures/moon.png` | Full Moon | Fupi | <https://opengameart.org/content/full-moon-1> | CC0 |
+| `textures/tree.png` | Horse Chestnut Tree (offered under several licences; used under CC0) | Onsemeliot | <https://opengameart.org/content/horse-chestnut-tree> | CC0 |
+| `textures/sword.png` | short sword [64x64] (steel) | LordNeo | <https://opengameart.org/content/short-sword-64x64> | CC0 |
+| `textures/fireball.png` (two of the four frames, turned flame-up) | Firebal 32x32 | MSavioti | <https://opengameart.org/content/firebal-32x32> | CC0 |
+| `textures/ui_frame.png` (panel-border-008, halved) | Fantasy UI Borders | Kenney | <https://opengameart.org/content/fantasy-ui-borders> | CC0 |
+| `audio/step_grass_a.wav`, `step_grass_b.wav`, `step_grass_c.wav`, `land_grass.wav` | Fantozzi's Footsteps (Grass/Sand & Stone) | Fantozzi (submitted by qubodup) | <https://opengameart.org/content/fantozzis-footsteps-grasssand-stone> | CC0 |
+| `audio/step_wood_a.wav`, `step_wood_b.wav`, `step_wood_c.wav`, `land_wood.wav`, `thunder.wav`, `ui_move.wav` | 100 CC0 SFX #2 | rubberduck | <https://opengameart.org/content/100-cc0-sfx-2> | CC0 |
+| `audio/jump.wav`, `pickup.wav`, `swing.wav`, `ui_select.wav` | RPG Sound Pack | artisticdude | <https://opengameart.org/content/rpg-sound-pack> | CC0 |
+| `audio/hit_flesh_a.wav`, `hit_flesh_b.wav` | 37 hits/punches | Independent.nu (submitted by qubodup) | <https://opengameart.org/content/37-hitspunches> | CC0 |
+| `audio/cast_fire.wav` | Fireball | Julien Matthey (submitted by diligentcircle) | <https://opengameart.org/content/fireball-1> | CC0 |
+| `audio/boom_fire.wav` | 25 CC0 bang / firework SFX (cannon_01) | rubberduck | <https://opengameart.org/content/25-cc0-bang-firework-sfx> | CC0 |
+| `audio/fire_loop.wav` | Fireplace Sound loop | PagDev | <https://opengameart.org/content/fireplace-sound-loop> | CC0 |
+| `audio/rain_loop.wav` | Rain (loopable) | Ylmir | <https://opengameart.org/content/rain-loopable> | CC0 |
+| `music/hearth.ogg` (the loop version) | Medieval: The Old Tower Inn | RandomMind | <https://opengameart.org/content/medieval-the-old-tower-inn> | CC0 |
+| `music/wander.ogg` | Medieval: Exploration | RandomMind | <https://opengameart.org/content/medieval-exploration> | CC0 |
+| `music/wander_drums.ogg` | Cinematic percussion loop | Marwan Antonios | <https://opengameart.org/content/cinematic-percussion-loop> | CC0 |
+| `music/crypt.ogg` | Dungeon Ambience | yd | <https://opengameart.org/content/dungeon-ambience> | CC0 |
+
+Everything else under `games/` and `tests/games/` (the models, the sprites `creature.png`, `hands.png` and
+`sword_fp.png`, `map_main.png`) is still made by the scripts in `games/Sandbox/tools/`.
+
 ## Content that is not in this repository
 
 The Daggerfall importer (`tools/DaggerfallImport`) reads art from a copy of *The Elder Scrolls II:

@@ -3,7 +3,7 @@
   // hills are steep, fading in over six degrees so the edge of the rock is a blend and not a line. The
   // weights come from each vertex's slope, which is the same on both sides of a sector edge, so walking
   // east into the next sector there is no seam. SandboxModule names it (`Terrain.Material`).
-  // Textures: tools/make_terrain_art.py.
+  // Textures: from OpenGameArt (THIRD_PARTY_NOTICES.md).
   {
     "type": "terrain_material",
     "id": "hills",
