@@ -380,6 +380,35 @@ public class ActionMapperTests
         Assert.Equal(2f, _map.Axis(_zoom.Id));
     }
 
+    // A button on the wheel (issue #599, next/previous weapon): pressed the frame the wheel turns its way
+    // (up, or down with scale -1), released the frame after, and not by the other way.
+    [Xunit.Fact]
+    public void TheWheelPressesAButtonForTheWayItTurns()
+    {
+        Bind(InputContext.Gameplay, _attack, new InputBinding { Mouse = "Wheel" });
+        Bind(InputContext.Gameplay, _jump, new InputBinding { Mouse = "Wheel", Scale = -1 });
+        _dev.WheelDelta = 120;
+        Tick();
+        Assert.True(_map.Pressed(_attack.Id));
+        Assert.False(_map.Pressed(_jump.Id));
+        _dev.WheelDelta = 0;
+        Tick();
+        Assert.False(_map.Pressed(_attack.Id));
+        Assert.False(_map.Held(_attack.Id));
+        _dev.WheelDelta = -120;
+        Tick();
+        Assert.True(_map.Pressed(_jump.Id));
+        Assert.False(_map.Pressed(_attack.Id));
+
+        // Opposite ways never fire together, so they are no conflict; the same way is.
+        using var capture = new CaptureSink();
+        _map.WarnConflicts();
+        Assert.DoesNotContain(capture.Entries, e => e.Message.Contains("use the same input"));
+        Bind(InputContext.Gameplay, _use, new InputBinding { Mouse = "Wheel" });
+        _map.WarnConflicts();
+        Assert.Contains(capture.Entries, e => e.Message.Contains("use the same input"));
+    }
+
     // ---- Dead zones ----
 
     [Xunit.Fact]

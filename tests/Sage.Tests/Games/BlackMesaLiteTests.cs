@@ -92,6 +92,42 @@ public class BlackMesaLiteTests
         Assert.True(report.Ok, string.Join("\n", report.Errors));
     }
 
+    // Issue #599: with the crowbar and the pistol carried, the player switches between them with the next and
+    // previous buttons (the wheel, the D-pad) and with 1 and 2, in the order they were picked up; no kit, no C#.
+    [Xunit.Fact]
+    public void ThePlayerSwitchesBetweenTheCrowbarAndThePistol()
+    {
+        using var app = HeadlessApp.ForGame(GameDirectory).WithEngineContent()
+            .OnRegistered(a => a.Records.Register<InputMapRecord>())   // the client's record type: the default bindings
+            .Boot();
+        var world = app.World;
+        Tick(world, 3);
+        var player = Player(world);
+        StandAt(world, new Vector3(0, 0.1f, 22.5f));
+        Press(app, "Use", At(world, One(world, "crowbar")), 3);
+        StandAt(world, new Vector3(2, 0.1f, 15.5f));
+        Press(app, "Use", At(world, One(world, "pistol")), 3);
+        Assert.Equal(PistolShot, world.Get<Melee>(player).Attack);
+
+        var ahead = At(world, player) + new Vector3(0, 1.5f, -5f);
+        RecordId After(string? action) { Press(app, action, ahead, 3); return world.Get<Melee>(player).Attack; }
+        Assert.Equal(CrowbarSwing, After("PreviousWeapon"));
+        Assert.Equal(PistolShot, After("NextWeapon"));
+        Assert.Equal(CrowbarSwing, After("NextWeapon"));     // round again
+        Assert.Equal(CrowbarSwing, After("Weapon1"));        // already in hand: nothing
+        Assert.Equal(PistolShot, After("Weapon2"));
+        Assert.Equal(PistolShot, After("Weapon3"));          // nothing carried there
+        Assert.Equal(PistolShot, After(null));
+
+        // Bound by default: the wheel and the D-pad for next and previous, the number keys for each.
+        var bound = app.Records.All<InputMapRecord>().SelectMany(m => m.Actions)
+            .ToLookup(a => a.Key, a => a.Value, System.StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(bound["NextWeapon"].SelectMany(b => b), b => b.Mouse == "Wheel" && b.Scale < 0);
+        Assert.Contains(bound["PreviousWeapon"].SelectMany(b => b), b => b.Mouse == "Wheel" && b.Scale > 0);
+        Assert.Contains(bound["NextWeapon"].SelectMany(b => b), b => b.Gamepad == "DPadRight");
+        Assert.Contains(bound["Weapon2"].SelectMany(b => b), b => b.Key == "D2");
+    }
+
     // Acceptance: the chapter played start to end. The crowbar picked up goes to hand and kills the first zombie;
     // the pistol picked up goes to hand with rounds and shoots the second; with both down the lab door opens and
     // the scientist greets the player and follows them to the lift, which carries them up and ends the chapter.

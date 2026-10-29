@@ -13,6 +13,10 @@ Sage.Gameplay.AbilityRecord.ProjectileBounciness -> float
 Sage.Gameplay.AbilityRecord.ProjectileSticks -> bool
 Sage.Gameplay.AbilityRecord.ProjectileStickSeconds -> float
 Sage.Gameplay.ActionConventions.Block -> string!
+Sage.Gameplay.ActionConventions.NextWeapon -> string!
+Sage.Gameplay.ActionConventions.PreviousWeapon -> string!
+Sage.Gameplay.ActionConventions.WeaponSlot -> string!
+const Sage.Gameplay.ActionConventions.WeaponSlots = 9 -> int
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
 Sage.Gameplay.AttackRecord.Block -> Sage.Core.RecordRef<Sage.Gameplay.BlockRecord!>
 Sage.Gameplay.AttackRecord.Cleave -> int

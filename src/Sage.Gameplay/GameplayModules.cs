@@ -218,6 +218,10 @@ public sealed class CombatModule : IModule
         _actions.Register("Attack", ActionKind.Button);   // the engine's name; gameplay_conventions picks which one swings
         _actions.Register("Reload", ActionKind.Button);   // plays the first-person arms' reload (issue #121)
         _actions.Register("Block", ActionKind.Button);    // holds a fighter's guard up (issue #359)
+        // Switching between the weapons carried (issue #599): next, previous, and the 1st to 9th.
+        _actions.Register("NextWeapon", ActionKind.Button);
+        _actions.Register("PreviousWeapon", ActionKind.Button);
+        for (int slot = 1; slot <= ActionConventions.WeaponSlots; slot++) _actions.Register($"Weapon{slot}", ActionKind.Button);
         BridgeIO.RegisterCombat(ctx.Engine);              // OnDamaged (issue #91)
         // An attack's `delivery` names a registered hit_delivery (issue #133), checked when content loads.
         var vocabularies = ctx.Engine.Vocabularies;
@@ -254,6 +258,7 @@ public sealed class CombatModule : IModule
         // Combat resolves before effects tick, so a blow struck this tick is felt this tick: the
         // health it costs, the tags it grants and the death it may cause all land together (16 §3.2).
         world.AddSystem(new ReloadSystem(world, _records!, _actions!));   // ammunition (issue #135)
+        world.AddSystem(new WeaponSwitchSystem(world, _records!, _actions!));   // next, previous, 1 to 9 (issue #599)
         world.AddSystem(new RecoilSystem(world));   // spread and recoil (issue #136)
         world.AddSystem(new AttackStanceSystem(world, _actions!));   // directional swings and guards (issue #359)
         world.AddSystem(new MeleeCombatSystem(world, _records!, _actions!, _combatDebug!));
