@@ -285,6 +285,43 @@ public sealed class Terrain
         return true;
     }
 
+    // Lays the ground under an origin-space footprint level at `height` (#591, a level standing on the terrain):
+    // every vertex within a cell (8 m) of it to that height, then back to the ground as it was across the next
+    // cell. Written into the sculpt, so a sector generated later has it too, and the loaded sectors it touches
+    // are refreshed (their meshes, collision and water built again).
+    internal void Flatten(Vector2 min, Vector2 max, float height)
+    {
+        if (_generator == null) return;
+        var a = Origin.ToAbsolute(new Vector3(min.X, 0, min.Y));
+        var b = Origin.ToAbsolute(new Vector3(max.X, 0, max.Y));
+        float cell = SectorSize / (SectorResolution - 1);
+        var first = SectorOf(a.X - 2 * cell, a.Z - 2 * cell);
+        var last = SectorOf(b.X + 2 * cell, b.Z + 2 * cell);
+        for (int sz = first.Z; sz <= last.Z; sz++)
+            for (int sx = first.X; sx <= last.X; sx++)
+            {
+                var coord = new SectorCoord(sx, sz);
+                var ground = Generate(_generator, _seed, coord, SectorResolution, _sculpt);
+                var corner = coord.Origin(SectorSize);
+                var sculpt = _sculpt.TryGetValue(coord, out var had) ? had.Clone() : new SculptSector(coord);
+                bool changed = false;
+                for (int z = 0; z < SectorResolution; z++)
+                    for (int x = 0; x < SectorResolution; x++)
+                    {
+                        float px = corner.X + x * cell, pz = corner.Z + z * cell;
+                        float d = MathF.Max(MathF.Max(MathF.Max(a.X - px, px - b.X), MathF.Max(a.Z - pz, pz - b.Z)), 0f);
+                        float weight = d <= cell ? 1f : d >= 2 * cell ? 0f : (2 * cell - d) / cell;
+                        float delta = (height - ground[x, z]) * weight;
+                        if (MathF.Abs(delta) < 1e-4f) continue;
+                        sculpt.Heights[z * SectorResolution + x] += delta;
+                        changed = true;
+                    }
+                if (!changed) continue;
+                Resculpt(coord, sculpt);
+                Refresh(coord);
+            }
+    }
+
     // Raised when a loaded sector was generated again (Refresh): what was built from its old heights is
     // dropped (the streaming plugin destroys its TerrainBuilt entities), and is built again from the new.
     [Experimental("SAGE0129", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // phase 4g: open world

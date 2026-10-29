@@ -72,6 +72,33 @@ public class MapLevelTests
             .Build().Engine;
     }
 
+    // #591: the Sandbox's hut stands on a hillside (`onTerrain`), and the ground no longer comes up through its
+    // floor: under every brush the terrain is at or below the bottom of the lowest one, and just outside it
+    // is the hill again.
+    [Xunit.Fact]
+    public void ALevelOnTerrainFlattensTheGroundUnderItsBrushes()
+    {
+        string sandbox = System.IO.Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
+        using var app = HeadlessApp.ForGame(sandbox, new global::Sandbox.SandboxModule()).WithEngineContent().Boot();
+        var world = app.World;
+        var hut = Assert.Single(world.Resources.Get<MapLevels>().Loaded, l => l.Source.Contains("hut"));
+        for (int tick = 0; tick < 600 && !hut.Placed; tick++) world.RunFixed(1f / 60f);   // the ground under it streams in
+        Assert.True(hut.Placed);
+        Vector3 min = new(float.MaxValue), max = new(float.MinValue);
+        foreach (var brush in hut.Brushes) { min = Vector3.Min(min, brush.Min); max = Vector3.Max(max, brush.Max); }
+        float floor = hut.Position.Y + min.Y;
+        var terrain = world.Resources.Get<Terrain>();
+        for (float x = min.X; x <= max.X; x += 0.5f)
+            for (float z = min.Z; z <= max.Z; z += 0.5f)
+            {
+                float ground = terrain.HeightAt(hut.Position.X + x, hut.Position.Z + z);
+                Assert.True(ground <= floor + 0.01f, $"the ground at ({x}, {z}) is {ground - floor:0.00} m above the hut's floor");
+            }
+        // Past the flattened cells and their blend the hill is as it was: not every point flat.
+        float far = terrain.HeightAt(hut.Position.X + max.X + 40f, hut.Position.Z);
+        Assert.True(MathF.Abs(far - floor) > 0.1f, "the hillside forty metres off is still a hillside");
+    }
+
     [Fact]
     public void ALevelLoadsItsBrushesAndStandsThemWhereTheRecordSays()
     {
