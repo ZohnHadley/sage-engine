@@ -33,8 +33,10 @@
       "description": "The id of a ai_schedule record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "blackmesalite:follow",
         "cast_spell",
         "chase",
+        "follow",
         "hold_ground",
         "idle",
         "investigate",
@@ -94,9 +96,12 @@
       "description": "The id of a attack record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "blackmesalite:crowbar_swing",
+        "blackmesalite:pistol_shot",
         "bow_shot",
         "claws",
         "crossbow_shot",
+        "crowbar_swing",
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
@@ -274,6 +279,7 @@
       "description": "The id of a effect record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "blackmesalite:zombie_build",
         "brute",
         "burning",
         "damage",
@@ -315,7 +321,8 @@
         "vigour",
         "village:straw",
         "weapons:helmet",
-        "weapons:padding"
+        "weapons:padding",
+        "zombie_build"
       ]
     },
     "record:encumbrance": {
@@ -324,9 +331,12 @@
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "record:equip_slot": {
-      "description": "The id of a equip_slot record (none is loaded).",
+      "description": "The id of a equip_slot record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "blackmesalite:hand",
+        "hand"
+      ]
     },
     "record:faction": {
       "description": "The id of a faction record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
@@ -334,6 +344,7 @@
       "enum": [
         "bandits",
         "beasts",
+        "blackmesalite:staff",
         "bunker:loners",
         "ferrymen",
         "firebugs",
@@ -352,6 +363,7 @@
         "sandbox:firebugs",
         "sandbox:hermits",
         "sandbox:village",
+        "staff",
         "village",
         "villagers"
       ]
@@ -441,6 +453,9 @@
       "enum": [
         "ak74",
         "arrow",
+        "blackmesalite:crowbar",
+        "blackmesalite:pistol",
+        "blackmesalite:pistol_round",
         "bolt",
         "bow",
         "bread",
@@ -452,6 +467,7 @@
         "bunker:rubles",
         "bunker:sausage",
         "crossbow",
+        "crowbar",
         "dagger",
         "flesh_eye",
         "hammer",
@@ -770,6 +786,20 @@
         "arm",
         "bandit",
         "beacon",
+        "blackmesalite:chapter_end",
+        "blackmesalite:crowbar",
+        "blackmesalite:door",
+        "blackmesalite:floor",
+        "blackmesalite:greeting",
+        "blackmesalite:kills",
+        "blackmesalite:lift",
+        "blackmesalite:lift_zone",
+        "blackmesalite:pistol",
+        "blackmesalite:player",
+        "blackmesalite:scientist",
+        "blackmesalite:take_crowbar",
+        "blackmesalite:take_pistol",
+        "blackmesalite:zombie",
         "bolt_flight",
         "bolts_pickup",
         "brick_wall",
@@ -786,9 +816,11 @@
         "cameracut:trigger_zone",
         "campfire",
         "casualty",
+        "chapter_end",
         "chest",
         "crate",
         "crossbow_pickup",
+        "crowbar",
         "crypt_door",
         "crypt_echo",
         "crypt_exit",
@@ -817,6 +849,7 @@
         "gate",
         "generator",
         "goblin",
+        "greeting",
         "guard",
         "hanging_lamp",
         "hanging_sign",
@@ -830,6 +863,7 @@
         "hut_yard",
         "jogger",
         "keeper",
+        "kills",
         "kitscreens:chest",
         "kitscreens:ferryman",
         "kitscreens:floor",
@@ -839,6 +873,7 @@
         "lamp",
         "lamp_link",
         "lift",
+        "lift_zone",
         "light",
         "lock",
         "logic_auto",
@@ -864,6 +899,7 @@
         "openworld:torch",
         "openworld:way_out",
         "openworld:well",
+        "pistol",
         "pistol_pickup",
         "plate",
         "player",
@@ -943,6 +979,7 @@
         "sceneonly:crate",
         "sceneonly:floor",
         "sceneonly:player",
+        "scientist",
         "scripted_camera",
         "scriptedsequence:arm",
         "scriptedsequence:beacon",
@@ -984,6 +1021,8 @@
         "static_mesh",
         "steps",
         "sword_pickup",
+        "take_crowbar",
+        "take_pistol",
         "tally",
         "topicsgame:ferryman",
         "topicsgame:player",
@@ -1009,7 +1048,8 @@
         "weapons:helmeted_dummy",
         "weapons:player",
         "wedge",
-        "well"
+        "well",
+        "zombie"
       ]
     },
     "record:quest": {
@@ -1057,6 +1097,8 @@
       "description": "The id of a routine record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "blackmesalite:follow_player",
+        "follow_player",
         "openworld:raid",
         "openworld:smith",
         "raid",
@@ -1093,10 +1135,12 @@
       "description": "The id of a scene record: one of those loaded, in full or bare (a bare id is the namespace of the file it is written in).",
       "type": "string",
       "enum": [
+        "blackmesalite:chapter",
         "bunker",
         "bunker:bunker",
         "cameracut:courtyard",
         "camp",
+        "chapter",
         "courtyard",
         "crypt",
         "editor:level",
@@ -1645,8 +1689,10 @@
       "description": "Another ai_schedule record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "blackmesalite:follow",
         "cast_spell",
         "chase",
+        "follow",
         "hold_ground",
         "idle",
         "investigate",
@@ -1706,9 +1752,12 @@
       "description": "Another attack record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "blackmesalite:crowbar_swing",
+        "blackmesalite:pistol_shot",
         "bow_shot",
         "claws",
         "crossbow_shot",
+        "crowbar_swing",
         "default_attack",
         "openworld:staff_blow",
         "pistol_shot",
@@ -1886,6 +1935,7 @@
       "description": "Another effect record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "blackmesalite:zombie_build",
         "brute",
         "burning",
         "damage",
@@ -1927,7 +1977,8 @@
         "vigour",
         "village:straw",
         "weapons:helmet",
-        "weapons:padding"
+        "weapons:padding",
+        "zombie_build"
       ]
     },
     "base:encumbrance": {
@@ -1936,9 +1987,12 @@
       "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
     },
     "base:equip_slot": {
-      "description": "The id of a equip_slot record (none is loaded).",
+      "description": "Another equip_slot record to inherit every field from, abstract or not.",
       "type": "string",
-      "pattern": "^([a-z0-9_.-]+:)?[a-z0-9_.-]+$"
+      "enum": [
+        "blackmesalite:hand",
+        "hand"
+      ]
     },
     "base:faction": {
       "description": "Another faction record to inherit every field from, abstract or not.",
@@ -1946,6 +2000,7 @@
       "enum": [
         "bandits",
         "beasts",
+        "blackmesalite:staff",
         "bunker:loners",
         "ferrymen",
         "firebugs",
@@ -1964,6 +2019,7 @@
         "sandbox:firebugs",
         "sandbox:hermits",
         "sandbox:village",
+        "staff",
         "village",
         "villagers"
       ]
@@ -2053,6 +2109,9 @@
       "enum": [
         "ak74",
         "arrow",
+        "blackmesalite:crowbar",
+        "blackmesalite:pistol",
+        "blackmesalite:pistol_round",
         "bolt",
         "bow",
         "bread",
@@ -2064,6 +2123,7 @@
         "bunker:rubles",
         "bunker:sausage",
         "crossbow",
+        "crowbar",
         "dagger",
         "flesh_eye",
         "hammer",
@@ -2382,6 +2442,20 @@
         "arm",
         "bandit",
         "beacon",
+        "blackmesalite:chapter_end",
+        "blackmesalite:crowbar",
+        "blackmesalite:door",
+        "blackmesalite:floor",
+        "blackmesalite:greeting",
+        "blackmesalite:kills",
+        "blackmesalite:lift",
+        "blackmesalite:lift_zone",
+        "blackmesalite:pistol",
+        "blackmesalite:player",
+        "blackmesalite:scientist",
+        "blackmesalite:take_crowbar",
+        "blackmesalite:take_pistol",
+        "blackmesalite:zombie",
         "bolt_flight",
         "bolts_pickup",
         "brick_wall",
@@ -2398,10 +2472,12 @@
         "cameracut:trigger_zone",
         "campfire",
         "casualty",
+        "chapter_end",
         "chest",
         "crate",
         "creature",
         "crossbow_pickup",
+        "crowbar",
         "crypt_door",
         "crypt_echo",
         "crypt_exit",
@@ -2430,6 +2506,7 @@
         "gate",
         "generator",
         "goblin",
+        "greeting",
         "guard",
         "hanging_lamp",
         "hanging_sign",
@@ -2443,6 +2520,7 @@
         "hut_yard",
         "jogger",
         "keeper",
+        "kills",
         "kitscreens:chest",
         "kitscreens:ferryman",
         "kitscreens:floor",
@@ -2452,6 +2530,7 @@
         "lamp",
         "lamp_link",
         "lift",
+        "lift_zone",
         "light",
         "lock",
         "logic_auto",
@@ -2477,6 +2556,7 @@
         "openworld:torch",
         "openworld:way_out",
         "openworld:well",
+        "pistol",
         "pistol_pickup",
         "plate",
         "player",
@@ -2557,6 +2637,7 @@
         "sceneonly:crate",
         "sceneonly:floor",
         "sceneonly:player",
+        "scientist",
         "scripted_camera",
         "scriptedsequence:arm",
         "scriptedsequence:beacon",
@@ -2598,6 +2679,8 @@
         "static_mesh",
         "steps",
         "sword_pickup",
+        "take_crowbar",
+        "take_pistol",
         "tally",
         "topicsgame:ferryman",
         "topicsgame:player",
@@ -2623,7 +2706,8 @@
         "weapons:helmeted_dummy",
         "weapons:player",
         "wedge",
-        "well"
+        "well",
+        "zombie"
       ]
     },
     "base:quest": {
@@ -2671,6 +2755,8 @@
       "description": "Another routine record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "blackmesalite:follow_player",
+        "follow_player",
         "openworld:raid",
         "openworld:smith",
         "raid",
@@ -2707,10 +2793,12 @@
       "description": "Another scene record to inherit every field from, abstract or not.",
       "type": "string",
       "enum": [
+        "blackmesalite:chapter",
         "bunker",
         "bunker:bunker",
         "cameracut:courtyard",
         "camp",
+        "chapter",
         "courtyard",
         "crypt",
         "editor:level",

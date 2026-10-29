@@ -162,6 +162,18 @@ internal sealed class TakeItemAction : IAction
     }
 }
 
+// Wields or wears something the subject carries: a weapon picked up goes straight to hand.
+[Action("equip", Plugin = "sage.gameplay.items")]
+internal sealed class EquipAction : IAction
+{
+    [EntryValue] public RecordRef<ItemRecord> Item;
+
+    public void Run(in ActionContext c)
+    {
+        if (!Item.IsEmpty) c.World.Equip(c.Subject, Item);
+    }
+}
+
 // An effect on the subject: a blessing, a curse, a disease.
 [Action("apply_effect", Plugin = "sage.gameplay.attributes")]
 internal sealed class ApplyEffectAction : IAction

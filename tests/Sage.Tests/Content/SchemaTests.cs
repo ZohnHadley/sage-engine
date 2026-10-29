@@ -43,7 +43,8 @@ public class SchemaTests
                                                                       ("tests/games/render-check", null),
                                                                       ("tests/games/kit-screens", null),
                                                                       ("tests/games/skills", null),
-                                                                      ("tests/games/trader", null) })
+                                                                      ("tests/games/trader", null),
+                                                                      ("games/Samples/BlackMesaLite", null) })
         {
             var report = ContentValidation.Run(new ValidateOptions
             {
