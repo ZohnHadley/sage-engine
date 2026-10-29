@@ -51,6 +51,11 @@ public sealed class MapRecord
     // from whether a terrain exists would make a hut's height depend on load order.
     public bool OnTerrain;
 
+    // With OnTerrain: the ground under the level's brushes is laid level with its floor (#591), so a hillside
+    // does not come up through a hut's floor. Off for a level meant to sit in rough ground (a ruin).
+    [Property(Tooltip = "With onTerrain: lay the ground under the level's brushes level with its floor, blended at the edge; off = leave the ground as it is")]
+    public bool FlattenTerrain = true;
+
     // What a face is made of when no physics_material's "textures" names its texture (issue #270).
     [RecordRef("physics_material"), Property(Tooltip = "The surface of a brush face no physics_material's textures name; empty = none")]
     public RecordId Surface;
@@ -80,6 +85,7 @@ public sealed class MapLevel
     // Where the level goes, in absolute metres, and whether it stands on the ground there.
     public required Vector3 At { get; init; }
     public required bool OnTerrain { get; init; }
+    internal bool FlattenTerrain { get; init; }
 
     // What its faces are made of (issue #270): the record's fallback, and the texture table built from
     // the physics_material records the first time a hull asks.
@@ -414,6 +420,7 @@ internal static class MapLoader
             Layer = record.Layer,
             At = record.At,
             OnTerrain = record.OnTerrain,
+            FlattenTerrain = record.FlattenTerrain,
             Surface = record.Surface,
             Space = space,
             Skipped = skipped,
@@ -441,6 +448,14 @@ internal static class MapLoader
             var absolute = world.Origin().ToAbsolute(position);
             if (terrain.Sector(Terrain.SectorOf(absolute.X, absolute.Z)) == null) return false;
             position.Y = terrain.HeightAt(position.X, position.Z) + level.At.Y;
+            if (level.FlattenTerrain && level.Brushes.Count > 0)
+            {
+                // The ground under the brushes, level with the bottom of the lowest (#591).
+                Vector3 min = new(float.MaxValue), max = new(float.MinValue);
+                foreach (var brush in level.Brushes) { min = Vector3.Min(min, brush.Min); max = Vector3.Max(max, brush.Max); }
+                terrain.Flatten(new Vector2(position.X + min.X, position.Z + min.Z), new Vector2(position.X + max.X, position.Z + max.Z),
+                                position.Y + min.Y);
+            }
         }
 
         level.Position = position;

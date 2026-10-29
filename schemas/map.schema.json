@@ -89,6 +89,11 @@
       "default": false,
       "type": "boolean"
     },
+    "flattenTerrain": {
+      "description": "With onTerrain: lay the ground under the level's brushes level with its floor, blended at the edge; off = leave the ground as it is. (bool, default true)",
+      "default": true,
+      "type": "boolean"
+    },
     "surface": {
       "description": "The surface of a brush face no physics_material's textures name; empty = none. Names a physics_material record. (RecordId)",
       "allOf": [
