@@ -1,0 +1,89 @@
+[
+  // ---- the pistol: a ray, a magazine, spread and recoil ------------------------------------------
+  {
+    "type": "attack", "id": "pm_shot", "delivery": "ray", "damage": 20, "damageType": "sage:physical", "range": 60,
+    "windupTime": 0, "recoverTime": 0.08, "cooldown": 0.25,
+    "ammo": "pm_round", "magazine": 8, "reloadTime": 1.0, "spread": "pm_spread", "recoil": "pm_recoil"
+  },
+  { "type": "spread", "id": "pm_spread", "baseDegrees": 0.3, "growthPerShot": 0.2, "maxDegrees": 2, "recoveryPerSecond": 3 },
+  { "type": "recoil", "id": "pm_recoil", "pitchMinDegrees": 0.4, "pitchMaxDegrees": 0.7, "yawMinDegrees": -0.2, "yawMaxDegrees": 0.2, "returnSpeedDegrees": 15 },
+
+  // ---- what changes hands ------------------------------------------------------------------------
+  { "type": "item", "id": "rubles", "label": "rubles", "weight": 0, "maxStack": 1000000, "category": "money" },
+  { "type": "item", "id": "pm", "label": "PM pistol", "slot": "MainHand", "attack": "pm_shot", "weight": 0.8, "value": 300, "category": "weapon" },
+  { "type": "item", "id": "pm_round", "label": "9x18 rounds", "maxStack": 200, "weight": 0.01, "value": 1, "category": "ammo" },
+  { "type": "item", "id": "medkit", "label": "medkit", "weight": 0.5, "maxStack": 10, "value": 100, "category": "medicine" },
+  { "type": "item", "id": "jellyfish", "label": "Jellyfish", "weight": 0.5, "value": 2000, "category": "artifact" },
+  { "type": "item", "id": "dog_tail", "label": "blind dog tail", "weight": 0.2, "maxStack": 20, "value": 150, "category": "mutant_part" },
+  // A stone slab nobody can carry far: the pack holds 30 kg.
+  { "type": "item", "id": "slab", "label": "concrete slab", "weight": 40, "value": 0 },
+
+  // ---- the stalker -------------------------------------------------------------------------------
+  {
+    "type": "prefab", "id": "player", "name": "stalker", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "melee": {},
+      "inventory": { "capacity": 30, "items": [
+        { "item": "pm" }, { "item": "pm_round", "count": 32 }, { "item": "rubles", "count": 200 }, { "item": "jellyfish" } ] }
+    }
+  },
+
+  // ---- the trader --------------------------------------------------------------------------------
+  { "type": "faction", "id": "loners", "label": "loners", "relations": [ { "faction": "bandits", "stance": "Hostile" } ] },
+  { "type": "faction", "id": "bandits", "label": "bandits", "relations": [ { "faction": "loners", "stance": "Hostile" } ] },
+  { "type": "faction", "id": "mutants", "label": "mutants" },
+  { "type": "loot_table", "id": "camp_stock", "rolls": 0,
+    "entries": [ { "item": "medkit", "min": 3, "always": true }, { "item": "pm_round", "min": 50, "always": true } ] },
+  { "type": "merchant", "id": "trader", "currency": "rubles", "gold": 3000, "markup": 1.5, "pays": 0.5,
+    "buys": ["artifact", "mutant_part", "weapon"], "stock": "camp_stock", "restock": 24 },
+  { "type": "prefab", "id": "trader", "name": "trader",
+    "parts": { "character": { "layer": "enemy" }, "faction": "loners", "inventory": {}, "merchant": "trader", "use_screen": "rpg:shop" } },
+
+  // ---- a blind dog: 40 health, no AI, two shots ----------------------------------------------------
+  { "type": "effect", "id": "dog_build", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 40 } ] },
+  { "type": "prefab", "id": "dog", "name": "blind dog",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "faction": "mutants", "effects": ["dog_build"],
+               "inventory": { "items": [ { "item": "dog_tail" } ] } } },
+
+  // ---- the checkpoint: loners hold it, bandits raid it by day, seen or not ---------------------------
+  // Both sides have the `offscreen` part: while their sector sleeps they walk their routines a game minute at a
+  // time and fight (strength × health against a roll, the same every run), and come back as they are.
+  { "type": "ai_schedule", "id": "keep_to_routine", "tasks": ["MoveToAnchor", "FaceAnchor", "StayAt"], "interrupts": ["SeeEnemy"] },
+  { "type": "routine", "id": "raid",
+    "entries": [ { "from": 8, "to": 20, "schedule": "keep_to_routine", "at": "checkpoint" },
+                 { "from": 20, "to": 8, "schedule": "keep_to_routine", "at": "bandit_camp" } ] },
+  { "type": "prefab", "id": "loner", "name": "loner",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "faction": "loners", "offscreen": { "speed": 1.2, "strength": 6 } } },
+  { "type": "prefab", "id": "bandit", "name": "bandit",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "faction": "bandits", "routine": "raid",
+               "offscreen": { "speed": 1.5, "strength": 5 } } },
+  { "type": "prefab", "id": "marker", "name": "marker" },
+
+  // ---- the valley --------------------------------------------------------------------------------
+  // Sectors are 1024 m: the camp is in (0, 0), the checkpoint and the bandits' camp in the next sector north,
+  // (0, -1); the outpost, three sectors east in (3, 0), is far enough that the checkpoint's sector sleeps there.
+  { "type": "terrain", "id": "hills", "generator": "Hills", "seed": 11, "height": 0, "amplitude": 3, "wavelength": 400 },
+  {
+    "type": "scene", "id": "zone", "streamed": true, "terrain": "hills", "relativeTo": "Ground",
+    "environment": { "hour": 7 },
+    "player": { "prefab": "player", "at": [500, 0.1, 506] },
+    "place": [
+      { "prefab": "marker", "at": [500, 0.1, 510], "name": "camp", "id": "camp" },
+      { "prefab": "trader", "at": [500, 0.1, 500], "yaw": 180, "name": "trader", "id": "trader" },
+      { "prefab": "marker", "at": [3600, 0.1, 500], "name": "outpost", "id": "outpost" },
+      { "prefab": "dog", "at": [500, 0.1, 530], "name": "blind dog", "id": "dog" },
+
+      { "prefab": "marker", "at": [500, 0, -100], "name": "checkpoint", "id": "checkpoint" },
+      { "prefab": "marker", "at": [500, 0.1, -90], "yaw": 180, "name": "checkpoint_road", "id": "checkpoint_road" },
+      { "prefab": "loner", "at": [496, 0.1, -100], "name": "loner", "id": "loner_west" },
+      { "prefab": "loner", "at": [500, 0.1, -102], "name": "loner", "id": "loner_middle" },
+      { "prefab": "loner", "at": [504, 0.1, -100], "name": "loner", "id": "loner_east" },
+      { "prefab": "marker", "at": [500, 0, -300], "name": "bandit_camp", "id": "bandit_camp" },
+      { "prefab": "bandit", "at": [496, 0.1, -300], "name": "bandit", "id": "bandit_one" },
+      { "prefab": "bandit", "at": [500, 0.1, -302], "name": "bandit", "id": "bandit_two" },
+      { "prefab": "bandit", "at": [504, 0.1, -300], "name": "bandit", "id": "bandit_three" }
+    ]
+  }
+]

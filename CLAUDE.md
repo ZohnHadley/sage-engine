@@ -27,7 +27,7 @@ src/Sage.Cli/bin/Debug/net8.0/sage schema games/Sandbox games/Hello tests/games/
     tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves \
     tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens \
     tests/games/skills tests/games/trader games/Samples/BlackMesaLite \
-    games/Samples/VvardenfellLite --out schemas         # JSON Schemas for VS Code; rerun
+    games/Samples/VvardenfellLite games/Samples/ZoneLite --out schemas   # JSON Schemas for VS Code; rerun
                                                         # after adding a field/component/part/record (CI diffs schemas/)
 tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 games/Sandbox 3 Shaders Audio   # real game, Xvfb
 tools/kit_screens_check.sh src/Sage.Host/bin/Development/net8.0 [--update]   # every kit screen drawn, vs its golden
