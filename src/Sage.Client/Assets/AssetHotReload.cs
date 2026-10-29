@@ -95,6 +95,12 @@ internal sealed class AssetHotReload : IDisposable
             $"{path} was deleted; the copy already loaded stays on screen until it comes back");
     }
 
+    // A change seen and not yet reloaded.
+    public bool Pending
+    {
+        get { lock (_changed) return _changed.Count > 0; }
+    }
+
     // Main thread, once a frame. Reloads whatever has settled; a file that is still being written
     // keeps pushing the deadline out, which is what a long export wants.
     public void Poll()
