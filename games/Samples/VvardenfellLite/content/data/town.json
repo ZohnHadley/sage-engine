@@ -1,0 +1,82 @@
+[
+  // ---- the player: a sword, and a blade skill that rises with use ---------------------------------
+  { "type": "attribute", "id": "strength", "start": 40, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "blade", "start": 5, "min": 0, "max": 100 },
+  { "type": "attribute", "id": "blade_xp", "start": 0, "min": 0 },
+  { "type": "attack", "id": "cut", "damage": 4, "damageType": "sage:physical",
+    "reach": 2.4, "radius": 0.35, "arcDegrees": 60, "windupTime": 0.1, "recoverTime": 0.1, "cooldown": 0.3 },
+  { "type": "item", "id": "sword", "label": "iron sword", "slot": "MainHand", "attack": "cut", "weight": 3, "value": 40 },
+
+  // Every hit that lands with the sword is a use of blade; blade rises when its use-XP reaches
+  // rate × (1 + growth × rank): 3.5 from rank 5.
+  { "type": "attribute_gain", "id": "blade_practice", "on": "Hit", "wielding": ["sword"], "attribute": "blade_xp", "amount": 1 },
+  { "type": "skill", "id": "blade", "rank": "blade", "experience": "blade_xp", "governing": "strength", "rate": 1, "growth": 0.5 },
+
+  // Money is an item.
+  { "type": "item", "id": "gold", "label": "gold", "weight": 0, "maxStack": 1000000, "category": "money" },
+  {
+    "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"],
+    "parts": {
+      "character": { "layer": "player" },
+      "attributes": {},
+      "melee": {},
+      "inventory": { "items": [ { "item": "sword" }, { "item": "gold", "count": 10 } ] }
+    }
+  },
+
+  // ---- the elder and his quest ---------------------------------------------------------------------
+  {
+    "type": "quest", "id": "cellar_rats", "label": "Rats in the Cellar", "start": "hunt",
+    "stages": [
+      { "id": "hunt", "text": "Kill the rats in the elder's cellar.",
+        "objectives": [ { "kind": "Kill", "faction": "vermin", "count": 2 } ], "next": "report" },
+      { "id": "report", "text": "Tell the elder the cellar is clear.", "target": "elder" }
+    ]
+  },
+  { "type": "dialogue", "id": "elder_talk",
+    "nodes": [ { "id": "hello", "text": "Yes, outlander?", "options": [
+      { "text": "Tell me about...", "topics": true },
+      { "text": "Goodbye.", "end": true } ] } ] },
+  {
+    // One topic, answered by where the player is in the quest (the first info whose `requires` holds).
+    "type": "dialogue_topic", "id": "rats", "keyword": "rats", "known": true,
+    "infos": [
+      { "requires": { "quest": "cellar_rats", "stage": "report" }, "text": "The cellar is clear? Take this, with my thanks.",
+        "then": [ { "finish_quest": "cellar_rats" }, { "give_item": "gold", "count": 50 } ] },
+      { "requires": { "quest": "cellar_rats", "active": true }, "text": "I can still hear them down there." },
+      { "requires": { "quest": "cellar_rats", "finished": true }, "text": "Not a squeak since you came." },
+      { "text": "Rats in my cellar, two of them. Kill them and I will pay you.", "then": [ { "start_quest": "cellar_rats" } ] }
+    ]
+  },
+  { "type": "prefab", "id": "elder", "name": "elder", "parts": { "character": { "layer": "enemy" }, "dialogue": "elder_talk" } },
+
+  // A rat: the engine's character with 10 health and no AI, three cuts of the sword.
+  { "type": "faction", "id": "vermin", "label": "vermin" },
+  { "type": "effect", "id": "rat_build", "modifiers": [ { "attribute": "sage:health", "op": "Override", "value": 10 } ] },
+  { "type": "prefab", "id": "rat", "name": "rat",
+    "parts": { "character": { "layer": "enemy" }, "attributes": {}, "faction": "vermin", "effects": ["rat_build"] } },
+
+  // ---- the trader --------------------------------------------------------------------------------
+  // A potion at 20, sold at half again: 30 gold, more than the player has until the elder pays.
+  { "type": "item", "id": "potion", "label": "potion of healing", "weight": 0.5, "maxStack": 20, "value": 20, "category": "potion" },
+  { "type": "loot_table", "id": "trader_stock", "rolls": 0, "entries": [ { "item": "potion", "min": 3, "always": true } ] },
+  { "type": "merchant", "id": "trader", "currency": "gold", "gold": 500, "markup": 1.5, "pays": 0.5,
+    "buys": ["potion"], "stock": "trader_stock", "restock": 24 },
+  { "type": "prefab", "id": "trader", "name": "trader",
+    "parts": { "character": { "layer": "enemy" }, "inventory": {}, "merchant": "trader", "use_screen": "rpg:shop" } },
+
+  // ---- the town ----------------------------------------------------------------------------------
+  { "type": "prefab", "id": "floor", "name": "floor", "parts": { "body": { "size": [40, 1, 40] } } },
+  {
+    "type": "scene", "id": "town",
+    "player": { "prefab": "player", "at": [0, 0.1, 6] },
+    "place": [
+      { "prefab": "floor", "at": [0, -0.5, 0], "id": "floor" },
+      { "prefab": "elder", "at": [0, 0, 3], "yaw": 180, "id": "elder", "name": "elder" },
+      { "prefab": "trader", "at": [6, 0, 3], "yaw": 180, "id": "trader", "name": "trader" },
+      // The cellar.
+      { "prefab": "rat", "at": [-8, 0, -6], "id": "rat_1", "name": "rat 1" },
+      { "prefab": "rat", "at": [-4, 0, -6], "id": "rat_2", "name": "rat 2" }
+    ]
+  }
+]
