@@ -1,0 +1,4 @@
+[
+  // A record of the mod's own type, declared in MyModModule.cs.
+  { "type": "mymod_note", "id": "first", "text": "Hello from MyMod." }
+]

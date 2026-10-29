@@ -111,6 +111,7 @@
     "tab_conflicts": { "zero": "Conflicts", "one": "Conflicts ({count})", "other": "Conflicts ({count})" },
     "name": "{name} {version}",
     "none": "No mods were found.",
+    "contains_code": "contains code: not sandboxed",
     "no_conflicts": "No two mods write the same thing.",
     "state_active": "on",
     "state_off": "off",

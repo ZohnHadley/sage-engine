@@ -1,0 +1,10 @@
+<Project Sdk="Sage.Sdk/SAGE_SDK_VERSION">
+  <!--
+    MyMod's code, built with Sage.Sdk as a game's simulation half is: the engine is compile-time only, and at
+    run time the host's own copies are shared with the mod. The output is bin/<config>/MyMod.dll, which mod.json's
+    "assemblies" names. There is no game.json here, so the SDK's game checks do not apply.
+  -->
+  <PropertyGroup>
+    <SageSimulationOnly>true</SageSimulationOnly>
+  </PropertyGroup>
+</Project>

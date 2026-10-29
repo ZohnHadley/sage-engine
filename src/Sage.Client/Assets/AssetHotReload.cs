@@ -116,6 +116,14 @@ internal sealed class AssetHotReload : IDisposable
                 // the key (any other mount's) is nothing to reload.
                 if (OwnerOf(disk) is { RecordNamespace.Length: > 0 } owner)
                     _batch.Add(AssetPath.Intern(VirtualPath.InNamespace(owner.RecordNamespace, path).ToString()));
+                // `@ns/p` replaces ns's own `p` on purpose (issue #398): what is loaded is that, bare or as `ns:p`.
+#pragma warning disable SAGE0132   // the mod model's lookup (phase 9), experimental like the rest of it
+                if (MountLookup.Replaces(path) is { } replaced)
+#pragma warning restore SAGE0132
+                {
+                    _batch.Add(AssetPath.Intern(replaced.Path.ToString()));
+                    _batch.Add(AssetPath.Intern(VirtualPath.InNamespace(replaced.Namespace, replaced.Path).ToString()));
+                }
             }
             _changed.Clear();
         }

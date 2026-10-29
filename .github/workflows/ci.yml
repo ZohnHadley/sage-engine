@@ -408,6 +408,12 @@ jobs:
             ( cd "$games/Sample_$sample" && dotnet build && dotnet msbuild -t:SageValidate -nologo )
           done
           sage=src/Sage.Cli/bin/Debug/net8.0/sage
+          # The code mod template (issue #581): made for the data-only game, built, validated with it, and flagged as code.
+          dotnet new sage-mod-code -n MyCodeMod -o "$games/MyCodeMod" --game mydata --feed "$feed"
+          ( cd "$games/MyCodeMod" && dotnet build )
+          $sage validate "$games/MyData" --mods "$games/MyCodeMod"
+          $sage mods "$games/MyData" --mods "$games/MyCodeMod" | tee "$games/codemod.log"
+          grep -q "1 with code, not sandboxed" "$games/codemod.log" || { echo "::error::the code mod template did not load as a code mod"; exit 1; }
           # `sage new` (issue #297): the mod made for the built game, so its schemas are written into it (what its
           # .vscode/settings.json maps data/ and mod.json onto) and it is validated against the game; then a client
           # half added to the data-only game in its Client/ folder, game.json made to load it, and built.
