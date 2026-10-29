@@ -319,7 +319,7 @@ decides nothing, and a mixer belongs to a world because a voice's position is in
 space. Its own second pass was the most productive yet — an event that described a destroyed entity, a
 sound record with no code path, and one cue list raised at two different moments, none of which any
 passing test could see. The engine is now walkable, fightable, lootable, castable, resumable, unbounded
-and audible: **264 console commands, 78 record types, 2655 headless tests.** <!-- counts -->
+and audible: **264 console commands, 78 record types, 2666 headless tests.** <!-- counts -->
 
 F23 then taught the same lesson one layer up: a creature that can *plan* a way round a wall still needs
 to **remember what it is chasing**, because walking round something means looking away from it, and sight
@@ -342,7 +342,7 @@ and the code, because three features in a row ended with the code right and its 
 [`games/Hello`](games/Hello) is the smallest game this engine runs — four files, in the solution so it
 cannot rot — which found an engine trap on its first run that the Sandbox had hidden for months.
 
-The handoff at [`docs/history/handoff-2026-09-29.md`](docs/history/handoff-2026-09-29.md) says where to
+The handoff at [`docs/history/handoff-2026-10-29.md`](docs/history/handoff-2026-10-29.md) says where to
 start, and [`docs/REDESIGN.md`](docs/REDESIGN.md) where the engine is going; [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) is for using the engine rather than building it.
 
 **Guarding against over-architecting.** Hobby engines usually die from years of infrastructure with nothing playable. After step 4, **alternate**: build a piece of the Sandbox slice, then the infrastructure it proved necessary. The design docs are a map, not a checklist to finish first. Every doc's "v1 scope" is the minimum for the slice. Engine or framework code is extracted **on second use** ("write games, not engines", survey §3.8).

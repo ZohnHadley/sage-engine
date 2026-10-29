@@ -77,6 +77,8 @@ The templates:
 | `sage-game-data` | No C# at all: `game.json` and records; the engine places the scene and spawns the player (like `tests/games/scene-only`) |
 | `sage-game-client` | A client half (a HUD, screens, anything with a screen) for a game that has none, such as a `sage-game-data` game: a project in the game's `Client/` folder, below |
 | `sage-mod-data` | A data mod: `mod.json`, a new prefab and weapon, and a patch of the game's `player`, with `.vscode/` settings that map its records and `mod.json` onto the game's schemas and tasks that validate it against the game. Put it in the game's `mods/` folder; check it against a game with `sage mods <game> --mods <mod>`. [docs/MODDING.md](MODDING.md) is the modder's guide |
+| `sage-mod-code` | A code mod (issue #581): `mod.json` with `"kind": "code"`, a Sage.Sdk project and a module with a console command and a record type of its own. Code is trusted, not sandboxed; build it, then put it in the game's `mods/` folder ([docs/MODDING.md](MODDING.md) §8c) |
+| `sage-sample-blackmesa`, `sage-sample-vvardenfell`, `sage-sample-zone` | Phase 5's samples (`games/Samples`, issues #576–#579): a Half-Life-style chapter on the base engine, a Morrowind-style town and a S.T.A.L.K.E.R.-style streamed zone on the RPG kit, all data only. `sage new sample-<name>` makes one |
 
 **`sage new` and `sage run`** (issue #297) are the `sage` command line's way to the same two steps. `sage new
 <template> [-o <dir>] [-n <name>] [--game <game folder or id>] [--dry-run] [<dotnet new options>]` is `dotnet
@@ -336,8 +338,11 @@ with no `-game` it runs the `game` folder beside it. The folder's content is val
 ```bash
 dotnet build -c Shipping                                       # in your game's folder
 dotnet msbuild -t:SagePackage -p:Configuration=Shipping        # into bin/package/Shipping (SagePackageDirectory)
-sage package <game folder> --out <dir> [--host <dir>] [--config Shipping] [--no-validate] [--no-cook]   # by hand
+sage package <game folder> --out <dir> [--host <dir>] [--config Shipping] [--no-validate] [--no-cook] [--zip]   # by hand
 ```
+
+**`--zip`** (issue #581) packs each mount, once it is cooked, into one `<mount>.zip` that `game.json` names (a zip mount, as a
+`.sagemod` is read); the game's own mods stay loose folders (test: WithZipEachMountIsOneZipTheManifestNames).
 
 **Cooking** (issue #302). `sage package` also cooks the package's models and textures: each `.glb` gets a
 `.sgmesh` beside it (vertex and index arrays as the GPU takes them) and each `.png`, `.jpg`, `.jpeg` and
@@ -609,7 +614,7 @@ entry inside an object; an entry that takes no settings can be written as its ba
 |---|---|---|
 | `quest_objective` (key `kind`, default `kill`) | a quest stage's `objectives` | `kill`, `have`, `reach` (a place by `at` and `radius`, or by a trigger `volume`), `talk` (a `dialogue` or `prefab`, or a `topic` asked, issue #391) |
 | `condition` (key `condition`, or its id as a property) | a dialogue option's `conditions`; any `requires` | the base's `all`, `any`, `not`, `var`, `time_between`, `weekday`, `date_between` (the last two: the calendar, issue 4g-2), `season`, `moon_phase`, `on_date` (issue #289), `random`, `entity_exists`, `distance_to`, `in_scene`; gameplay's `has_tag`, `lacks_tag`, `is_alive`, `attribute` (an attribute between `min` and `max`, issue #379), `has_item`, `standing`, `quest`; dialogue's `speaker`; the RPG kit's `has_perk`, `skill` and `level` (issue #381); animation's `anim_param`, `anim_finished` and `anim_window` (issue #359) |
-| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait`, `world_speed`, `hit_stop` (issue #283, §5 "Time"); gameplay's `give_item`, `take_item`, `apply_effect`, `set_tag`, `cue`, `change_standing`, `start_quest`, `set_stage`, `finish_quest`; dialogue's `add_topic`; the RPG kit's `grant_perk` |
+| `action` (key `action`, or its id as a property) | a dialogue option's `actions`; any `then` | the base's `fire`, `set_var`, `add_var`, `spawn_prefab`, `destroy`, `teleport`, `play_sound`, `pass_time`, `load_scene`, `save_game`, `log`, `message`, `wait`, `world_speed`, `hit_stop` (issue #283, §5 "Time"); gameplay's `give_item`, `take_item`, `equip` (issue #576: wield or wear something carried, as a pickup's `OnPickedUp` relay does), `apply_effect`, `set_tag`, `cue`, `change_standing`, `start_quest`, `set_stage`, `finish_quest`; dialogue's `add_topic`; the RPG kit's `grant_perk` |
 | `ability_delivery` | an ability's `delivery` (its `targeting` still names one) | `self`, `touch`, `touch_area`, `area`, `projectile` |
 | `hit_delivery` | an attack's `delivery` (empty: `sweep`) | `sweep` (a swing: `reach`, `radius`, `arcDegrees`), `ray` (hitscan to `range`, `pellets` rays), `projectile` (a carrier, the `projectile` prefab, flying `range` at `projectileSpeed`, falling at `projectileGravity`, through `projectilePierce` targets) |
 | `effect_execution` (key `execution`) | an effect's `executions` | `knockback`, `teleport`, `summon`, `dispel`, `damage` (`amount`, `damageType`: a poison or a burn that goes through resistances and credits its source, issue #390) |

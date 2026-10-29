@@ -426,6 +426,9 @@ engine's, the game's); the mod's own headers win.
 
 ## 8c. Code mods: trusted, not sandboxed
 
+Start one from the template (issue #581): `sage new mod-code -n MyMod --game <game id>` (or `dotnet new sage-mod-code`)
+writes `mod.json`, the project and a module; `dotnet build` it, then add it as below.
+
 A mod may carry C#. Its `mod.json` says `"kind": "code"` and lists its dlls in `"assemblies"`
 (`["bin/{config}/SmithsGuild.dll"]`). **Read this before installing one:**
 
