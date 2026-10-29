@@ -14,8 +14,8 @@ namespace Sage.Kits.Rpg;
 // screens (widget screens, the only kind since issue #350).
 //
 // Loaded only for a game that names it (game.json `"kits": ["sage.kits.rpg"]`); never part of
-// BasePlugins.All(). Its client half, Sage.Kits.Rpg.Client (`sage.kits.rpg.client`), comes with it in
-// a host with a window.
+// BasePlugins.All(). It has no client half (the empty `sage.kits.rpg.client` went in #600): its screens
+// are widget screens a headless test drives too.
 //
 // Its content (issue #98) is carried in the assembly and mounted under the record namespace `rpg`:
 // the inventory, equipment, loot and topics `screen`s, their `ui_layout`s and `ui_style`s, and the
@@ -111,6 +111,13 @@ public sealed class RpgKitModule : IModule
         _actions.Register("Spellmaker", ActionKind.Button);
         _actions.Register("Journal", ActionKind.Button);
         _actions.Register("Rest", ActionKind.Button);
+        // And the screens no key reached (issue #600): perks, factions, the map. Menu and Inventory are the
+        // engine's (its client registers them; registered here too, so a headless run binds them).
+        _actions.Register("Perks", ActionKind.Button);
+        _actions.Register("Factions", ActionKind.Button);
+        _actions.Register("Map", ActionKind.Button);
+        _actions.Register("Menu", ActionKind.Button);
+        _actions.Register("Inventory", ActionKind.Button);
         var actions = _actions;
         ctx.Engine.Records.AddCheck<RpgConventionsRecord>((conventions, check) => RpgConventions.Check(actions, conventions, check));
 
@@ -184,8 +191,8 @@ public sealed class RpgKitModule : IModule
         // Use-XP becomes a skill's rank, and rises a level (issue #377).
         world.Resources.Add(_progression!);
         world.AddSystem(new ProgressionSystem(world, _progression!));
-        // The kit's screens open with its buttons (the keys are the kit's default maps', issue #354): the
-        // spellbook, the spellmaker, the journal and the rest screen. A game that binds one of these actions
+        // The kit's screens open with its buttons (the keys are the kit's default maps', issues #354, #600):
+        // the spellbook, the spellmaker, the journal, rest, perks, factions, the map, the inventory and pause. A game that binds one of these actions
         // to a screen of its own after this replaces it.
 #pragma warning disable SAGE0125   // widget screens are Phase 4c's experimental UI (MAKING_A_GAME §10b)
         if (world.Resources.TryGet<UiScreenStack>(out var widgets) && widgets != null)
@@ -194,6 +201,12 @@ public sealed class RpgKitModule : IModule
             widgets.Bind(_actions!.Get("Spellmaker"), SpellmakerScreen);
             widgets.Bind(_actions!.Get("Journal"), JournalScreen);
             widgets.Bind(_actions!.Get("Rest"), RestScreen);
+            widgets.Bind(_actions!.Get("Perks"), PerksScreen);
+            widgets.Bind(_actions!.Get("Factions"), FactionsScreen);
+            widgets.Bind(_actions!.Get("Map"), MapScreen);
+            widgets.Bind(_actions!.Get("Inventory"), InventoryScreen);
+            // Escape pauses: the host leaves Menu to a screen bound to it rather than quitting (#600).
+            widgets.Bind(_actions!.Get("Menu"), PauseScreen);
             // Its tooltips and confirm prompts in its own look (ui_styles.json); unset, they drew unstyled (#597).
             widgets.TooltipStyle = "rpg:tooltip";
             widgets.DialogStyle = "rpg:dialog";

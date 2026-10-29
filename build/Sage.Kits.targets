@@ -7,12 +7,11 @@
     false) and its output copied next to the executable's.
 
     Imported by Sage.Host (with SageKitClients=true: a host with a window loads a kit's client half
-    too) and Sage.Cli (the simulation halves only). A new kit adds its project(s) here.
+    too, when the kit has one) and Sage.Cli (the simulation halves only). A new kit adds its project(s)
+    here, a client half under Condition="'$(SageKitClients)' == 'true'".
   -->
   <ItemGroup>
     <SageKit Include="$(MSBuildThisFileDirectory)..\src\Sage.Kits.Rpg\Sage.Kits.Rpg.csproj" />
-    <SageKit Include="$(MSBuildThisFileDirectory)..\src\Sage.Kits.Rpg.Client\Sage.Kits.Rpg.Client.csproj"
-             Condition="'$(SageKitClients)' == 'true'" />
     <ProjectReference Include="@(SageKit)" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 

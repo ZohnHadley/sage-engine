@@ -1,3 +1,0 @@
-#nullable enable
-*REMOVED*const Sage.Kits.Rpg.RpgKitClientModule.Journal = "journal" -> string!
-*REMOVED*const Sage.Kits.Rpg.RpgKitClientModule.Spellmaker = "spellmaker" -> string!

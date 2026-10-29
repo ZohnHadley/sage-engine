@@ -37,7 +37,7 @@ public sealed class SageAppOptions
     public IReadOnlyList<IModule> HostModules { get; init; } = Array.Empty<IModule>();
 
     // Whether the kits game.json names (`kits`, issue #27) bring their client halves too
-    // (`Sage.Kits.Rpg.Client` beside `Sage.Kits.Rpg`): the host with a window says yes; a headless
+    // (`<kit>.Client.dll` beside the kit, when it has one): the host with a window says yes; a headless
     // one, a tool or a test leaves them out, as it leaves out `modules.add`.
     public bool LoadKitClients { get; init; }
 

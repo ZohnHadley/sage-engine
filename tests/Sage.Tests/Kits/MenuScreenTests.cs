@@ -312,6 +312,13 @@ public class MenuScreenTests
         Assert.True(pause.HasOptions);                                           // the kit's options screen (#339)
         Assert.True(stack.Top!.Content.Find("options")!.Visible);
         Assert.True(pause.HasMods);
+        Assert.True(pause.HasControls);                                          // #600: the key bindings, from pause
+        Press(stack, RpgMenus.ControlsButton);
+        stack.Update(UiInput.Wait(1f));
+        Assert.Equal(RpgKitModule.ControlsScreen, stack.Top!.Screen!.Id);
+        stack.Update(UiInput.Cancel);
+        stack.Update(UiInput.Wait(1f));
+        Top<PauseView>(stack, RpgKitModule.PauseScreen);
 
         Press(stack, RpgMenus.QuitButton);
         Assert.Equal("Quit the game?", pause.QuitQuestion!.Title.Text);

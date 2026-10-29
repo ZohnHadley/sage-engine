@@ -1,14 +1,15 @@
 # rpg:pause: its render plan at 1280x720, a command a line (KitScreenGoldenTests, issue #355)
 # backdrop #00000096, focus on resume
-rect 480,191.55 320x336.9 #1b1915f2 @window
-border 480,191.55 320x336.9 #4a4336ff width 1 @window
-text 504,215.55 82.34x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Paused" @title
-rect 504,266.75 272x32.8 #00000000>#3a2f1cff @resume
-border 504,266.75 272x32.8 #00000000>#e8be6aff width 1 @resume
-text 516,272.75 58.42x20.8 #ede6d8ff>#f6eedcff scale 1 font fonts/plex-sans.ttf size 16 "Resume" @resume
-text 516,309.55 34.24x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Save" @save
-text 516,346.35 34.64x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Load" @load
-text 516,383.15 55.97x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Options" @options
-text 516,419.95 39.02x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Mods" @mods
-text 516,456.75 30.03x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Quit" @quit
-text 504,487.55 70.98x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Esc Resume" @hint
+rect 480,173.15 320x373.7 #1b1915f2 @window
+border 480,173.15 320x373.7 #4a4336ff width 1 @window
+text 504,197.15 82.34x31.2 #ede6d8ff scale 1 font fonts/plex-sans-semibold.ttf size 24 "Paused" @title
+rect 504,248.35 272x32.8 #00000000>#3a2f1cff @resume
+border 504,248.35 272x32.8 #00000000>#e8be6aff width 1 @resume
+text 516,254.35 58.42x20.8 #ede6d8ff>#f6eedcff scale 1 font fonts/plex-sans.ttf size 16 "Resume" @resume
+text 516,291.15 34.24x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Save" @save
+text 516,327.95 34.64x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Load" @load
+text 516,364.75 55.97x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Options" @options
+text 516,401.55 60.5x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Controls" @controls
+text 516,438.35 39.02x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Mods" @mods
+text 516,475.15 30.03x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Quit" @quit
+text 504,505.95 70.98x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Esc Resume" @hint

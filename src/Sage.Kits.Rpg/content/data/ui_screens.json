@@ -370,6 +370,8 @@
       "load":     { "widget": "button", "parent": "window", "style": "menu_item", "textAlign": "start", "text": "@rpg.menu.load" },
       "options":  { "widget": "button", "parent": "window", "style": "menu_item", "textAlign": "start", "text": "@rpg.menu.options",
                     "bindings": { "visible": "hasOptions" } },
+      "controls": { "widget": "button", "parent": "window", "style": "menu_item", "textAlign": "start", "text": "@rpg.menu.controls",
+                    "bindings": { "visible": "hasControls" } },
       "mods":     { "widget": "button", "parent": "window", "style": "menu_item", "textAlign": "start", "text": "@rpg.menu.mods",
                     "bindings": { "visible": "hasMods" } },
       "quit":     { "widget": "button", "parent": "window", "style": "menu_item", "textAlign": "start", "text": "@rpg.menu.quit" },

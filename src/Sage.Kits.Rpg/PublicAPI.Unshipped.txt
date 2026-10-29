@@ -229,6 +229,8 @@ const Sage.Kits.Rpg.RpgMenus.NewGameButton = "new_game" -> string!
 const Sage.Kits.Rpg.RpgMenus.OptionsButton = "options" -> string!
 const Sage.Kits.Rpg.RpgMenus.QuitButton = "quit" -> string!
 const Sage.Kits.Rpg.RpgMenus.ResumeButton = "resume" -> string!
+const Sage.Kits.Rpg.RpgMenus.ControlsButton = "controls" -> string!
+Sage.Kits.Rpg.PauseView.HasControls.get -> bool
 const Sage.Kits.Rpg.RpgMenus.SaveButton = "save" -> string!
 const Sage.Kits.Rpg.SaveSlotsView.DeleteButton = "delete" -> string!
 const Sage.Kits.Rpg.SaveSlotsView.NewButton = "new" -> string!
