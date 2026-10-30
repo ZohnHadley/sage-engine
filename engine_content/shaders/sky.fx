@@ -25,10 +25,18 @@ float4 SkyMoonLight;       // x = age (0 new, 0.5 full), y = level (0-1), z = ga
 float4 SkyCloud;           // x = cover (0 clear, 1 overcast; 0: no clouds), y = scale, zw = scroll
 float3 SkyCloudColor;      // SkyRules.CloudColor
 
+// Issue #630: a painted panorama in place of the gradient (SkyRules.SkyboxUv).
+float4 SkyBox;             // x = on (0/1), y = how much of the night picture shows, zw = unused
+float3 SkyBoxTint;         // the hour's tint times the weather's sky tint
+
 texture MoonTex;
 sampler MoonSampler = sampler_state { Texture = <MoonTex>; AddressU = Clamp; AddressV = Clamp; MinFilter = Linear; MagFilter = Linear; };
 texture CloudTex;
 sampler CloudSampler = sampler_state { Texture = <CloudTex>; AddressU = Wrap; AddressV = Wrap; MinFilter = Linear; MagFilter = Linear; };
+texture SkyBoxTex;
+sampler SkyBoxSampler = sampler_state { Texture = <SkyBoxTex>; AddressU = Wrap; AddressV = Clamp; MinFilter = Linear; MagFilter = Linear; };
+texture SkyBoxNightTex;
+sampler SkyBoxNightSampler = sampler_state { Texture = <SkyBoxNightTex>; AddressU = Wrap; AddressV = Clamp; MinFilter = Linear; MagFilter = Linear; };
 
 struct VSInput
 {
@@ -108,8 +116,16 @@ float4 PS(VSOutput input) : COLOR0
     float4 far = mul(float4(input.Clip, 1, 1), SkyInvViewProj);
     float3 d = normalize(far.xyz / far.w);
 
-    // SkyRules.Gradient
+    // SkyRules.Gradient, or the panorama (SkyRules.SkyboxUv). Read at its top level: a mip chosen from the
+    // derivatives would draw a seam where u wraps.
     float3 sky = lerp(SkyHorizon, SkyZenith, sqrt(saturate(d.y)));
+    if (SkyBox.x > 0)
+    {
+        float2 uv = float2(atan2(d.x, -d.z) / 6.2831853 + 0.5, acos(clamp(d.y, -1, 1)) / 3.14159265);
+        float3 day = tex2Dlod(SkyBoxSampler, float4(uv, 0, 0)).rgb;
+        float3 night = tex2Dlod(SkyBoxNightSampler, float4(uv, 0, 0)).rgb;
+        sky = lerp(day, night, SkyBox.y) * SkyBoxTint;
+    }
 
     // SkyRules.CloudAlpha, CloudFade and CloudUv: the layer is a plane overhead, thresholded by coverage.
     float cloud = 0;

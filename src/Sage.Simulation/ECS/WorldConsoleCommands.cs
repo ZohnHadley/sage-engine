@@ -327,6 +327,24 @@ internal static class WorldConsoleCommands
             }
         });
 
+        // Issue #630: which sky lights the worlds, as a scene's `environment.sky` sets it.
+        cvars.RegisterCommand("sky_set", CVarFlags.Cheat,
+            "sky_set <sky|none>: light every world by this sky record, or by none (the light stays where it was).", a =>
+        {
+            var id = default(RecordId);
+            if (a.Count == 0 || (a[0] != "none" && (id = engine.Records.Resolve("sky", a[0])).IsEmpty))
+            {
+                Log.Warn(LogCat.Console, a.Count == 0 ? "sky_set <sky|none>" : $"sky_set: no sky '{a[0]}'");
+                return;
+            }
+            foreach (var world in engine.Worlds)
+            {
+                if (!world.Resources.TryGet<WorldClock>(out var clock) || clock == null) continue;
+                clock.Sky = id;
+                Log.Info(LogCat.Console, $"'{world.Name}': " + (id.IsEmpty ? "no sky" : $"sky {id}"));
+            }
+        });
+
         cvars.RegisterCommand("time_pass", CVarFlags.Cheat,
             "time_pass <hours>: pass game time at once, in every world (one skip at the next tick boundary, one TimePassed event; not `wait`, which pauses a script).", a =>
         {

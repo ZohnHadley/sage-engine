@@ -139,6 +139,16 @@ public sealed class RenderEnvironment
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public Vector2 CloudScroll;                              // repeats of the picture, 0..1
 
+    // Written by the sky (issue #630, SkyRules): a painted panorama in place of the gradient. Empty: none.
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public AssetPath Skybox;
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public AssetPath SkyboxNight;                            // empty: the day picture all night
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public Vector3 SkyboxTint = Vector3.One;                 // the hour's tint, times the weather's sky tint
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float SkyboxNightMix;                             // 0 (the day picture) to 1 (the night's)
+
     // Draw distance per sort layer (issue 4n-1, MeshLod.PastLayerDistance): a mesh on layer i farther from
     // the camera than LayerDrawDistance[i] metres is not drawn. 0 (the default): no limit. Put small props
     // on a layer of their own and give it a short one.

@@ -900,3 +900,11 @@ const Sage.Simulation.ModManager.ContainsCodeFlag = "[contains code: not sandbox
 static Sage.Simulation.ModManager.ContainsCode(Sage.Core.ModManifest! mod) -> bool
 Sage.Simulation.ModManager.CodeOf(string! id) -> System.Collections.Generic.IReadOnlyList<System.Reflection.Assembly!>!
 Sage.Simulation.MapRecord.FlattenTerrain -> bool
+Sage.Simulation.RenderEnvironment.Skybox -> Sage.Core.AssetPath
+Sage.Simulation.RenderEnvironment.SkyboxNight -> Sage.Core.AssetPath
+Sage.Simulation.RenderEnvironment.SkyboxNightMix -> float
+Sage.Simulation.RenderEnvironment.SkyboxTint -> System.Numerics.Vector3
+Sage.Simulation.SkyKey.SkyboxTint -> System.Numerics.Vector3
+Sage.Simulation.SkyRecord.Skybox -> Sage.Core.AssetPath
+Sage.Simulation.SkyRecord.SkyboxNight -> Sage.Core.AssetPath
+static Sage.Simulation.SkyRules.SkyboxUv(System.Numerics.Vector3 direction) -> System.Numerics.Vector2
