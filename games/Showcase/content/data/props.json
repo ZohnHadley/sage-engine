@@ -210,7 +210,7 @@
     "type": "prefab", "id": "drill", "name": "drill",
     "parts": { "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "mannequin" }, "animator": { "graph": "mannequin" }, "state_machine": { "machine": "drill" } }
   },
-  // Forty-eight crystals of one mesh and one material: with `r_instancing 1` they are one draw (r_stats).
+  // Forty-eight crystals of one mesh and one material: `r_instancing` makes them one draw (r_stats).
   { "type": "material", "id": "crystal", "base": "sage:lit_default", "params": { "AlbedoColor": [0.45, 0.32, 0.85, 1] },
     "emissive": [0.35, 0.12, 0.8], "specular": 2.2, "gloss": 0.9 },
   { "type": "prefab", "id": "crystal", "name": "crystal", "components": { "mesh_renderer": { "mesh": "models/crystal.glb", "material": "crystal" } } },

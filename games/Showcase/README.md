@@ -27,7 +27,7 @@ At start the hub turns on `sv_cheats 1`, the post chain (`r_post 1`, `r_bloom 1`
 | Materials gallery | x -5..28, z -53 | seven plinths: normal + specular maps (brick), a specular map (brushed metal), an emissive map (rune), an environment map (chrome ball reflecting the day panorama), vertex colours (monkey), emissive alone (glowing torus, blooms), a normal-mapped moss ball; a brick brush wall behind |
 | Lights hall | (52, -38) | `hall.map`, lightmapped (the sky term darkens its inside); a ceiling spot with a shadow map, a cold point lamp with a cube shadow map that moves 5 m and back (a `tween`, started by the hub's `logic_auto`), flickering torches (`pattern: torch`) on the east wall and by the door, a pulsing pink spot; cascaded sun shadows outside |
 | Fog field | x -22..-78, z -41 | standing stones down the slope; the east half sets a linear-fog sky (`showcase:linear`), the west half the Exp² day sky, both under the `fog` weather; leaving resets the sky and clears the weather |
-| Yard | (22, -16) | `yard.map`; a skinned mannequin walking a lane (walk/run blend space), one drilling (upper-body aim layer, strike, reload); 48 crystals of one mesh and material (`r_instancing 1`, then `r_stats`) |
+| Yard | (22, -16) | `yard.map`; a skinned mannequin walking a lane (walk/run blend space), one drilling (upper-body aim layer, strike, reload); 48 crystals of one mesh and material (`r_stats` shows them instanced; `r_instancing 0` to compare) |
 | Campfire | (-12, -14) | soft particles (flames and smoke from 2x2 sheets), embers, a torch-flicker lamp with a cube shadow map, scorch decals laid at start by cues |
 | Weather court | (40, 5) | `court.map`, lightmapped; walking in rolls rain in (`weather rain 4`), the paving wets and puddles gather, the shelter in the north-east corner keeps the rain off; leaving clears it |
 | Pool | (37, 8), in the court | a raised pool: a water surface with no shore fade over a tiled floor |
@@ -45,7 +45,7 @@ At start the hub turns on `sv_cheats 1`, the post chain (`r_post 1`, `r_bloom 1`
 | `sky_set showcase:linear` | linear fog instead of Exp² |
 | `weather rain 4`, `weather storm 4`, `weather fog 4`, `weather clear 6` | the weathers, blended over that many seconds |
 | `r_post 0/1`, `r_bloom`, `r_hdr`, `r_aa off/fxaa/msaa4`, `r_post_vignette 0`, `r_post_grade 0` | the post chain |
-| `r_instancing 1`, `r_stats` | instancing, and what the frame cost |
+| `r_instancing 0`, `r_stats` | instancing off, and what the frame cost |
 | `r_shadows`, `r_shadow_cascades 1..3`, `r_shadow_lamps 0..4`, `r_shadow_distance` | sun and lamp shadows |
 | `r_water 0/1`, `r_weather 0/1`, `r_lights 0/1` | water, weather, lamps |
 | `fx_decal showcase:scorch` | a scorch mark where you look |
