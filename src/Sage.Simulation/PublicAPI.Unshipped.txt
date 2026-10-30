@@ -71,6 +71,10 @@ Sage.Simulation.HandIkPart.Left -> Sage.Simulation.HandIkArm?
 Sage.Simulation.HandIkPart.Right -> Sage.Simulation.HandIkArm?
 Sage.Simulation.HandIkPart.Weight -> float
 Sage.Simulation.InputBinding.DisplayName.get -> string!
+Sage.Simulation.InputMapRecord.Modes -> System.Collections.Generic.Dictionary<string!, Sage.Simulation.InputMode>!
+Sage.Simulation.InputMode
+Sage.Simulation.InputMode.Hold = 0 -> Sage.Simulation.InputMode
+Sage.Simulation.InputMode.Toggle = 1 -> Sage.Simulation.InputMode
 Sage.Simulation.InputRebinds
 Sage.Simulation.InputRebinds.ActionsFor(Sage.Simulation.InputContext context, Sage.Simulation.InputBinding! input) -> System.Collections.Generic.IReadOnlyList<string!>!
 Sage.Simulation.InputRebinds.ActionsIn(Sage.Simulation.InputContext context) -> System.Collections.Generic.IReadOnlyList<Sage.Simulation.ActionInfo!>!
@@ -80,17 +84,21 @@ Sage.Simulation.InputRebinds.Bindings(Sage.Simulation.InputContext context, stri
 Sage.Simulation.InputRebinds.CancelCapture() -> void
 Sage.Simulation.InputRebinds.CaptureAction.get -> string!
 Sage.Simulation.InputRebinds.CaptureContext.get -> Sage.Simulation.InputContext
+Sage.Simulation.InputRebinds.CaptureIsAxis2D.get -> bool
+Sage.Simulation.InputRebinds.CaptureStep.get -> int
 Sage.Simulation.InputRebinds.Capturing.get -> bool
 Sage.Simulation.InputRebinds.ContextsInUse.get -> System.Collections.Generic.IEnumerable<Sage.Simulation.InputContext>!
 Sage.Simulation.InputRebinds.FilePath.get -> string?
 Sage.Simulation.InputRebinds.IsOverridden(Sage.Simulation.InputContext context, string! action) -> bool
 Sage.Simulation.InputRebinds.LastResult.get -> Sage.Simulation.RebindResult
+Sage.Simulation.InputRebinds.ModeOf(Sage.Simulation.InputContext context, string! action) -> Sage.Simulation.InputMode
 Sage.Simulation.InputRebinds.Offer(Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
 Sage.Simulation.InputRebinds.Pending.get -> Sage.Simulation.PendingRebind?
 Sage.Simulation.InputRebinds.Rebind(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputBinding! input, bool replaceConflicts = false) -> Sage.Simulation.RebindResult
 Sage.Simulation.InputRebinds.Reset(Sage.Simulation.InputContext? context = null, string? action = null) -> Sage.Simulation.RebindResult
 Sage.Simulation.InputRebinds.Resolve(bool replace) -> Sage.Simulation.RebindResult
 Sage.Simulation.InputRebinds.ResultVersion.get -> int
+Sage.Simulation.InputRebinds.SetMode(Sage.Simulation.InputContext context, string! action, Sage.Simulation.InputMode mode) -> Sage.Simulation.RebindResult
 Sage.Simulation.InputRebinds.TakeFresh() -> bool
 Sage.Simulation.InputRebinds.Unbind(Sage.Simulation.InputContext context, string? action, Sage.Simulation.InputBinding! input) -> Sage.Simulation.RebindResult
 Sage.Simulation.InputRebinds.Validator.get -> System.Func<Sage.Simulation.ActionInfo!, Sage.Simulation.InputBinding!, string?>?
@@ -157,6 +165,8 @@ Sage.Simulation.MouseCaptureTracker
 Sage.Simulation.MouseCaptureTracker.Captured.get -> bool
 Sage.Simulation.MouseCaptureTracker.MouseCaptureTracker() -> void
 Sage.Simulation.MouseCaptureTracker.Step(bool want, int x, int y, int centreX, int centreY) -> Sage.Simulation.MouseCaptureFrame
+Sage.Simulation.PadAssignment.Auto.get -> bool
+Sage.Simulation.PadAssignment.Auto.set -> void
 Sage.Simulation.PadFamily
 Sage.Simulation.PadFamily.PlayStation = 1 -> Sage.Simulation.PadFamily
 Sage.Simulation.PadFamily.Xbox = 0 -> Sage.Simulation.PadFamily

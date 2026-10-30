@@ -71,9 +71,14 @@ public sealed class InputActions
         ParseCurve();
         for (int p = 0; p < _others.Length; p++) _others[p] = new PadState(devices, p);
         _joyRumble = cvars.Register("joy_rumble", 1f, CVarFlags.Archive, "Strength of controller rumble, 0 (off) to 1.", 0f, 1f);
-        _joyPlayers = cvars.Register("joy_players", 1, CVarFlags.None, "How many local players have a pad (1-4): the pads are handed out in order, and a pad that is unplugged and replugged returns to its player.", 1, 4);
-        _joyPlayers.Changed += _ => _devices.Pads.Players = _joyPlayers.Value;
-        _devices.Pads.Players = _joyPlayers.Value;
+        _joyPlayers = cvars.Register("joy_players", 0, CVarFlags.None, "How many local players have a pad (1-4), or 0 for as many as are plugged in: the pads are handed out in order, and a pad that is unplugged and replugged returns to its player.", 0, 4);
+        void SetPlayers()
+        {
+            _devices.Pads.Auto = _joyPlayers.Value == 0;
+            if (_joyPlayers.Value > 0) _devices.Pads.Players = _joyPlayers.Value;
+        }
+        _joyPlayers.Changed += _ => SetPlayers();
+        SetPlayers();
         cvars.RegisterCommand("pad_list", CVarFlags.None, "Show which pad drives which player.", _ =>
         {
             for (int pad = 0; pad < PadAssignment.MaxPads; pad++)
@@ -277,7 +282,8 @@ public sealed class InputActions
     // Capture-next-input (the controls screen, #328): while the rebinds are waiting for a press, the first
     // new key, mouse button or pad button is offered to them. Escape, the left mouse button and the pad's
     // B, Back and Start are not offered: they are how a player cancels or clicks the screen's own buttons.
-    // The frame a capture begins is skipped, so the click that began it is not what it captures.
+    // The frame a capture begins is skipped, so the click that began it is not what it captures. A two-axis
+    // action takes a stick pushed most of the way too; never the mouse, which moved to click Rebind.
     private static readonly Keys[] AllKeys = (Keys[])Enum.GetValues(typeof(Keys));
     private static readonly Buttons[] PadButtons =
     {
@@ -295,6 +301,12 @@ public sealed class InputActions
                 _rebinds.Offer(new InputBinding { Key = key.ToString() });
                 return;
             }
+        if (_rebinds.CaptureIsAxis2D)
+        {
+            const float Pushed = 0.7f;
+            if (_devices.Gamepad.LeftStick.Length() > Pushed) { _rebinds.Offer(new InputBinding { Gamepad = "LeftStick" }); return; }
+            if (_devices.Gamepad.RightStick.Length() > Pushed) { _rebinds.Offer(new InputBinding { Gamepad = "RightStick" }); return; }
+        }
         var mouse = _devices.Mouse;
         foreach (var button in new[] { MouseButton.RIGHT, MouseButton.MIDDLE })
             if (mouse.IsButtonPressed(button))

@@ -99,6 +99,10 @@ internal sealed class ActionMapper
     private Vector2[] _axis = Array.Empty<Vector2>();
     private ActionMask _heldBits, _pressedBits, _releasedBits;
 
+    // Actions in Toggle mode (#607) by index, and whether each is on: a press flips it.
+    private readonly HashSet<int> _toggles = new();
+    private bool[] _latched = Array.Empty<bool>();
+
     // `joy_deadzone` and `joy_curve` (issue #331): a floor under every binding's own dead zone, and the exponent of the
     // response curve on sticks. 0 and 1 leave a binding exactly as it was written.
     public float JoyDeadzone { get; set; }
@@ -107,7 +111,7 @@ internal sealed class ActionMapper
     // The other local players (issue #331): player 1.. read their own pad against the gameplay context's pad bindings.
     private sealed class PlayerFrame
     {
-        public bool[] RawHeld = Array.Empty<bool>(), WasRawHeld = Array.Empty<bool>(), Held = Array.Empty<bool>();
+        public bool[] RawHeld = Array.Empty<bool>(), WasRawHeld = Array.Empty<bool>(), Held = Array.Empty<bool>(), Latched = Array.Empty<bool>();
         public Vector2[] Axis = Array.Empty<Vector2>();
         public ActionMask HeldBits, PressedBits, ReleasedBits;
     }
@@ -136,6 +140,7 @@ internal sealed class ActionMapper
         if (f.Held.Length != n)
         {
             Array.Resize(ref f.Held, n); Array.Resize(ref f.RawHeld, n); Array.Resize(ref f.WasRawHeld, n); Array.Resize(ref f.Axis, n);
+            Array.Resize(ref f.Latched, n);
         }
         Array.Copy(f.RawHeld, f.WasRawHeld, n);
         Array.Clear(f.Held); Array.Clear(f.RawHeld); Array.Clear(f.Axis);
@@ -160,18 +165,7 @@ internal sealed class ActionMapper
         }
         script?.Apply(p, dt, _registry, f.Held, f.RawHeld, f.Axis);
 
-        f.HeldBits = f.PressedBits = f.ReleasedBits = default;
-        var all = _registry.All;
-        for (int a = 0; a < all.Count; a++)
-        {
-            var info = all[a];
-            if (info.Kind != ActionKind.Button) continue;
-            int i = info.Id.Index;
-            bool swallowed = f.RawHeld[i] && !f.Held[i];
-            if (InputEdges.Held(f.RawHeld[i], swallowed)) f.HeldBits = f.HeldBits.With(info.Id);
-            if (InputEdges.Pressed(f.RawHeld[i], f.WasRawHeld[i], swallowed)) f.PressedBits = f.PressedBits.With(info.Id);
-            if (InputEdges.Released(f.RawHeld[i], f.WasRawHeld[i])) f.ReleasedBits = f.ReleasedBits.With(info.Id);
-        }
+        Masks(f.RawHeld, f.WasRawHeld, f.Held, f.Latched, out f.HeldBits, out f.PressedBits, out f.ReleasedBits);
     }
 
     public ActionMapper(ActionRegistry registry, IInputVocabulary vocabulary)
@@ -195,12 +189,14 @@ internal sealed class ActionMapper
     public int BindingCount(InputContext context) => _bindings[(int)context].Count;
 
     // ---- Queries (this frame) ----
-    public bool Held(ActionId a) => a.IsValid && a.Index < _held.Length && _held[a.Index];
+    public bool Held(ActionId a) =>
+        a.IsValid && a.Index < _held.Length && (_toggles.Contains(a.Index) ? _latched[a.Index] : _held[a.Index]);
     public bool Pressed(ActionId a) =>
-        a.IsValid && a.Index < _held.Length &&
-        InputEdges.Pressed(_rawHeld[a.Index], _wasRawHeld[a.Index], _rawHeld[a.Index] && !_held[a.Index]);
+        a.IsValid && a.Index < _held.Length && (_toggles.Contains(a.Index) ? _pressedBits.Has(a) :
+        InputEdges.Pressed(_rawHeld[a.Index], _wasRawHeld[a.Index], _rawHeld[a.Index] && !_held[a.Index]));
     public bool Released(ActionId a) =>
-        a.IsValid && a.Index < _held.Length && InputEdges.Released(_rawHeld[a.Index], _wasRawHeld[a.Index]);
+        a.IsValid && a.Index < _held.Length && (_toggles.Contains(a.Index) ? _releasedBits.Has(a) :
+        InputEdges.Released(_rawHeld[a.Index], _wasRawHeld[a.Index]));
     public float Axis(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index].X : 0f;
     public Vector2 Axis2(ActionId a) => a.IsValid && a.Index < _axis.Length ? _axis[a.Index] : Vector2.Zero;
 
@@ -260,9 +256,11 @@ internal sealed class ActionMapper
     }
 
     // The button masks, from the raw and held state (after any scripted input).
-    public void Finish()
+    public void Finish() => Masks(_rawHeld, _wasRawHeld, _held, _latched, out _heldBits, out _pressedBits, out _releasedBits);
+
+    private void Masks(bool[] raw, bool[] wasRaw, bool[] heard, bool[] latched, out ActionMask held, out ActionMask pressed, out ActionMask released)
     {
-        _heldBits = _pressedBits = _releasedBits = default;
+        held = pressed = released = default;
         var all = _registry.All;
         for (int a = 0; a < all.Count; a++)   // for, not foreach: no enumerator allocation per frame
         {
@@ -271,10 +269,20 @@ internal sealed class ActionMapper
             int i = info.Id.Index;
             // Swallowed: the devices say it is down but something above this took it, so it is not held *and* the
             // press it began must not surface later (`InputEdges`).
-            bool swallowed = _rawHeld[i] && !_held[i];
-            if (InputEdges.Held(_rawHeld[i], swallowed)) _heldBits = _heldBits.With(info.Id);
-            if (InputEdges.Pressed(_rawHeld[i], _wasRawHeld[i], swallowed)) _pressedBits = _pressedBits.With(info.Id);
-            if (InputEdges.Released(_rawHeld[i], _wasRawHeld[i])) _releasedBits = _releasedBits.With(info.Id);
+            bool swallowed = raw[i] && !heard[i];
+            bool press = InputEdges.Pressed(raw[i], wasRaw[i], swallowed);
+            if (_toggles.Contains(i))
+            {
+                // The press flips it, and that is its only edge: the finger coming off does nothing.
+                if (press) latched[i] = !latched[i];
+                if (latched[i]) held = held.With(info.Id);
+                if (press && latched[i]) pressed = pressed.With(info.Id);
+                if (press && !latched[i]) released = released.With(info.Id);
+                continue;
+            }
+            if (InputEdges.Held(raw[i], swallowed)) held = held.With(info.Id);
+            if (press) pressed = pressed.With(info.Id);
+            if (InputEdges.Released(raw[i], wasRaw[i])) released = released.With(info.Id);
         }
     }
 
@@ -378,6 +386,7 @@ internal sealed class ActionMapper
         Array.Resize(ref _rawHeld, n);
         Array.Resize(ref _wasRawHeld, n);
         Array.Resize(ref _axis, n);
+        Array.Resize(ref _latched, n);
     }
 
     // ---- Bindings from records ----
@@ -406,12 +415,37 @@ internal sealed class ActionMapper
             }
         }
         WarnConflicts();
+        BuildModes(records);
         Log.Info(LogCat.Input, $"Input: {count} bindings in {_bindings.Count(l => l.Count > 0)} contexts" + (errors > 0 ? $" ({errors} invalid, see above)" : ""));
     }
 
     public void Clear()
     {
         foreach (var list in _bindings) list.Clear();
+    }
+
+    // Which actions toggle: what the game's maps say, then the player's. Every toggle starts off again.
+    private void BuildModes(RecordStore records)
+    {
+        _toggles.Clear();
+        Array.Clear(_latched);
+        foreach (var frame in _frames) Array.Clear(frame.Latched);
+        foreach (bool player in new[] { false, true })
+            foreach (var id in records.Ids("input_map"))
+            {
+                if ((id.Namespace == UserInputMount.Namespace) != player || !records.TryGet(id, out InputMapRecord map)) continue;
+                foreach (var (name, mode) in map.Modes)
+                {
+                    if (!_registry.TryGet(name, out var action) || action.Kind != ActionKind.Button) continue;
+                    SetMode(action, mode);
+                }
+            }
+    }
+
+    internal void SetMode(ActionInfo action, InputMode mode)
+    {
+        if (mode == InputMode.Toggle) _toggles.Add(action.Id.Index);
+        else _toggles.Remove(action.Id.Index);
     }
 
     // Compiles one binding into a context. False (and the reason) when it is malformed or cannot drive the action.
@@ -478,13 +512,7 @@ internal sealed class ActionMapper
         else
         {
             b.Source = Source.Composite;
-            string[] keys = desc.Composite!.ToUpperInvariant() switch
-            {
-                "WASD" => new[] { "W", "S", "A", "D" },
-                "ARROWS" => new[] { "Up", "Down", "Left", "Right" },
-                _ => Array.Empty<string>(),
-            };
-            if (keys.Length == 0) { error = $"unknown composite '{desc.Composite}' (WASD, Arrows)"; return null; }
+            if (InputBinding.CompositeKeys(desc.Composite!) is not { } keys) { error = $"unknown composite '{desc.Composite}' (WASD, Arrows, or four keys)"; return null; }
             b.Composite = new int[4];
             for (int k = 0; k < 4; k++)
                 if (!vocab.TryKey(keys[k], out b.Composite[k])) { error = $"composite {desc.Composite}: the device has no key '{keys[k]}'"; return null; }

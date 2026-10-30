@@ -218,6 +218,9 @@ public sealed class CommandLatch
 // Who gets input (08 §3.3), highest priority first.
 public enum InputContext { Editor, Console, UI, Gameplay }
 
+// How a button action follows its input: down while held, or flipped by each press (#607).
+public enum InputMode { Hold, Toggle }
+
 // One binding of an action (08 §4). Exactly one of Key / Mouse / Gamepad / Composite is set.
 public sealed class InputBinding
 {
@@ -225,7 +228,7 @@ public sealed class InputBinding
     public string? Mouse;       // Left, Right, Middle, Delta, Wheel
     public string? Gamepad;     // A, B, X, Y, Start, Back, LeftShoulder, RightShoulder, LeftTrigger, RightTrigger,
                                 // LeftStick, RightStick, LeftStickButton, RightStickButton, DPadUp/Down/Left/Right
-    public string? Composite;   // "WASD", "Arrows" (Axis2D)
+    public string? Composite;   // "WASD", "Arrows", or four keys "E,D,S,F": up, down, left, right (Axis2D)
     public float Scale = 1f;
     public float Deadzone = 0.2f; // sticks and triggers
     public bool Invert;           // flips Y for Axis2D, the value for Axis1D
@@ -271,14 +274,21 @@ public sealed class InputBinding
         else if (Gamepad != null) yield return "pad:" + Gamepad.ToLowerInvariant();
         else if (Composite != null)
         {
-            string[] keys = Composite.ToUpperInvariant() switch
-            {
-                "WASD" => new[] { "w", "a", "s", "d" },
-                "ARROWS" => new[] { "up", "down", "left", "right" },
-                _ => new[] { "composite:" + Composite.ToLowerInvariant() },
-            };
-            foreach (string key in keys) yield return keys.Length == 1 ? key : "key:" + key;
+            if (CompositeKeys(Composite) is not { } keys) yield return "composite:" + Composite.ToLowerInvariant();
+            else foreach (string key in keys) yield return "key:" + key.ToLowerInvariant();
         }
+    }
+
+    // A composite's keys: up, down, left, right. Null when it names none.
+    internal static string[]? CompositeKeys(string composite)
+    {
+        switch (composite.ToUpperInvariant())
+        {
+            case "WASD": return new[] { "W", "S", "A", "D" };
+            case "ARROWS": return new[] { "Up", "Down", "Left", "Right" };
+        }
+        string[] keys = composite.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return keys.Length == 4 ? keys : null;
     }
 
     // The same device input (a binding's scale or dead zone do not make it another).
@@ -312,4 +322,7 @@ public sealed class InputMapRecord
 {
     public InputContext Context = InputContext.Gameplay;
     public Dictionary<string, List<InputBinding>> Actions = new(StringComparer.OrdinalIgnoreCase);
+
+    [Property(Tooltip = "Button actions that do not follow their input as held: Toggle flips with each press. The player's own choice wins")]
+    public Dictionary<string, InputMode> Modes = new(StringComparer.OrdinalIgnoreCase);
 }

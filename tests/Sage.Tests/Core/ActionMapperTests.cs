@@ -133,6 +133,58 @@ public class ActionMapperTests
 
     // ---- Context masking ----
 
+    // Toggle (#607): each press flips it, the finger coming off does nothing, and a press something above
+    // swallowed flips nothing. Its edges are the flips, in the masks and the queries alike.
+    [Xunit.Fact]
+    public void AToggleFlipsOnEachPressAndIgnoresTheRelease()
+    {
+        Bind(InputContext.Gameplay, _attack, new InputBinding { Key = "E" });
+        Bind(InputContext.UI, _use, new InputBinding { Key = "E" });
+        _map.SetMode(_attack, InputMode.Toggle);
+
+        _dev.Down.Add(E);
+        Tick();
+        Assert.True(_map.Held(_attack.Id));
+        Assert.True(_map.Pressed(_attack.Id));
+        Assert.True(_map.PressedMask.Has(_attack.Id));
+
+        _dev.Down.Remove(E);
+        Tick();
+        Assert.True(_map.Held(_attack.Id));                // off the key, still on
+        Assert.False(_map.Released(_attack.Id));
+        Assert.True(_map.HeldMask.Has(_attack.Id));
+
+        _map.SetActive(InputContext.UI, true);             // a press a screen took flips nothing
+        _dev.Down.Add(E);
+        Tick();
+        _dev.Down.Remove(E);
+        Tick();
+        _map.SetActive(InputContext.UI, false);
+        Tick();
+        Assert.True(_map.Held(_attack.Id));
+
+        _dev.Down.Add(E);
+        Tick();
+        Assert.False(_map.Held(_attack.Id));               // the next press turns it off
+        Assert.True(_map.Released(_attack.Id));
+        Assert.True(_map.ReleasedMask.Has(_attack.Id));
+        Assert.False(_map.Pressed(_attack.Id));
+    }
+
+    // Four keys of the player's own make a composite (#607), in the order up, down, left, right.
+    [Xunit.Fact]
+    public void FourKeysMakeAComposite()
+    {
+        Bind(InputContext.Gameplay, _move, new InputBinding { Composite = "E,Space,A,W" });
+        _dev.Down.Add(E);
+        _dev.Down.Add(W);
+        Tick();
+        Assert.Equal(new Vector2(1f, 1f), _map.Axis2(_move.Id));   // up, and right
+
+        Assert.Contains("unknown composite", ActionMapper.Validate(new Vocab(), _move, new InputBinding { Composite = "E,Space" }));
+        Assert.True(new InputBinding { Composite = "E,Space,A,W" }.Overlaps(new InputBinding { Key = "e" }));
+    }
+
     [Xunit.Fact]
     public void ADisplacedContextDoesNotHearWhatAHigherOneBinds()
     {

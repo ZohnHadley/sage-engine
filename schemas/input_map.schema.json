@@ -104,6 +104,17 @@
         }
       }
     },
+    "modes": {
+      "description": "Button actions that do not follow their input as held: Toggle flips with each press. The player's own choice wins. (Dictionary<string, InputMode>)",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "Hold",
+          "Toggle"
+        ]
+      }
+    },
     "replace": {
       "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
       "type": "boolean"

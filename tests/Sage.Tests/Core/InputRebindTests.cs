@@ -230,7 +230,8 @@ public class InputRebindTests
         var rebinds = app.Engine.Rebinds;
 
         Assert.False(rebinds.Capturing);
-        Assert.False(rebinds.BeginCapture(InputContext.Gameplay, "Move"));   // an axis is not one press
+        Assert.True(rebinds.BeginCapture(InputContext.Gameplay, "Move"));    // an axis too, since #607
+        rebinds.CancelCapture();
         Assert.False(rebinds.BeginCapture(InputContext.Gameplay, "Nonesuch"));
         Assert.True(rebinds.BeginCapture(InputContext.Gameplay, "Use"));
         Assert.True(rebinds.Capturing);
