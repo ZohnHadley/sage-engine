@@ -618,7 +618,7 @@ entry inside an object; an entry that takes no settings can be written as its ba
 | `ability_delivery` | an ability's `delivery` (its `targeting` still names one) | `self`, `touch`, `touch_area`, `area`, `projectile` |
 | `hit_delivery` | an attack's `delivery` (empty: `sweep`) | `sweep` (a swing: `reach`, `radius`, `arcDegrees`), `ray` (hitscan to `range`, `pellets` rays), `projectile` (a carrier, the `projectile` prefab, flying `range` at `projectileSpeed`, falling at `projectileGravity`, through `projectilePierce` targets) |
 | `effect_execution` (key `execution`) | an effect's `executions` | `knockback`, `teleport`, `summon`, `dispel`, `damage` (`amount`, `damageType`: a poison or a burn that goes through resistances and credits its source, issue #390) |
-| `item_use` (key `use`) | an item's `uses`, run in order by `world.UseItem` and `use_item` | `consume`, `read`, `cast`, `repair` (`amount`, `upTo`, `slot`; issue #382) |
+| `item_use` (key `use`) | an item's `uses`, run in order by `world.UseItem` and `use_item` | `consume`, `read`, `cast`, `repair` (`amount`, `upTo`, `slot`; issue #382; aimed at a stack by `world.UseItemOn` or by putting the kit down on it in the kit's bag, #603) |
 | `ai_condition` | an `ai_schedule`'s `interrupts`, an `ai_profile`'s `rules` | `SeeEnemy`, `EnemyInMeleeRange`, `NoEnemy`, `in_routine`, `HearNoise`, `Suspicious`, … (the fourteen the AI plugin senses; the factions plugin adds `target_wanted` and `target_outlaw`) |
 | `ai_schedule_selector` | an `ai_profile`'s `selector` | `default` (the engine's choice), `rules`, `utility` (issue #387) |
 | `ai_measure` | a utility consideration's `measure` (issue #387) | `health`, `target_distance`, `noise_loudness`, `squad_size`, `squad_engaged` |

@@ -163,7 +163,7 @@ attempt agree. Log category `Console` carries the panels printed by `spells` and
 
 ## 10. Open work
 
-**Milestone 9, RPG progression and economy (epic #376)** is done (2026-10-07): #377 to #384. Left in the kit from it: the item grid does not show an item's condition (#382), and `rpg:perks` has no key of its own.
+**Milestone 9, RPG progression and economy (epic #376)** is done (2026-10-07): #377 to #384. Left in the kit from it: the item grid did not show an item's condition (since #603 a worn item's square draws a meter, and a repair kit put down on a stack mends it), and `rpg:perks` has no key of its own (since #600 it is P).
 
 **Milestone 6, game UI** — #342, #344, #346, #349 and #354 are built (2026-10-06). Left in the kit from them:
 the Sandbox has no chest; the HUD's Use prompt does not say "Loot" or
