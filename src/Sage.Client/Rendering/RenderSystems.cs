@@ -514,7 +514,7 @@ internal sealed class RenderPassExtract : ISystem
 // Extract: the frame's point lights, camera-relative like everything else (06 §3.9).
 //
 // No culling here: a hundred lamps in a level is a list of a hundred structs, and the work that matters is
-// per *draw*, which the renderer's `LightGrid` (issue #314) cuts down to the lamps that reach the draw's cell.
+// per *draw*, which the renderer's `LightGrid` (issue #314) cuts down to the lamps that reach the draw's cells.
 // Each lamp is sampled as it is this frame (`LightRules.Sample`): its flicker pattern at the world's
 // simulated seconds, and a spot light's cone along the entity's forward.
 [System("sage.client.extract.lights", Phase.Extract, After = new[] { "sage.client.extract.camera" })]

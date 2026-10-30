@@ -144,17 +144,40 @@ public readonly record struct LightSample(Vector3 Position, Vector3 Colour, floa
         return 1f - Math.Clamp(Spot.W - Vector3.Dot(from, new Vector3(Spot.X, Spot.Y, Spot.Z)), 0f, 1f);
     }
 
+    // The cone's strength toward the part of a sphere nearest its axis: the angle to the centre, less the
+    // angle the sphere fills as seen from the light (#634).
+    private float ConeAt(Vector3 at, float radius)
+    {
+        if (radius <= 0f || Spot == Vector4.Zero) return ConeAt(at);
+        var from = at - Position;
+        float distance = from.Length();
+        if (distance <= radius) return 1f;   // the light is inside the sphere
+
+        var axis = new Vector3(Spot.X, Spot.Y, Spot.Z);
+        float s = axis.Length();
+        float cosCentre = Vector3.Dot(from, axis) / (distance * s);
+        float sinSphere = radius / distance, cosSphere = MathF.Sqrt(1f - sinSphere * sinSphere);
+        if (cosCentre >= cosSphere) return 1f;   // the axis goes through the sphere
+
+        float sinCentre = MathF.Sqrt(MathF.Max(1f - cosCentre * cosCentre, 0f));
+        return 1f - Math.Clamp(Spot.W - s * (cosCentre * cosSphere + sinCentre * sinSphere), 0f, 1f);
+    }
+
     // How much this light matters at a point. Distance alone is the wrong measure — a bright lamp four
     // metres away beats a candle at two — so it is the falloff, which is what the shader will compute;
     // and a spot light matters only inside its cone.
-    public float InfluenceAt(Vector3 at)
+    public float InfluenceAt(Vector3 at) => InfluenceAt(at, 0f);
+
+    // The same for a sphere, measured at its nearest point: a draw's origin says little about where its
+    // triangles are, and a terrain chunk's is its sector's corner (#634).
+    internal float InfluenceAt(Vector3 at, float radius)
     {
         if (Range <= 0f) return 0f;
-        float distance = Vector3.Distance(Position, at);
+        float distance = MathF.Max(Vector3.Distance(Position, at) - radius, 0f);
         if (distance >= Range) return 0f;
 
         float falloff = 1f - distance / Range;
-        return falloff * falloff * MathF.Max(MathF.Max(Colour.X, Colour.Y), Colour.Z) * ConeAt(at);
+        return falloff * falloff * MathF.Max(MathF.Max(Colour.X, Colour.Y), Colour.Z) * ConeAt(at, radius);
     }
 }
 
@@ -168,7 +191,12 @@ public static class LightRules
     // This is a *decision* — which of a hundred lamps a wall is lit by — so it lives here rather than in
     // the renderer, and is tested headlessly. A selection sort, because picking four out of a handful is
     // what this is for and an allocation-free pass beats a clever data structure at that size (02 §4.6).
-    public static int Nearest(ReadOnlySpan<LightSample> lights, Vector3 at, Span<LightSample> result)
+    public static int Nearest(ReadOnlySpan<LightSample> lights, Vector3 at, Span<LightSample> result) =>
+        Nearest(lights, at, 0f, result);
+
+    // The same for a sphere round `at`. Lamps over a big mesh all score full, so a tie goes to the one
+    // nearer the centre: the choice must not follow the order lights arrived in.
+    internal static int Nearest(ReadOnlySpan<LightSample> lights, Vector3 at, float radius, Span<LightSample> result)
     {
         int wanted = Math.Min(result.Length, PerObject);
         if (wanted == 0) return 0;
@@ -178,12 +206,13 @@ public static class LightRules
 
         foreach (var light in lights)
         {
-            float score = light.InfluenceAt(at);
+            float score = light.InfluenceAt(at, radius);
             if (score <= 0f) continue;                    // out of range: not dim, absent
 
             // Where it belongs among the ones kept so far.
             int place = found;
-            while (place > 0 && influence[place - 1] < score) place--;
+            while (place > 0 && (influence[place - 1] < score || (influence[place - 1] == score &&
+                   Vector3.DistanceSquared(light.Position, at) < Vector3.DistanceSquared(result[place - 1].Position, at)))) place--;
             if (place >= wanted) continue;
 
             for (int i = Math.Min(found, wanted - 1); i > place; i--)

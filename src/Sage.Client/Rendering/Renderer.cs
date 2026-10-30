@@ -1290,10 +1290,9 @@ public sealed partial class Renderer : IDisposable
             for (int k = from; k < to; k++)
             {
                 ref var item = ref s.Items[s.Order[k]];
-                // Which lamps light this one (06 §3.9). The item's world matrix is camera-relative, so its
-                // translation is where it is relative to the camera — the same frame the view's lights are in.
+                // Which lamps light this one (06 §3.9).
                 var grid = Lightmapped(item, Materials.Get(item.Material)) ? _dynamicGrid : lights;
-                int lit = grid.Nearest(LitAt(item), _lights);
+                int lit = LampsOf(grid, item, _lights);
                 DrawItem(s, item, view, _lights.AsSpan(0, lit), wire, ref stats);
             }
             return;
@@ -1309,7 +1308,7 @@ public sealed partial class Renderer : IDisposable
             var chosen = _itemLights.AsSpan(i * LightRules.PerObject, LightRules.PerObject);
             var m = Materials.Get(item.Material);
             bool lightmapped = Lightmapped(item, m);
-            int lit = _itemLightCounts[i] = (lightmapped ? _dynamicGrid : lights).Nearest(LitAt(item), chosen);
+            int lit = _itemLightCounts[i] = LampsOf(lightmapped ? _dynamicGrid : lights, item, chosen);
             if (i > 0)
             {
                 ref var previous = ref s.Items[s.Order[from + i - 1]];
@@ -1331,8 +1330,14 @@ public sealed partial class Renderer : IDisposable
         }
     }
 
-    // Where an item is lit from: its world matrix's translation, camera-relative like the view's lights.
-    private static System.Numerics.Vector3 LitAt(in RenderItem item) => new(item.World.M41, item.World.M42, item.World.M43);
+    // The lamps that reach an item's world bounding sphere, not its origin, which can be far from its triangles
+    // (#634). The item's world matrix is camera-relative, the same frame the view's lights are in.
+    private int LampsOf(LightGrid grid, in RenderItem item, Span<LightSample> chosen)
+    {
+        var bounds = Mesh(item.Mesh).Parts[item.Part].Bounds;
+        var centre = Vector3.Transform(bounds.Center, item.World);
+        return grid.Nearest(new System.Numerics.Vector3(centre.X, centre.Y, centre.Z), bounds.Radius * MeshExtract.MaxScale(item.World), chosen);
+    }
 
     private void DrawItem(RenderSnapshot s, in RenderItem item, in RenderView view, ReadOnlySpan<LightSample> chosen, bool wire, ref RenderStats stats)
     {

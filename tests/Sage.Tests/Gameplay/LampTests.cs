@@ -283,6 +283,33 @@ public class LampTests
         }
     }
 
+    // And for a draw's bounding sphere, whose cells overlap each light's: a prop on a cell's edge, a wall,
+    // a building, and a terrain chunk wider than the grid looks at (#634).
+    [Fact]
+    public void TheGridChoosesWhatTheFullListChoosesForASphere()
+    {
+        Span<LightSample> expected = stackalloc LightSample[LightRules.PerObject];
+        Span<LightSample> actual = stackalloc LightSample[LightRules.PerObject];
+        float[] radii = { 0.5f, 4f, 12f, 128f };
+        foreach (int count in new[] { 3, 300 })
+        {
+            var lights = Town(count, seed: count);
+            var grid = new LightGrid();
+            grid.Build(lights);
+
+            var random = new Random(11);
+            for (int p = 0; p < 2000; p++)
+            {
+                var at = new Vector3(random.NextSingle() * 240 - 120, random.NextSingle() * 12 - 1, random.NextSingle() * 240 - 120);
+                float radius = radii[p % radii.Length];
+                int e = LightRules.Nearest(lights, at, radius, expected);
+                int a = grid.Nearest(at, radius, actual);
+                Assert.Equal(e, a);
+                for (int i = 0; i < e; i++) Assert.Equal(expected[i], actual[i]);
+            }
+        }
+    }
+
     // And a grid of three hundred lamps keeps far fewer than three hundred per cell: a draw in the middle
     // of a town looks at the handful near it.
     [Fact]
@@ -313,7 +340,7 @@ public class LightGridAllocationTests
         void Frame()
         {
             grid.Build(lights);
-            for (int i = 0; i < 100; i++) grid.Nearest(new Vector3(i, 2, i), chosen);
+            for (int i = 0; i < 100; i++) grid.Nearest(new Vector3(i, 2, i), i % 8, chosen);
         }
         Frame();   // warm up
 

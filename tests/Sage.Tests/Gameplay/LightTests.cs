@@ -74,6 +74,57 @@ public class LightTests
         Assert.Equal(0, LightRules.Nearest(stackalloc LightSample[] { Lamp(100) }, Vector3.Zero, chosen));
     }
 
+    // A draw is lit by what reaches its bounding sphere: a big mesh's origin can be far from its triangles,
+    // as a terrain chunk's is (#634).
+    [Fact]
+    public void ALampOverABigMeshIsChosenHoweverFarItsOriginIs()
+    {
+        var chunk = new Vector3(100, 0, 100);
+        const float radius = 128f;
+        var lamp = new LightSample(chunk + new Vector3(30, 2, 0), Vector3.One, 5f);
+        var origin = new Vector3(-28, 0, -28);
+        Span<LightSample> chosen = stackalloc LightSample[LightRules.PerObject];
+
+        Assert.Equal(0f, lamp.InfluenceAt(origin));
+        Assert.Equal(1, LightRules.Nearest(stackalloc LightSample[] { lamp }, chunk, radius, chosen));
+        Assert.Equal(lamp, chosen[0]);
+
+        // And a lamp whose reach stops short of the sphere is still absent.
+        var far = new LightSample(chunk + new Vector3(radius + 6f, 0, 0), Vector3.One, 5f);
+        Assert.Equal(0f, far.InfluenceAt(chunk, radius));
+        Assert.True(far.InfluenceAt(chunk, radius + 2f) > 0f);
+    }
+
+    [Fact]
+    public void ASpotAimedAtTheEdgeOfABigMeshIsChosen()
+    {
+        var chunk = new Vector3(100, 0, 0);
+        const float radius = 128f;
+        var lit = new LightSample(new Vector3(0, 4, 0), Vector3.One, 10f) { Spot = LightRules.Spot(-Vector3.UnitY, 25f, 0f) };
+        var slanted = new LightSample(new Vector3(100, 140, 0), Vector3.One, 20f) { Spot = LightRules.Spot(Vector3.UnitX, 15f, 0f) };
+
+        Assert.Equal(0f, lit.InfluenceAt(chunk));                   // its centre is outside the cone...
+        Assert.True(lit.InfluenceAt(chunk, radius) > 0f);           // ...the ground under the lamp is not
+        Assert.Equal(0f, slanted.InfluenceAt(chunk, radius));       // in range of the sphere, and aimed past it
+    }
+
+    [Fact]
+    public void LampsTiedOverABigMeshAreChosenWhateverOrderTheyArrivedIn()
+    {
+        // All six are inside the sphere, so all score the same, and only the nearest four can be drawn.
+        LightSample[] forwards = { Lamp(9), Lamp(1), Lamp(7), Lamp(3), Lamp(5), Lamp(2) };
+        var backwards = (LightSample[])forwards.Clone();
+        Array.Reverse(backwards);
+        Span<LightSample> first = stackalloc LightSample[LightRules.PerObject];
+        Span<LightSample> second = stackalloc LightSample[LightRules.PerObject];
+
+        LightRules.Nearest(forwards, Vector3.Zero, 50f, first);
+        LightRules.Nearest(backwards, Vector3.Zero, 50f, second);
+
+        Assert.Equal(new[] { 1f, 2f, 3f, 5f }, new[] { first[0].Position.X, first[1].Position.X, first[2].Position.X, first[3].Position.X });
+        Assert.True(first.SequenceEqual(second));
+    }
+
     [Fact]
     public void TheOrderIsTheSameWhateverOrderTheLightsArrivedIn()
     {

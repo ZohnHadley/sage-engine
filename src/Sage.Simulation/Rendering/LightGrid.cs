@@ -9,14 +9,15 @@ namespace Sage.Simulation;
 // `LightRules.Nearest` looks at every light for every draw: fine for a room's four lamps, not for a town's
 // hundred with a thousand draws under them. The grid cuts space into cubes of `CellSize` metres and lists
 // each light in every cell its range's bounding box touches; a draw then looks only at the lights listed in
-// the cell it stands in. That list holds every light that can reach the point (a light whose box misses
-// the cell cannot), and in the same order as the full list, so the answer is exactly `Nearest`'s over all
-// of them (test: TheGridChoosesWhatTheFullListChooses) — it is a cache, never a different decision.
+// the cells its bounding sphere touches. Those lists hold every light that can reach the sphere (a light
+// whose box misses them all cannot), taken in the full list's order, so the answer is exactly `Nearest`'s over
+// all of them (test: TheGridChoosesWhatTheFullListChooses) — it is a cache, never a different decision.
 //
 // Allocation-free once warm (02 §4.6): one sorted array of (cell, light) keys, grown when a frame needs
 // more, and searched by bisection. A light so large it would sit in more than `MaxCellsPerLight` cells
-// (a sun-sized floodlight) goes on a short list every lookup reads instead. With `Threshold` lights or
-// fewer there is no grid at all: a straight pass over a handful beats any lookup.
+// (a sun-sized floodlight) goes on a short list every lookup reads instead, and a draw that wide (a terrain
+// chunk) reads every light. With `Threshold` lights or fewer there is no grid at all: a straight pass over a
+// handful beats any lookup.
 internal sealed class LightGrid
 {
     public const float CellSize = 8f;
@@ -34,6 +35,7 @@ internal sealed class LightGrid
     private int _keyCount;
     private int[] _everywhere = new int[8];
     private int _everywhereCount;
+    private int[] _found = new int[32];
     private LightSample[] _candidates = new LightSample[32];
     private bool _gridded;
 
@@ -75,28 +77,43 @@ internal sealed class LightGrid
         Array.Sort(_keys, 0, _keyCount);   // by cell, then by light: each cell's lights in the list's order
     }
 
-    // The lights that matter most at `at`, strongest first, into `result`; returns how many. The same answer
-    // as `LightRules.Nearest` over everything `Build` was given.
-    public int Nearest(Vector3 at, Span<LightSample> result)
+    public int Nearest(Vector3 at, Span<LightSample> result) => Nearest(at, 0f, result);
+
+    // The lights that matter most to a sphere round `at`, strongest first, into `result`; returns how many.
+    // The same answer as `LightRules.Nearest` over everything `Build` was given.
+    public int Nearest(Vector3 at, float radius, Span<LightSample> result)
     {
-        if (!_gridded) return LightRules.Nearest(_lights.AsSpan(0, _count), at, result);
+        var lo = CellOf(at - new Vector3(radius));
+        var hi = CellOf(at + new Vector3(radius));
+        long cells = (long)(hi.X - lo.X + 1) * (hi.Y - lo.Y + 1) * (hi.Z - lo.Z + 1);
+        if (!_gridded || cells > MaxCellsPerLight) return LightRules.Nearest(_lights.AsSpan(0, _count), at, radius, result);
 
-        var cell = CellOf(at);
-        ulong key = Key(cell.X, cell.Y, cell.Z);
-        int start = LowerBound(key), end = LowerBound(key + (1UL << 16));
+        int found = 0;
+        for (int x = lo.X; x <= hi.X; x++)
+            for (int y = lo.Y; y <= hi.Y; y++)
+                for (int z = lo.Z; z <= hi.Z; z++)
+                {
+                    ulong key = Key(x, y, z);
+                    int start = LowerBound(key), end = LowerBound(key + (1UL << 16));
+                    Reserve(found + end - start);
+                    for (int k = start; k < end; k++) _found[found++] = (int)(_keys[k] & 0xFFFF);
+                }
+        Reserve(found + _everywhereCount);
+        Array.Copy(_everywhere, 0, _found, found, _everywhereCount);
+        found += _everywhereCount;
 
-        // This cell's lights merged with the everywhere list, both ascending: the full list's order.
-        int needed = end - start + _everywhereCount;
-        if (_candidates.Length < needed) _candidates = new LightSample[Math.Max(needed, _candidates.Length * 2)];
-        int n = 0, a = start, b = 0;
-        while (a < end || b < _everywhereCount)
-        {
-            int fromCell = a < end ? (int)(_keys[a] & 0xFFFF) : int.MaxValue;
-            int fromAll = b < _everywhereCount ? _everywhere[b] : int.MaxValue;
-            if (fromCell < fromAll) { _candidates[n++] = _lights[fromCell]; a++; }
-            else { _candidates[n++] = _lights[fromAll]; b++; }
-        }
-        return LightRules.Nearest(_candidates.AsSpan(0, n), at, result);
+        // In the full list's order, each light once: a light is listed in every cell it touches.
+        Array.Sort(_found, 0, found);
+        if (_candidates.Length < found) _candidates = new LightSample[Math.Max(found, _candidates.Length * 2)];
+        int n = 0;
+        for (int i = 0; i < found; i++)
+            if (i == 0 || _found[i] != _found[i - 1]) _candidates[n++] = _lights[_found[i]];
+        return LightRules.Nearest(_candidates.AsSpan(0, n), at, radius, result);
+    }
+
+    private void Reserve(int size)
+    {
+        if (_found.Length < size) Array.Resize(ref _found, Math.Max(size, _found.Length * 2));
     }
 
     private int LowerBound(ulong key)
