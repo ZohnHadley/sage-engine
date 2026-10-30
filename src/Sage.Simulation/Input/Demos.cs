@@ -20,9 +20,9 @@ namespace Sage.Simulation;
 // count, which a save does not keep and a system may read (a beat), is in the header and set on playback.
 //
 // **What it cannot make the same** is what a save does not carry and the simulation reads anyway: runtime
-// entity ids (spawn order), state a system keeps only in memory, and anything written at frame rate (a
-// camera rig's transform). Recorded from launch (`+record`), those match too; later in a session they
-// may not, and the hash check at the end is what says so.
+// entity ids (spawn order) and state a system keeps only in memory. A tick must read neither, and nothing
+// written at frame rate. The physics space's own history is one that remains: contacts and query ties can
+// land a millionth of a metre apart, with parallel systems or in another session, and the hash check says so.
 //
 // **Same build, same game, same mods**, or it is refused: a demo is a list of button bits and stick values,
 // and the same bits mean other actions, other code and other content in another build. The header says
@@ -368,7 +368,23 @@ internal static class WorldHash
     public static ulong Of(World world)
     {
         var engine = world.Engine ?? throw new InvalidOperationException($"World '{world.Name}' has no engine to save it");
-        return Of(engine.Saves.StateOf(world));
+        return Of(Comparable(engine.Saves.StateOf(world)));
+    }
+
+    // The saved state less what differs with nothing having happened differently (#605): a camera rig's
+    // transform, written at frame rate from the pawn, says when the last frame fell; and an entity spawned at
+    // run time has a random id.
+    private static string Comparable(string state)
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(state)!;
+        foreach (var entity in root["entities"]?.AsArray() ?? new System.Text.Json.Nodes.JsonArray())
+        {
+            if (entity == null) continue;
+            if (entity["tags"]?.AsArray().Any(t => t?.GetValue<string>() == "sage:player_camera") == true)
+                entity["components"]?.AsObject().Remove("sage:transform");
+            if (entity["source"] == null) entity.AsObject().Remove("id");
+        }
+        return root.ToJsonString();
     }
 
     public static ulong Of(string state)

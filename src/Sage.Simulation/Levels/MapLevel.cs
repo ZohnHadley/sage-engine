@@ -447,8 +447,11 @@ internal static class MapLoader
             if (!world.Resources.TryGet<Terrain>(out var terrain) || terrain == null) return false;
             var absolute = world.Origin().ToAbsolute(position);
             if (terrain.Sector(Terrain.SectorOf(absolute.X, absolute.Z)) == null) return false;
-            position.Y = terrain.HeightAt(position.X, position.Z) + level.At.Y;
-            if (level.FlattenTerrain && level.Brushes.Count > 0)
+            var key = (level.Source, absolute.X, absolute.Z);
+            bool first = !terrain.LevelGround.TryGetValue(key, out float ground);
+            if (first) terrain.LevelGround[key] = ground = terrain.HeightAt(position.X, position.Z);
+            position.Y = ground + level.At.Y;
+            if (first && level.FlattenTerrain && level.Brushes.Count > 0)
             {
                 // The ground under the brushes, level with the bottom of the lowest (#591).
                 Vector3 min = new(float.MaxValue), max = new(float.MinValue);
