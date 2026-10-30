@@ -315,6 +315,15 @@ internal static class PostChainPlan
 // `Aces`, `BloomWeight` and the exposure are these, line for line.
 internal static class PostCurves
 {
+    // How much of the night tint falls on a pixel whose brightest channel is `brightest` (#653): all of it on what
+    // is dim, none on what shines, so a fire keeps its colour. The brightest channel, because a flame's luma is
+    // low for how bright it looks. `post.fx`'s PSGrade repeats it.
+    public static float NightTint(float brightest)
+    {
+        float t = Math.Clamp((brightest - 0.35f) / 0.45f, 0f, 1f);
+        return 1f - t * t * (3f - 2f * t);
+    }
+
     // The ACES filmic curve (Narkowicz's fit of the RRT+ODT): 0 stays 0, mid grey (0.18) lands near 0.27,
     // it rises monotonically and saturates at 1 a few stops above white.
     public static float Aces(float x)

@@ -115,6 +115,18 @@ public class PostHdrTests
 
     // The tonemap: ACES (Narkowicz's fit), what post.fx's `Aces` is. 0 stays black, mid grey lands near
     // 0.27, it rises all the way, and saturates a few stops above white; exposure is in stops.
+    // The night tint falls on what is dim and not on what shines (#653): a fire keeps its colour at night.
+    [Fact]
+    public void TheNightTintLeavesWhatShines()
+    {
+        Assert.Equal(1f, PostCurves.NightTint(0f));
+        Assert.Equal(1f, PostCurves.NightTint(0.35f));
+        Assert.Equal(0f, PostCurves.NightTint(0.8f));
+        Assert.Equal(0f, PostCurves.NightTint(1f));
+        for (float x = 0f; x < 1f; x += 0.01f)
+            Assert.True(PostCurves.NightTint(x + 0.01f) <= PostCurves.NightTint(x));
+    }
+
     [Fact]
     public void TheTonemapCurve_IsMonotonic_AndMapsBlackGreyAndWhite()
     {

@@ -176,7 +176,9 @@ float4 PSGrade(VSOutput input) : COLOR0
 {
     float3 c = tex2D(SourceSampler, input.UV).rgb;
     c = c * exp2(Exposure);
-    c = lerp(c, Luma(c) * NightColor, saturate(Night * NightStrength));
+    // PostCurves.NightTint: the tint is what dim light loses; what shines keeps its colour.
+    float shines = saturate((max(c.r, max(c.g, c.b)) - 0.35) / 0.45);
+    c = lerp(c, Luma(c) * NightColor, saturate(Night * NightStrength) * (1 - shines * shines * (3 - 2 * shines)));
     float grey = Luma(c);
     c = lerp(float3(grey, grey, grey), c, Saturation);
     c = (c - 0.5) * Contrast + 0.5;
