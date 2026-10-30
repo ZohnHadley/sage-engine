@@ -37,6 +37,9 @@ internal static class WetnessRules
     // The puddle mask tiles every this many metres (lit.fx and terrain.fx: PUDDLE_TILE) and is this many texels
     // a side.
     public const float MaskTile = 16f;
+    // Where the puddles repeat (#656): the mask read twice, the second turned a quarter at 3/8 the scale, meet again
+    // only here. The camera's offset into them wraps at this, a whole number of tiles of both.
+    public const float MaskRepeat = 128f;
     public const int MaskSize = 64;
 
     // One tick of the world's wetness.
@@ -75,7 +78,8 @@ internal static class WetnessRules
         float facing = Saturate((normalY - WallFacing) / (FullFacing - WallFacing));
         float wet = Saturate(wetness) * facing * open;
         float flat = Saturate((normalY - FlatStart) / (FlatFull - FlatStart));
-        float puddle = Saturate((mask - (1f - PuddleLevel(Saturate(wetness)))) * Sharpness) * flat * open;
+        // Twice `open`: a part-open yard, as a lightmap's sky term says, still has its puddles (#656).
+        float puddle = Saturate((mask - (1f - PuddleLevel(Saturate(wetness)))) * Sharpness) * flat * Saturate(open * 2f);
         return (wet, puddle);
     }
 
@@ -91,8 +95,16 @@ internal static class PuddleMask
 
     public static byte[] Pixels => _pixels ??= Make(WetnessRules.MaskSize);
 
-    // The mask at world (x, z), as the shader's linear, wrapping sample of it reads.
+    // The puddles at world (x, z), as common.fxh's `Wetting` reads them: two samples of the mask, the second turned
+    // and scaled so the 16 m tile does not show (#656), stretched back to their range.
     public static float At(float x, float z)
+    {
+        float m = (Sample(x, z) + Sample(z * 0.375f, -x * 0.375f) - 1f) * 0.75f + 0.5f;
+        return m < 0f ? 0f : m > 1f ? 1f : m;
+    }
+
+    // The mask at world (x, z), as the shader's linear, wrapping sample of it reads.
+    private static float Sample(float x, float z)
     {
         var pixels = Pixels;
         int n = WetnessRules.MaskSize;

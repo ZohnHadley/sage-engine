@@ -166,7 +166,7 @@ internal sealed class EffectBinding
             // the mask's tile, so camera-relative xz plus it is where on the tiling mask a pixel is. The viewmodel
             // (a depth-only view over the main one) is never wet.
             bool wet = !view.DepthOnly;
-            float tile = WetnessRules.MaskTile;
+            float tile = WetnessRules.MaskRepeat;
             WetParams.SetValue(new Vector4(wet ? env.Wetness : 0f, wet ? env.PuddleLevel : 0f,
                                            Wrap(view.CameraPosition.X, tile), Wrap(view.CameraPosition.Z, tile)));
             PuddleMask?.SetValue(puddleMask);
