@@ -111,6 +111,7 @@ public sealed class HudView : IViewModel
 
         Messages.Clear();
         ReadMessages(world);
+        if (world.Resources.TryGet<UiScreenStack>(out var stack) && stack != null) stack.ShowMessages = false;   // this HUD draws them
         if (!HasPlayer) { HasPrompt = HasViewHint = HasAmmo = HasHand = false; return; }
         ReadHand(world, player, screenOpen, rig);
 

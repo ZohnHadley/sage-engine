@@ -3,6 +3,7 @@ const Sage.UI.InputPrompts.GlyphTablePrefix = "@input." -> string!
 const Sage.UI.InputPrompts.Placeholder = "action:" -> string!
 const Sage.UI.UiModule.CrosshairCVar = "ui_crosshair" -> string!
 override Sage.UI.Box.ChildClip.get -> Sage.Simulation.Rect
+override Sage.UI.MessageBox.TypeName.get -> string!
 Sage.UI.Box.ClipChildren.get -> bool
 Sage.UI.Box.ClipChildren.set -> void
 const Sage.UI.UiFogMask.MaxSize = 1024 -> int
@@ -79,6 +80,17 @@ Sage.UI.Localisation.Culture.get -> System.Globalization.CultureInfo!
 Sage.UI.Localisation.Direction.get -> Sage.UI.TextDirection
 Sage.UI.Localisation.Fonts.get -> System.Collections.Generic.IReadOnlyList<Sage.Core.AssetPath>!
 Sage.UI.Localisation.IsRightToLeft.get -> bool
+Sage.UI.MessageBox
+Sage.UI.MessageBox.BadStyle.get -> string?
+Sage.UI.MessageBox.BadStyle.set -> void
+Sage.UI.MessageBox.GoodStyle.get -> string?
+Sage.UI.MessageBox.GoodStyle.set -> void
+Sage.UI.MessageBox.InfoStyle.get -> string?
+Sage.UI.MessageBox.InfoStyle.set -> void
+Sage.UI.MessageBox.LineTextScale.get -> float
+Sage.UI.MessageBox.LineTextScale.set -> void
+Sage.UI.MessageBox.MessageBox(Sage.Simulation.MessageLog! log) -> void
+Sage.UI.MessageBox.Sync() -> void
 Sage.UI.MonospaceTextMeasure.Width(System.ReadOnlySpan<char> text, float scale) -> float
 Sage.UI.ScreenRecord.Sounds -> Sage.Core.RecordRef<Sage.UI.UiSoundsRecord!>
 Sage.UI.TextDirection
@@ -439,6 +451,9 @@ Sage.UI.UiScreenStack.DialogTextStyle.set -> void
 Sage.UI.UiScreenStack.DialogTitleStyle.get -> string?
 Sage.UI.UiScreenStack.DialogTitleStyle.set -> void
 Sage.UI.UiScreenStack.Message(string! title, string! message, System.Action? closed = null, string! ok = "OK") -> Sage.UI.UiDialog!
+Sage.UI.UiScreenStack.MessageLayer.get -> Sage.UI.UiLayer?
+Sage.UI.UiScreenStack.ShowMessages.get -> bool
+Sage.UI.UiScreenStack.ShowMessages.set -> void
 Sage.UI.UiScreenStack.SubtitleLayer.get -> Sage.UI.UiLayer?
 Sage.UI.UiScreenStack.Subtitles.get -> Sage.UI.Subtitles?
 Sage.UI.UiScreenStack.Subtitles.set -> void
