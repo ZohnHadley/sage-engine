@@ -192,6 +192,48 @@ public class QuickSaveTests
         Assert.Equal("autosave4", saves.NextAutosaveSlot());
     }
 
+    // A menu reads the slots while the writer replaces them. On Windows a header open in the reader stopped
+    // the writer deleting the old folder, and the save was lost; every save must land.
+    [Xunit.Fact]
+    public void AMenuReadingTheSlotsDoesNotLoseASaveReplacingOne()
+    {
+        using var app = Boot();
+        var saves = app.Engine.Saves;
+        using var log = new CaptureSink();
+        for (int i = 1; i <= 300; i++)
+        {
+            Count(app.World).Value = i;
+            saves.Autosave();
+            for (int read = 0; read < 3; read++)
+            {
+                saves.Rescan();
+                _ = saves.Slots;
+            }
+        }
+        saves.WaitForWrites();
+        Assert.DoesNotContain(log.Entries, e => e.Message.Contains("failed", StringComparison.Ordinal));
+        Assert.Equal(3, saves.Slots.Count);
+    }
+
+    // Something else holding a file of the old save for a moment (Windows refuses the delete) is waited out.
+    [Xunit.Fact]
+    public void AFileHeldForAMomentDoesNotLoseTheSave()
+    {
+        using var app = Boot();
+        var saves = app.Engine.Saves;
+        Count(app.World).Value = 1;
+        Assert.True(saves.Save("held"));
+
+        Count(app.World).Value = 2;
+        var held = File.Open(Path.Combine(saves.Root!, "held", "header.json"), FileMode.Open, FileAccess.Read, FileShare.Read);
+        new System.Threading.Thread(() => { System.Threading.Thread.Sleep(30); held.Dispose(); }).Start();   // not the busy pool
+        Assert.True(saves.Save("held"));
+
+        Count(app.World).Value = 3;
+        Assert.True(saves.Load("held"));
+        Assert.Equal(2, Count(app.World).Value);
+    }
+
     // A scene change autosaves at the end of the next tick, in the new scene; the timer autosaves after
     // save_autosave_interval seconds of play since the last save; save_autosave 0 stops both.
     [Xunit.Fact]
