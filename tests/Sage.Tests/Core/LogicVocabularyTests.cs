@@ -45,6 +45,8 @@ public class LogicVocabularyTests
          { "type": "gate_rule", "id": "beam_to", "then": [ { "action": "teleport", "target": "boss", "position": [3, 4, 5], "yaw": 180 } ] },
          { "type": "gate_rule", "id": "bell", "then": [ { "play_sound": "bell", "at": "altar", "volume": 0.5 }, { "play_sound": "music" } ] },
          { "type": "gate_rule", "id": "rest", "then": [ { "pass_time": 8, "reason": "rest" } ] },
+         { "type": "gate_rule", "id": "evening", "then": [ { "set_hour": 21.5 }, { "set_sky": "dusk" }, { "set_weather": "storm", "seconds": 20 } ] },
+         { "type": "sky", "id": "dusk", "keys": [ { "hour": 12, "horizon": [0, 0, 0], "zenith": [0, 0, 0], "fog": [0, 0, 0], "sun": [1, 1, 1] } ] },
          { "type": "gate_rule", "id": "to_crypt", "then": [ { "load_scene": "crypt" } ] },
          { "type": "gate_rule", "id": "to_crypt_door", "then": [ { "load_scene": "crypt", "entry": "crypt_in" } ] },
          { "type": "gate_rule", "id": "checkpoint", "then": [ { "save_game": "checkpoint" } ] },
@@ -82,7 +84,7 @@ public class LogicVocabularyTests
         var owners = app.Engine.Vocabularies.All.SelectMany(v => v.Entries.Select(e => (v.Name, e.Id, e.Owner))).ToList();
         foreach (string id in new[] { "random", "entity_exists", "distance_to", "in_scene" })
             Assert.Contains(("condition", id, "sage.core"), owners);
-        foreach (string id in new[] { "spawn_prefab", "destroy", "teleport", "play_sound", "pass_time", "load_scene", "save_game", "log", "message", "wait" })
+        foreach (string id in new[] { "spawn_prefab", "destroy", "teleport", "play_sound", "pass_time", "set_hour", "set_sky", "set_weather", "load_scene", "save_game", "log", "message", "wait" })
             Assert.Contains(("action", id, "sage.core"), owners);
     }
 
@@ -219,6 +221,25 @@ public class LogicVocabularyTests
 
         Do(app, "checkpoint");
         Assert.Contains(app.Engine.Saves.Slots, s => s.Name == "checkpoint");
+    }
+
+    // `set_hour`, `set_sky` and `set_weather` (#650): what a cheat's `time_set`, `sky_set` and `weather` do, with
+    // no cheats on, so a wire or a dialogue can change the evening.
+    [Fact]
+    public void AnActionSetsTheHourTheSkyAndTheWeather()
+    {
+        using var app = App();
+        var world = app.World;
+        var clock = WorldClock.Of(world);
+
+        Do(app, "evening");
+
+        Assert.Equal(21.5, clock.Hour, 6);
+        Assert.Equal(Id("dusk"), clock.Sky);
+        var weather = world.Resources.Get<Weather>();
+        Assert.Equal(Id("storm"), weather.Target);
+        Assert.False(weather.Settled);
+        Assert.Equal(1f / 20f, weather.BlendRate, 5);
     }
 
     // `in_scene` and `load_scene`: to a scene's start, or to an entry as a door goes.
