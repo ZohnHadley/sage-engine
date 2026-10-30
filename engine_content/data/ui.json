@@ -10,6 +10,10 @@
   // layer. Light text on a near-opaque black plate, readable over any scene; a game patches them.
   { "type": "ui_style", "id": "subtitles", "textScale": 2, "textColour": "#FFFFFF", "background": "#000000D0", "padding": [8, 3] },
   { "type": "ui_style", "id": "captions", "base": "subtitles", "textColour": "#E8E8B0" },
+  // What `world.Say` and the `message` action said (#648): UiScreenStack's box, for a game with no HUD of its own.
+  { "type": "ui_style", "id": "messages", "textScale": 2, "textColour": "#FFFFFF", "background": "#00000080", "padding": [4, 1] },
+  { "type": "ui_style", "id": "messages_good", "base": "messages", "textColour": "#A8E890" },
+  { "type": "ui_style", "id": "messages_bad", "base": "messages", "textColour": "#F09088" },
 
   // The crosshair (issue #350): a HUD layer the client opens in every world, over Sage.UI's `ui_crosshair`
   // view-model (shown while a player's rig aims, `ui_crosshair` is on and no window is up). Two bars across

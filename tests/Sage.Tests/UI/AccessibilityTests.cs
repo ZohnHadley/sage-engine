@@ -389,6 +389,57 @@ public class AccessibilityTests
         Assert.False(box.Visible);
     }
 
+    // What the world says shows with no HUD of the game's (#648): the newest six, coloured by what they are about,
+    // never in the way of input; a game that draws them itself turns the box off. A long line wraps, as does a
+    // long subtitle.
+    [Fact]
+    public void TheWorldsMessagesShowWithNoHudAndLongLinesWrap()
+    {
+        using var app = Boot();
+        var stack = app.World.Resources.Get<UiScreenStack>();
+        stack.SetViewport(new Vector2(1280f, 720f));
+        stack.OpenSeconds = 0f;
+        stack.Update(UiInput.Wait(0f));
+        Assert.Null(stack.MessageLayer);                                               // nothing said, nothing made
+
+        for (int i = 0; i < 8; i++) app.World.Messages().Add($"line {i}");
+        app.World.Messages().Add("well done", MessageKind.Good);
+        app.World.Messages().Add("ouch", MessageKind.Bad);
+        stack.Update(UiInput.Wait(0f));
+
+        var box = Assert.IsType<MessageBox>(stack.MessageLayer!.Content);
+        Assert.True(box.Visible);
+        Assert.Equal(6, box.ChildCount);
+        Assert.Equal("ouch", ((Label)box.Child(5)).Text);                              // the newest last
+        Assert.Equal("sage:messages_bad", box.Child(5).Style);
+        Assert.Equal("sage:messages_good", box.Child(4).Style);
+        Assert.Equal("sage:messages", box.Child(0).Style);
+        Assert.Equal(2f, ((Label)box.Child(0)).TextScale);
+        Assert.False(stack.MessageLayer.Modal);
+        Assert.NotSame(stack.MessageLayer, stack.Top);
+
+        stack.ShowMessages = false;
+        stack.Update(UiInput.Wait(0f));
+        Assert.False(box.Visible);
+    }
+
+    [Fact]
+    public void ALongSubtitleWraps()
+    {
+        using var app = Boot();
+        var stack = app.World.Resources.Get<UiScreenStack>();
+        stack.SetViewport(new Vector2(1280f, 720f));
+        stack.OpenSeconds = 0f;
+        app.World.Resources.Get<Subtitles>().Say("Guard", new string('a', 20) + " " + string.Join(" ", System.Linq.Enumerable.Repeat("halt", 80)), 4f);
+        stack.Update(UiInput.Wait(0f));
+
+        var line = (Label)Assert.IsType<SubtitleBox>(stack.SubtitleLayer!.Content).Child(0);
+        stack.SubtitleLayer.Root.Layout();
+        Assert.True(line.Wrap);
+        Assert.InRange(line.Rect.Width, 1f, 760f);
+        Assert.True(line.Rect.Height > 30f, $"a line {line.Rect.Height} high did not wrap");
+    }
+
     // Menus play sounds while the world is paused or waits at the title: their captions still show, and
     // lines still run out on real time, so the subtitle reader never falls behind a paused world.
     [Fact]

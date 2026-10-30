@@ -344,6 +344,14 @@ public sealed class UiScreenStack
     private UiLayer? _subtitleLayer;
     private SubtitleBox? _subtitleBox;
 
+    // Whether the world's messages show in the engine's own box (#648). A game with a HUD that draws them sets it
+    // false. The layer is made when the first one comes, under the subtitles; never modal, never Top.
+    public bool ShowMessages { get; set; } = true;
+    public UiLayer? MessageLayer => _messageLayer;
+
+    private UiLayer? _messageLayer;
+    private MessageBox? _messageBox;
+
     // Something in any layer was confirmed or clicked.
     public event Action<UiLayer, Widget>? Activated;
 
@@ -536,6 +544,7 @@ public sealed class UiScreenStack
     public UiResult Update(in UiInput input)
     {
         float dt = MathF.Max(input.DeltaTime, 0f);
+        SyncMessages();
         SyncSubtitles();
         for (int i = _layers.Count - 1; i >= 0; i--)
         {
@@ -599,6 +608,27 @@ public sealed class UiScreenStack
         Release(layer);
         layer.Screen?.Close();
         if (layer == _subtitleLayer) { _subtitleLayer = null; _subtitleBox = null; }
+        if (layer == _messageLayer) { _messageLayer = null; _messageBox = null; }
+    }
+
+    private void SyncMessages()
+    {
+        if (!ShowMessages || _world == null)
+        {
+            if (_messageBox != null) _messageBox.Visible = false;
+            return;
+        }
+        var log = _world.Messages();
+        if (_messageBox == null)
+        {
+            if (log.Count == 0) return;
+            _messageBox = new MessageBox(log) { InfoStyle = "sage:messages", GoodStyle = "sage:messages_good", BadStyle = "sage:messages_bad" };
+            if (_styles != null) _messageBox.LineTextScale = _styles.Get(_messageBox.InfoStyle).TextScale;
+            _messageLayer = Add(_messageBox, null, modal: false);
+            _messageLayer.CloseOnBack = _messageLayer.CloseOnClickOutside = false;
+            if (_subtitleLayer != null && _layers.Remove(_subtitleLayer)) _layers.Add(_subtitleLayer);
+        }
+        _messageBox.Sync();
     }
 
     private void SyncSubtitles()

@@ -118,6 +118,7 @@ public sealed class Subtitles
 [Experimental(UiApi.Experimental, UrlFormat = UiApi.Url)]
 public sealed class SubtitleBox : Stack
 {
+    private const float MaxLineWidth = 720f;   // a long line wraps rather than running off the screen (#648)
     private readonly List<Label> _pool = new();
     private int _seen = -1;
 
@@ -153,7 +154,7 @@ public sealed class SubtitleBox : Stack
         _seen = Feed.Version;
         var lines = Feed.Lines;
         while (_pool.Count < lines.Count)
-            _pool.Add(new Label { HitTestable = false, TextAlign = Align.Center, HAlign = Align.Center });
+            _pool.Add(new Label { HitTestable = false, TextAlign = Align.Center, HAlign = Align.Center, Wrap = true, MaxWidth = MaxLineWidth });
         Clear();
         for (int i = 0; i < lines.Count; i++)
         {
@@ -167,6 +168,55 @@ public sealed class SubtitleBox : Stack
         }
         Visible = lines.Count > 0;
         return true;
+    }
+}
+
+// What `world.Say` and the `message` action said (#648), the newest few, at the bottom left: so a game with no
+// HUD of its own still shows them. A game that draws them itself turns it off (UiScreenStack.ShowMessages).
+public sealed class MessageBox : Stack
+{
+    private const int Shown = 6;
+    private const float MaxLineWidth = 560f;
+    private readonly MessageLog _log;
+    private readonly Label[] _lines = new Label[Shown];
+
+    public MessageBox(MessageLog log) : base(Orientation.Column)
+    {
+        _log = log ?? throw new ArgumentNullException(nameof(log));
+        Anchors = Anchors.BottomLeft;
+        Margin = new Thickness(16f, 0f, 0f, 96f);
+        Spacing = 2f;
+        HitTestable = false;
+        Visible = false;
+        for (int i = 0; i < Shown; i++) _lines[i] = new Label { HitTestable = false, Wrap = true, MaxWidth = MaxLineWidth };
+    }
+
+    public override string TypeName => "messages";
+
+    // The style ids a message is drawn in, by what it is about, and what their text is sized with.
+    public string? InfoStyle { get; set; }
+    public string? GoodStyle { get; set; }
+    public string? BadStyle { get; set; }
+    public float LineTextScale { get; set; } = 1f;
+
+    // Brings the lines up to the log; allocates nothing.
+    public void Sync()
+    {
+        var messages = _log.Messages;
+        int shown = Math.Min(messages.Length, Shown);
+        if (shown != ChildCount)
+        {
+            Clear();
+            for (int i = 0; i < shown; i++) Add(_lines[i]);
+        }
+        for (int i = 0; i < shown; i++)
+        {
+            ref readonly var message = ref messages[messages.Length - shown + i];
+            _lines[i].Text = message.Text;
+            _lines[i].TextScale = LineTextScale;
+            _lines[i].Style = message.Kind switch { MessageKind.Good => GoodStyle, MessageKind.Bad => BadStyle, _ => InfoStyle };
+        }
+        Visible = shown > 0;
     }
 }
 
