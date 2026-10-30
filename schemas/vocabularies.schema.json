@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, bark, change_standing, clear_bounty, close_screen, command, commit_crime, cue, destroy, equip, fail_quest, finish_quest, fire, give_item, grant_perk, hit_stop, join_faction, load_scene, log, message, music_intensity, open_screen, pass_time, pay_bounty, play_music, play_sound, promote, save_game, set_hour, set_sky, set_stage, set_tag, set_var, set_weather, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, bark, change_standing, clear_bounty, close_screen, command, commit_crime, cue, destroy, equip, fail_quest, finish_quest, fire, give_item, go_to_jail, grant_perk, hit_stop, join_faction, load_scene, log, message, music_intensity, open_screen, pass_time, pay_bounty, play_music, play_sound, promote, save_game, set_hour, set_sky, set_stage, set_tag, set_var, set_weather, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -205,6 +205,7 @@
         "FinishQuest",
         "Fire",
         "GiveItem",
+        "GoToJail",
         "GrantPerk",
         "HitStop",
         "JoinFaction",
@@ -248,6 +249,7 @@
         "finish_quest",
         "fire",
         "give_item",
+        "go_to_jail",
         "grant_perk",
         "hit_stop",
         "join_faction",
@@ -980,6 +982,47 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'give_item' (GiveItemAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "go_to_jail",
+                      "GoToJail"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: go_to_jail.",
+                    "enum": [
+                      "go_to_jail",
+                      "GoToJail"
+                    ]
+                  },
+                  "faction": {
+                    "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:faction"
+                      }
+                    ]
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'go_to_jail' (GoToJailAction)."
               }
             },
             {
@@ -4009,6 +4052,110 @@
           },
           "required": [
             "GiveItem"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "go_to_jail": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'go_to_jail' (GoToJailAction), in shorthand."
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "go_to_jail"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "GoToJail": {
+              "anyOf": [
+                {
+                  "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:faction"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "faction": {
+                      "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:faction"
+                        }
+                      ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'go_to_jail' (GoToJailAction), in shorthand."
+            },
+            "faction": {
+              "description": "The faction owed. Names a faction record. (RecordRef<FactionRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:faction"
+                }
+              ]
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "GoToJail"
           ],
           "additionalProperties": false
         },

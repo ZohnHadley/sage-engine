@@ -54,6 +54,14 @@ public sealed class FactionRecord
     // What killing one of its members does to the player's standing with it, and with its allies.
     public float KillCost = 20f;
 
+    // Its law (Crime.cs, #604): how fast what the player owes it is forgotten, and what going to jail means.
+    [Property(Min = 0, Tooltip = "Bounty it forgets per game day; 0: never")]
+    public float BountyDecay;
+    [Property(Tooltip = "The name of the entity a prisoner is put at; empty: they stay where they are")]
+    public string Jail = "";
+    [Property(Min = 0, Unit = "h", Tooltip = "Game hours in jail per unit of bounty")]
+    public float JailHoursPerBounty;
+
     // The faction a player-controlled entity belongs to when it has no `Faction` component of its own
     // is the game's to say: `playerFaction` in its gameplay_conventions (issue #26).
 }

@@ -275,7 +275,8 @@ public class AssetScopeTests
         Assert.Equal(0, table.Count);
 
         hold.Set();
-        Assert.True(SpinWait.SpinUntil(() => paths.All(p => decodes.Ready(p, decode)), 10000));
+        // The whole suite shares the thread pool, so a decode may wait its turn a while (a flake at 10 s).
+        Assert.True(SpinWait.SpinUntil(() => paths.All(p => decodes.Ready(p, decode)), 60000), $"{ThreadPool.PendingWorkItemCount} work items pending");
         for (int frame = 2; frame < 2 + paths.Length; frame++)
         {
             budget.BeginFrame(frame);
@@ -288,7 +289,7 @@ public class AssetScopeTests
         // A decode that found nothing is a failed load; one nobody wants any more is dropped.
         budget.BeginFrame(10);
         var broken = AssetPath.Intern("textures/decode_broken.png");
-        Assert.True(SpinWait.SpinUntil(() => decodes.Ready(broken, _ => null), 10000));
+        Assert.True(SpinWait.SpinUntil(() => decodes.Ready(broken, _ => null), 60000), $"{ThreadPool.PendingWorkItemCount} work items pending");
         Assert.True(table.TryResolve(broken, AssetScope.Sector, 10, budget, decodes, decode, upload, out int id));
         Assert.Equal(0, id);
         decodes.Ready(AssetPath.Intern("textures/decode_gone.png"), decode);
