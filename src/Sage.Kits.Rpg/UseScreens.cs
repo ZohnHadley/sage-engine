@@ -54,10 +54,12 @@ public sealed class UseScreenPart : IPrefabPart
 internal sealed class UseScreenSystem : ISystem
 {
     private readonly EventReader<Used> _used;
+    private readonly EventReader<Arrested> _arrested;
 
     public UseScreenSystem(World world)
     {
         _used = world.Events.Reader<Used>(this);
+        _arrested = world.Events.Reader<Arrested>(this);
     }
 
     public void Run(in SystemContext ctx)
@@ -66,6 +68,15 @@ internal sealed class UseScreenSystem : ISystem
         world.Resources.TryGet<UiScreenStack>(out var stack);
         world.Resources.TryGet<Conversation>(out var conversation);
         if (stack != null && conversation != null) KeepTogether(stack, conversation);
+
+        // A guard began it. With another window up the conversation waits: the guard will ask again.
+        if (_arrested.HasPending)
+            foreach (ref readonly var arrested in _arrested.Read())
+            {
+                if (stack == null) continue;
+                if (stack.IsOpen) conversation?.Stop();
+                else _dialogue = UiScreenActions.Open(world, RpgKitModule.DialogueScreen, arrested.Player, arrested.Guard);
+            }
 
         if (!_used.HasPending) return;
         foreach (ref readonly var used in _used.Read())

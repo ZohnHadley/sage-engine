@@ -19,15 +19,22 @@ namespace Sage.Gameplay;
 //   faction (a member, an ally, or a guard of its law). Unseen, the crime is still a `CrimeCommitted` fact
 //   with no witness, and costs nothing (`unwitnessed: true` makes one count anyway).
 // - **A bounty is owed to a faction** (the saved `Bounties`), the player's alone, like reputation. Paid
-//   (`pay_bounty`, in the currency named) or cleared (`clear_bounty`), it is gone.
+//   (`pay_bounty`, in the currency named) or cleared (`clear_bounty`), it is gone. A faction's `bountyDecay`
+//   forgets that much of it a game day.
 // - **A guard** (`"guard": { "law": "town", "tolerates": 0, "arrests": 100, "hears": 20 }`) treats a player
 //   whose bounty with its law is above `tolerates` as an enemy (Factions.Toward), so the AI it already has
 //   pursues them; a guard that saw the crime, or is within `hears` of the one who reported it, is set on the
 //   criminal at once. Its profile picks the response from the conditions `target_wanted` and `target_outlaw`
 //   (above `arrests`): chase and confront, or fight.
+// - **An arrest is a conversation** (#604): the `Arrest` task, at the end of a guard's confronting schedule,
+//   starts the guard's own dialogue with the player (`Arrested`, which the kit's screen opens on). What the
+//   thief may answer is content: `pay_bounty`, `go_to_jail`, or a `commit_crime` that makes them an outlaw.
+// - **Jail** (`{ "go_to_jail": "town" }`) takes what was stolen from that faction, puts the prisoner at its
+//   `jail`, serves `jailHoursPerBounty` for each unit owed (Time.Pass) and clears the bounty.
 // - **An owned place** (`"owned_place": { "size": [8, 4, 8], "faction": "town", "openFrom": 8, "openTo": 20 }`)
 //   is a box round the entity; a player inside it while it is shut who is not its owner or a member of its
-//   faction is trespassing, once a visit, when somebody sees it.
+//   faction is trespassing, once a visit, when somebody sees it. A container in it with no owner of its own
+//   is the place's (Containers.OwnerOf).
 
 // What the engine raises a crime record for.
 public enum CrimeKind
@@ -80,7 +87,19 @@ public sealed class Bounties
         public float Value { get; set; }
     }
 
+    // What was taken from a faction, seen or not: what jail confiscates.
+    public sealed class Goods
+    {
+        public RecordId Faction { get; set; }
+        public RecordId Item { get; set; }
+        public int Count { get; set; }
+    }
+
     public List<Owed> Entries { get; set; } = new();
+    public List<Goods> Stolen { get; set; } = new();
+
+    // The clock's Elapsed when decay last ran; 0: not yet.
+    public double DecayedAt { get; set; }
 
     public float Of(RecordId faction)
     {
@@ -94,6 +113,13 @@ public sealed class Bounties
         foreach (var entry in Entries)
             if (entry.Faction == faction) { entry.Value = value; return; }
         Entries.Add(new Owed { Faction = faction, Value = value });
+    }
+
+    internal void AddStolen(RecordId faction, RecordId item, int count)
+    {
+        foreach (var goods in Stolen)
+            if (goods.Faction == faction && goods.Item == item) { goods.Count += count; return; }
+        Stolen.Add(new Goods { Faction = faction, Item = item, Count = count });
     }
 }
 
@@ -157,6 +183,13 @@ public struct OwnedPlace : IComponent
     internal bool Reported;    // this visit's trespass has been seen (internal: never saved)
     internal float NextLook;   // sim time it next asks whether anyone sees the trespasser
 
+    // Whether `point` is in the box, for a place whose entity stands at `centre`.
+    internal readonly bool Covers(Vector3 centre, Vector3 point)
+    {
+        Vector3 half = Size * 0.5f, d = Vector3.Abs(point - centre);
+        return d.X <= half.X && d.Y <= half.Y && d.Z <= half.Z;
+    }
+
     public readonly bool IsOpen(double hour)
     {
         if (OpenFrom == OpenTo) return false;
@@ -206,8 +239,15 @@ public readonly record struct CrimeCommitted(Entity Criminal, RecordId Crime, Re
 [GameEvent]
 public readonly record struct BountyChanged(RecordId Faction, float Value, float Change);
 
+// A guard caught up with who it was after and began its conversation with them (the Arrest task).
+[GameEvent]
+public readonly record struct Arrested(Entity Guard, Entity Player);
+
 public static class Crime
 {
+    // The word Time.Pass is given for time served.
+    public const string JailReason = "jail";
+
     // How far and how wide a witness with no AI profile sees.
     private const float DefaultSight = 20f;
     private const float DefaultCone = 200f;
@@ -258,6 +298,68 @@ public static class Crime
         Log.Info(LogCat.Gameplay, $"{World.Describe(payer)} pays {price} {currency.Name} to clear the bounty with {faction}");
         why = "";
         return true;
+    }
+
+    // Serves what the prisoner owes a faction: what they stole from it is confiscated, they are put at its
+    // jail, the sentence passes and the bounty is cleared. False when there is nothing owed.
+    // shortcut: a jail in a sector not loaded is not found, and the sentence is served where they stand; use a
+    // saved position if a game's jail is ever out of the ring.
+    public static bool Jail(World world, Entity prisoner, RecordId faction)
+    {
+        float owed = BountyWith(world, faction);
+        if (owed <= 0f || !world.TryGet<Transform>(prisoner, out var at)) return false;
+        var bounties = world.Resources.Get<Bounties>();
+        world.Records().TryGet(faction, out FactionRecord record);
+
+        for (int i = bounties.Stolen.Count - 1; i >= 0; i--)
+        {
+            var goods = bounties.Stolen[i];
+            if (goods.Faction != faction) continue;
+            int held = Math.Min(goods.Count, world.CountOf(prisoner, goods.Item));
+            if (held > 0) world.Take(prisoner, goods.Item, held);
+            bounties.Stolen.RemoveAt(i);
+        }
+
+        if (!string.IsNullOrEmpty(record?.Jail))
+        {
+            var cell = world.FindByName(record.Jail);
+            if (!cell.IsNull && world.TryGet<Transform>(cell, out var place))
+            {
+                at.LocalPosition = place.LocalPosition;
+                world.Teleport(prisoner, at);
+                if (world.Has<CharacterController>(prisoner)) world.Get<CharacterController>(prisoner).Velocity = Vector3.Zero;
+            }
+            else Log.Warn(LogCat.Gameplay, $"{faction}'s jail '{record.Jail}' is not in the world; the sentence is served on the spot");
+        }
+
+        SetBounty(world, faction, 0f);
+        double hours = owed * MathF.Max(record?.JailHoursPerBounty ?? 0f, 0f);
+        if (hours > 0.0) Time.Pass(world, hours, JailReason);
+        Log.Info(LogCat.Gameplay, $"{World.Describe(prisoner)} serves {hours:0.#} h for {faction}");
+        world.Say($"You served {hours:0} hours", MessageKind.Info, 4f);
+        return true;
+    }
+
+    // Takes note of what a theft took, for jail to find. Seen or not: a thief caught later still has it.
+    internal static void NoteStolen(World world, in Stolen theft)
+    {
+        if (!theft.Thief.Tags.Has<PlayerControlled>() || !world.Resources.TryGet<Bounties>(out var bounties) || bounties == null) return;
+        var faction = !theft.Faction.IsEmpty ? theft.Faction : WrongedBy(world, theft.From);
+        if (!faction.IsEmpty) bounties.AddStolen(faction, theft.Item, theft.Count);
+    }
+
+    // Every game hour or more, each bounty loses its faction's `bountyDecay`, however the hours passed.
+    internal static void Decay(World world)
+    {
+        if (!world.Resources.TryGet<Bounties>(out var bounties) || bounties == null || bounties.Entries.Count == 0) return;
+        double now = WorldClock.Of(world).Elapsed, hours = now - bounties.DecayedAt;
+        if (bounties.DecayedAt <= 0.0 || hours < 0.0) { bounties.DecayedAt = now; return; }   // the first, or the clock was set back
+        if (hours < 1.0) return;
+        bounties.DecayedAt = now;
+        var records = world.Records();
+        foreach (var entry in bounties.Entries)
+            if (entry.Value > 0f && records.TryGet(entry.Faction, out FactionRecord faction) && faction.BountyDecay > 0f)
+                SetBounty(world, entry.Faction, entry.Value - faction.BountyDecay * (float)(hours / WorldClock.HoursPerDay));
     }
 
     // ---- who pursues whom ---------------------------------------------------------------------------
@@ -330,11 +432,7 @@ public static class Crime
     private static RecordId WrongedBy(World world, Entity victim)
     {
         if (victim.IsNull || !world.IsAlive(victim)) return default;
-        if (world.TryGet<ItemContainer>(victim, out var container))
-        {
-            if (!container.Faction.IsEmpty) return container.Faction;
-            return OwnerFaction(world, container.Owner);
-        }
+        if (Containers.OwnerOf(world, victim, out var keeper, out var keepers)) return !keepers.IsEmpty ? keepers : OwnerFaction(world, keeper);
         if (world.TryGet<OwnedPlace>(victim, out var place))
             return !place.Faction.IsEmpty ? place.Faction : OwnerFaction(world, place.Owner);
         var mine = Factions.FactionOf(world, victim);
@@ -527,6 +625,7 @@ internal sealed class CrimeSystem : ISystem
         if (_stolen.HasPending)
             foreach (ref readonly var theft in _stolen.Read())
             {
+                Crime.NoteStolen(world, theft);
                 var records = world.Records();
                 int value = records.TryGet(theft.Item, out ItemRecord item) ? item.Value * Math.Max(theft.Count, 1) : 0;
                 Crime.Commit(world, theft.Thief, CrimeKind.Theft, theft.From, theft.Faction, value);
@@ -550,6 +649,7 @@ internal sealed class CrimeSystem : ISystem
                     Crime.Commit(world, died.Killer, CrimeKind.Murder, died.Victim);
 
         Trespass(world, now);
+        Crime.Decay(world);
     }
 
     // Drops the beatings that are over, so the table holds only the last few seconds' victims.
@@ -582,16 +682,13 @@ internal sealed class CrimeSystem : ISystem
             {
                 ref var place = ref p[n];
                 Entity inside = default;
-                Vector3 half = place.Size * 0.5f, centre = t[n].LocalPosition;
+                Vector3 centre = t[n].LocalPosition;
                 foreach (var (players, playerEntities) in _players.Chunks)
                 {
                     var pt = players.Span;
                     for (int i = 0; i < pt.Length && inside.IsNull; i++)
-                    {
-                        var d = Vector3.Abs(pt[i].LocalPosition - centre);
-                        if (d.X <= half.X && d.Y <= half.Y && d.Z <= half.Z && !Belongs(world, playerEntities.EntityAt(i), in place))
+                        if (place.Covers(centre, pt[i].LocalPosition) && !Belongs(world, playerEntities.EntityAt(i), in place))
                             inside = playerEntities.EntityAt(i);
-                    }
                 }
                 if (inside.IsNull) { place.Reported = false; continue; }
                 if (place.Reported || now < place.NextLook) continue;
@@ -675,7 +772,20 @@ internal sealed class PayBountyAction : IAction
     }
 }
 
-// `{ "clear_bounty": "town" }`: the bounty is forgiven (served in jail, pardoned).
+// `{ "go_to_jail": "town" }`: the subject serves what it owes the faction (Crime.Jail).
+[Action("go_to_jail", Plugin = "sage.gameplay.factions")]
+internal sealed class GoToJailAction : IAction
+{
+    [EntryValue, Property(Tooltip = "The faction owed")]
+    public RecordRef<FactionRecord> Faction;
+
+    public void Run(in ActionContext c)
+    {
+        if (!Faction.IsEmpty) Crime.Jail(c.World, c.Subject, Faction.Id);
+    }
+}
+
+// `{ "clear_bounty": "town" }`: the bounty is forgiven (pardoned).
 [Action("clear_bounty", Plugin = "sage.gameplay.factions")]
 internal sealed class ClearBountyAction : IAction
 {
@@ -689,6 +799,21 @@ internal sealed class ClearBountyAction : IAction
 }
 
 #pragma warning restore CS0649
+
+// A guard that has reached who it is after begins its conversation with them. Nothing to say, or somebody
+// already talking, and it just goes on with its schedule.
+internal sealed class ArrestTask : IAITask
+{
+    public AITaskStatus Run(ref AITaskContext c)
+    {
+        c.Intent.Move = Vector2.Zero;
+        var target = c.State.Target;
+        if (!c.World.IsAlive(target) || !Crime.Pursues(c.World, c.Entity, target)) return AITaskStatus.Failed;
+        bool talking = c.World.Resources.TryGet<Conversation>(out var conversation) && conversation is { Running: true };
+        if (!talking && DialogueRules.Start(c.World, c.Entity, target)) c.World.Events.Send(new Arrested(c.Entity, target));
+        return AITaskStatus.Succeeded;
+    }
+}
 
 // What a guard's profile picks a response by: its target owes its law more than it tolerates (a schedule that
 // chases and confronts), or more than it would arrest for (one that fights).

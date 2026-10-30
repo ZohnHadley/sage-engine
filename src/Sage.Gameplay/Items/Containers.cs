@@ -99,12 +99,43 @@ public static class Containers
     public static bool IsLocked(World world, Entity container) =>
         world.TryGet<ItemContainer>(container, out var c) && c.Locked;
 
+    // Who a container belongs to: its own owner and faction, or those of the owned place it stands in (#604).
+    // False when it is nobody's. A body is a container but no part of the place it fell in.
+    public static bool OwnerOf(World world, Entity container, out string? owner, out RecordId faction)
+    {
+        owner = null;
+        faction = default;
+        if (!world.TryGet<ItemContainer>(container, out var c)) return false;
+        if (c.IsOwned)
+        {
+            owner = c.Owner;
+            faction = c.Faction;
+            return true;
+        }
+        var dead = world.Conventions().Dead;
+        if (!dead.IsEmpty && world.Has<GameplayTags>(container) && world.HasTag(container, dead.Id)) return false;
+        if (!world.TryGet<Transform>(container, out var at)) return false;
+        foreach (var (transforms, places, _) in world.Query<Transform, OwnedPlace>().Chunks)
+        {
+            var t = transforms.Span;
+            var p = places.Span;
+            for (int n = 0; n < p.Length; n++)
+            {
+                if (!p[n].Covers(t[n].LocalPosition, at.LocalPosition)) continue;
+                owner = p[n].Owner;
+                faction = p[n].Faction;
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Whether taking from it is theft for `taker`: it is owned, and not by them or their faction.
     public static bool IsTheft(World world, Entity taker, Entity container)
     {
-        if (!world.TryGet<ItemContainer>(container, out var c) || !c.IsOwned) return false;
-        if (!string.IsNullOrEmpty(c.Owner) && taker.Name == c.Owner) return false;
-        if (!c.Faction.IsEmpty && world.TryGet<Faction>(taker, out var faction) && faction.Id == c.Faction) return false;
+        if (!OwnerOf(world, container, out var owner, out var owners)) return false;
+        if (!string.IsNullOrEmpty(owner) && taker.Name == owner) return false;
+        if (!owners.IsEmpty && world.TryGet<Faction>(taker, out var faction) && faction.Id == owners) return false;
         return true;
     }
 
@@ -161,7 +192,8 @@ public static class Containers
         }
         if (!IsTheft(world, taker, container)) return;
         Log.Info(LogCat.Gameplay, $"{World.Describe(taker)} steals {count}x {item.Name} from {World.Describe(container)}");
-        world.Events.Send(new Stolen(taker, container, item, count) { Owner = c.Owner ?? "", Faction = c.Faction });
+        OwnerOf(world, container, out var owner, out var faction);
+        world.Events.Send(new Stolen(taker, container, item, count) { Owner = owner ?? "", Faction = faction });
     }
 
     private static double Now(World world) => WorldClock.Of(world).Elapsed;

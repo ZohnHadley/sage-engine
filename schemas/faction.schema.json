@@ -172,6 +172,23 @@
       "default": 20,
       "type": "number"
     },
+    "bountyDecay": {
+      "description": "Bounty it forgets per game day; 0: never. At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
+    "jail": {
+      "description": "The name of the entity a prisoner is put at; empty: they stay where they are. (string, default \"\")",
+      "default": "",
+      "type": "string"
+    },
+    "jailHoursPerBounty": {
+      "description": "Game hours in jail per unit of bounty. Unit: h. At least 0. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": 0
+    },
     "replace": {
       "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
       "type": "boolean"
