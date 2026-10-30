@@ -1,0 +1,13 @@
+// The yard (games/Showcase/tools/make_maps.py; regenerate rather than edit by hand)
+{
+"classname" "worldspawn"
+"message" "The yard"
+{
+( -256 -192 -10 ) ( -256 -191 -10 ) ( -256 -192 -9 ) stone 0 0 0 1 1
+( -256 -192 -10 ) ( -256 -192 -9 ) ( -255 -192 -10 ) stone 0 0 0 1 1
+( -256 -192 -10 ) ( -255 -192 -10 ) ( -256 -191 -10 ) stone 0 0 0 1 1
+( 256 192 0 ) ( 256 193 0 ) ( 257 192 0 ) stone 0 0 0 1 1
+( 256 192 0 ) ( 257 192 0 ) ( 256 192 1 ) stone 0 0 0 1 1
+( 256 192 0 ) ( 256 192 1 ) ( 256 193 0 ) stone 0 0 0 1 1
+}
+}

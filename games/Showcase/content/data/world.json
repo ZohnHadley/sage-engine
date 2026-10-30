@@ -1,0 +1,155 @@
+[
+  // The Showcase's world: the ground, the skies, the weather and the post chain. What stands on it is
+  // props.json; where it stands is scene.json. Coordinates in comments are metres from the scene's origin
+  // (the middle of sector 0,0: absolute 512, 0, 512), x east, z south.
+
+  // ---- the ground (docs/design/14; terrain splat layers, engine issue #307) ------------------------------
+  // Hills about 18 m up and down, one every 110 m: a flat strip through the hub, a slope down to the pond's
+  // basin in the south (its floor 12.7 m below the origin at (19, 58)) and a steep ridge in the south-west.
+  {
+    "type": "terrain", "id": "hills", "generator": "Hills", "seed": 521, "height": 0, "amplitude": 18, "wavelength": 110,
+    "material": "hills"
+  },
+  {
+    // Grass, sand and rock from West's textures (OpenGameArt, CC0). Grass everywhere; sand low down by the pond (below 9.5 m under the origin, blended over a metre and a
+    // half); bare rock painted over both where the ground is steeper than 14 degrees, faded in over 5. The
+    // detail texture is tiled finely over every layer so the ground close up is not a smear.
+    "type": "terrain_material", "id": "hills",
+    "layers": [
+      { "texture": "textures/grass.png", "tile": 5 },
+      { "texture": "textures/sand.png", "tile": 5, "maxHeight": -9.5, "heightBlend": 1.5 },
+      { "texture": "textures/rock.png", "tile": 9, "minSlope": 14, "slopeBlend": 5 }
+    ],
+    "detail": "textures/terrain_detail.png", "detailTile": 1.5, "detailStrength": 0.4
+  },
+
+  // ---- the brush levels (docs/design/15; tools/make_maps.py) ---------------------------------------------
+  // Absolute metres, each standing on the ground (`onTerrain`), the ground under its brushes laid level with
+  // its floor (`flattenTerrain`, the default). The hall and the court bake a lightmap at load: the sky each
+  // face sees, so the hall's inside is dark but for its lamps and the court's shelter stays dry in the rain.
+  { "type": "map", "id": "plaza", "file": "maps/plaza.map", "at": [522, 0, 474], "onTerrain": true },
+  { "type": "map", "id": "hall", "file": "maps/hall.map", "at": [564, 0, 474], "onTerrain": true, "lightmap": 4 },
+  { "type": "map", "id": "court", "file": "maps/court.map", "at": [552, 0, 517], "onTerrain": true, "lightmap": 2 },
+  { "type": "map", "id": "deck", "file": "maps/deck.map", "at": [482, 0, 522], "onTerrain": true },
+  { "type": "map", "id": "yard", "file": "maps/yard.map", "at": [534, 0, 496], "onTerrain": true },
+
+  // ---- the skies (docs/design/06 "As built (sky and fog)", "(sky extras)", issue #630) -------------------
+  // The procedural sky: a gradient by the hour, a moon whose phase follows the calendar, a cloud layer the
+  // weather's cloudCover thickens, stars that turn with the hour, and Exp² fog (soft near, closing in far).
+  // The moon and cloud pictures are the Sandbox's (OpenGameArt, CC0; THIRD_PARTY_NOTICES.md).
+  {
+    "type": "sky", "id": "day", "sunrise": 5.5, "sunset": 19.5, "lean": 0.35, "fogMode": "Exp2",
+    "moon": "textures/moon.png", "moonSize": 6, "clouds": "textures/clouds.png", "cloudScale": 1.2, "cloudSpeed": 0.08,
+    "hazeAbove": 0.04,
+    "keys": [
+      { "hour": 0,    "sun": [0, 0, 0],          "ambientSky": [0.09, 0.1, 0.17], "ambientGround": [0.025, 0.025, 0.035],
+        "horizon": [0.03, 0.035, 0.07], "zenith": [0.005, 0.01, 0.035], "fog": [0.02, 0.025, 0.045], "fogStart": 15, "fogEnd": 220, "shadow": 0 },
+      { "hour": 5.5,  "sun": [0.85, 0.45, 0.3],  "ambientSky": [0.22, 0.2, 0.26],  "ambientGround": [0.08, 0.07, 0.07],
+        "horizon": [0.8, 0.48, 0.38], "zenith": [0.25, 0.32, 0.55], "fog": [0.62, 0.5, 0.46], "fogStart": 25, "fogEnd": 320, "shadow": 0.6 },
+      { "hour": 8,    "sun": [0.95, 0.85, 0.7],  "ambientSky": [0.38, 0.4, 0.46],  "ambientGround": [0.18, 0.16, 0.13],
+        "horizon": [0.68, 0.76, 0.86], "zenith": [0.24, 0.43, 0.78], "fog": [0.66, 0.72, 0.8], "fogStart": 40, "fogEnd": 420, "shadow": 1 },
+      { "hour": 13,   "sun": [1.0, 0.95, 0.86],  "ambientSky": [0.42, 0.45, 0.52], "ambientGround": [0.2, 0.18, 0.15],
+        "horizon": [0.66, 0.76, 0.88], "zenith": [0.2, 0.42, 0.82], "fog": [0.66, 0.74, 0.84], "fogStart": 50, "fogEnd": 480, "shadow": 1 },
+      { "hour": 17,   "sun": [0.95, 0.78, 0.55], "ambientSky": [0.36, 0.36, 0.42], "ambientGround": [0.17, 0.14, 0.12],
+        "horizon": [0.74, 0.64, 0.52], "zenith": [0.26, 0.38, 0.66], "fog": [0.68, 0.62, 0.54], "fogStart": 40, "fogEnd": 400, "shadow": 0.95 },
+      { "hour": 19,   "sun": [0.95, 0.45, 0.2],  "ambientSky": [0.25, 0.19, 0.24], "ambientGround": [0.1, 0.07, 0.07],
+        "horizon": [0.9, 0.42, 0.24], "zenith": [0.2, 0.22, 0.42], "fog": [0.72, 0.4, 0.28], "fogStart": 30, "fogEnd": 320, "shadow": 0.8 },
+      { "hour": 20.5, "sun": [0.3, 0.12, 0.08],  "ambientSky": [0.09, 0.08, 0.15], "ambientGround": [0.03, 0.025, 0.035],
+        "horizon": [0.22, 0.12, 0.16], "zenith": [0.03, 0.04, 0.12], "fog": [0.16, 0.1, 0.12], "fogStart": 20, "fogEnd": 260, "shadow": 0.2 },
+      { "hour": 22,   "sun": [0, 0, 0],          "ambientSky": [0.09, 0.1, 0.17], "ambientGround": [0.025, 0.025, 0.035],
+        "horizon": [0.03, 0.035, 0.07], "zenith": [0.005, 0.01, 0.035], "fog": [0.02, 0.025, 0.045], "fogStart": 15, "fogEnd": 220, "shadow": 0 }
+    ]
+  },
+  {
+    // The same day under painted panoramas (issue #630): `sky_set showcase:painted`. The day picture and the
+    // night one are from Screaming Brain Studios' Cloudy Skyboxes (OpenGameArt, CC0); the night picture fades
+    // in as the stars come out, and each key tints the panorama (warm at dusk, dark at night). The clouds,
+    // sun, moon and stars are still drawn over it.
+    "type": "sky", "id": "painted", "base": "day",
+    "skybox": "textures/sky_day.png", "skyboxNight": "textures/sky_night.png", "clouds": "",
+    "keys": [
+      { "hour": 0,    "sun": [0, 0, 0],          "ambientSky": [0.09, 0.1, 0.17], "ambientGround": [0.025, 0.025, 0.035],
+        "horizon": [0.03, 0.035, 0.07], "zenith": [0.005, 0.01, 0.035], "fog": [0.02, 0.025, 0.045], "fogStart": 15, "fogEnd": 220, "shadow": 0,
+        "skyboxTint": [0.7, 0.7, 0.8] },
+      { "hour": 5.5,  "sun": [0.85, 0.45, 0.3],  "ambientSky": [0.22, 0.2, 0.26],  "ambientGround": [0.08, 0.07, 0.07],
+        "horizon": [0.8, 0.48, 0.38], "zenith": [0.25, 0.32, 0.55], "fog": [0.62, 0.5, 0.46], "fogStart": 25, "fogEnd": 320, "shadow": 0.6,
+        "skyboxTint": [0.95, 0.7, 0.6] },
+      { "hour": 8,    "sun": [0.95, 0.85, 0.7],  "ambientSky": [0.38, 0.4, 0.46],  "ambientGround": [0.18, 0.16, 0.13],
+        "horizon": [0.68, 0.76, 0.86], "zenith": [0.24, 0.43, 0.78], "fog": [0.66, 0.72, 0.8], "fogStart": 40, "fogEnd": 420, "shadow": 1,
+        "skyboxTint": [1, 1, 1] },
+      { "hour": 17,   "sun": [0.95, 0.78, 0.55], "ambientSky": [0.36, 0.36, 0.42], "ambientGround": [0.17, 0.14, 0.12],
+        "horizon": [0.74, 0.64, 0.52], "zenith": [0.26, 0.38, 0.66], "fog": [0.68, 0.62, 0.54], "fogStart": 40, "fogEnd": 400, "shadow": 0.95,
+        "skyboxTint": [1, 0.95, 0.88] },
+      { "hour": 19,   "sun": [0.95, 0.45, 0.2],  "ambientSky": [0.25, 0.19, 0.24], "ambientGround": [0.1, 0.07, 0.07],
+        "horizon": [0.9, 0.42, 0.24], "zenith": [0.2, 0.22, 0.42], "fog": [0.72, 0.4, 0.28], "fogStart": 30, "fogEnd": 320, "shadow": 0.8,
+        "skyboxTint": [1, 0.65, 0.45] },
+      { "hour": 21,   "sun": [0, 0, 0],          "ambientSky": [0.06, 0.06, 0.13], "ambientGround": [0.02, 0.02, 0.03],
+        "horizon": [0.05, 0.05, 0.1], "zenith": [0.01, 0.015, 0.04], "fog": [0.05, 0.05, 0.09], "fogStart": 15, "fogEnd": 220, "shadow": 0,
+        "skyboxTint": [0.7, 0.7, 0.8] }
+    ]
+  },
+  {
+    // Another world's evening: one panorama, red, all day (`sky_set showcase:alien`).
+    "type": "sky", "id": "alien", "base": "painted", "skybox": "textures/sky_red.png", "skyboxNight": ""
+  },
+  {
+    // The fog field's east half (scene.json): the day sky with linear fog, which the `fog` weather pulls in
+    // to a few tens of metres. The west half is the day sky's own Exp² fog under the same weather.
+    "type": "sky", "id": "linear", "base": "day", "fogMode": "Linear"
+  },
+
+  // ---- weather (docs/design/06 §3.13, "As built (weather under roofs, lightning...)", "(wet ground)") ----
+  // `weather <id> [seconds]` blends to one. Rain wets open ground in about twelve seconds and puddles gather
+  // on the flat past 40% wet; the sun dries it after. The court's shelter is a roof: the drops stop under it.
+  { "type": "weather", "id": "clear", "label": "clear", "cloudCover": 0.35 },
+  {
+    "type": "weather", "id": "rain", "label": "rain",
+    "cloudCover": 0.85, "particles": "raindrop", "rate": 1000, "volume": [26, 14, 26], "ceiling": 10, "wind": [-3, 0, 1.5],
+    "sunScale": 0.4, "ambientScale": 0.7, "fogTint": [0.55, 0.6, 0.62], "skyTint": [0.5, 0.55, 0.58],
+    "fogStartScale": 0.35, "fogEndScale": 0.4, "wetting": 0.08, "drying": 0
+  },
+  {
+    // Rain with lightning: flashes on the sky and the ambient, outdoors only (no thunder: the Showcase has no sound).
+    "type": "weather", "id": "storm", "label": "storm",
+    "cloudCover": 1.0, "particles": "raindrop", "rate": 1600, "volume": [26, 14, 26], "ceiling": 10, "wind": [-6, 0, 2.5],
+    "sunScale": 0.25, "ambientScale": 0.5, "fogTint": [0.42, 0.46, 0.5], "skyTint": [0.38, 0.42, 0.46],
+    "fogStartScale": 0.25, "fogEndScale": 0.3, "lightningRate": 8, "lightningFlash": 1.0, "wetting": 0.12, "drying": 0
+  },
+  {
+    // The fog field's: no rain, the light kept, the fog pulled in to a twentieth of where it was.
+    "type": "weather", "id": "fog", "label": "fog",
+    "cloudCover": 0.6, "sunScale": 0.75, "ambientScale": 1.0, "fogTint": [0.95, 0.97, 1.0], "skyTint": [0.85, 0.88, 0.9],
+    "fogStartScale": 0.02, "fogEndScale": 0.08
+  },
+  {
+    "type": "particle", "id": "raindrop",
+    "texture": "textures/particle.png", "material": "sage:particle_blend",
+    "maxParticles": 1800, "lifeMin": 0.85, "lifeMax": 1.15, "speedMin": 14, "speedMax": 18, "shape": "Box",
+    "gravity": -6, "drag": 0, "sizeStart": 0.07, "sizeEnd": 0.07, "colourStart": "#E4ECFFD0", "colourEnd": "#E4ECFF80"
+  },
+
+  // ---- the post chain (docs/design/06 "As built (post-processing)", "(HDR, bloom...)") ------------------
+  // The engine's grade and vignette, plus two of the Showcase's own: the depth hook's haze (it reads the
+  // scene's depth and thickens with distance) and a warm, slightly punchier grade over everything. All on
+  // with `r_post 1` (the hub turns it on, with `r_bloom 1`, `r_hdr 1` and `r_aa fxaa`; scene.json).
+  {
+    "type": "material", "id": "post_haze", "base": "sage:post_depth_haze",
+    "params": { "HazeColor": [0.62, 0.68, 0.76], "HazeStart": 60, "HazeDensity": 0.0015, "HazeSky": 0 }
+  },
+  { "type": "post_effect", "id": "haze", "material": "post_haze", "order": 50, "depth": true },
+  {
+    "type": "material", "id": "post_warm", "base": "sage:post_copy", "technique": "Grade",
+    "params": { "Contrast": 1.06, "Saturation": 1.1, "ColorFilter": [1.03, 1.0, 0.95], "Exposure": 0.05 }
+  },
+  { "type": "post_effect", "id": "warm", "material": "post_warm", "order": 150 },
+  // Bloom picks up the emissive things (the gallery's torus and tablet, the lamps, the crystals, the fire).
+  // The night tint at half strength: at full it greys a campfire's flames and its light.
+  { "type": "material", "id": "sage:post_copy", "patch": true, "params": { "BloomThreshold": 0.85, "BloomIntensity": 0.6, "NightStrength": 0.25 } },
+
+  // ---- physics: a layer only the player's body touches, for the zones' signs (docs/design/10 §3) ---------
+  {
+    "type": "physics_layers", "id": "sage:default", "patch": true,
+    "layers+": ["player_zone"],
+    "ignore": { "player_zone": ["default", "enemy", "projectile", "trigger", "debris", "player_zone"] }
+  }
+]
