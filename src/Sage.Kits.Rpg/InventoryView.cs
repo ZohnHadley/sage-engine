@@ -222,6 +222,11 @@ public abstract class ItemGridView : IViewModel
         int count = held.Count;
         string reason = "";
         bool moved;
+        if (to == from && to.ItemAt(x, y) is { } under && under != held && UseOn(world, held, under, out reason))
+        {
+            Message = reason;   // a repair kit put down on a worn item mends it, and stays where it was
+            return;
+        }
         if (to == from)
         {
             moved = to.Move(world, held, x, y, rotated);
@@ -230,6 +235,21 @@ public abstract class ItemGridView : IViewModel
         else moved = Transfer(world, held, to, x, y, rotated, out reason);
         Message = moved ? "" : reason;
         if (moved && to != from) Moved(world, item, count, from, to);
+    }
+
+    // A tool whose use takes aim (a repair kit, ItemUses.Aims) put down on another stack of the same bag is
+    // used on it (issue #603); false, for anything else, and the put-down is an ordinary move.
+    private static bool UseOn(World world, GridItem tool, GridItem target, out string reason)
+    {
+        reason = "";
+        if (!world.Records().TryGet(tool.Item, out ItemRecord record) || !ItemUses.Aims(record)) return false;
+        int at = target.Grid.StackOf(world, target);
+        if (at < 0) return false;
+        var text = RpgText.Of(world);
+        reason = world.UseItemOn(target.Grid.Owner, tool.Item, at, out string why)
+            ? text.Format("@rpg.grid.used_on", ("item", tool.Label), ("target", target.Label))
+            : text.Format("@rpg.grid.cannot_use_on", ("item", tool.Label), ("target", target.Label), ("why", why));
+        return true;
     }
 
     private void DropOnGround(World world, GridItem item, in UiBindContext context)

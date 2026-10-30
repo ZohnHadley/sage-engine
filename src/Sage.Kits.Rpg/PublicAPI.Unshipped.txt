@@ -400,3 +400,5 @@ Sage.Kits.Rpg.ShopView.IsMerchant.get -> bool
 Sage.Kits.Rpg.ShopView.KeepsBalance.get -> bool
 Sage.Kits.Rpg.ShopView.MerchantGold.get -> int
 Sage.Kits.Rpg.ShopView.Money.get -> int
+Sage.Kits.Rpg.GridCell.Meter.get -> float
+Sage.Kits.Rpg.GridItem.Condition.get -> float
