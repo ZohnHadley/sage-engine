@@ -15,7 +15,9 @@ namespace Sage.Gameplay;
 // `wearWhenStruck` each time its wearer is hurt (armour, a shield). Damage scales from full at
 // `fullDamageAt` down to `wornDamage` × at 0. At 0 it breaks: `Unequip` (it comes off and stays in the bag
 // until it is repaired), `Remove` (it is gone) or `Keep` (it stays in hand, at `wornDamage`; 0 = useless).
-// A repair is an item use (`repair`): a kit whose use puts condition back on what is worn.
+// A repair is an item use (`repair`): a kit whose use puts condition back on what is worn, or on the stack a
+// screen aimed it at (issue #603). What a worn item gives while worn (its `effects`, armour's protection)
+// is as strong as it is whole: half at half condition (#603).
 //
 // A plain item that takes wear becomes an instance as it does (issue #383, "only what differs is an
 // instance"): the worn unit is split off its stack if it shared one, and one repaired back to as made,
@@ -65,6 +67,11 @@ public static class Durability
     // A stack's condition: its instance's, or 1 for a plain one (as made).
     public static float ConditionOf(in ItemStack stack) => stack.Instance?.Condition ?? 1f;
 
+    // How strongly a worn item's effects apply at a condition (issue #603): all of it as made, half at half.
+    // An effect's magnitude of 0 means "as written" (saves from before magnitudes), so a broken item kept in
+    // hand gets a sliver above nothing rather than all of it.
+    internal static float EffectScale(float condition) => Math.Clamp(condition, 0.0001f, 1f);
+
     // The condition of what is worn in a slot; 1 for a plain item or an empty slot.
     internal static float ConditionIn(this World world, Entity entity, string slot) => world.WornInstance(entity, slot)?.Condition ?? 1f;
 
@@ -92,6 +99,7 @@ public static class Durability
         var stack = items[index];
         var instance = stack.Instance!;
         instance.Condition = MathF.Min(MathF.Min(upTo, 1f), instance.Condition + amount);
+        if (world.TryGet<Equipment>(entity, out var equipment) && WornIn(in equipment, stack, "")) Rescale(world, entity, stack.Item, instance);
         if (instance.IsPlain)
         {
             Repoint(world, entity, stack.Item, instance.Id, 0);
@@ -226,6 +234,7 @@ public static class Durability
         else instance = stack.Instance;
 
         instance.Condition = MathF.Max(0f, instance.Condition - amount);
+        Rescale(world, entity, equipped.Item, instance);
         if (instance.Condition > 0f) return true;
 
         broke = true;
@@ -241,6 +250,32 @@ public static class Durability
         world.Events.Send(new ItemBroke(entity, equipped.Item, equipped.Slot, durability.Breaks == ItemBreak.Remove));
         return true;
     }
+
+    // A worn item's condition changed: its effects follow (issue #603).
+    private static void Rescale(World world, Entity entity, RecordId item, ItemInstance instance)
+    {
+        if (!world.Resources.Get<RecordStore>().TryGet(item, out ItemRecord record)) return;
+        float scale = EffectScale(instance.Condition);
+        foreach (var effect in record.Effects) Effects.Rescale(world, entity, effect, scale);
+        if (instance.Effects != null)
+            foreach (var effect in instance.Effects) Effects.Rescale(world, entity, effect, scale);
+    }
+
+    // `repair [slot]` (issue #603, a cheat): mends what the local player wears in a slot, or with none
+    // everything they carry, back to as made.
+    internal static void RegisterCommands(Engine engine) =>
+        engine.CVars.RegisterCommand("repair", CVarFlags.Cheat,
+            "repair [slot]: mend what the local player wears in a slot, or with none everything they carry, back to as made.", a =>
+        {
+            string slot = a.Count > 0 ? a[0] : "";
+            engine.ForEachPlayer((world, entity) =>
+            {
+                int mended = 0;
+                for (int index; (index = world.RepairTarget(entity, slot)) >= 0 && world.Repair(entity, index, 1f);) mended++;
+                Log.Info(LogCat.Console, mended == 0 ? $"{World.Describe(entity)}: nothing needs repair"
+                                                     : $"{World.Describe(entity)}: {mended} item(s) repaired");
+            });
+        });
 
     // Points `Worn[worn]` at another instance of the same item, in place: nothing comes off or goes on.
     private static void Repoint(World world, Entity entity, int worn, int instance)
@@ -285,8 +320,9 @@ public static class Durability
 }
 
 // A repair kit (issue #382): puts `amount` of condition back on what is worn in `slot` — with no slot,
-// the most worn thing equipped, else the most worn thing carried — up to `upTo`. It refuses when nothing
-// needs it, so a kit listed with `consume` after it is not used up for nothing:
+// the most worn thing equipped, else the most worn thing carried — up to `upTo`; aimed at a stack
+// (`ItemUses.UseItemOn`, a screen's choice; issue #603), on that one. It refuses when nothing needs it, so a
+// kit listed with `consume` after it is not used up for nothing:
 //
 //   { "type": "item", "id": "repair_kit", "uses": [{ "use": "repair", "amount": 0.5 }, "consume"] }
 [ItemUse("repair", Plugin = "sage.gameplay.items")]
@@ -301,14 +337,19 @@ internal sealed class RepairUse : IItemUse
 
     public bool CanUse(in ItemUse use, out string why)
     {
-        why = use.World.RepairTarget(use.User, Slot ?? "", UpTo) >= 0 ? "" : "nothing needs repair";
+        why = Target(in use) >= 0 ? "" : "nothing needs repair";
         return why.Length == 0;
     }
 
     public bool Use(in ItemUse use, out string why)
     {
-        int target = use.World.RepairTarget(use.User, Slot ?? "", UpTo);
+        int target = Target(in use);
         why = target >= 0 && use.World.Repair(use.User, target, Amount, UpTo) ? "" : "nothing needs repair";
         return why.Length == 0;
     }
+
+    // The stack it was aimed at when it can mend it, or what it chooses itself.
+    private int Target(in ItemUse use) => use.Target is int aimed
+        ? (use.World.CanRepair(use.User, aimed, UpTo) ? aimed : -1)
+        : use.World.RepairTarget(use.User, Slot ?? "", UpTo);
 }

@@ -410,8 +410,22 @@ internal sealed class UiRenderPlan
                         picture.Size = scale;
                     }
                     DrawLabel(label, to, from, blend, scale);
+                    if (label is Button { Meter: >= 0f } metered) DrawMeter(metered, to, from, blend);
                     break;
             }
+        }
+
+        // A button's meter (issue #603): a strip along the bottom of its content, a track in the style's
+        // border colour filled to the value in its text colour, over the picture and the label.
+        private void DrawMeter(Button button, UiStyleColours to, UiStyleColours from, bool blend)
+        {
+            var content = button.ContentRect;
+            float height = MathF.Max(2f, content.Height / 14f);
+            float y = content.Y + content.Height - height;
+            Colour(ref _plan.Add(UiDrawKind.Rect, button, _root.ToPixels(new Rect(content.X, y, content.Width, height))), to.Border, from.Border, blend);
+            float filled = content.Width * Math.Clamp(button.Meter, 0f, 1f);
+            if (filled > 0f)
+                Colour(ref _plan.Add(UiDrawKind.Rect, button, _root.ToPixels(new Rect(content.X, y, filled, height))), to.Text, from.Text, blend);
         }
 
         // A picture's discovery fog (issue #348), over where the picture is drawn.
