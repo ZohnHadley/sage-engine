@@ -314,6 +314,7 @@ public sealed class AITaskRegistry
     public AITaskRegistry()
     {
         Register("Wait", new WaitTask());
+        Register("Arrest", new ArrestTask());
         Register("FaceTarget", new FaceTargetTask());
         Register("MoveToTarget", new MoveToTargetTask());
         Register("MeleeAttack", new MeleeAttackTask());

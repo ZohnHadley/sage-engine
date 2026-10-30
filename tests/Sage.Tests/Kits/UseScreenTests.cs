@@ -132,6 +132,36 @@ public class UseScreenTests
         Assert.Equal(trader, loot.Screen.Context.Other);
     }
 
+    // A guard's arrest opens the conversation screen without a Use (#604); with another window up the
+    // conversation ends rather than run unseen, and the guard asks again.
+    [Xunit.Fact]
+    public void AnArrestOpensTheConversationScreen_UnlessAWindowIsUp()
+    {
+        using var app = Boot();
+        var world = app.World;
+        var stack = Stack(world);
+        var hero = Hero(world);
+        var guard = world.Create(Transform.At(new Vector3(0, 0, -1)), "guard");
+        world.Add(guard, new Dialogue { Record = Id("trader") });
+        var chest = world.Spawn(Id("chest"), new Vector3(0, 0, -2));
+
+        world.Events.Send(new Used(hero, chest));
+        CameraRigTests.Step(world);
+        Assert.True(DialogueRules.Start(world, guard, hero));
+        world.Events.Send(new Arrested(guard, hero));
+        CameraRigTests.Step(world);
+        Assert.Equal(RpgKitModule.LootScreen, Top(stack).Screen!.Id);
+        Assert.False(world.Resources.Get<Conversation>().Running);
+
+        stack.CloseAll();
+        CameraRigTests.Step(world);
+        Assert.True(DialogueRules.Start(world, guard, hero));
+        world.Events.Send(new Arrested(guard, hero));
+        CameraRigTests.Step(world);
+        Assert.Equal(RpgKitModule.DialogueScreen, Top(stack).Screen!.Id);
+        Assert.Equal(new UiBindContext(world, hero, guard), Top(stack).Screen!.Context);
+    }
+
     // A dialogue option's `open_screen` opens the shop about the speaker: his goods, the listener's bag.
     [Xunit.Fact]
     public void ADialogueOptionOpensTheShopOverTheSpeakersGoods()

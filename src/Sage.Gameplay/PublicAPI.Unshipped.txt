@@ -1,4 +1,5 @@
 #nullable enable
+const Sage.Gameplay.Crime.JailReason = "jail" -> string!
 Sage.Gameplay.AbilityAIUse
 Sage.Gameplay.AbilityAIUse.Attack = 1 -> Sage.Gameplay.AbilityAIUse
 Sage.Gameplay.AbilityAIUse.Auto = 0 -> Sage.Gameplay.AbilityAIUse
@@ -18,6 +19,13 @@ Sage.Gameplay.ActionConventions.PreviousWeapon -> string!
 Sage.Gameplay.ActionConventions.WeaponSlot -> string!
 const Sage.Gameplay.ActionConventions.WeaponSlots = 9 -> int
 Sage.Gameplay.AITaskContext.Block -> Sage.Simulation.ActionId
+Sage.Gameplay.Arrested
+Sage.Gameplay.Arrested.Arrested() -> void
+Sage.Gameplay.Arrested.Arrested(Sage.Simulation.Entity Guard, Sage.Simulation.Entity Player) -> void
+Sage.Gameplay.Arrested.Guard.get -> Sage.Simulation.Entity
+Sage.Gameplay.Arrested.Guard.init -> void
+Sage.Gameplay.Arrested.Player.get -> Sage.Simulation.Entity
+Sage.Gameplay.Arrested.Player.init -> void
 Sage.Gameplay.AttackRecord.Block -> Sage.Core.RecordRef<Sage.Gameplay.BlockRecord!>
 Sage.Gameplay.AttackRecord.Cleave -> int
 Sage.Gameplay.AttackRecord.FriendlyFire -> Sage.Gameplay.FactionFilter
@@ -58,6 +66,18 @@ Sage.Gameplay.BlockRecord.Reduction -> float
 Sage.Gameplay.BlockRecord.Stamina -> Sage.Core.RecordRef<Sage.Gameplay.AttributeRecord!>
 Sage.Gameplay.BlockRecord.StaminaCost -> float
 Sage.Gameplay.BlockRecord.StaminaPerDamage -> float
+Sage.Gameplay.Bounties.DecayedAt.get -> double
+Sage.Gameplay.Bounties.DecayedAt.set -> void
+Sage.Gameplay.Bounties.Goods
+Sage.Gameplay.Bounties.Goods.Count.get -> int
+Sage.Gameplay.Bounties.Goods.Count.set -> void
+Sage.Gameplay.Bounties.Goods.Faction.get -> Sage.Core.RecordId
+Sage.Gameplay.Bounties.Goods.Faction.set -> void
+Sage.Gameplay.Bounties.Goods.Goods() -> void
+Sage.Gameplay.Bounties.Goods.Item.get -> Sage.Core.RecordId
+Sage.Gameplay.Bounties.Goods.Item.set -> void
+Sage.Gameplay.Bounties.Stolen.get -> System.Collections.Generic.List<Sage.Gameplay.Bounties.Goods!>!
+Sage.Gameplay.Bounties.Stolen.set -> void
 Sage.Gameplay.DamageInfo.Sound.get -> Sage.Core.RecordId
 Sage.Gameplay.DamageInfo.Sound.init -> void
 Sage.Gameplay.Durability
@@ -73,6 +93,9 @@ Sage.Gameplay.FactionFilter.Default = 0 -> Sage.Gameplay.FactionFilter
 Sage.Gameplay.FactionFilter.Hostile = 3 -> Sage.Gameplay.FactionFilter
 Sage.Gameplay.FactionFilter.NotAllies = 2 -> Sage.Gameplay.FactionFilter
 Sage.Gameplay.FactionFilters
+Sage.Gameplay.FactionRecord.BountyDecay -> float
+Sage.Gameplay.FactionRecord.Jail -> string!
+Sage.Gameplay.FactionRecord.JailHoursPerBounty -> float
 Sage.Gameplay.FootIk.LeftTilt -> float
 Sage.Gameplay.FootIk.MaxFootTilt -> float
 Sage.Gameplay.FootIk.PelvisSmoothing -> float
@@ -177,6 +200,8 @@ Sage.Gameplay.FootstepsPart.Right -> string!
 Sage.Gameplay.GameplayConventionsRecord.Surface -> Sage.Core.RecordRef<Sage.Simulation.PhysicsMaterialRecord!>
 Sage.Gameplay.CueRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
 Sage.Gameplay.DamageTypeRecord.Rumble -> Sage.Core.RecordRef<Sage.Simulation.RumbleRecord!>
+static Sage.Gameplay.Containers.OwnerOf(Sage.Simulation.World! world, Sage.Simulation.Entity container, out string? owner, out Sage.Core.RecordId faction) -> bool
+static Sage.Gameplay.Crime.Jail(Sage.Simulation.World! world, Sage.Simulation.Entity prisoner, Sage.Core.RecordId faction) -> bool
 static Sage.Gameplay.Durability.CanRepair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float upTo = 1) -> bool
 static Sage.Gameplay.Durability.ConditionOf(in Sage.Gameplay.ItemStack stack) -> float
 static Sage.Gameplay.Durability.Repair(this Sage.Simulation.World! world, Sage.Simulation.Entity entity, int index, float amount, float upTo = 1) -> bool
