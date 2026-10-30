@@ -1,0 +1,11 @@
+{
+  // The graphics showcase: a walkable tech demo of what the engine draws, data only, on the base engine with
+  // no kit. Zones round a hub, each signposted (a trigger that shows a line as you walk in): the sky, water,
+  // terrain, a materials gallery, lights and shadows, fog, particles and decals, weather, the post chain,
+  // skeletal animation and instancing. README.md lists the zones and the console commands that drive them.
+  // tests/Sage.Tests/Games/ShowcaseTests.cs boots it headlessly; CI validates it and smoke-runs it.
+  "name": "Sage graphics showcase",
+  "id": "showcase",
+  "mounts": ["content"],
+  "scene": "showcase"
+}

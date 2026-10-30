@@ -1,0 +1,230 @@
+[
+  // What the Showcase's zones are made of: materials, lamps, effects, the mannequins and the signs. Where
+  // each goes is scene.json. Textures are from tools/texgen.py (games/Showcase/tools/textures.json) unless
+  // a comment says otherwise; models from games/Showcase/tools/make_models.py (Blender).
+
+  // ---- the brush levels' surfaces (the `.map` faces name these) -----------------------------------------
+  // The maps' faces carry no tangents, so their normal maps change nothing yet (docs/design/06 "As built
+  // (surface materials)"); the specular factors and the rain's wetting do show.
+  { "type": "material", "id": "cobble", "base": "sage:lit_default", "params": { "Albedo": "textures/cobble.png" },
+    "normalMap": "textures/cobble_normal.png", "specularMap": "textures/cobble_spec.png", "specular": 0.6, "gloss": 0.4 },
+  { "type": "material", "id": "stone", "base": "sage:lit_default", "params": { "Albedo": "textures/stone.png" },
+    "normalMap": "textures/stone_normal.png", "specularMap": "textures/stone_spec.png", "specular": 0.5, "gloss": 0.35 },
+  { "type": "material", "id": "planks", "base": "sage:lit_default", "params": { "Albedo": "textures/planks.png" },
+    "normalMap": "textures/planks_normal.png", "specular": 0.25, "gloss": 0.3 },
+  { "type": "material", "id": "brick", "base": "sage:lit_default", "params": { "Albedo": "textures/brick.png" },
+    "normalMap": "textures/brick_normal.png", "specularMap": "textures/brick_spec.png", "specular": 0.6, "gloss": 0.4 },
+  { "type": "material", "id": "roof", "base": "sage:lit_default", "params": { "Albedo": "textures/roof.png" },
+    "normalMap": "textures/roof_normal.png", "specularMap": "textures/roof_spec.png", "specular": 0.8, "gloss": 0.5 },
+
+  // ---- the materials gallery (docs/design/06 "As built (surface materials)", engine issue #410) ---------
+  // One surface feature a plinth, on models that carry their own tangents (and, for the monkey, colours).
+  // Normal and specular maps: bricks whose bevels and mortar catch the light.
+  { "type": "material", "id": "g_brick", "base": "brick", "specular": 0.9, "gloss": 0.45 },
+  // Specular: brushed metal, its specular map's red the shine and green the gloss, a tight highlight.
+  { "type": "material", "id": "g_metal", "base": "sage:lit_default", "params": { "Albedo": "textures/metal.png" },
+    "normalMap": "textures/metal_normal.png", "specularMap": "textures/metal_spec.png", "specular": 2.5, "gloss": 0.85 },
+  // Emissive map: a rune that glows cyan out of dark stone, lit or not (Kenney's Particle Pack, CC0).
+  { "type": "material", "id": "g_rune", "base": "stone", "params": { "AlbedoColor": [0.55, 0.55, 0.6, 1] },
+    "emissiveMap": "textures/rune.png", "emissive": [0.4, 1.8, 2.4] },
+  // Environment map: a dark chrome ball reflecting the painted day panorama.
+  { "type": "material", "id": "g_chrome", "base": "sage:lit_default", "params": { "AlbedoColor": [0.12, 0.12, 0.13, 1] },
+    "environmentMap": "textures/sky_day.png", "reflectivity": 0.9, "specular": 3, "gloss": 0.95 },
+  // Vertex colours: the monkey's rainbow is in its mesh (glTF COLOR_0), not a texture.
+  { "type": "material", "id": "g_vertex", "base": "sage:lit_default", "vertexColors": true, "specular": 0.6, "gloss": 0.5 },
+  // Emissive alone: a torus that glows orange everywhere, bright enough to bloom.
+  { "type": "material", "id": "g_glow", "base": "sage:lit_default", "params": { "AlbedoColor": [0.3, 0.12, 0.04, 1] },
+    "emissive": [3.2, 1.3, 0.35] },
+  // A normal map on a ball: moss in clumps.
+  { "type": "material", "id": "g_moss", "base": "sage:lit_default", "params": { "Albedo": "textures/moss.png" },
+    "normalMap": "textures/moss_normal.png", "specular": 0.2, "gloss": 0.2 },
+
+  { "type": "prefab", "id": "show_brick", "name": "normal map", "components": { "mesh_renderer": { "mesh": "models/rounded_cube.glb", "material": "g_brick" } } },
+  { "type": "prefab", "id": "show_metal", "name": "specular map", "components": { "mesh_renderer": { "mesh": "models/sphere.glb", "material": "g_metal" } } },
+  { "type": "prefab", "id": "show_rune", "name": "emissive map", "components": { "mesh_renderer": { "mesh": "models/tablet.glb", "material": "g_rune" } } },
+  { "type": "prefab", "id": "show_chrome", "name": "environment map", "components": { "mesh_renderer": { "mesh": "models/sphere.glb", "material": "g_chrome" } } },
+  { "type": "prefab", "id": "show_vertex", "name": "vertex colours", "components": { "mesh_renderer": { "mesh": "models/monkey.glb", "material": "g_vertex" } } },
+  { "type": "prefab", "id": "show_glow", "name": "emissive", "components": { "mesh_renderer": { "mesh": "models/torus.glb", "material": "g_glow" } } },
+  { "type": "prefab", "id": "show_moss", "name": "moss", "components": { "mesh_renderer": { "mesh": "models/sphere.glb", "material": "g_moss" } } },
+
+  // ---- lamps (docs/design/06 "As built (point lights)", "(flickering lamps, spot lights)", "(lamp shadows)")
+  // A bulb: a small glowing ball that casts no shadow of its own (it sits inside its lamp's cube map).
+  { "type": "material", "id": "bulb_warm", "base": "sage:lit_default", "params": { "AlbedoColor": [0.4, 0.35, 0.3, 1] },
+    "emissive": [4, 3.2, 2.2], "castShadows": false },
+  { "type": "material", "id": "bulb_cold", "base": "bulb_warm", "emissive": [1.6, 2.6, 4.5] },
+  { "type": "material", "id": "bulb_fire", "base": "bulb_warm", "emissive": [4.5, 1.8, 0.5] },
+  {
+    // A spot from the ceiling, its cone 32 degrees each side, full strength inside 22, with a shadow map.
+    "type": "prefab", "id": "spot_lamp", "name": "spot lamp",
+    "parts": { "light": { "colour": [1.0, 0.88, 0.7], "range": 11, "intensity": 3.5, "cone": 32, "innerCone": 22, "shadows": true } },
+    "components": { "mesh_renderer": { "mesh": "models/sphere.glb", "material": "bulb_warm" } }
+  },
+  {
+    // A cold point lamp with a cube of shadow maps, sent back and forth across the hall by its tween
+    // (TweenTo from the hall's logic_auto, scene.json): 5 m east and back, four seconds each way, for ever.
+    "type": "prefab", "id": "moving_lamp", "name": "moving lamp",
+    "parts": {
+      "light": { "colour": [0.55, 0.75, 1.0], "range": 8, "intensity": 3, "shadows": true },
+      "tween": { "channel": "Position", "target": [5, 0, 0], "relative": true, "duration": 4, "ease": "SineInOut", "loop": "PingPong" }
+    },
+    "components": { "mesh_renderer": { "mesh": "models/sphere.glb", "material": "bulb_cold" } }
+  },
+  {
+    // A torch: Quake's second light style (`torch`), no shadow map (the budget is two lamps; r_shadow_lamps).
+    "type": "prefab", "id": "torch_lamp", "name": "torch",
+    "parts": { "light": { "colour": [1.0, 0.55, 0.25], "range": 6, "intensity": 2.5, "pattern": "torch" } },
+    "components": { "mesh_renderer": { "mesh": "models/sphere.glb", "material": "bulb_fire" } }
+  },
+  {
+    // A coloured spot on the hall's east wall, no shadow, slowly pulsing.
+    "type": "prefab", "id": "accent_lamp", "name": "accent lamp",
+    "parts": { "light": { "colour": [1.0, 0.3, 0.7], "range": 9, "intensity": 2.5, "cone": 24, "pattern": "slow_pulse" } }
+  },
+
+  // ---- particles and decals (docs/design/06 "As built (particles...)", "(soft particles)", "(decals)") --
+  // Kenney's Particle Pack (OpenGameArt, CC0), white with the picture in its alpha (tools/make_sprites.py),
+  // so each record tints it. Flames and smoke are 2x2 sheets, each particle on a frame of its own.
+  {
+    "type": "particle", "id": "flames",
+    "texture": "textures/flame_sheet.png", "sheetColumns": 2, "sheetRows": 2, "sheetRandomStart": true,
+    "rate": 34, "maxParticles": 80, "lifeMin": 0.45, "lifeMax": 0.85, "speedMin": 0.5, "speedMax": 1.3,
+    "shape": "Cone", "angleDegrees": 14, "gravity": 1.6, "drag": 0.8,
+    "sizeStart": 0.6, "sizeEnd": 0.18, "colourStart": "#FFC060", "colourEnd": "#FF300000", "spinDegrees": 20,
+    // Soft: where a flame cuts a log or the stones it fades over 30 cm instead of showing a hard line.
+    "soft": 0.3
+  },
+  {
+    "type": "particle", "id": "smoke",
+    "texture": "textures/smoke_sheet.png", "material": "sage:particle_blend",
+    "sheetColumns": 2, "sheetRows": 2, "sheetRandomStart": true,
+    "rate": 7, "maxParticles": 60, "lifeMin": 3.5, "lifeMax": 5, "speedMin": 0.5, "speedMax": 0.9,
+    "shape": "Cone", "angleDegrees": 10, "gravity": 0.35, "drag": 0.35, "wind": [0.35, 0, -0.15],
+    "sizeStart": 0.5, "sizeEnd": 2.6, "colourStart": "#3E3a36A0", "colourEnd": "#7A767200", "spinDegrees": 25,
+    "soft": 0.8
+  },
+  {
+    "type": "particle", "id": "embers",
+    "texture": "textures/spark.png",
+    "rate": 14, "maxParticles": 60, "lifeMin": 0.9, "lifeMax": 1.8, "speedMin": 1, "speedMax": 2.4,
+    "shape": "Cone", "angleDegrees": 25, "gravity": 0.6, "drag": 0.6,
+    "sizeStart": 0.07, "sizeEnd": 0.015, "colourStart": "#FFD070", "colourEnd": "#FF400000"
+  },
+  { "type": "prefab", "id": "fire", "name": "fire", "components": { "particle_emitter": { "effect": "flames", "enabled": true } } },
+  { "type": "prefab", "id": "smoke", "name": "smoke", "components": { "particle_emitter": { "effect": "smoke", "enabled": true } } },
+  { "type": "prefab", "id": "embers", "name": "embers", "components": { "particle_emitter": { "effect": "embers", "enabled": true } } },
+  {
+    // The fire's light, flickering like a torch and throwing the logs' shadows round the ring. (The candle
+    // presets go dark for whole beats, which reads as a broken lamp on a fire.)
+    "type": "prefab", "id": "fire_light", "name": "fire light",
+    "parts": { "light": { "colour": [1.0, 0.45, 0.15], "range": 9, "intensity": 2.2, "pattern": "torch", "shadows": true } }
+  },
+  // Scorch marks round the fire: decals laid flat on whatever is under a marker when the `scorch` cue is
+  // raised there (the campfire's logic_auto at spawn, scene.json); they stay until the pool needs room.
+  { "type": "decal", "id": "scorch", "texture": "textures/scorch.png", "size": 1.8, "lifetime": 0, "colour": "#120E0AE0" },
+  { "type": "decal", "id": "scorch_small", "texture": "textures/scorch_b.png", "size": 0.9, "lifetime": 0, "colour": "#1A120CC8" },
+  { "type": "cue", "id": "scorch", "description": "A burn on the ground", "decal": "scorch" },
+  { "type": "cue", "id": "scorch_small", "description": "A smaller burn", "decal": "scorch_small" },
+  { "type": "prefab", "id": "marker", "name": "marker" },
+
+  // ---- water (docs/design/06 "As built (water surfaces)", engine issue #411) ----------------------------
+  {
+    // The pond: green-brown, still, fading out at its shore; dive in (2 m at the middle) for the view under.
+    "type": "water_surface", "id": "pond",
+    "colour": [0.04, 0.1, 0.08], "fogDensity": 0.45, "shoreFade": 0.35, "reflectivity": 1, "refraction": 0.03, "specular": 1.6,
+    "waveLength": 5, "waveStrength": 0.07, "waveSpeed": 0.5, "waveDirection": 210,
+    "underwaterColour": [0.03, 0.11, 0.09], "underwaterDensity": 0.22, "underwaterTint": [0.5, 0.75, 0.65]
+  },
+  { "type": "prefab", "id": "pond", "name": "pond",
+    "parts": { "water": { "size": [44, 4, 58], "drag": 2, "buoyancy": 2 }, "water_surface": "pond" } },
+  {
+    // The pool: clear, bright blue, livelier ripples; no shore fade (its walls are the edge).
+    "type": "water_surface", "id": "pool",
+    "colour": [0.02, 0.2, 0.3], "fogDensity": 0.15, "shoreFade": 0, "reflectivity": 0.8, "refraction": 0.05, "specular": 2,
+    "waveLength": 1.6, "waveStrength": 0.1, "waveSpeed": 1.2, "waveDirection": 30,
+    "underwaterColour": [0.05, 0.3, 0.4], "underwaterDensity": 0.08, "underwaterTint": [0.6, 0.9, 1.0]
+  },
+  { "type": "prefab", "id": "pool", "name": "pool",
+    "parts": { "water": { "size": [5.4, 0.6, 3.4] }, "water_surface": "pool" } },
+
+  // ---- skeletal animation and instancing (docs/design/12; 06 "As built (instancing)") -------------------
+  // The mannequin is the engine's own test model (games/Sandbox/tools/make_mannequin.py; 18 joints, clips
+  // idle, walk, run, aim, aim_up, aim_down, attack, reload). A walk/run blend space on `speed`, and an
+  // upper-body layer that aims and strikes over whatever the legs do.
+  { "type": "material", "id": "mannequin", "base": "sage:lit_default", "params": { "AlbedoColor": [0.78, 0.72, 0.62, 1] }, "specular": 0.4, "gloss": 0.4 },
+  { "type": "material", "id": "mannequin_blue", "base": "mannequin", "params": { "AlbedoColor": [0.36, 0.52, 0.8, 1] } },
+  {
+    "type": "anim_graph", "id": "mannequin", "initial": "idle", "fade": 0.25,
+    "params": { "speed": { "from": "Speed" }, "aim_pitch": {}, "aiming": { "kind": "Bool" }, "attack": { "kind": "Trigger" }, "reload": { "kind": "Trigger" } },
+    "states": {
+      "idle": { "clip": "idle", "transitions": [ { "to": "move", "when": { "anim_param": "speed", "min": 0.3 } } ] },
+      "move": { "blend": { "x": "speed", "points": [ { "clip": "walk", "x": 1.5 }, { "clip": "run", "x": 4.5 } ] },
+                "transitions": [ { "to": "idle", "when": { "anim_param": "speed", "max": 0.15 } } ] }
+    },
+    "layers": [
+      {
+        "name": "upper", "mask": ["spine"], "initial": "none",
+        "states": {
+          "none": { "transitions": [ { "to": "aim", "when": { "anim_param": "aiming", "eq": 1 } } ] },
+          "aim": { "blend": { "x": "aim_pitch", "points": [ { "clip": "aim_down", "x": -60 }, { "clip": "aim", "x": 0 }, { "clip": "aim_up", "x": 60 } ] },
+                   "transitions": [ { "to": "none", "when": { "anim_param": "aiming", "eq": 0 } } ] },
+          "attack": { "clip": "attack", "loop": false, "fade": 0.1, "transitions": [ { "to": "aim", "when": { "anim_finished": "upper" } } ] },
+          "reload": { "clip": "reload", "loop": false, "fade": 0.15, "transitions": [ { "to": "aim", "when": { "anim_finished": "upper" } } ] }
+        },
+        "transitions": [ { "to": "attack", "on": "attack" }, { "to": "reload", "on": "reload" } ]
+      }
+    ]
+  },
+  {
+    // Up the lane 10 m and back, turning at each end; each leg ends when its tween does (OnTweenDone → Arrived).
+    "type": "state_machine", "id": "patrol", "initial": "out",
+    "states": {
+      "out":       { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset 10 0 0" } ], "transitions": [ { "to": "turn_back", "on": "Arrived" } ] },
+      "turn_back": { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ], "transitions": [ { "to": "back", "on": "Arrived" } ] },
+      "back":      { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "offset -10 0 0" } ], "transitions": [ { "to": "turn_out", "on": "Arrived" } ] },
+      "turn_out":  { "enter": [ { "fire": "!self", "input": "TweenTo", "parameter": "turn 0 180 0 0.8 SineInOut" } ], "transitions": [ { "to": "out", "on": "Arrived" } ] }
+    }
+  },
+  {
+    // Standing: aim level, high, strike, low, reload, rest, and round again.
+    "type": "state_machine", "id": "drill", "initial": "rest",
+    "states": {
+      "rest":   { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aiming 0" } ], "transitions": [ { "to": "level", "after": 1.5 } ] },
+      "level":  { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 0" }, { "fire": "!self", "input": "SetAnimParam", "parameter": "aiming 1" } ],
+                  "transitions": [ { "to": "high", "after": 1.5 } ] },
+      "high":   { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 45" } ], "transitions": [ { "to": "strike", "after": 1.5 } ] },
+      "strike": { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 0" }, { "fire": "!self", "input": "AnimTrigger", "parameter": "attack" } ],
+                  "transitions": [ { "to": "low", "after": 1.2 } ] },
+      "low":    { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch -40" } ], "transitions": [ { "to": "reload", "after": 1.5 } ] },
+      "reload": { "enter": [ { "fire": "!self", "input": "SetAnimParam", "parameter": "aim_pitch 0" }, { "fire": "!self", "input": "AnimTrigger", "parameter": "reload" } ],
+                  "transitions": [ { "to": "rest", "after": 2 } ] }
+    }
+  },
+  {
+    "type": "prefab", "id": "walker", "name": "walker",
+    "parts": {
+      "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "mannequin_blue" }, "animator": { "graph": "mannequin" },
+      "tween": { "duration": 6.5, "ease": "Linear" }, "state_machine": { "machine": "patrol" }
+    }
+  },
+  {
+    "type": "prefab", "id": "drill", "name": "drill",
+    "parts": { "skinned_mesh": { "mesh": "models/mannequin.glb", "material": "mannequin" }, "animator": { "graph": "mannequin" }, "state_machine": { "machine": "drill" } }
+  },
+  // Forty-eight crystals of one mesh and one material: with `r_instancing 1` they are one draw (r_stats).
+  { "type": "material", "id": "crystal", "base": "sage:lit_default", "params": { "AlbedoColor": [0.45, 0.32, 0.85, 1] },
+    "emissive": [0.35, 0.12, 0.8], "specular": 2.2, "gloss": 0.9 },
+  { "type": "prefab", "id": "crystal", "name": "crystal", "components": { "mesh_renderer": { "mesh": "models/crystal.glb", "material": "crystal" } } },
+
+  // ---- the player: the engine's walking body and first-person camera, nothing else ----------------------
+  { "type": "prefab", "id": "player", "name": "player", "tags": ["player_controlled"], "parts": { "character": { "layer": "player" } } },
+  // The pool's floor: the stone, tinted pale blue.
+  { "type": "material", "id": "pool_tile", "base": "stone", "params": { "AlbedoColor": [0.7, 0.88, 1.0, 1] } },
+
+  // ---- signs: a trigger only the player touches, and the line it shows (scene.json gives each its text) --
+  {
+    "type": "prefab", "id": "zone", "name": "zone",
+    "parts": { "body": { "size": [10, 4, 10], "trigger": true, "layer": "player_zone" }, "logic_relay": {} }
+  },
+  // A relay to wire at (the fog field's and the court's ways out, the hub's start-up).
+  { "type": "prefab", "id": "relay", "name": "relay", "parts": { "logic_relay": {} } }
+]
