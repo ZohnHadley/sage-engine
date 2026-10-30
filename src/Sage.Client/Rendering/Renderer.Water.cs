@@ -124,7 +124,7 @@ public sealed partial class Renderer
 
         // The sky the surface reflects: sky.fx's gradient and haze (no sun disc: the glint is the water's own).
         // Under a painted sky (issue #630) the surface reflects the panorama's sky half, averaged.
-        var painted = env.DrawSky && !env.Skybox.IsEmpty ? SkyMean(env.Skybox) : null;
+        var painted = !env.DrawSky ? null : _skyCubes.Get(env.SkyboxFaces)?.Mean ?? (env.Skybox.IsEmpty ? null : SkyMean(env.Skybox));
         p["WaterHorizon"]?.SetValue(painted * env.SkyboxTint ?? env.ClearColor);
         p["WaterZenith"]?.SetValue(painted * env.SkyboxTint ?? (env.DrawSky ? env.Zenith : env.ClearColor));
         p["WaterFog"]?.SetValue(FogInPicture(env.FogColor));

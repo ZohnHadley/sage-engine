@@ -65,5 +65,6 @@ public class ShowcaseTests
         Assert.True(records.TryGet<SkyRecord>(new RecordId("showcase", "painted"), out var painted) && !painted.Skybox.IsEmpty);
         Assert.False(painted.SkyboxNight.IsEmpty);
         Assert.True(records.TryGet<SkyRecord>(new RecordId("showcase", "linear"), out _));
+        Assert.True(records.TryGet<SkyRecord>(new RecordId("showcase", "cubed"), out var cubed) && cubed.SkyboxFaces != null);
     }
 }

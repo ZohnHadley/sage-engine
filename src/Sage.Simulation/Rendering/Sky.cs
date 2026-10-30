@@ -26,6 +26,19 @@ namespace Sage.Simulation;
 // overhead at the middle of the day, below the world at night), not from keys. A sun below the horizon
 // gives no light and casts no shadow whatever the keys say (test: TheSunBelowTheHorizonGivesNoLightAndNoShadow).
 //
+// A painted sky of six square pictures (issue #635), all one size, named for the way each looks: x east, y up,
+// z south. Each is as seen from inside. A side's top is up and its right is clockwise from above; `py` joins
+// `nz` along its bottom edge and `ny` along its top, the usual cross with north in the middle.
+public sealed class SkyboxFaces
+{
+    [AssetKind("texture"), Property(Tooltip = "Looking east (+x)")] public AssetPath Px;
+    [AssetKind("texture"), Property(Tooltip = "Looking west (-x)")] public AssetPath Nx;
+    [AssetKind("texture"), Property(Tooltip = "Looking up (+y): its bottom edge joins nz's top")] public AssetPath Py;
+    [AssetKind("texture"), Property(Tooltip = "Looking down (-y): its top edge joins nz's bottom")] public AssetPath Ny;
+    [AssetKind("texture"), Property(Tooltip = "Looking south (+z)")] public AssetPath Pz;
+    [AssetKind("texture"), Property(Tooltip = "Looking north (-z)")] public AssetPath Nz;
+}
+
 // A world chooses its sky with `WorldClock.Sky` (a scene's `environment.sky` sets it). With none, nothing
 // here runs and the look is exactly what it was before (test: WithoutASkyTheLookIsUnchanged).
 [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
@@ -68,6 +81,12 @@ public sealed class SkyRecord
     public AssetPath Skybox;
     [AssetKind("texture"), Property(Tooltip = "A second panorama for the night, faded in as the stars come out (SkyRules.StarsAt). Empty: the day picture all night, darkened by the keys' skyboxTint", Category = "Skybox")]
     public AssetPath SkyboxNight;
+    [Property(Tooltip = "A painted sky as six square pictures (issue #635), instead of `skybox`: px east, nx west, py up, ny down, pz south, nz north, each as seen from inside")]
+    public SkyboxFaces? SkyboxFaces;
+    [Property(Tooltip = "Six faces for the night, faded in as the stars come out. Empty: the day's all night, darkened by skyboxTint")]
+    public SkyboxFaces? SkyboxNightFaces;
+    [Property(Min = -360, Max = 360, Unit = "deg", Tooltip = "Turns the painted sky about the vertical, clockwise from above")]
+    public float SkyboxYaw;
 
     [Property(Tooltip = "The keyframes, by hour; any order, any number. One is a sky that never changes")]
     public List<SkyKey> Keys = new();
@@ -255,6 +274,35 @@ public static class SkyRules
         if (cloudAlpha > 0f) sky = Vector3.Lerp(sky, cloud, cloudAlpha);
         if (environment.Fog) sky = Vector3.Lerp(sky, environment.FogColor, Haze(d.Y, environment.HazeBand, environment.HazeAbove));
         return sky + environment.SunColor * (SunDiscGain * SunDisc(d, environment.SunDirection) * (1f - CloudBlock * cloudAlpha));
+    }
+
+    // The direction a painted sky is looked up in, for a view direction and `SkyRecord.SkyboxYaw` (issue #635):
+    // turning the picture clockwise from above turns the lookup the other way. `sky.fx` repeats it.
+    public static Vector3 SkyboxDirection(Vector3 direction, float yawDegrees)
+    {
+        float yaw = yawDegrees * MathF.PI / 180f, c = MathF.Cos(yaw), s = MathF.Sin(yaw);
+        return new Vector3(direction.X * c + direction.Z * s, direction.Y, direction.Z * c - direction.X * s);
+    }
+
+    // Mistakes in a sky's painted faces are load errors (issue #635).
+    internal static void Check(SkyRecord sky, RecordCheck check)
+    {
+        if (sky.SkyboxFaces != null && !sky.Skybox.IsEmpty) check.Error("skyboxFaces", "and skybox are two painted skies: name one");
+        if (sky.SkyboxNightFaces != null && !sky.SkyboxNight.IsEmpty) check.Error("skyboxNightFaces", "and skyboxNight are two night skies: name one");
+        if (sky.SkyboxNightFaces != null && sky.SkyboxFaces == null) check.Error("skyboxNightFaces", "needs skyboxFaces: a night sky fades in over a day's");
+        Faces("skyboxFaces", sky.SkyboxFaces, check);
+        Faces("skyboxNightFaces", sky.SkyboxNightFaces, check);
+    }
+
+    private static void Faces(string field, SkyboxFaces? faces, RecordCheck check)
+    {
+        if (faces == null) return;
+        if (faces.Px.IsEmpty) check.Error($"{field}.px", "names no picture");
+        if (faces.Nx.IsEmpty) check.Error($"{field}.nx", "names no picture");
+        if (faces.Py.IsEmpty) check.Error($"{field}.py", "names no picture");
+        if (faces.Ny.IsEmpty) check.Error($"{field}.ny", "names no picture");
+        if (faces.Pz.IsEmpty) check.Error($"{field}.pz", "names no picture");
+        if (faces.Nz.IsEmpty) check.Error($"{field}.nz", "names no picture");
     }
 
     // Where a panorama (`SkyRecord.Skybox`, issue #630) is looked up for a view direction: equirectangular,
@@ -455,6 +503,9 @@ public static class SkyRules
         // picture as much as the stars are out.
         environment.Skybox = sky.Skybox;
         environment.SkyboxNight = sky.SkyboxNight;
+        environment.SkyboxFaces = sky.SkyboxFaces;
+        environment.SkyboxNightFaces = sky.SkyboxNightFaces;
+        environment.SkyboxYaw = sky.SkyboxYaw;
         var (ka, kb, kt) = Bracket(sky.Keys, hour - Math.Floor(hour / 24.0) * 24.0);
         environment.SkyboxTint = Vector3.Lerp(ka.SkyboxTint, kb.SkyboxTint, kt) * skyTint;
         environment.SkyboxNightMix = state.Stars;

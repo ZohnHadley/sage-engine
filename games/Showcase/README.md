@@ -41,6 +41,7 @@ At start the hub turns on `sv_cheats 1`, the post chain (`r_post 1`, `r_bloom 1`
 |---|---|
 | `time_set 21` / `time_set 6.5` / `time_scale 600` | night / dawn / a day in about two and a half minutes |
 | `sky_set showcase:painted` | painted day and night panoramas (`skybox`, `skyboxNight`, `skyboxTint`) |
+| `sky_set showcase:cubed` | a painted sky of six faces (`skyboxFaces`) |
 | `sky_set showcase:alien`, `sky_set showcase:day` | a red panorama; back to the procedural sky |
 | `sky_set showcase:linear` | linear fog instead of Exp² |
 | `weather rain 4`, `weather storm 4`, `weather fog 4`, `weather clear 6` | the weathers, blended over that many seconds |
@@ -65,8 +66,7 @@ At start the hub turns on `sv_cheats 1`, the post chain (`r_post 1`, `r_bloom 1`
 - Terrain layers are projected from above (the ridge's rock stretches on steep slopes); puddles on terrain
   are large pale blotches in a 16 m tiling pattern, on slopes too, while the court's lightmapped paving
   darkens but shows none.
-- Rain drops are round dots, not streaks; clouds stay dark blots in a fogged sky; six-face cube skyboxes
-  are not supported.
+- Rain drops are round dots, not streaks; clouds stay dark blots in a fogged sky.
 
 ## Regenerating its content
 

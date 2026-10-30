@@ -119,8 +119,9 @@ internal struct EnvironmentParams
     public Vector3 CloudColor;
     // Issue #630: the painted sky, its night picture, the hour's tint and how much of the night's shows.
     public AssetPath Skybox, SkyboxNight;
+    public SkyboxFaces? SkyboxFaces, SkyboxNightFaces;   // issue #635, instead of the pictures above
     public Vector3 SkyboxTint;
-    public float SkyboxNightMix;
+    public float SkyboxNightMix, SkyboxYaw;
     // Rain on the world (issue #311): WetnessRules.Shown (0 inside) and the puddles' level (WetnessRules.PuddleLevel).
     public float Wetness, PuddleLevel;
 }

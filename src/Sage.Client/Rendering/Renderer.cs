@@ -101,6 +101,7 @@ public sealed partial class Renderer : IDisposable
     private readonly SpriteBatcher _sprites;
     private readonly DebugLineBatch _debugLines;
     private readonly SkyDome _sky;
+    private readonly SkyCubes _skyCubes;
     private readonly CVar<bool> _fog;
     private readonly CVar<bool> _spriteFaceCamera;
     private readonly CVar<bool> _wireframe;
@@ -168,6 +169,7 @@ public sealed partial class Renderer : IDisposable
         _sprites = new SpriteBatcher(_device);
         _debugLines = new DebugLineBatch(_device);
         _sky = new SkyDome(_device);
+        _skyCubes = new SkyCubes(_device, _content);
 
         var cvars = engine.CVars;
         _fog = settings.Fog;
@@ -971,7 +973,7 @@ public sealed partial class Renderer : IDisposable
         ref var view = ref s.Views[ctx.View];
         if (view.DepthOnly || view.ShadowCaster || view.NoSky) return;   // NoSky: its camera says so (issue 4n-19)
         if (!_sky.Ready(_content)) return;
-        int draws = _sky.Draw(view, s.Environment);
+        int draws = _sky.Draw(view, s.Environment, _skyCubes);
         _current = -1;   // the sky set its own device state
         _stats.DrawCalls += draws;
         _stats.Triangles += draws;
@@ -1624,6 +1626,7 @@ public sealed partial class Renderer : IDisposable
         _sprites.Dispose();
         _debugLines.Dispose();
         _sky.Dispose();
+        _skyCubes.Dispose();
         _fullScreen?.Dispose();
         _puddleMask?.Dispose();
         Materials.Dispose();

@@ -1,0 +1,16 @@
+{
+  // Looking into the sky's bottom south-west corner (issue #635), as cube_up.json looks into the opposite one:
+  // the bottom below, south to the left, west to the right.
+  "width": 640, "height": 360,
+  "regions": [
+    { "name": "ny", "rect": [0.46, 0.72, 0.08, 0.14], "sees": "sky" },
+    { "name": "pz", "rect": [0.2, 0.24, 0.1, 0.14], "sees": "sky" },
+    { "name": "nx", "rect": [0.7, 0.24, 0.1, 0.14], "sees": "sky" }
+  ],
+  "checks": [
+    { "name": "the ny face, at that corner", "region": "ny", "when": "shaders", "color": [0.425, 0.075, 0.425], "tolerance": 0.05 },
+    { "name": "the pz face, at that corner", "region": "pz", "when": "shaders", "color": [0.042, 0.042, 0.266], "tolerance": 0.05 },
+    { "name": "the nx face, at that corner", "region": "nx", "when": "shaders", "color": [0.075, 0.425, 0.425], "tolerance": 0.05 },
+    { "name": "without shaders the frame is the clear colour", "region": "ny", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}

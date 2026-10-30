@@ -145,6 +145,12 @@ public sealed class RenderEnvironment
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public AssetPath SkyboxNight;                            // empty: the day picture all night
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public SkyboxFaces? SkyboxFaces;                         // instead of Skybox (issue #635)
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public SkyboxFaces? SkyboxNightFaces;                    // null: the day's all night
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+    public float SkyboxYaw;                                  // degrees, clockwise from above
+    [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public Vector3 SkyboxTint = Vector3.One;                 // the hour's tint, times the weather's sky tint
     [Experimental("SAGE0130", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public float SkyboxNightMix;                             // 0 (the day picture) to 1 (the night's)

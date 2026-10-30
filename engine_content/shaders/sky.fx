@@ -25,8 +25,8 @@ float4 SkyMoonLight;       // x = age (0 new, 0.5 full), y = level (0-1), z = ga
 float4 SkyCloud;           // x = cover (0 clear, 1 overcast; 0: no clouds), y = scale, zw = scroll
 float3 SkyCloudColor;      // SkyRules.CloudColor
 
-// Issue #630: a painted panorama in place of the gradient (SkyRules.SkyboxUv).
-float4 SkyBox;             // x = on (0/1), y = how much of the night picture shows, zw = unused
+// Issue #630: a painted panorama in place of the gradient (SkyRules.SkyboxUv); #635: or six faces.
+float4 SkyBox;             // x = on (0/1), y = how much of the night picture shows, z = six faces (0/1), w = yaw (radians)
 float3 SkyBoxTint;         // the hour's tint times the weather's sky tint
 
 texture MoonTex;
@@ -35,6 +35,10 @@ texture CloudTex;
 sampler CloudSampler = sampler_state { Texture = <CloudTex>; AddressU = Wrap; AddressV = Wrap; MinFilter = Linear; MagFilter = Linear; };
 texture SkyBoxTex;
 sampler SkyBoxSampler = sampler_state { Texture = <SkyBoxTex>; AddressU = Wrap; AddressV = Clamp; MinFilter = Linear; MagFilter = Linear; };
+textureCUBE SkyBoxCube;
+samplerCUBE SkyBoxCubeSampler = sampler_state { Texture = <SkyBoxCube>; AddressU = Clamp; AddressV = Clamp; MinFilter = Linear; MagFilter = Linear; MipFilter = None; };
+textureCUBE SkyBoxNightCube;
+samplerCUBE SkyBoxNightCubeSampler = sampler_state { Texture = <SkyBoxNightCube>; AddressU = Clamp; AddressV = Clamp; MinFilter = Linear; MagFilter = Linear; MipFilter = None; };
 texture SkyBoxNightTex;
 sampler SkyBoxNightSampler = sampler_state { Texture = <SkyBoxNightTex>; AddressU = Wrap; AddressV = Clamp; MinFilter = Linear; MagFilter = Linear; };
 
@@ -121,9 +125,12 @@ float4 PS(VSOutput input) : COLOR0
     float3 sky = lerp(SkyHorizon, SkyZenith, sqrt(saturate(d.y)));
     if (SkyBox.x > 0)
     {
-        float2 uv = float2(atan2(d.x, -d.z) / 6.2831853 + 0.5, acos(clamp(d.y, -1, 1)) / 3.14159265);
-        float3 day = tex2Dlod(SkyBoxSampler, float4(uv, 0, 0)).rgb;
-        float3 night = tex2Dlod(SkyBoxNightSampler, float4(uv, 0, 0)).rgb;
+        // SkyRules.SkyboxDirection
+        float c = cos(SkyBox.w), s = sin(SkyBox.w);
+        float3 b = float3(d.x * c + d.z * s, d.y, d.z * c - d.x * s);
+        float2 uv = float2(atan2(b.x, -b.z) / 6.2831853 + 0.5, acos(clamp(b.y, -1, 1)) / 3.14159265);
+        float3 day = SkyBox.z > 0 ? texCUBElod(SkyBoxCubeSampler, float4(b, 0)).rgb : tex2Dlod(SkyBoxSampler, float4(uv, 0, 0)).rgb;
+        float3 night = SkyBox.z > 0 ? texCUBElod(SkyBoxNightCubeSampler, float4(b, 0)).rgb : tex2Dlod(SkyBoxNightSampler, float4(uv, 0, 0)).rgb;
         sky = lerp(day, night, SkyBox.y) * SkyBoxTint;
     }
 

@@ -1,0 +1,16 @@
+{
+  // Looking into the sky's top north-east corner (issue #635), with `sky_set rendercheck:cube`, `r_fog 0` and
+  // the free camera: the top above, north to the left, east to the right, each in the quadrant at that corner.
+  "width": 640, "height": 360,
+  "regions": [
+    { "name": "py", "rect": [0.46, 0.14, 0.08, 0.14], "sees": "sky" },
+    { "name": "nz", "rect": [0.2, 0.62, 0.1, 0.14], "sees": "sky" },
+    { "name": "px", "rect": [0.7, 0.62, 0.1, 0.14], "sees": "sky" }
+  ],
+  "checks": [
+    { "name": "the py face, at that corner", "region": "py", "when": "shaders", "color": [0.042, 0.238, 0.042], "tolerance": 0.05 },
+    { "name": "the nz face, at that corner", "region": "nz", "when": "shaders", "color": [0.675, 0.637, 0.112], "tolerance": 0.05 },
+    { "name": "the px face, at that corner", "region": "px", "when": "shaders", "color": [0.95, 0.15, 0.15], "tolerance": 0.05 },
+    { "name": "without shaders the frame is the clear colour", "region": "py", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}

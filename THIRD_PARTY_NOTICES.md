@@ -80,6 +80,7 @@ its models by `games/Showcase/tools/make_models.py` (Blender) and its maps by `g
 |---|---|---|---|---|
 | `textures/sky_day.png` (Panorama_Sky_05), `sky_night.png` (Panorama_Sky_12), `sky_red.png` (Panorama_Sky_19); unchanged 2048x1024 equirectangular panoramas | Cloudy Skyboxes (panorama set) | Screaming Brain Studios | <https://opengameart.org/content/cloudy-skyboxes-0> | CC0 |
 | `textures/smoke_sheet.png` (smoke_01, 02, 04, 05), `flame_sheet.png` (flame_01 to 04), `spark.png` (spark_01), `scorch.png` (scorch_01), `scorch_b.png` (scorch_02), `rune.png` (magic_03); scaled down, made white with the picture in the alpha (the rune: in the colour), frames packed 2x2 (`games/Showcase/tools/make_sprites.py`) | Particle Pack (80+ sprites) | Kenney | <https://opengameart.org/content/particle-pack-80-sprites> | CC0 |
+| `textures/sky_clouds_px.png`, `_nx`, `_py`, `_ny`, `_pz`, `_nz` (east, west, up, down, south, north of clouds1); 1024x1024 BMP scaled to 512x512 PNG | clouds skybox 1 | Luke.RUSTLTD | <https://opengameart.org/content/clouds-skybox-1> | CC0 |
 | `textures/grass.png` (grass1), `rock.png` (rock 6), `sand.png` (sand 1); unchanged 480x480 | Wall, grass, rock, stone, wood and dirt (480) | West (submitted by qubodup) | <https://opengameart.org/content/wall-grass-rock-stone-wood-and-dirt-480> | CC0 |
 | `textures/moon.png`, `clouds.png`, `terrain_detail.png` | copies of the Sandbox's (rows above: Full Moon; 700+ Noise Textures) | Fupi; Screaming Brain Studios | as above | CC0 |
 
