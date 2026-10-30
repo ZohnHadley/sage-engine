@@ -28,11 +28,21 @@
     "params": { "Saturation": 0, "Contrast": 1 } },
   { "type": "post_effect", "id": "grey", "material": "grey", "order": 150 },
 
+  // A pool for the water check (issue #592, content/checks/water.json): a water box right of the slab, its
+  // top half a metre above the ground, clear of the other checks' regions. No shore fade: the ground under
+  // it is flat, so the whole top is drawn.
+  { "type": "water_surface", "id": "pool", "shoreFade": 0 },
+  { "type": "prefab", "id": "pool", "name": "pool",
+    "parts": { "water": { "size": [7, 2, 9] }, "water_surface": "pool" } },
+
   {
     "type": "scene",
     "id": "yard",
     "maps": ["yard"],
     "environment": { "sky": "noon", "hour": 12 },
-    "player": { "prefab": "eye", "at": [0, 2, 0], "yaw": 0, "name": "eye" }
+    "player": { "prefab": "eye", "at": [0, 2, 0], "yaw": 0, "name": "eye" },
+    "place": [
+      { "prefab": "pool", "at": [5.5, -0.5, -10], "name": "pool" }
+    ]
   }
 ]

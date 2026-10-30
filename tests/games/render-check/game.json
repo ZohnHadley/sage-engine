@@ -4,7 +4,7 @@
   // held still; no C# and no player. CI runs it with `r_pixelcheck checks/drawing.json` and
   // `checks/post.json` (src/Sage.Host/PixelCheckCapture.cs), which read the frame back and check named regions:
   // the sky's colour, the shadow's darkness against the lit ground beside it, the far ground in full fog, and
-  // the grey post grade. Where the engine's shaders are compiled (CI's drawing job) every check runs; a host
+  // the grey post grade; `checks/water.json` checks a pool's surface draws (issue #592). Where the engine's shaders are compiled (CI's drawing job) every check runs; a host
   // built without them draws only the clear colour, and the checks say so.
   // tests/Sage.Tests/Presentation/RenderCheckSceneTests.cs boots it headlessly and proves each region sees
   // what its spec says.

@@ -28,16 +28,19 @@ sampler DepthSampler : register(s1) = sampler_state
     AddressV = Clamp;
 };
 
-float4x4 WaterInvViewProj;   // the main view's clip space -> camera-relative
-float4x4 WaterViewProj;
-float4 WaterCamera;          // xyz: the camera (origin space), for the ripples' place; w: time (s)
-float4 WaterViewport;        // the main view's rectangle in the picture: u0, v0, u1, v1
-float WaterCount;            // surfaces in the arrays below, nearest first (at most 4)
+// The arrays come first (issue #592): the OpenGL build's constant buffer lays them out ahead of the
+// matrices, and declared after them the shader read every surface from the matrices' registers, so no
+// water ever drew there. render-check's checks/water.json fails if the two orders part again.
 float4 WaterRect[4];         // footprint, camera-relative: min x, min z, max x, max z
 float4 WaterLevel[4];        // x: surface height, y: floor (camera-relative); z: fog density; w: shore fade
 float4 WaterColour[4];       // rgb: the water's colour; w: reflectivity
 float4 WaterWaves[4];        // xy: the ripples' direction (x, z); z: wave length; w: strength
 float4 WaterMore[4];         // x: wave speed; y: refraction; z: specular; w: unused
+float4x4 WaterInvViewProj;   // the main view's clip space -> camera-relative
+float4x4 WaterViewProj;
+float4 WaterCamera;          // xyz: the camera (origin space), for the ripples' place; w: time (s)
+float4 WaterViewport;        // the main view's rectangle in the picture: u0, v0, u1, v1
+float WaterCount;            // surfaces in the arrays below, nearest first (at most 4)
 float3 WaterHorizon;         // the sky the surface reflects (sky.fx's gradient and haze)
 float3 WaterZenith;
 float3 WaterFog;
