@@ -216,6 +216,20 @@ public class RenderCheckSceneTests
                    c => Assert.True(Vector3.Distance(env.ClearColor, c.Color!.Value) < 0.01f, c.Name));
     }
 
+    // The normal map check (issue #647): the panel is a brush with the tilted material, and both regions look at
+    // it from the camera that spec names, its upper half above its middle and its lower half below.
+    [Fact]
+    public void TheBrushNormalRegionsLookAtThePanel()
+    {
+        using var app = Boot();
+        var spec = Spec("brush_normal.json");
+        Assert.True(spec.TryRegion("upper", out var upper));
+        Assert.True(spec.TryRegion("lower", out var lower));
+        Assert.True(upper.Y + upper.Height < lower.Y);
+        var tilted = app.Records.Get<MaterialRecord>(new RecordId("rendercheck", "tilted"));
+        Assert.Equal("textures/tilted_normal.png", tilted.NormalMap.ToString());
+    }
+
     // The water fog check (issue #633): the regions are the water check's; everything in them is past the
     // foggy sky's fog end, so the pool and the ground beside it are both the fog's colour, and the pool the
     // water check sees, dark and blue, fails it.

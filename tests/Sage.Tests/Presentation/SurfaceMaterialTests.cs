@@ -71,6 +71,24 @@ public class SurfaceMaterialTests
     private static void Near(Vector4 expected, Vector4 actual) =>
         Assert.True(Vector4.Distance(expected, actual) < 1e-4f, $"expected {expected}, got {actual}");
 
+    // A brush face is flat, so one tangent serves it, along its texture's +u and either way round (#647): the
+    // thing a normal map needs to turn on a wall.
+    [Fact]
+    public void ABrushFacesTangentRunsAlongItsTexture()
+    {
+        Vector3[] wall = { new(0, 0, 0), new(2, 0, 0), new(2, 2, 0), new(0, 2, 0) };
+        Vector2[] uvs = { new(0, 1), new(1, 1), new(1, 0), new(0, 0) };
+        Near(new Vector4(1, 0, 0, 1), BrushGeometry.FaceTangent(wall, uvs, Vector3.UnitZ));
+
+        Vector2[] mirrored = { new(1, 1), new(0, 1), new(0, 0), new(1, 0) };
+        Near(new Vector4(-1, 0, 0, -1), BrushGeometry.FaceTangent(wall, mirrored, Vector3.UnitZ));
+
+        Vector3[] floor = { new(0, 0, 0), new(0, 0, 2), new(2, 0, 2), new(2, 0, 0) };
+        var flat = BrushGeometry.FaceTangent(floor, new Vector2[] { new(0, 0), new(0, 1), new(1, 1), new(1, 0) }, Vector3.UnitY);
+        Assert.Equal(0f, flat.Y, 5);                   // in the plane of the face
+        Near(new Vector4(1, 0, 0, flat.W), flat);
+    }
+
     [Fact]
     public void TangentsAreWorkedOutFromTheTextureCoordinatesWhenAModelHasNone()
     {

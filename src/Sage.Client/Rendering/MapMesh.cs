@@ -24,7 +24,7 @@ internal sealed class MapMeshSystem : ISystem
 
     // Reused across builds, like the terrain builder's: a level loads rarely, but it loads while the
     // game is running and a hitch is a hitch (02 §4.6).
-    private readonly List<VertexPositionNormalTexture> _vertices = new();
+    private readonly List<VertexMesh> _vertices = new();
     private readonly List<VertexLightmapped> _lightmapped = new();
     private readonly List<int> _indices = new();
     private readonly Dictionary<string, List<LevelFace>> _byTexture = new();
@@ -171,12 +171,13 @@ internal sealed class MapMeshSystem : ISystem
         {
             int first = _lightmapped.Count;
             var normal = new Vector3(face.Normal.X, face.Normal.Y, face.Normal.Z);
+            Vector4 tangent = BrushGeometry.FaceTangent(face.Positions, face.Uvs, face.Normal);
             baked.Uvs.TryGetValue(face, out var uvs);
             for (int i = 0; i < face.Positions.Length; i++)
             {
                 var p = new Vector3(face.Positions[i].X, face.Positions[i].Y, face.Positions[i].Z);
                 var lm = uvs != null ? new Vector2(uvs[i].X, uvs[i].Y) : Vector2.Zero;
-                _lightmapped.Add(new VertexLightmapped(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y), lm));
+                _lightmapped.Add(new VertexLightmapped(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y), lm, tangent));
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);
             }
@@ -208,13 +209,14 @@ internal sealed class MapMeshSystem : ISystem
         {
             int first = _vertices.Count;
             var normal = new Vector3(face.Normal.X, face.Normal.Y, face.Normal.Z);
+            Vector4 tangent = BrushGeometry.FaceTangent(face.Positions, face.Uvs, face.Normal);
 
             for (int i = 0; i < face.Positions.Length; i++)
             {
                 var p = new Vector3(face.Positions[i].X - relativeTo.X,
                                     face.Positions[i].Y - relativeTo.Y,
                                     face.Positions[i].Z - relativeTo.Z);
-                _vertices.Add(new VertexPositionNormalTexture(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y)));
+                _vertices.Add(new VertexMesh(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y), tangent, Color.White));
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);
             }
@@ -243,27 +245,30 @@ internal sealed class MapMeshSystem : ISystem
 
 // A brush vertex with a second set of coordinates, into the level's lightmap (issue #313): lit.fx's
 // `Lightmapped` reads it as TEXCOORD1. The first three elements are VertexPositionNormalTexture's, so every
-// other technique (a shadow caster, a material that is not Default) draws the same buffer.
+// other technique (a shadow caster, a material that is not Default) draws the same buffer. And a tangent (#647).
 internal readonly struct VertexLightmapped : IVertexType
 {
     public readonly Vector3 Position;
     public readonly Vector3 Normal;
     public readonly Vector2 TextureCoordinate;
     public readonly Vector2 LightmapCoordinate;
+    public readonly Vector4 Tangent;
 
-    public VertexLightmapped(Vector3 position, Vector3 normal, Vector2 uv, Vector2 lightmap)
+    public VertexLightmapped(Vector3 position, Vector3 normal, Vector2 uv, Vector2 lightmap, Vector4 tangent)
     {
         Position = position;
         Normal = normal;
         TextureCoordinate = uv;
         LightmapCoordinate = lightmap;
+        Tangent = tangent;
     }
 
     public static readonly VertexDeclaration VertexDeclaration = new(
         new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
         new VertexElement(12, VertexElementFormat.Vector3, VertexElementUsage.Normal, 0),
         new VertexElement(24, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0),
-        new VertexElement(32, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 1));
+        new VertexElement(32, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 1),
+        new VertexElement(40, VertexElementFormat.Vector4, VertexElementUsage.Tangent, 0));
 
     VertexDeclaration IVertexType.VertexDeclaration => VertexDeclaration;
 }

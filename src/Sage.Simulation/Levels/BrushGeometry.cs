@@ -193,6 +193,19 @@ public static class BrushGeometry
         return built;
     }
 
+    // A flat face's tangent, the one every corner of it shares, from its texture's direction (#647): what
+    // turns a normal map onto it. The same sum a model's vertices take (MeshGeometry.Tangents).
+    internal static Vector4 FaceTangent(ReadOnlySpan<Vector3> positions, ReadOnlySpan<Vector2> uvs, Vector3 normal)
+    {
+        var indices = new List<int>(positions.Length * 3);
+        Triangulate(positions.Length, 0, indices);
+        var normals = new Vector3[positions.Length];
+        normals.AsSpan().Fill(normal);
+        var tangents = new Vector4[positions.Length];
+        MeshGeometry.Tangents(positions, normals, uvs, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(indices), tangents);
+        return tangents.Length > 0 ? tangents[0] : default;
+    }
+
     // A convex polygon as a triangle fan. Convexity is guaranteed by the clipping above, so a fan is
     // correct and there is nothing to decide.
     public static void Triangulate(int vertexCount, int firstVertex, List<int> indices)
