@@ -1,20 +1,20 @@
 {
   "size": 128,
   "materials": [
-    { "name": "ground", "kind": "ground", "seed": 1, "normal": true, "bands": 8 },
-    { "name": "grass", "kind": "grass", "seed": 2, "normal": true, "bands": 8, "variants": 2 },
-    { "name": "stone", "kind": "stone", "seed": 3, "normal": true, "spec": true, "bands": 8 },
-    { "name": "cobble", "kind": "cobble", "seed": 4, "normal": true, "bands": 8 },
-    { "name": "brick", "kind": "brick", "seed": 5, "normal": true, "spec": true },
-    { "name": "roof_tile", "kind": "roof_tile", "seed": 6, "normal": true, "spec": true, "bands": 10 },
-    { "name": "planks", "kind": "planks", "seed": 7, "normal": true, "bands": 10 },
-    { "name": "bark", "kind": "bark", "seed": 8, "normal": true, "bands": 8 },
-    { "name": "metal", "kind": "metal", "seed": 9, "normal": true, "spec": true },
-    { "name": "water", "kind": "water", "seed": 10, "normal": true, "spec": true },
-    { "name": "cloud", "kind": "cloud", "seed": 11 },
-    { "name": "sand", "kind": "sand", "seed": 12, "normal": true, "bands": 8 },
-    { "name": "snow", "kind": "snow", "seed": 13, "normal": true, "spec": true },
-    { "name": "moss", "kind": "moss", "seed": 14, "normal": true, "bands": 8 }
+    { "name": "ground", "kind": "ground", "seed": 1, "normal": true, "bands": 8, "finish": true },
+    { "name": "grass", "kind": "grass", "seed": 2, "normal": true, "bands": 8, "variants": 2, "finish": true },
+    { "name": "stone", "kind": "stone", "seed": 3, "normal": true, "spec": true, "bands": 8, "finish": true },
+    { "name": "cobble", "kind": "cobble", "seed": 4, "normal": true, "bands": 8, "finish": true },
+    { "name": "brick", "kind": "brick", "seed": 5, "normal": true, "spec": true, "finish": true },
+    { "name": "roof_tile", "kind": "roof_tile", "seed": 6, "normal": true, "spec": true, "bands": 10, "finish": true },
+    { "name": "planks", "kind": "planks", "seed": 7, "normal": true, "bands": 10, "finish": true },
+    { "name": "bark", "kind": "bark", "seed": 8, "normal": true, "bands": 8, "finish": true },
+    { "name": "metal", "kind": "metal", "seed": 9, "normal": true, "spec": true, "finish": true },
+    { "name": "water", "kind": "water", "seed": 10, "normal": true, "spec": true, "finish": { "wear": false, "dirt": false } },
+    { "name": "cloud", "kind": "cloud", "seed": 11, "finish": { "shade": false, "wear": false, "dirt": false } },
+    { "name": "sand", "kind": "sand", "seed": 12, "normal": true, "bands": 8, "finish": { "dirt": 0.15 } },
+    { "name": "snow", "kind": "snow", "seed": 13, "normal": true, "spec": true, "finish": { "dirt": 0.15 } },
+    { "name": "moss", "kind": "moss", "seed": 14, "normal": true, "bands": 8, "finish": true }
   ],
   "sheet": { "name": "basics_sheet", "columns": 5 }
 }
