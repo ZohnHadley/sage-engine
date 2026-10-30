@@ -172,6 +172,9 @@ internal sealed class SaveSerializer
         return result;
     }
 
+    // The same question, not remembered: CapturePlan asks it of what a component holds.
+    internal static bool IsPlain(Type type, JsonSerializerOptions json) => Plain(type, json, new HashSet<Type>());
+
     private static bool Plain(Type type, JsonSerializerOptions json, HashSet<Type> seen)
     {
         if (type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal)) return true;
@@ -189,7 +192,7 @@ internal sealed class SaveSerializer
     }
 
     // SaveJson's own converters that read nothing but the value.
-    private static bool IsStateless(JsonConverter converter) =>
+    internal static bool IsStateless(JsonConverter converter) =>
         converter is Vector2JsonConverter or Vector3JsonConverter or QuaternionJsonConverter or JsonStringEnumConverter;
 
     // The same value, bit for bit (a struct with no references), or by its fields' Equals (one with

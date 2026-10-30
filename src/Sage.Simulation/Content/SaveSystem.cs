@@ -1325,13 +1325,14 @@ public sealed partial class SaveSystem
     // only after a Save, a change of Root, or Rescan (a menu opening calls it, in case another process
     // wrote a save meanwhile). Unlike List it opens only the headers, never the world files.
     //
-    // A save still being written in the background is waited for first (issue #285): a slot never lists
-    // as missing, or as the save before, while its files are on their way.
+    // A save still being written in the background is not waited for (issue #602: a menu reading this every
+    // frame stalled on it). It is listed from the header its snapshot made, in place of what its folder held
+    // before, with no thumbnail until the file is there; the folder is read again once the write lands.
     public IReadOnlyList<SaveSlot> Slots
     {
         get
         {
-            if (_slotsStale || IsWriting) WaitForWrites();
+            if (_slotsStale) { _slotsStale = false; _slots = null; }
             return _slots ??= ScanSlots();
         }
     }
@@ -1346,69 +1347,85 @@ public sealed partial class SaveSystem
     {
         _slotsVersion++;
         var slots = new List<SaveSlot>();
-        if (!Directory.Exists(Root)) return slots;
-        foreach (string directory in Directory.EnumerateDirectories(Root))
-        {
-            string name = Path.GetFileName(directory);
-            if (name.EndsWith(".writing", StringComparison.Ordinal)) continue;   // a save interrupted mid-write
-            string headerPath = Path.Combine(directory, "header.json");
-            if (!File.Exists(headerPath)) continue;
-
-            DateTime saved = default;
-            int format = 0;
-            string game = "", engine = "";
-            var kind = SaveKind.Manual;
-            List<SavedPlugin>? plugins = null;
-            List<SavedContent>? content = null;
-            List<SavedMod>? mods = null;
-            string? title = null, thumbnail = null;
-            RecordId scene = default;
-            bool compressed = false;
-            try
+        if (Directory.Exists(Root))
+            foreach (string directory in Directory.EnumerateDirectories(Root))
             {
-                if (JsonNode.Parse(File.ReadAllText(headerPath)) is JsonObject header)
+                string name = Path.GetFileName(directory);
+                if (name.EndsWith(".writing", StringComparison.Ordinal)) continue;   // a save interrupted mid-write
+                string headerPath = Path.Combine(directory, "header.json");
+                if (!File.Exists(headerPath)) continue;
+                slots.Add(ReadSlot(name, directory, () => JsonNode.Parse(File.ReadAllText(headerPath))));
+            }
+        // The saves still on their way to disk (issue #602), as their headers say: listed now, in place of
+        // what their folders hold until the write lands.
+        static string Full(string? path) => path == null ? "" : Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        string root = Full(Root);
+        lock (_writerGate)
+            foreach (var pending in _pendingSlots)
+                if (string.Equals(Full(Path.GetDirectoryName(Full(pending.Directory))), root, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (DateTime.TryParse((string?)header["savedUtc"], System.Globalization.CultureInfo.InvariantCulture,
-                                          System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var when))
-                        saved = when;
-                    format = header["formatVersion"] is JsonValue f && f.TryGetValue(out int n) ? n : 0;
-                    game = header["game"] is JsonValue g && g.TryGetValue(out string? id) ? id ?? "" : "";
-                    engine = header["engineVersion"] is JsonValue e && e.TryGetValue(out string? v) ? v ?? "" : "";
-                    kind = ReadKind(header);
-                    plugins = ReadPlugins(header);
-                    content = ReadContent(header);
-                    mods = ReadMods(header);
-                    title = header["title"] is JsonValue t && t.TryGetValue(out string? named) ? named : null;
-                    // The thumbnail the header names, when its file is there (issue #285); only a bare file
-                    // name is trusted, so a header cannot point a menu outside its slot.
-                    if (header["thumbnail"] is JsonValue p && p.TryGetValue(out string? picture) && picture is { Length: > 0 }
-                        && picture == Path.GetFileName(picture) && File.Exists(Path.Combine(directory, picture)))
-                        thumbnail = Path.GetFullPath(Path.Combine(directory, picture));
-                    compressed = header["compression"] is JsonValue c && c.TryGetValue(out string? packing) && packing == "gzip";
-                    if (header["scene"] is JsonValue sv && sv.TryGetValue(out string? sceneText) && sceneText is { Length: > 0 })
-                        scene = RecordId.Parse(sceneText, "sage");   // a malformed one is a FormatException: caught below
+                    slots.RemoveAll(s => SameSlot(s.Name, pending.Slot.Name));
+                    slots.Add(pending.Slot);
                 }
-            }
-            catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException or FormatException)
-            {
-                /* a broken header still lists, as one that cannot be loaded */
-            }
-            slots.Add(new SaveSlot(name, saved, format, game, engine, kind,
-                plugins ?? new List<SavedPlugin>(), content ?? new List<SavedContent>(),
-                mods ?? new List<SavedMod>(), Mismatches(plugins, content, mods))
-            {
-                Title = string.IsNullOrWhiteSpace(title) ? name : title,
-                ThumbnailPath = thumbnail,
-                Compressed = compressed,
-                Scene = scene,
-            });
-        }
         slots.Sort((a, b) =>
         {
             int byTime = b.SavedUtc.CompareTo(a.SavedUtc);
             return byTime != 0 ? byTime : StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name);
         });
         return slots;
+    }
+
+    // One slot as its header describes it; `read` gives the header (an exception it throws is a broken header).
+    private SaveSlot ReadSlot(string name, string directory, Func<JsonNode?> read)
+    {
+        DateTime saved = default;
+        int format = 0;
+        string game = "", engine = "";
+        var kind = SaveKind.Manual;
+        List<SavedPlugin>? plugins = null;
+        List<SavedContent>? content = null;
+        List<SavedMod>? mods = null;
+        string? title = null, thumbnail = null;
+        RecordId scene = default;
+        bool compressed = false;
+        try
+        {
+            if (read() is JsonObject header)
+            {
+                if (DateTime.TryParse((string?)header["savedUtc"], System.Globalization.CultureInfo.InvariantCulture,
+                                      System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var when))
+                    saved = when;
+                format = header["formatVersion"] is JsonValue f && f.TryGetValue(out int n) ? n : 0;
+                game = header["game"] is JsonValue g && g.TryGetValue(out string? id) ? id ?? "" : "";
+                engine = header["engineVersion"] is JsonValue e && e.TryGetValue(out string? v) ? v ?? "" : "";
+                kind = ReadKind(header);
+                plugins = ReadPlugins(header);
+                content = ReadContent(header);
+                mods = ReadMods(header);
+                title = header["title"] is JsonValue t && t.TryGetValue(out string? named) ? named : null;
+                // The thumbnail the header names, when its file is there (issue #285); only a bare file
+                // name is trusted, so a header cannot point a menu outside its slot.
+                if (header["thumbnail"] is JsonValue p && p.TryGetValue(out string? picture) && picture is { Length: > 0 }
+                    && picture == Path.GetFileName(picture) && File.Exists(Path.Combine(directory, picture)))
+                    thumbnail = Path.GetFullPath(Path.Combine(directory, picture));
+                compressed = header["compression"] is JsonValue c && c.TryGetValue(out string? packing) && packing == "gzip";
+                if (header["scene"] is JsonValue sv && sv.TryGetValue(out string? sceneText) && sceneText is { Length: > 0 })
+                    scene = RecordId.Parse(sceneText, "sage");   // a malformed one is a FormatException: caught below
+            }
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or InvalidOperationException or FormatException)
+        {
+            /* a broken header still lists, as one that cannot be loaded */
+        }
+        return new SaveSlot(name, saved, format, game, engine, kind,
+            plugins ?? new List<SavedPlugin>(), content ?? new List<SavedContent>(),
+            mods ?? new List<SavedMod>(), Mismatches(plugins, content, mods))
+        {
+            Title = string.IsNullOrWhiteSpace(title) ? name : title,
+            ThumbnailPath = thumbnail,
+            Compressed = compressed,
+            Scene = scene,
+        };
     }
 
     // ---- console ------------------------------------------------------------------------------------

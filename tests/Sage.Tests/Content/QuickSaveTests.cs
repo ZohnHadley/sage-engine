@@ -207,6 +207,7 @@ public class QuickSaveTests
         world.RunFixed(Dt);
         var scene = Assert.Single(saves.Slots);
         Assert.Equal(("autosave1", SaveKind.Auto), (scene.Name, scene.Kind));
+        saves.WaitForWrites();   // listed from its header while it is written (#602); its files once it is
         var file = JsonNode.Parse(File.ReadAllText(Path.Combine(saves.Root, "autosave1", "world_main.json")))!;
         Assert.Equal("game:cave", (string?)file["scene"]);
 
@@ -235,6 +236,7 @@ public class QuickSaveTests
         Assert.Equal(SaveKind.Manual, saves.Slots.Single(s => s.Name == "mine").Kind);
         Assert.Equal(SaveKind.Quick, saves.Slots.Single(s => s.Name == SaveSystem.QuickSlot).Kind);
         Assert.Equal(SaveKind.Auto, saves.Slots.Single(s => s.Name == "autosave1").Kind);
+        saves.WaitForWrites();   // listed from its header while it is written (#602); its files once it is
         var header = JsonNode.Parse(File.ReadAllText(Path.Combine(saves.Root, "autosave1", "header.json")))!;
         Assert.Equal("auto", (string?)header["kind"]);
 

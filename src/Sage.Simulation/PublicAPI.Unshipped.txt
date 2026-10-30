@@ -900,3 +900,6 @@ const Sage.Simulation.ModManager.ContainsCodeFlag = "[contains code: not sandbox
 static Sage.Simulation.ModManager.ContainsCode(Sage.Core.ModManifest! mod) -> bool
 Sage.Simulation.ModManager.CodeOf(string! id) -> System.Collections.Generic.IReadOnlyList<System.Reflection.Assembly!>!
 Sage.Simulation.MapRecord.FlattenTerrain -> bool
+Sage.Simulation.ISaveCapture
+Sage.Simulation.ISaveCapture.Capture(object! value) -> object!
+Sage.Simulation.ISaveCapture.ForWriter() -> System.Text.Json.Serialization.JsonConverter!

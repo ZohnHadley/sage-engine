@@ -212,6 +212,7 @@ public class SavesExitTests
             // F5: a quick-save, at the end of the tick that asked for it.
             Press(first, player, SaveSystem.QuickSaveAction, sky, 1);
             Assert.Equal(SaveKind.Quick, Assert.Single(first.Engine.Saves.Slots).Kind);
+            first.Engine.Saves.WaitForWrites();   // listed while it is written (#602); its file below once it is
             arrowAt = world.Get<Transform>(arrow).LocalPosition;
             arrowId = arrow.GetComponent<Persistent>().Id;
             Assert.True(arrowAt.Y > 2f && arrowAt.Z > world.Get<Transform>(player).LocalPosition.Z + 2f, $"the arrow is in the air: {arrowAt}");
