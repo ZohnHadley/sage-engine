@@ -117,6 +117,16 @@ internal static class TerrainSplat
         return Pack(w);
     }
 
+    // How much of each projection a surface with normal `n` takes (#655): x from the east, y from above, z from the
+    // south, summing to 1. Flat ground is all y, and a cliff none. `terrain.fx`'s Splat repeats it.
+    public static Vector3 Projections(Vector3 n)
+    {
+        var p = Vector3.Abs(n);
+        p *= p;
+        p *= p;
+        return p / MathF.Max(p.X + p.Y + p.Z, 1e-6f);
+    }
+
     // The slope of a surface with normal `n`, in degrees from flat.
     public static float SlopeOf(Vector3 n) => MathF.Acos(Math.Clamp(n.Y / MathF.Max(n.Length(), 1e-12f), -1f, 1f)) * (180f / MathF.PI);
 
