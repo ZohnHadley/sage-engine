@@ -186,7 +186,7 @@
       ]
     },
     "action:id": {
-      "description": "An action by id: add_topic, add_var, apply_effect, bark, change_standing, clear_bounty, close_screen, command, commit_crime, cue, destroy, equip, fail_quest, finish_quest, fire, give_item, grant_perk, hit_stop, join_faction, load_scene, log, message, music_intensity, open_screen, pass_time, pay_bounty, play_music, play_sound, promote, save_game, set_stage, set_tag, set_var, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
+      "description": "An action by id: add_topic, add_var, apply_effect, bark, change_standing, clear_bounty, close_screen, command, commit_crime, cue, destroy, equip, fail_quest, finish_quest, fire, give_item, grant_perk, hit_stop, join_faction, load_scene, log, message, music_intensity, open_screen, pass_time, pay_bounty, play_music, play_sound, promote, save_game, set_hour, set_sky, set_stage, set_tag, set_var, set_weather, spawn_prefab, start_quest, stop_music, take_item, teleport, wait, world_speed.",
       "type": "string",
       "enum": [
         "AddTopic",
@@ -219,9 +219,12 @@
         "PlaySound",
         "Promote",
         "SaveGame",
+        "SetHour",
+        "SetSky",
         "SetStage",
         "SetTag",
         "SetVar",
+        "SetWeather",
         "SpawnPrefab",
         "StartQuest",
         "StopMusic",
@@ -259,9 +262,12 @@
         "play_sound",
         "promote",
         "save_game",
+        "set_hour",
+        "set_sky",
         "set_stage",
         "set_tag",
         "set_var",
+        "set_weather",
         "spawn_prefab",
         "start_quest",
         "stop_music",
@@ -1619,6 +1625,87 @@
                 "properties": {
                   "action": {
                     "enum": [
+                      "set_hour",
+                      "SetHour"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: set_hour.",
+                    "enum": [
+                      "set_hour",
+                      "SetHour"
+                    ]
+                  },
+                  "hour": {
+                    "description": "The hour of the day. Unit: h. Range: 0 to 24. (double, default 0)",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 24
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'set_hour' (SetHourAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "set_sky",
+                      "SetSky"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: set_sky.",
+                    "enum": [
+                      "set_sky",
+                      "SetSky"
+                    ]
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
+                  },
+                  "sky": {
+                    "description": "The sky record. Names a sky record. (RecordRef<SkyRecord>)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:sky"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'set_sky' (SetSkyAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
                       "set_stage",
                       "SetStage"
                     ]
@@ -1752,6 +1839,53 @@
                 },
                 "additionalProperties": false,
                 "description": "action 'set_var' (SetVarAction)."
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "enum": [
+                      "set_weather",
+                      "SetWeather"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "description": "The action: set_weather.",
+                    "enum": [
+                      "set_weather",
+                      "SetWeather"
+                    ]
+                  },
+                  "replace": {
+                    "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                    "type": "boolean"
+                  },
+                  "seconds": {
+                    "description": "How long the change takes; 0 = at once. Unit: s. At least 0. (float, default 6)",
+                    "default": 6,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "weather": {
+                    "description": "The weather record. Names a weather record. (RecordId)",
+                    "allOf": [
+                      {
+                        "$ref": "ids.schema.json#/definitions/record:weather"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "action 'set_weather' (SetWeatherAction)."
               }
             },
             {
@@ -5567,6 +5701,208 @@
         {
           "type": "object",
           "properties": {
+            "hour": {
+              "description": "The hour of the day. Unit: h. Range: 0 to 24. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            },
+            "set_hour": {
+              "anyOf": [
+                {
+                  "description": "The hour of the day. Unit: h. Range: 0 to 24. (double, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 24
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "hour": {
+                      "description": "The hour of the day. Unit: h. Range: 0 to 24. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 24
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_hour' (SetHourAction), in shorthand."
+            }
+          },
+          "required": [
+            "set_hour"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SetHour": {
+              "anyOf": [
+                {
+                  "description": "The hour of the day. Unit: h. Range: 0 to 24. (double, default 0)",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 24
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "hour": {
+                      "description": "The hour of the day. Unit: h. Range: 0 to 24. (double, default 0)",
+                      "default": 0,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 24
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_hour' (SetHourAction), in shorthand."
+            },
+            "hour": {
+              "description": "The hour of the day. Unit: h. Range: 0 to 24. (double, default 0)",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 24
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "SetHour"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            },
+            "set_sky": {
+              "anyOf": [
+                {
+                  "description": "The sky record. Names a sky record. (RecordRef<SkyRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:sky"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "sky": {
+                      "description": "The sky record. Names a sky record. (RecordRef<SkyRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:sky"
+                        }
+                      ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_sky' (SetSkyAction), in shorthand."
+            },
+            "sky": {
+              "description": "The sky record. Names a sky record. (RecordRef<SkyRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:sky"
+                }
+              ]
+            }
+          },
+          "required": [
+            "set_sky"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SetSky": {
+              "anyOf": [
+                {
+                  "description": "The sky record. Names a sky record. (RecordRef<SkyRecord>)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:sky"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "sky": {
+                      "description": "The sky record. Names a sky record. (RecordRef<SkyRecord>)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:sky"
+                        }
+                      ]
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_sky' (SetSkyAction), in shorthand."
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            },
+            "sky": {
+              "description": "The sky record. Names a sky record. (RecordRef<SkyRecord>)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:sky"
+                }
+              ]
+            }
+          },
+          "required": [
+            "SetSky"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
             "quest": {
               "description": "Names a quest record. (RecordRef<QuestRecord>)",
               "allOf": [
@@ -5935,6 +6271,134 @@
           },
           "required": [
             "SetVar"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            },
+            "seconds": {
+              "description": "How long the change takes; 0 = at once. Unit: s. At least 0. (float, default 6)",
+              "default": 6,
+              "type": "number",
+              "minimum": 0
+            },
+            "set_weather": {
+              "anyOf": [
+                {
+                  "description": "The weather record. Names a weather record. (RecordId)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:weather"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "weather": {
+                      "description": "The weather record. Names a weather record. (RecordId)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:weather"
+                        }
+                      ]
+                    },
+                    "seconds": {
+                      "description": "How long the change takes; 0 = at once. Unit: s. At least 0. (float, default 6)",
+                      "default": 6,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_weather' (SetWeatherAction), in shorthand."
+            },
+            "weather": {
+              "description": "The weather record. Names a weather record. (RecordId)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:weather"
+                }
+              ]
+            }
+          },
+          "required": [
+            "set_weather"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SetWeather": {
+              "anyOf": [
+                {
+                  "description": "The weather record. Names a weather record. (RecordId)",
+                  "allOf": [
+                    {
+                      "$ref": "ids.schema.json#/definitions/record:weather"
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "weather": {
+                      "description": "The weather record. Names a weather record. (RecordId)",
+                      "allOf": [
+                        {
+                          "$ref": "ids.schema.json#/definitions/record:weather"
+                        }
+                      ]
+                    },
+                    "seconds": {
+                      "description": "How long the change takes; 0 = at once. Unit: s. At least 0. (float, default 6)",
+                      "default": 6,
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "replace": {
+                      "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ],
+              "description": "action 'set_weather' (SetWeatherAction), in shorthand."
+            },
+            "replace": {
+              "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+              "type": "boolean"
+            },
+            "seconds": {
+              "description": "How long the change takes; 0 = at once. Unit: s. At least 0. (float, default 6)",
+              "default": 6,
+              "type": "number",
+              "minimum": 0
+            },
+            "weather": {
+              "description": "The weather record. Names a weather record. (RecordId)",
+              "allOf": [
+                {
+                  "$ref": "ids.schema.json#/definitions/record:weather"
+                }
+              ]
+            }
+          },
+          "required": [
+            "SetWeather"
           ],
           "additionalProperties": false
         },

@@ -119,7 +119,7 @@ public class VocabularyDeclarationTests
         Assert.All(entries, e => Assert.Equal("sage.core", e.Owner));
         Assert.Equal(new[] { "action:add_var", "action:destroy", "action:fire", "action:hit_stop", "action:load_scene", "action:log", "action:message",
                              "action:music_intensity", "action:pass_time", "action:play_music", "action:play_sound", "action:save_game",
-                             "action:set_var", "action:spawn_prefab", "action:stop_music", "action:teleport", "action:wait", "action:world_speed",
+                             "action:set_hour", "action:set_sky", "action:set_var", "action:set_weather", "action:spawn_prefab", "action:stop_music", "action:teleport", "action:wait", "action:world_speed",
                              "condition:all", "condition:anim_finished", "condition:anim_param", "condition:anim_window", "condition:any", "condition:date_between",
                              "condition:distance_to", "condition:entity_exists", "condition:in_scene", "condition:moon_phase", "condition:not", "condition:on_date", "condition:random",
                              "condition:season", "condition:time_between", "condition:var", "condition:weekday" },

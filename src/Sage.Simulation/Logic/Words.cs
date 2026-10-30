@@ -314,6 +314,43 @@ internal sealed class PassTimeAction : IAction
     }
 }
 
+// `{ "set_hour": 21.5 }`: the clock says that hour of the same day (#650), as `time_set` does for a cheat; nobody
+// hears TimePassed, since no time went by. To let hours go by, `pass_time`.
+[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+[Action("set_hour", Plugin = RegistrationOwners.Core)]
+internal sealed class SetHourAction : IAction
+{
+    [EntryValue, Property(Min = 0, Max = 24, Unit = "h", Tooltip = "The hour of the day")]
+    public double Hour;
+
+    public void Run(in ActionContext context) => WorldClock.Of(context.World).Hour = Hour;
+}
+
+// `{ "set_sky": "dusk" }`: the world is lit by that sky record (#650), as a scene's `environment.sky` lights it.
+[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+[Action("set_sky", Plugin = RegistrationOwners.Core)]
+internal sealed class SetSkyAction : IAction
+{
+    [EntryValue, Property(Tooltip = "The sky record")]
+    public RecordRef<SkyRecord> Sky;
+
+    public void Run(in ActionContext context) => WorldClock.Of(context.World).Sky = Sky.Id;
+}
+
+// `{ "set_weather": "sage:storm", "seconds": 20 }`: the weather changes to that over so many seconds (#650).
+[Experimental("SAGE0124", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
+[Action("set_weather", Plugin = RegistrationOwners.Core)]
+internal sealed class SetWeatherAction : IAction
+{
+    [EntryValue, RecordRef("weather"), Property(Tooltip = "The weather record")]
+    public RecordId Weather;
+    [Property(Min = 0, Unit = "s", Tooltip = "How long the change takes; 0 = at once")]
+    public float Seconds = 6f;
+
+    public void Run(in ActionContext context) =>
+        context.World.Resources.GetOrAdd(() => new Weather()).Set(Weather, Seconds);
+}
+
 // `{ "load_scene": "crypt" }`: the world goes to that scene at the tick's end, and the player to its
 // start; `"entry": "crypt_in"` puts the player at that entry instead, as a load door does (Travel.To),
 // and `"hours"` pass on the way.
