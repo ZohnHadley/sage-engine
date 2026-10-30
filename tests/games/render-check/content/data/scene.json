@@ -16,6 +16,19 @@
     ]
   },
 
+  // The same noon under a painted sky (issue #630, content/checks/skybox.json): `sky_set rendercheck:painted`
+  // switches to it. Its panorama, textures/painted_sky.png (64x32, written by hand for this check), is flat
+  // pink over its upper half and dark brown below, so a sky region that shows the picture is unmistakable.
+  {
+    "type": "sky", "id": "painted", "sunrise": 6, "sunset": 18, "lean": 0.3, "fogMode": "Linear",
+    "skybox": "textures/painted_sky.png",
+    "keys": [
+      { "hour": 12, "sun": [1, 1, 1], "ambientSky": [0.2, 0.2, 0.2], "ambientGround": [0.1, 0.1, 0.1],
+        "horizon": [0.55, 0.65, 0.85], "zenith": [0.15, 0.35, 0.85], "fog": [0.85, 0.6, 0.35],
+        "fogStart": 20, "fogEnd": 50, "shadow": 1, "skyboxTint": [1, 1, 1] }
+    ]
+  },
+
   // The view: a camera that wins the screen, two metres up, looking north (-Z) level with the ground. It is
   // the scene's player, which is nothing but this camera: nothing walks, nothing turns.
   { "type": "prefab", "id": "eye", "name": "eye", "parts": { "camera": { "priority": 10 } } },

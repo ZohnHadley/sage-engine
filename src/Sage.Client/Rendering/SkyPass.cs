@@ -10,7 +10,8 @@ namespace Sage.Client;
 // writes off, so it colours only what nothing opaque covered: a gradient from the horizon colour
 // (`ClearColor`) to `Zenith`, hazed to the fog colour along the horizon, the sun disc, and stars as the
 // sun goes down. `shaders/sky.fx` draws it; what it draws is `SkyRules.ColorAt` and `SkyRules.StarsAt`,
-// headless and tested.
+// headless and tested. A sky with a panorama (`SkyRecord.Skybox`, issue #630) draws the picture, looked up
+// by `SkyRules.SkyboxUv`, in place of the gradient, and everything else over it.
 //
 // Drawn only while `RenderEnvironment.DrawSky` — the sky system turns it on for a world with a sky record
 // — so a world without one keeps the clear colour, exactly as before. Not in a depth-only view (the
@@ -34,6 +35,7 @@ internal sealed class SkyDome : IDisposable
     private Effect? _effect;
     private EffectParameter? _invViewProj, _horizon, _zenith, _fogColor, _sunDir, _sunColor, _params, _disc;
     private EffectParameter? _haze, _starAxis, _moon, _moonLight, _cloud, _cloudColor, _moonTex, _cloudTex;
+    private EffectParameter? _box, _boxTint, _boxTex, _boxNightTex;
     private ContentService? _content;
 
     public SkyDome(GraphicsDevice device)
@@ -66,6 +68,7 @@ internal sealed class SkyDome : IDisposable
             _params = P("SkyParams"); _disc = P("SkyDisc");
             _haze = P("SkyHaze"); _starAxis = P("SkyStarAxis"); _moon = P("SkyMoon"); _moonLight = P("SkyMoonLight");
             _cloud = P("SkyCloud"); _cloudColor = P("SkyCloudColor"); _moonTex = P("MoonTex"); _cloudTex = P("CloudTex");
+            _box = P("SkyBox"); _boxTint = P("SkyBoxTint"); _boxTex = P("SkyBoxTex"); _boxNightTex = P("SkyBoxNightTex");
         }
         _content = content;
         return true;
@@ -97,6 +100,14 @@ internal sealed class SkyDome : IDisposable
         _cloudTex?.SetValue(clouds);
         _cloud?.SetValue(new Vector4(clouds != null ? env.CloudCover : 0f, env.CloudScale, env.CloudScroll.X, env.CloudScroll.Y));
         _cloudColor?.SetValue(env.CloudColor);
+
+        // Issue #630: the panorama, and the night's faded in; not named or not loaded, the gradient.
+        var box = !env.Skybox.IsEmpty ? _content?.LoadTexture(env.Skybox) : null;
+        var night = box != null && !env.SkyboxNight.IsEmpty ? _content?.LoadTexture(env.SkyboxNight) : null;
+        _boxTex?.SetValue(box);
+        _boxNightTex?.SetValue(night ?? box);
+        _box?.SetValue(new Vector4(box != null ? 1f : 0f, night != null ? env.SkyboxNightMix : 0f, 0f, 0f));
+        _boxTint?.SetValue(env.SkyboxTint);
 
         _device.BlendState = BlendState.Opaque;
         _device.DepthStencilState = DepthStencilState.DepthRead;   // behind everything drawn; writes nothing

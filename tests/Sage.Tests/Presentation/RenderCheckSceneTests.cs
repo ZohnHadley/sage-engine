@@ -178,6 +178,44 @@ public class RenderCheckSceneTests
         Assert.True(PixelCheck.Measure(PixelMeasure.BlueMinusRed, white) < Check(spec, "the pool is blue").Min);
     }
 
+    // The skybox check (issue #630): its regions are the drawing and water checks' own; every ray of its sky
+    // region reads the panorama's pink upper half, above the haze band, so the check sees the picture and
+    // not fog; and the painted sky is the noon sky with a panorama, so nothing else in the frame moves.
+    [Fact]
+    public void TheSkyboxRegionReadsThePanoramasSkyHalf()
+    {
+        using var app = Boot();
+        var spec = Spec("skybox.json");
+        var drawing = Spec("drawing.json");
+        Spec("water.json").TryRegion("water", out var water);
+        Assert.True(spec.TryRegion("sky", out var sky));
+        Assert.True(spec.TryRegion("fog", out var fog));
+        Assert.True(spec.TryRegion("water", out var pool));
+        drawing.TryRegion("sky", out var drawnSky);
+        drawing.TryRegion("fog", out var drawnFog);
+        Assert.Equal((drawnSky, drawnFog, water), (sky, fog, pool));
+
+        var painted = app.Records.Get<SkyRecord>(new RecordId("rendercheck", "painted"));
+        var noon = app.Records.Get<SkyRecord>(new RecordId("rendercheck", "noon"));
+        Assert.Equal("textures/painted_sky.png", painted.Skybox.ToString());
+        Assert.True(File.Exists(Path.Combine(Game, "content", "textures", "painted_sky.png")));
+        Assert.Equal(noon.Keys[0].Horizon, painted.Keys[0].Horizon);
+        Assert.Equal(noon.Keys[0].Fog, painted.Keys[0].Fog);
+        Assert.Equal(Vector3.One, painted.Keys[0].SkyboxTint);
+
+        var view = new View(app.World, spec);
+        foreach (var (u, v) in Grid(sky))
+        {
+            var ray = view.Ray(u, v);
+            Assert.True(ray.Y > painted.HazeBand, $"the sky region at ({u:0.000}, {v:0.000}) is in the haze");
+            Assert.True(SkyRules.SkyboxUv(ray).Y < 0.5f, $"the sky region at ({u:0.000}, {v:0.000}) reads the panorama's ground half");
+        }
+
+        var env = app.World.Resources.Get<RenderEnvironment>();
+        Assert.All(spec.Checks.Where(c => c.When == PixelCheckWhen.NoShaders),
+                   c => Assert.True(Vector3.Distance(env.ClearColor, c.Color!.Value) < 0.01f, c.Name));
+    }
+
     // The scene holds still and draws everything the checks look for: a sky pass, fog, and a sun high enough
     // to cast a full shadow.
     [Fact]

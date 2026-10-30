@@ -41,6 +41,27 @@ public sealed partial class Renderer
     private readonly Vector4[] _waterWaves = new Vector4[WaterViews.MaxSurfaces];
     private readonly Vector4[] _waterMore = new Vector4[WaterViews.MaxSurfaces];
 
+    // The mean colour of a panorama's upper half (its sky), worked out once per picture: a reload swaps the
+    // texture and it is worked out again. Null for a picture not loaded, or one the CPU cannot read back
+    // (a compressed format): the water then reflects the gradient.
+    private Texture2D? _skyMeanOf;
+    private Vector3? _skyMean;
+
+    private Vector3? SkyMean(AssetPath path)
+    {
+        var texture = _content.LoadTexture(path);
+        if (texture == null || texture.Format != SurfaceFormat.Color) return null;
+        if (ReferenceEquals(texture, _skyMeanOf)) return _skyMean;
+        var pixels = new Color[texture.Width * texture.Height];
+        texture.GetData(pixels);
+        var sum = Vector3.Zero;
+        int half = texture.Width * Math.Max(1, texture.Height / 2);
+        for (int i = 0; i < half; i++) sum += pixels[i].ToVector3();
+        _skyMeanOf = texture;
+        _skyMean = sum / half;
+        return _skyMean;
+    }
+
     // Whether the frame has water for the chain to draw: `r_water`, a main view, and a surface in sight or
     // the camera under one.
     private bool WantsWater(RenderSnapshot s) =>
@@ -91,8 +112,10 @@ public sealed partial class Renderer
         p["WaterMore"]?.SetValue(_waterMore);
 
         // The sky the surface reflects: sky.fx's gradient and haze (no sun disc: the glint is the water's own).
-        p["WaterHorizon"]?.SetValue(env.ClearColor);
-        p["WaterZenith"]?.SetValue(env.DrawSky ? env.Zenith : env.ClearColor);
+        // Under a painted sky (issue #630) the surface reflects the panorama's sky half, averaged.
+        var painted = env.DrawSky && !env.Skybox.IsEmpty ? SkyMean(env.Skybox) : null;
+        p["WaterHorizon"]?.SetValue(painted * env.SkyboxTint ?? env.ClearColor);
+        p["WaterZenith"]?.SetValue(painted * env.SkyboxTint ?? (env.DrawSky ? env.Zenith : env.ClearColor));
         p["WaterFog"]?.SetValue(env.FogColor);
         p["WaterSunDir"]?.SetValue(env.SunDirection);
         p["WaterSunColour"]?.SetValue(env.SunColor);

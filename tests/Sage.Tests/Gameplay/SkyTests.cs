@@ -31,6 +31,10 @@ public class SkyTests
              { "hour": 22, "sun": [0.0, 0.0, 0.0],  "ambientSky": [0.03, 0.04, 0.1],  "ambientGround": [0.01, 0.01, 0.02],
                "horizon": [0.03, 0.04, 0.08], "zenith": [0.01, 0.02, 0.05], "fog": [0.03, 0.04, 0.08], "fogStart": 20, "fogEnd": 120, "shadow": 0 } ] },
 
+         { "type": "sky", "id": "painted", "skybox": "textures/day_sky.png", "skyboxNight": "textures/night_sky.png", "keys": [
+             { "hour": 0,  "sun": [0.0, 0.0, 0.0], "skyboxTint": [0.2, 0.2, 0.3] },
+             { "hour": 12, "skyboxTint": [1.0, 0.9, 0.8] } ] },
+
          { "type": "sky", "id": "wrap", "keys": [
              { "hour": 5,  "horizon": [0.0, 0.0, 0.0], "fogEnd": 100 },
              { "hour": 21, "horizon": [0.8, 0.8, 0.8], "fogEnd": 500 } ] },
@@ -423,5 +427,82 @@ public class SkyTests
         var clock = WorldClock.Of(app.World);
         Assert.Equal(Id("day"), clock.Sky);
         Assert.Equal(18.5, clock.Hour, 6);
+    }
+
+    // ---- a painted sky (issue #630) ----
+
+    // The panorama reaches the environment with the hour's tint and the weather's sky tint on top, and the
+    // night's picture shows as much as the stars do; a sky without one leaves it empty, which draws the
+    // gradient exactly as before.
+    [Fact]
+    public void ASkyboxReachesTheEnvironmentTintedByTheHourAndTheWeather()
+    {
+        using var app = Boot();
+        var painted = app.Records.Get<SkyRecord>(Id("painted"));
+
+        var noon = new RenderEnvironment();
+        SkyRules.Apply(painted, 12, app.Records, Settled("clear"), noon);
+        Assert.Equal("textures/day_sky.png", noon.Skybox.ToString());
+        Assert.Equal("textures/night_sky.png", noon.SkyboxNight.ToString());
+        Assert.Equal(new Vector3(1.0f, 0.9f, 0.8f), noon.SkyboxTint);
+        Assert.Equal(0f, noon.SkyboxNightMix);
+
+        var midnight = new RenderEnvironment();
+        SkyRules.Apply(painted, 0, app.Records, Settled("clear"), midnight);
+        Assert.Equal(new Vector3(0.2f, 0.2f, 0.3f), midnight.SkyboxTint);
+        Assert.Equal(1f, midnight.SkyboxNightMix, 3);
+
+        var dusk = new RenderEnvironment();                          // between keys, the tint blends
+        SkyRules.Apply(painted, 6, app.Records, Settled("clear"), dusk);
+        Assert.Equal(0.6f, dusk.SkyboxTint.X, 3);
+
+        var storm = new RenderEnvironment();                         // a heavy sky darkens the picture too
+        SkyRules.Apply(painted, 12, app.Records, Settled("storm"), storm);
+        Assert.True(Vector3.Distance(new Vector3(0.45f, 0.405f, 0.4f), storm.SkyboxTint) < 1e-5f, storm.SkyboxTint.ToString());
+
+        var plain = new RenderEnvironment();
+        SkyRules.Apply(app.Records.Get<SkyRecord>(Id("day")), 12, app.Records, Settled("clear"), plain);
+        Assert.True(plain.Skybox.IsEmpty);
+        Assert.True(plain.SkyboxNight.IsEmpty);
+    }
+
+    // Where the panorama is read for a view direction, as sky.fx reads it: straight up is its top row, the
+    // horizon its middle, -z its centre and +x a quarter turn to the right.
+    [Fact]
+    public void ThePanoramaIsReadEquirectangularWithMinusZAtItsCentre()
+    {
+        static void At(Vector3 d, float u, float v)
+        {
+            var uv = SkyRules.SkyboxUv(d);
+            Assert.Equal(u, uv.X, 3);
+            Assert.Equal(v, uv.Y, 3);
+        }
+        At(-Vector3.UnitZ, 0.5f, 0.5f);
+        At(Vector3.UnitX, 0.75f, 0.5f);
+        At(-Vector3.UnitX, 0.25f, 0.5f);
+        At(new Vector3(0, 1, -1e-4f), 0.5f, 0f);
+        At(new Vector3(0, -1, -1e-4f), 0.5f, 1f);
+        At(new Vector3(0, 1, -1), 0.5f, 0.25f);                    // 45 degrees up
+        Assert.Equal(1f, SkyRules.SkyboxUv(new Vector3(1e-4f, 0, 1)).X, 2);   // the seam is behind, at +z
+    }
+
+    // `sky_set` changes the sky every world is lit by, as a scene's environment.sky does: a cheat, refused
+    // for a name that is not a sky, and `none` takes the sky away.
+    [Fact]
+    public void SkySetChangesTheWorldsSky()
+    {
+        using var app = Boot();
+        var clock = WorldClock.Of(app.World);
+        clock.Sky = Id("day");
+
+        app.CVars.Execute("sky_set painted");
+        Assert.Equal(Id("day"), clock.Sky);                         // a cheat: refused until cheats are on
+        app.CVars.Execute("sv_cheats 1");
+        app.CVars.Execute("sky_set painted");
+        Assert.Equal(Id("painted"), clock.Sky);
+        app.CVars.Execute("sky_set nowhere");                       // not a sky: refused, not applied
+        Assert.Equal(Id("painted"), clock.Sky);
+        app.CVars.Execute("sky_set none");
+        Assert.True(clock.Sky.IsEmpty);
     }
 }
