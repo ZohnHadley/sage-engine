@@ -1,0 +1,16 @@
+{
+  // The render check's frame in a thick fog (issue #633), after `sky_set rendercheck:foggy`, with `r_post 0`:
+  // the fog ends four metres out, so the pool and the ground beside it are both entirely the fog's colour. A
+  // water step that fogged nothing leaves the pool its dark blue. RenderCheckSceneTests proves everything in
+  // both regions is past the fog's end. The regions are water.json's.
+  "width": 640, "height": 360,
+  "regions": [
+    { "name": "water",  "rect": [0.72, 0.66, 0.14, 0.08], "sees": "water" },
+    { "name": "ground", "rect": [0.08, 0.70, 0.10, 0.08], "sees": "fog" }
+  ],
+  "checks": [
+    { "name": "the pool past the fog's end is the fog's colour", "region": "water", "when": "shaders", "color": [0.85, 0.6, 0.35], "tolerance": 0.04 },
+    { "name": "the ground beside it is the same colour", "region": "ground", "when": "shaders", "color": [0.85, 0.6, 0.35], "tolerance": 0.04 },
+    { "name": "without shaders the pool region is the clear colour", "region": "water", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}

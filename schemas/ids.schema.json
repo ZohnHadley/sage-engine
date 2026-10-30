@@ -1468,9 +1468,11 @@
       "enum": [
         "alien",
         "day",
+        "foggy",
         "linear",
         "noon",
         "painted",
+        "rendercheck:foggy",
         "rendercheck:noon",
         "rendercheck:painted",
         "sandbox:day",
@@ -3387,9 +3389,11 @@
       "enum": [
         "alien",
         "day",
+        "foggy",
         "linear",
         "noon",
         "painted",
+        "rendercheck:foggy",
         "rendercheck:noon",
         "rendercheck:painted",
         "sandbox:day",

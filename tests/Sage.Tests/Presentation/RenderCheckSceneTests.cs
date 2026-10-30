@@ -216,6 +216,43 @@ public class RenderCheckSceneTests
                    c => Assert.True(Vector3.Distance(env.ClearColor, c.Color!.Value) < 0.01f, c.Name));
     }
 
+    // The water fog check (issue #633): the regions are the water check's; everything in them is past the
+    // foggy sky's fog end, so the pool and the ground beside it are both the fog's colour, and the pool the
+    // water check sees, dark and blue, fails it.
+    [Fact]
+    public void TheWaterFogRegionsArePastTheFogsEnd()
+    {
+        using var app = Boot();
+        var world = app.World;
+        var spec = Spec("water_fog.json");
+        var water = Spec("water.json");
+        water.TryRegion("water", out var drawnPool);
+        water.TryRegion("lit", out var drawnGround);
+        Assert.True(spec.TryRegion("water", out var pool));
+        Assert.True(spec.TryRegion("ground", out var ground));
+        Assert.Equal((drawnPool.X, drawnPool.Y, drawnPool.Width, drawnPool.Height), (pool.X, pool.Y, pool.Width, pool.Height));
+        Assert.Equal((drawnGround.X, drawnGround.Y, drawnGround.Width, drawnGround.Height), (ground.X, ground.Y, ground.Width, ground.Height));
+
+        var foggy = app.Records.Get<SkyRecord>(new RecordId("rendercheck", "foggy"));
+        var noon = app.Records.Get<SkyRecord>(new RecordId("rendercheck", "noon"));
+        var key = foggy.Keys[0];
+        Assert.Equal(noon.Keys[0].Fog, key.Fog);
+        Assert.Equal(key.Fog, Check(spec, "the pool past the fog's end is the fog's colour").Color!.Value);
+        Assert.Equal(key.Fog, Check(spec, "the ground beside it is the same colour").Color!.Value);
+
+        var view = new View(world, spec);
+        var planes = new WaterPlane[WaterViews.MaxSurfaces];
+        new WaterViews(world, app.Records).Collect(view.From, view.Far, planes);
+        var physics = world.Resources.Get<IPhysicsWorld>();
+        foreach (var (u, v) in Grid(pool))
+        {
+            var ray = view.Ray(u, v);
+            Assert.True((planes[0].Surface - view.From.Y) / ray.Y >= key.FogEnd, $"the pool at ({u:0.000}, {v:0.000}) is inside the fog");
+        }
+        foreach (var (u, v) in Grid(ground))
+            Assert.True(physics.Raycast(view.From, view.Ray(u, v), view.Far).Distance >= key.FogEnd, $"the ground at ({u:0.000}, {v:0.000}) is inside the fog");
+    }
+
     // The scene holds still and draws everything the checks look for: a sky pass, fog, and a sun high enough
     // to cast a full shadow.
     [Fact]
