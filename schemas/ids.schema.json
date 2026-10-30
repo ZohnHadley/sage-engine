@@ -952,9 +952,11 @@
         "plate",
         "player",
         "player_camera",
+        "pool",
         "rain",
         "rat",
         "rendercheck:eye",
+        "rendercheck:pool",
         "reward_check",
         "ring_on_floor",
         "road_sign",
@@ -1737,6 +1739,8 @@
       "type": "string",
       "enum": [
         "lake",
+        "pool",
+        "rendercheck:pool",
         "sage:water",
         "sandbox:lake",
         "water"
@@ -2709,9 +2713,11 @@
         "plate",
         "player",
         "player_camera",
+        "pool",
         "rain",
         "rat",
         "rendercheck:eye",
+        "rendercheck:pool",
         "reward_check",
         "ring_on_floor",
         "road_sign",
@@ -3495,6 +3501,8 @@
       "type": "string",
       "enum": [
         "lake",
+        "pool",
+        "rendercheck:pool",
         "sage:water",
         "sandbox:lake",
         "water"

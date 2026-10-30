@@ -141,6 +141,43 @@ public class RenderCheckSceneTests
             }
     }
 
+    // The water check (issue #592): every point of its pool region looks at the pool's top, in front of the
+    // ground, from the camera; its lit region is the drawing check's; and the sunlit ground the frame would
+    // show there without the water step fails both of its shader checks.
+    [Fact]
+    public void TheWaterRegionLooksAtThePoolsTop()
+    {
+        using var app = Boot();
+        var world = app.World;
+        var spec = Spec("water.json");
+        Assert.Equal((640, 360), (spec.Width, spec.Height));
+        Spec("drawing.json").TryRegion("lit", out var lit);
+        Assert.True(spec.TryRegion("lit", out var waterLit));
+        Assert.Equal(lit, waterLit);
+
+        var planes = new WaterPlane[WaterViews.MaxSurfaces];
+        var view = new View(world, spec);
+        Assert.Equal(1, new WaterViews(world, app.Records).Collect(view.From, view.Far, planes));
+        var pool = planes[0];
+        Assert.Equal(0f, pool.Look.ShoreFade);   // the ground under it is flat: no fade hides the top
+        var physics = world.Resources.Get<IPhysicsWorld>();
+        Assert.True(spec.TryRegion("water", out var region));
+        Assert.Equal("water", region.Sees);
+        foreach (var (u, v) in Grid(region))
+        {
+            var ray = view.Ray(u, v);
+            float t = (pool.Surface - view.From.Y) / ray.Y;
+            var at = view.From + ray * t;
+            Assert.True(t > 0 && at.X > pool.Min.X && at.X < pool.Max.X && at.Z > pool.Min.Y && at.Z < pool.Max.Y,
+                        $"the ray at ({u:0.000}, {v:0.000}) meets the pool's plane at {at}, outside it");
+            Assert.True(physics.Raycast(view.From, ray, view.Far).Distance > t, $"the ground is in front of the pool at ({u:0.000}, {v:0.000})");
+        }
+
+        var white = Vector3.One;
+        Assert.True(Luma(white) - Luma(white) > Check(spec, "the pool is darker than the sunlit ground").Max);
+        Assert.True(PixelCheck.Measure(PixelMeasure.BlueMinusRed, white) < Check(spec, "the pool is blue").Min);
+    }
+
     // The scene holds still and draws everything the checks look for: a sky pass, fog, and a sun high enough
     // to cast a full shadow.
     [Fact]
