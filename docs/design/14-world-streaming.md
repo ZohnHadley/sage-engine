@@ -190,6 +190,9 @@ Experimental, SAGE0129. Code: `src/Sage.Simulation/World/TerrainSplat.cs` (`Terr
   together); a layer naming none leaves the cell to the `terrain` record's `surfaces`. So a shot leaves its
   decal there (test: AShotIntoTerrainLeavesAMarkWhereItsLayerNamesASurface) and footsteps follow. The navmesh
   still reads the `terrain` record's surfaces.
+- **Slopes take the texture from the side** (#655): `terrain.fx` blends three projections by how the ground faces,
+  the top-down map on the flat (test: ASlopeTakesItsTextureFromTheSide), for about 3 to 6% of a frame on a GTX 1650.
+  Not yet seen on a cliff, so #655 stays open.
 - **No seam.** The weights are functions of a vertex's height and normal, and both agree either side of a
   sector edge (#277's normals), so the blend has no seam: the Sandbox's `sandbox:hills` lays rock over grass
   on slopes past 12 degrees (test: TheSandboxBlendsTwoLayersWithNoSeamAtTheSectorEdge).

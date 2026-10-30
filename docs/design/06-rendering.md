@@ -1108,6 +1108,9 @@ Experimental, SAGE0130 (MAKING_A_GAME §10b).
   `r_post_vignette`). Their materials inherit every param `post.fx` has from `sage:post_copy`, since GL
   ignores `.fx` defaults (test: TheEnginesEffectsAndTheirMaterialsLoad). LDR in and out, exposure in the
   grade (decision 6).
+- **What shines keeps its colour** (#653): the tint fades out on bright pixels, going by the brightest channel,
+  so a fire stays orange (test: TheNightTintLeavesWhatShines). In the Sandbox at 23:00 the chroma of the brightest
+  0.5% of the frame went from 32 to 145, and dim pixels stayed at 14.
 - **The night tint** reads the sky, not the light: `PostChainPlan.Night` is 0 while the sun is up, rises as
   it sets and is 1 once it is well under the horizon; with no sky it is 0 and the grade is only a grade
   (test: TheNightTintFollowsTheSky).
@@ -1361,6 +1364,12 @@ and #315, finished the same day) is the last three sections of this list.
 - **Since built:** soft particles ("As built (soft particles)").
 - **Not yet:** the ray budget is first come, not rotated; a hit leaves no decal.
 
+### As built (normal maps on brush faces, 2026-10-30 — #647)
+- **`BrushGeometry.FaceTangent`** gives a flat face one tangent from its texture's direction
+  (test: ABrushFacesTangentRunsAlongItsTexture). `MapMesh` and `BlockoutMesh` build `VertexMesh`, and
+  `VertexLightmapped` carries a tangent too. The render check's panel leans its halves up and down
+  (`checks/brush_normal.json`, test: TheBrushNormalRegionsLookAtThePanel).
+
 ### As built (flickering lamps, spot lights and a light grid, 2026-10-06 — #314, 4n-10)
 - **Code:** `src/Sage.Simulation/Rendering/Lights.cs` (`PointLight.Pattern`, `PatternRate`, `Cone`,
   `InnerCone`; `LightStyles`; `LightSample.Spot`; `LightRules.Sample` and `Sum`, the shaders' sum on the
@@ -1440,7 +1449,7 @@ and #315, finished the same day) is the last three sections of this list.
   instanced too, and long sprite runs are instanced quads (§3.7's "later").
 - **`r_stats`** adds `instanced N in M draw(s) (saved K), instanced sprites S`.
 - **Not yet:** a tint must match across a run; a multi-part mesh interleaves its parts, which breaks runs;
-  off by default until it is checked on more GPUs.
+  on by default since #610, once it was measured on a GPU with repeated meshes.
 
 ### As built (lightmaps for brush levels, 2026-10-06 — #313, 4n-9)
 - **Code:** `src/Sage.Simulation/Levels/Lightmap.cs` (the atlas, the bake, the cache), `MapRecord.Lightmap`,
@@ -1664,7 +1673,7 @@ and #315, finished the same day) is the last three sections of this list.
   (test: CameraOffWithABlendTime_EasesOutToWhatHasTheScreenNext) (test: AHoldRunningOut_BlendsOutOverTheCamerasBlendOutTime).
 - **A behaviour change:** a view a game's pass adds with `AddView` reads no shadow map (it used to read the
   main view's).
-- **Not yet:** first-person arms cast no shadow; `Viewmodels.IsDrawn` and `MainViewRig` answer for the main
+- **Not yet:** `Viewmodels.IsDrawn` and `MainViewRig` answer for the main
   view only; no local multiplayer input or pawn spawning; a blend into a render-target camera is a cut; two
   rigs of the player's camera still cut.
 
@@ -1736,7 +1745,8 @@ and #315, finished the same day) is the last three sections of this list.
   so open flat ground is wet and walls and covered floors are not (test: FlatOpenGroundIsWet_WallsAndCoveredFloorsAreNot).
   Past 0.4 wet, puddles gather on the flat where the mask is high and grow as it gets wetter
   (test: PuddlesGatherOnTheFlatWhereTheMaskIsHigh_AndGrowAsItGetsWetter). The mask is a 64-texel tiling noise
-  picture, every 16 m, the same every run (test: ThePuddleMaskTilesAndIsTheSameEveryRun); it is `PuddleMask`
+  picture, read twice since #656 so it repeats only every 128 m, the same every run
+  (test: ThePuddleMaskTilesAndIsTheSameEveryRun) (test: ThePuddlesDoNotRepeatAtTheMasksTile); it is `PuddleMask`
   at `register(s7)`, and the client passes `WetParams` (wetness, puddle level, the mask's offset).
 - **What shows:** the albedo darkens, the gloss and highlights rise, the normal flattens and a puddle reflects
   the sky. Skinned meshes use `PSSkinned` (`Default` without the rain), so characters never wet; a material's
@@ -1744,6 +1754,9 @@ and #315, finished the same day) is the last three sections of this list.
   (test: AMaterialOptsOutAndOnlyOpaqueOnesWet).
 - **In the Sandbox:** the rain and the storm set `wetting`; the ground outdoors wets and the hut's floor does not
   (test: RainWetsTheSandboxGroundOutdoorsButNotTheHutFloor_AndItDriesAfter).
+- **A part-open yard keeps its puddles** (#656): they take twice `open`, so a lightmap's sky term of a half-open
+  court does not multiply them away (test: APartOpenYardKeepsItsPuddles). Read from the shader; not yet seen on
+  screen in the rain.
 - **Not yet:** a surface without a lightmap (terrain, a model) counts as open sky, so ground under an overhang
   gets wet and a doorway's floor may wet a little; terrain cannot opt out (`weathering` is a material's); the
   puddle constants (start, size, sharpness, tile) are fixed, not tunable per scene.
