@@ -422,7 +422,7 @@ boundary only.
   files use write-to-`.tmp` then move.
 - **World resources** marked `[SavedResource]` are saved beside entities and rebuilt through
   `ISavedResource.AfterLoad`. Behaviour or script state is never saved.
-- **Snapshot on the tick, write in the background** (#285). The tick pays for the snapshot; serialising, gzip (`save_compress`), the thumbnail's PNG and the files are written on a thread-pool thread, and reading a slot waits for writes in flight. A slot carries a title and, from the client, a thumbnail; `save_report` says what a load would upgrade. The snapshot copies component columns per archetype (`SaveCapture`) and the writer builds the JSON, so a 10k-entity snapshot is about 3 ms (Debug).
+- **Snapshot on the tick, write in the background** (#285). The tick pays for the snapshot; serialising, gzip (`save_compress`), the thumbnail's PNG and the files are written on a thread-pool thread, and reading a slot's files waits for writes in flight (the slot list, since #602, does not). A slot carries a title and, from the client, a thumbnail; `save_report` says what a load would upgrade. The snapshot copies component columns per archetype (`SaveCapture`) and the writer builds the JSON, so a 10k-entity snapshot is about 3 ms (Debug). Since #602 components with entity references, lists and plugin converters (`ISaveCapture`) are copied too, so a 10k-NPC autosave is about 6 ms.
 
 A load removes the live runtime spawns no save names (`Unsaved`, #278).
 Detail: [subsystems/15-saves.md](subsystems/15-saves.md), [`../design/09-serialization-and-saves.md`](../design/09-serialization-and-saves.md).

@@ -239,7 +239,27 @@ Phase 4f (#376), eight issues, one PR each (#549 to #556). The base's half is in
 - **Wear and breaking.** `Combat.ApplyHit` scales a weapon's blow by its condition, wears the weapon after a landed blow and wears what the struck wearer has on. At 0 the item breaks and `ItemBroke(Owner, Item, Slot, Removed)` is raised, and the player is told "Your X breaks" (test: AWeaponLosesConditionOnHitDealsLessAndBreaks) (test: AWeaponWhoseRecordSaysRemoveIsDestroyedWhenItBreaks) (test: AWeaponWhoseRecordSaysKeepStaysInHandAndUseless) (test: WornArmourWearsWhenItsWearerIsHurt). `CanEquip` refuses "it is broken" when every carried unit is.
 - **Repair is an item use,** `repair`: `amount` (0.25), `upTo` (1) and `slot` (empty: the most worn equipped item, else the most worn carried one). It refuses with "nothing needs repair" when nothing is below `upTo`, so `[{ "use": "repair", "amount": 0.5 }, "consume"]` is a repair kit that is not wasted (test: ARepairKitRestoresTheEquippedWeaponAndIsUsedUp) (test: ARepairMendsABrokenItemInTheBagAndAFieldKitStopsShortOfAsMade). A repair screen calls `world.Repair(entity, index, amount, upTo)` on the stack it selected, asking `world.CanRepair` first.
 - **API:** `Durability.ConditionOf`, `world.Wear`, `world.Repair`, `world.CanRepair`; `ItemDurability.DamageScale` and `IsBroken`; `ItemBreak`. Condition and the worn instance survive a save, with no format change (test: ConditionAndTheWornInstanceSurviveASave).
-- **Not done:** armour's effects are not scaled by its condition (it only wears and comes off at 0); the kit's grid does not show condition; there is no repair console command.
+- **Not done:** ~~armour's effects are not scaled by its condition; the kit's grid does not show condition; there is no repair console command~~ (#603, below).
+
+#### Condition shows and matters (#603, 2026-10-30)
+- **Code:** `Durability.EffectScale` and the rescale on wear and repair in `Items/Durability.cs`, `Effects.Rescale`, the equip in
+  `Items.cs`, `ItemUse.Target` and `UseItemOn` in `Items/ItemUses.cs`; `Button.Meter` (Sage.UI); the kit's `ItemGrid`,
+  `InventoryView` and `ui_screens.json`.
+- **What a worn item gives is as strong as it is whole.** Its effects (and its instance's enchantments) go on at a
+  magnitude equal to its condition, so the record's additive modifiers scale, and are rescaled in place as it wears
+  or is repaired, with no restart, stacking or cues: a shield's +20 armour is +10 at half condition and +20 again when
+  mended; one put on already worn gives its share at once (test: WornArmourGivesItsEffectByItsCondition). A broken item
+  kept in hand gets a sliver above nothing, since a magnitude of 0 means "as written" for older saves. A
+  `Multiply` modifier is not scaled.
+- **A use can be aimed at a stack.** `world.UseItemOn(user, item, index)` and `CanUseOn` pass the stack to every use
+  (`ItemUse.Target`); `repair` mends that stack when it can, else refuses "nothing needs repair", and a use that does
+  not aim ignores it; `ItemUses.Aims(record)` says whether an item's uses aim (test: ARepairKitAimedAtAStackMendsThatOne).
+- **`repair [slot]`** (a cheat) mends the local player's things in a slot, or everything carried, back to as made
+  (test: TheRepairCommandMendsThePlayersThings).
+- **On the kit's grid,** a worn item's top-left square draws a meter at its condition (`GridCell.Meter`, bound to the
+  button's `meter`), and an item as made draws none, so a bag of new things looks as before; wear done in place shows
+  at the next refresh, and a repair kit picked up and put down on another stack is used on it and stays where it lay
+  (test: AWornItemShowsItsConditionAndARepairKitPutOnItMendsIt).
 
 #### Slots in data, and burden (#384)
 - **Code:** `src/Sage.Gameplay/Items/Slots.cs`, `Encumbrance.cs`, `Attributes/SpeedAttribute.cs`.

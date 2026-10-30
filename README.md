@@ -68,7 +68,7 @@ prefab overrides, reconciling loads, quick-save and autosave) are done.
 | Modding | Data mods that patch records field by field (keyed lists merged by key, `$remove`, `replace`), a load order and a conflict report that names the winner, per-mod namespaced assets, mod shaders, one-file `.sagemod` packages loaded through a hardened zip mount (`sage mods pack`, `sage mods build`), trusted code mods in their own collectible load context (flagged, not sandboxed, never downloaded), saves that survive toggling a mod, and a per-field conflict view in the editor |
 | Screens | `Sage.UI`, a retained, headless widget toolkit with style, layout and screen records, localisation and gamepad focus; TrueType fonts with wrap, form widgets, focus scopes and confirm prompts, non-Latin scripts, UI scale and subtitles; the kit's title, pause, save, load and options screens, its inventory grid with drag and drop, equipment, loot and shop reachable from play, topics, a journal and a map under fog, and the HUD — what a screen shows comes from the simulation, so it is asserted by headless tests |
 | Persistence | Prefabs, and saves that rebuild an entity from its prefab plus the state written over it — references, attribute values and tags stored by identity, not by this run's indices; written in the background, optionally compressed, with a thumbnail and a title |
-| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2678 headless tests | <!-- counts -->
+| Tools | Hot reload for records and textures, scripted input for repeatable checks, a Daggerfall importer that dresses the Sandbox in your own copy's art, 2691 headless tests | <!-- counts -->
 
 What is deliberately **not** here yet: multiplayer, and a Workshop service (the interface exists). The level editor (phases 10a and 10b)
 is a mode of the dev host, with brushes, terrain tools and an asset browser ([`docs/EDITOR.md`](docs/EDITOR.md)),
@@ -213,7 +213,7 @@ CI fails when they are stale) and mapped by `.vscode/settings.json`; after addin
 a part or a record, regenerate them:
 
 ```bash
-src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/skills tests/games/trader --out schemas
+src/Sage.Cli/bin/Development/net8.0/sage schema games/Sandbox games/Hello tests/games/scene-only tests/games/camera-cut tests/games/scripted-sequence tests/games/topics tests/games/skeletal tests/games/weapons tests/games/saves tests/games/open-world tests/games/mods tests/games/editor tests/games/render-check tests/games/kit-screens tests/games/skills tests/games/trader games/Showcase --out schemas
 ```
 
 [`docs/MAKING_A_GAME.md`](docs/MAKING_A_GAME.md) §3, "Editing records in VS Code", has the details.
@@ -349,6 +349,15 @@ four files, 47 lines of code. It is in the solution and covered by tests, so it 
 
 ```bash
 dotnet run --project src/Sage.Host -c Development -- -game games/Hello
+```
+
+[`games/Showcase`](games/Showcase) is a walkable tech demo of what the renderer draws, data only: zones round a
+hub for materials (normal, specular, emissive and environment maps, vertex colours), lamps and sun shadows, linear
+and exp² fog, skeletal and instanced meshes, particles and decals, rain on wet ground, water, terrain layers and
+painted skies. Its README lists the zones and the console commands to change the hour, the sky and the weather.
+
+```bash
+dotnet run --project src/Sage.Host -c Development -- -game games/Showcase
 ```
 
 ## Levels
