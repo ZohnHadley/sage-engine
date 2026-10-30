@@ -37,7 +37,7 @@ Not responsible for: game design, the engine's runtime behaviour, or hosting a f
 | Player | `sdk/Sage.Player` | Host and CLI per configuration, plus engine assemblies a game compiles against |
 | Templates | `sdk/Sage.Templates/content/` | `sage-game` (simulation and client halves), `sage-game-data` (no C#), `sage-game-client` (a client half in a game's `Client/` folder, #297), `sage-mod-data` (`mod.json`, records, `.vscode/` mapping the game's schemas, #297); `sage-mod-code` is #396 |
 | Build props | `build/` | `Sage.Version.props` (MinVer), `Sage.Configurations.props`, `Sage.EngineContent.targets`, `Sage.Kits.targets` |
-| Scripts | `tools/` | `smoke_run.sh`, `editor_smoke.sh` (#371), `kit_screens_check.sh`, `check_docs.py` and its tests `test_check_docs.py`, `check_glsl_constants.py` (#318), `texgen.py` (#627: tiling textures and sheets from JSON recipes) and its tests `test_texgen.py`, `pack_sdk.sh`, `migrate_ecs_api.py`, `DaggerfallImport` |
+| Scripts | `tools/` | `smoke_run.sh`, `editor_smoke.sh` (#371), `kit_screens_check.sh`, `check_docs.py` and its tests `test_check_docs.py`, `check_glsl_constants.py` (#318), `texgen.py` (#627: tiling textures and sheets from JSON recipes; #636: a finish of detail, wear and painted light) and its tests `test_texgen.py`, `pack_sdk.sh`, `migrate_ecs_api.py`, `DaggerfallImport` |
 | CI | `.github/workflows/ci.yml`, `release.yml` | Linux, Windows and drawing jobs (#318); the release workflow runs on a `v*.*.*` tag |
 
 The configurations are Debug, Development and Shipping. Tests run in Debug and Development, not Shipping.
