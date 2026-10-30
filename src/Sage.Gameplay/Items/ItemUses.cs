@@ -47,17 +47,26 @@ public readonly ref struct ItemUse
     public Entity User { get; init; }
     public RecordId Item { get; init; }
     public ItemRecord Record { get; init; }
+
+    // The stack of the user's inventory it is aimed at, by index (issue #603: a repair kit used on what a
+    // screen selected), or null for a use that chooses for itself.
+    public int? Target { get; init; }
 }
 
 public static class ItemUses
 {
     // Whether `user` could use `item` now, and why not: carrying it, it has a use, and every use agrees.
-    public static bool CanUse(this World world, Entity user, RecordId item, out string why)
+    public static bool CanUse(this World world, Entity user, RecordId item, out string why) => CanUse(world, user, item, null, out why);
+
+    // The same, aimed at the stack at `target` of the user's inventory (issue #603).
+    public static bool CanUseOn(this World world, Entity user, RecordId item, int target, out string why) => CanUse(world, user, item, target, out why);
+
+    private static bool CanUse(World world, Entity user, RecordId item, int? target, out string why)
     {
         if (!world.Records().TryGet(item, out ItemRecord record)) { why = "there is no such thing"; return false; }
         if (world.CountOf(user, item) == 0) { why = "you are not carrying it"; return false; }
         if (record.Uses.Count == 0) { why = "nothing happens"; return false; }
-        var use = new ItemUse { World = world, User = user, Item = item, Record = record };
+        var use = new ItemUse { World = world, User = user, Item = item, Record = record, Target = target };
         foreach (var entry in record.Uses)
             if (!entry.CanUse(in use, out why)) return false;
         why = "";
@@ -65,11 +74,25 @@ public static class ItemUses
     }
 
     // Uses it: every use in order, stopping at one that refuses. False (and why) when nothing could.
-    public static bool UseItem(this World world, Entity user, RecordId item, out string why)
+    public static bool UseItem(this World world, Entity user, RecordId item, out string why) => UseItem(world, user, item, null, out why);
+
+    // The same, aimed at the stack at `target` of the user's inventory: what a screen does with a repair kit
+    // put on the item the player picked (issue #603). A use that does not aim ignores it.
+    public static bool UseItemOn(this World world, Entity user, RecordId item, int target, out string why) => UseItem(world, user, item, target, out why);
+
+    // Whether any of an item's uses takes aim at a stack (UseItemOn): a repair kit, not a potion.
+    public static bool Aims(ItemRecord record)
     {
-        if (!world.CanUse(user, item, out why)) return false;
+        foreach (var entry in record.Uses)
+            if (entry is RepairUse) return true;
+        return false;
+    }
+
+    private static bool UseItem(World world, Entity user, RecordId item, int? target, out string why)
+    {
+        if (!CanUse(world, user, item, target, out why)) return false;
         var record = world.Records().Get<ItemRecord>(item);
-        var use = new ItemUse { World = world, User = user, Item = item, Record = record };
+        var use = new ItemUse { World = world, User = user, Item = item, Record = record, Target = target };
         foreach (var entry in record.Uses)
             if (!entry.Use(in use, out why)) return false;
         why = "";
