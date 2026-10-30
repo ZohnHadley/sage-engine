@@ -189,6 +189,7 @@ internal sealed class MeshExtract : ISystem
             {
                 ref var mr = ref r[n];   // written only for its LOD memory (MeshRenderer.LodLevel, not saved)
                 if (mr.Handle.IsEmpty && mr.Mesh.IsEmpty) continue;
+                if (!mr.Handle.IsEmpty && !_renderer.IsCurrent(mr.Handle)) continue;
                 int baseMesh = mr.Handle.Id;
                 if (mr.Handle.IsEmpty && !_renderer.TryResolveMesh(mr.Mesh, _scope, out baseMesh)) continue;   // over the upload budget: next frame
                 var baseData = _renderer.Mesh(baseMesh);
