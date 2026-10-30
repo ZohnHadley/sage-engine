@@ -21,7 +21,7 @@
                { "on": "sign2", "text": "The post chain's depth haze (r_post) thickens the distance too." } ] },
   { "type": "barks", "id": "sign_yard", "speaker": "Yard", "range": 0, "cooldown": 0,
     "lines": [ { "on": "sign1", "text": "Skinned mannequins: a walk/run blend space and an upper-body aim layer." },
-               { "on": "sign2", "text": "48 crystals, one mesh and material: r_instancing 1 draws them in one call." } ] },
+               { "on": "sign2", "text": "48 crystals, one mesh and material: r_instancing draws them in one call." } ] },
   { "type": "barks", "id": "sign_campfire", "speaker": "Campfire", "range": 0, "cooldown": 0,
     "lines": [ { "on": "sign1", "text": "Soft particles (flames, smoke), embers, a flickering lamp with shadows." },
                { "on": "sign2", "text": "Scorch decals laid at start; fx_decal showcase:scorch adds one." },

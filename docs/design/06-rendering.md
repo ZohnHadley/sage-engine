@@ -144,7 +144,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 - Built in #305: distance culling per layer (`RenderEnvironment.LayerDrawDistance`) and per mesh (a `mesh_lod` record's cull distance or screen size), "As built (mesh LOD and draw distance per layer)". Coarse culling per streaming cell (14) is not built. Occlusion culling is not planned for SM3-era content.
 
 ### 3.7 Batching
-- **Meshes:** consecutive items with the same mesh + material (after sorting) are drawn in a loop with only per-object parameters changing. With `r_instancing 1` and a capable device (OpenGL 3.2+ on DesktopGL, HiDef), runs of ≥ `r_instancing_min` (default 8) identical items become one `DrawInstancedPrimitives` call.
+- **Meshes:** consecutive items with the same mesh + material (after sorting) are drawn in a loop with only per-object parameters changing. With `r_instancing` (on by default) and a capable device (OpenGL 3.2+ on DesktopGL, HiDef), runs of ≥ `r_instancing_min` (default 8) identical items become one `DrawInstancedPrimitives` call.
 - **Sprites (v1):** CPU-expanded quads written into a large `DynamicVertexBuffer` (`SetData` with `NoOverwrite`/`Discard`), one draw per material/texture run, like `SpriteBatch` but in 3D. This works on every GL driver and avoids the reported instancing bugs. Sprite sheets are atlases, so hundreds of creatures and trees usually batch into a few draws.
 - **Sprites (#309):** long runs are instanced quads behind `r_instancing`, "As built (instancing)".
 - Graphics profile: set `GraphicsProfile.HiDef` explicitly (32-bit indices, larger textures, required for instancing).
@@ -859,8 +859,14 @@ viewmodel is one more view, and the renderer gained one flag.
   ever sees the extra view: nothing is culled into it, and no debug line or particle is drawn in it.
 - **Allocation:** the pass allocates nothing per frame, nor do the viewmodel's systems per tick
   (test: TheViewmodelAndItsExtractAllocateNothingPerFrame).
-- **Not yet:** the arms casting shadows, and a separate lighting rig for the arms (they are lit by the
-  world's sun and lamps). A split-screen partner's first-person view draws its own viewmodel since #323.
+- **Casting since #610** (2026-10-30). The pieces also go into the sun's cascades of the view they are drawn
+  over, one palette for all when skinned, unless their material says `castShadows` off. On its own that made
+  them shadow themselves, so their view looks the map up with `ViewmodelPass.OwnShadow` (1.5 m) of extra bias:
+  a roof still shades them, a first-person body no longer does. Compared by eye and by `r_stats` against
+  `main` in the Sandbox; `ViewmodelExtract` has no headless test.
+- **Not yet:** a lamp's shadow from the arms (a lamp's map has no such bias), and a separate lighting rig for
+  the arms (they are lit by the world's sun and lamps). A split-screen partner's first-person view draws its
+  own viewmodel since #323.
 
 ### As built (render passes, 2026-09-30 — issue 4h-1)
 REDESIGN §4.7's pass registry and public `RenderContext`, the first piece of phase 4h. The renderer's
@@ -1374,6 +1380,12 @@ and #315, finished the same day) is the last three sections of this list.
   listed in the 8 m cells their ranges touch and a draw reads its cell's list, which chooses what the full
   list chooses (test: TheGridChoosesWhatTheFullListChooses) and allocates nothing once warm
   (test: RebuildingAndAskingTheGridAllocatesNothingOnceWarm).
+- **Fades since #610** (2026-10-30). `fade` is the seconds a switch takes on the world's scaled clock, 0 at
+  once (test: ALampWithNoFadeSwitchesAtOnce). `LightRules.Switch` starts it and `LightRules.Level` reads it; `Lit`
+  says at once which way a lamp is going, and `LightRules.Shines` keeps it drawn and its shadow map until it
+  is out (test: ALampFadesOverItsFadeTime). A switch back fades from where it is, and a switch to what it
+  already is does nothing (test: ALampSwitchedBackHalfwayFadesFromWhereItIs). `FadeFrom` and `FadeEnd` are
+  public because saves cover public members only (test: AFadeUnderWayIsSaved).
 - **Lamps are chosen by a draw's bounding sphere since #634** (2026-10-30), not its origin: a terrain chunk's
   origin is its sector's corner, so the ground under a wall lamp drew with no lamps. `Renderer.LampsOf` asks with
   the part's `Bounds` through the item's world matrix, the pair culling uses. Influence is measured from the
@@ -1418,7 +1430,7 @@ and #315, finished the same day) is the last three sections of this list.
 - **Code:** `src/Sage.Simulation/Rendering/Instancing.cs` (headless: `Plan`, `TechniqueFor`),
   `src/Sage.Client/Rendering/InstanceStream.cs`, `SpriteBatcher.DrawInstanced`, the `…Instanced`
   techniques of `lit.fx` and `sprite.fx`. Tests: `tests/Sage.Tests/Presentation/InstancingTests.cs`.
-- **Behind `r_instancing`** (Archive, default 0) and `r_instancing_min` (8): a run of at least that many
+- **Behind `r_instancing`** (Archive, default 1 since #610) and `r_instancing_min` (8): a run of at least that many
   neighbours with one mesh part, material, tint and lamps is one `DrawInstancedPrimitives` call
   (test: RunsOfAtLeastMinCollapseToOneDraw) (test: RunsShorterThanTheMinimumAreDrawnOneByOne)
   (test: ARunBreaksWhereMeshPartMaterialOrStateChange), at most 1024 a draw

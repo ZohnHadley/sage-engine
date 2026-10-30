@@ -185,6 +185,11 @@ Experimental, SAGE0129. Code: `src/Sage.Simulation/World/TerrainSplat.cs` (`Terr
   The four weights ride in the chunk mesh's vertex colour, and the effect's params come from the record
   (test: TheSplatEffectsParamsComeFromTheRecord). A scene's `terrain` record sets the material
   (test: ASceneTerrainRecordSetsTheTerrainMaterial).
+- **A layer can name what it is made of** (#610): a layer's `surface` is a `physics_material`. A cell of the
+  collision mesh takes the layer showing most at its corner (`TerrainMaterialRecord.LayerAt`, rules and paint
+  together); a layer naming none leaves the cell to the `terrain` record's `surfaces`. So a shot leaves its
+  decal there (test: AShotIntoTerrainLeavesAMarkWhereItsLayerNamesASurface) and footsteps follow. The navmesh
+  still reads the `terrain` record's surfaces.
 - **No seam.** The weights are functions of a vertex's height and normal, and both agree either side of a
   sector edge (#277's normals), so the blend has no seam: the Sandbox's `sandbox:hills` lays rock over grass
   on slopes past 12 degrees (test: TheSandboxBlendsTwoLayersWithNoSeamAtTheSectorEdge).
