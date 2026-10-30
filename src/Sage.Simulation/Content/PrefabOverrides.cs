@@ -24,7 +24,9 @@ namespace Sage.Simulation;
 // from the map's text; the two cannot drift, because both are applied here.
 //
 // A bare record id inside an override means one in the *prefab's* namespace, as it does in the body the
-// override merges into (a scene in `game:` placing `sage:scripted_camera` writes ids as that prefab does).
+// override merges into (a scene in `game:` placing `sage:scripted_camera` writes ids as that prefab does),
+// unless the file that wrote it has a record of that name: then it means that one, and the load check writes
+// its namespace in (#649). So a game's `"material": "planks"` on `sage:brush` is the game's planks.
 [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // saves you can trust (phase 4i): overrides are what 4i-5's diff-against-the-prefab builds on
 public sealed class PrefabOverrides
 {
@@ -180,6 +182,7 @@ internal static class PrefabOverriding
     {
         if (overrides == null) return;
         overrides.CheckedAtLoad = true;
+        if (check.Id.Namespace != prefabNamespace) Qualify(engine, overrides, prefabNamespace, check);
         string? outer = RecordParseContext.Namespace;
         RecordParseContext.Namespace = prefabNamespace;
         try
@@ -189,6 +192,62 @@ internal static class PrefabOverriding
         finally
         {
             RecordParseContext.Namespace = outer;
+        }
+    }
+
+    // Bare ids the writer has a record for become its own (#649). Bodies are JSON, so the walk goes by the types
+    // they are read as: only a field that is a record id is touched.
+    private static void Qualify(Engine engine, PrefabOverrides overrides, string prefabNamespace, RecordCheck check)
+    {
+        foreach (var (name, body) in overrides.Components?.ToList() ?? new())
+            if (body != null && engine.Components.TryResolveComponent(name, prefabNamespace, out var type, out _))
+                Qualify(overrides.Components!, name, body, type, null, check);
+        foreach (var (name, body) in overrides.Parts?.ToList() ?? new())
+            if (body != null && PrefabChecks.BodyType(engine.Prefabs, name, body) is { } type)
+                Qualify(overrides.Parts!, name, body, type, null, check);
+    }
+
+    private static void Qualify(JsonObject parent, string key, JsonNode node, Type type, string? recordType, RecordCheck check)
+    {
+        if (Qualified(node, type, recordType, check) is { } id) parent[key] = id;
+        else Inside(node, type, check);
+    }
+
+    // The id `node` becomes, when it is a bare one and the writer has that record.
+    private static string? Qualified(JsonNode node, Type type, string? recordType, RecordCheck check)
+    {
+        type = Nullable.GetUnderlyingType(type) ?? type;
+        if (type != typeof(RecordId) && !typeof(IRecordRef).IsAssignableFrom(type)) return null;
+        if (node is not JsonValue value || !value.TryGetValue<string>(out var text) || text.Length == 0 || text.Contains(':')) return null;
+        var mine = new RecordId(check.Id.Namespace, text);
+        return check.Exists(recordType, mine) ? mine.ToString() : null;
+    }
+
+    private static void Inside(JsonNode node, Type type, RecordCheck check)
+    {
+        if (node is JsonArray array)
+        {
+            var element = type.IsArray ? type.GetElementType() : type.GetInterfaces().Append(type)
+                .FirstOrDefault(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>))?.GetGenericArguments()[0];
+            if (element == null) return;
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (array[i] is not { } item) continue;
+                if (Qualified(item, element, null, check) is { } id) array[i] = id;
+                else Inside(item, element, check);
+            }
+        }
+        else if (node is JsonObject body)
+        {
+            var map = type.GetInterfaces().Append(type).FirstOrDefault(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDictionary<,>));
+            foreach (var (key, value) in body.ToList())
+            {
+                if (value == null) continue;
+                if (map != null) { Qualify(body, key, value, map.GetGenericArguments()[1], null, check); continue; }
+                var field = type.GetField(key, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+                if (field != null)
+                    Qualify(body, key, value, field.FieldType, System.Reflection.CustomAttributeExtensions.GetCustomAttribute<RecordRefAttribute>(field)?.RecordType, check);
+            }
         }
     }
 

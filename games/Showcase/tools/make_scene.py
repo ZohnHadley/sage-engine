@@ -22,7 +22,7 @@ def at(x, y, z):
 
 
 def brush(x, y, z, size, material, shape=None, yaw=None, sides=None, name=None, prefab='sage:brush'):
-    b = {'size': size, 'material': 'showcase:' + material}   # bare ids in an engine prefab's override read as sage:
+    b = {'size': size, 'material': 'showcase:' + material}
     if sides:
         b['sides'] = sides
     s = '{ "prefab": "%s", "at": %s' % (prefab, at(x, y, z))
