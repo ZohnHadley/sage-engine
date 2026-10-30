@@ -504,6 +504,10 @@ public sealed partial class Renderer : IDisposable
         return handle;
     }
 
+    // A mesh with tangents (a brush face, #647), so a normal map turns on it.
+    internal MeshHandle CreateMesh(ReadOnlySpan<VertexMesh> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name) =>
+        CreateMesh(vertices, VertexMesh.VertexDeclaration, indices, bounds, name);
+
     // Splat terrain (issue #307): the same, with each vertex's four layer weights.
     internal MeshHandle CreateMesh(ReadOnlySpan<VertexTerrain> vertices, ReadOnlySpan<int> indices, BoundingSphere bounds, string name) =>
         CreateMesh(vertices, VertexTerrain.VertexDeclaration, indices, bounds, name);

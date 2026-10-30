@@ -237,7 +237,7 @@ struct VSLightmappedInput
     float3 Normal     : NORMAL0;
     float2 UV         : TEXCOORD0;
     float2 LightmapUV : TEXCOORD1;
-    float4 Tangent    : TANGENT0;   // a brush mesh has none: (0,0,0,1), so a normal map changes nothing, as in Default
+    float4 Tangent    : TANGENT0;   // the face's (#647)
     float4 Color      : COLOR0;
 };
 

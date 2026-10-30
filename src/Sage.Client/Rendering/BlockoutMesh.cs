@@ -24,7 +24,7 @@ internal sealed class BlockoutMeshSystem : ISystem
     private readonly Renderer _renderer;
     private readonly Dictionary<Entity, List<(Entity Child, MeshHandle Mesh)>> _built = new();
     private readonly List<Entity> _gone = new();
-    private readonly List<VertexPositionNormalTexture> _vertices = new();
+    private readonly List<VertexMesh> _vertices = new();
     private readonly List<int> _indices = new();
     private readonly Dictionary<string, List<LevelFace>> _byMaterial = new();
 
@@ -116,10 +116,11 @@ internal sealed class BlockoutMeshSystem : ISystem
         {
             int first = _vertices.Count;
             var normal = new Vector3(face.Normal.X, face.Normal.Y, face.Normal.Z);
+            Vector4 tangent = BrushGeometry.FaceTangent(face.Positions, face.Uvs, face.Normal);
             for (int i = 0; i < face.Positions.Length; i++)
             {
                 var p = new Vector3(face.Positions[i].X, face.Positions[i].Y, face.Positions[i].Z);
-                _vertices.Add(new VertexPositionNormalTexture(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y)));
+                _vertices.Add(new VertexMesh(p, normal, new Vector2(face.Uvs[i].X, face.Uvs[i].Y), tangent, Color.White));
                 min = Vector3.Min(min, p);
                 max = Vector3.Max(max, p);
             }

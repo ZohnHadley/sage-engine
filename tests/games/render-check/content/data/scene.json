@@ -75,6 +75,10 @@
   { "type": "prefab", "id": "pool", "name": "pool",
     "parts": { "water": { "size": [7, 2, 9] }, "water_surface": "pool" } },
 
+  // A panel behind the camera for the normal map check (issue #647, content/checks/brush_normal.json): a brush,
+  // white, whose normal map leans its upper half up and its lower half down.
+  { "type": "material", "id": "tilted", "base": "sage:lit_default", "normalMap": "textures/tilted_normal.png" },
+
   {
     "type": "scene",
     "id": "yard",
@@ -82,7 +86,9 @@
     "environment": { "sky": "noon", "hour": 12 },
     "player": { "prefab": "eye", "at": [0, 2, 0], "yaw": 0, "name": "eye" },
     "place": [
-      { "prefab": "pool", "at": [5.5, -0.5, -10], "name": "pool" }
+      { "prefab": "pool", "at": [5.5, -0.5, -10], "name": "pool" },
+      { "prefab": "sage:brush", "at": [0, 0, 6], "name": "panel",
+        "overrides": { "parts": { "brush": { "size": [1, 1, 0.1], "material": "tilted" } } } }
     ]
   }
 ]
