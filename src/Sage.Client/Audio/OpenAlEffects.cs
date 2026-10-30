@@ -214,7 +214,8 @@ internal sealed class OpenAlEffects : IDisposable
         if (fresh) bound = new Bound { Source = source, LowPass = 1f };
 
         float lowPass = Math.Clamp(voice.LowPass, 0f, 1f);
-        if (fresh ? lowPass < 0.999f : MathF.Abs(lowPass - bound.LowPass) > 0.005f)
+        bool filterChanged = fresh ? lowPass < 0.999f : MathF.Abs(lowPass - bound.LowPass) > 0.005f;
+        if (filterChanged)
         {
             if (lowPass >= 0.999f) _al.Sourcei((uint)source, AL_DIRECT_FILTER, 0);
             else
@@ -227,9 +228,10 @@ internal sealed class OpenAlEffects : IDisposable
         }
 
         // Where a sound is matters to how a room answers it; a 2D one (a menu, the music) is not in the room.
-        if (voice.Positional && !bound.Send)
+        // What reaches the reverb has come through the same wall (#606), and the send copies the filter as set.
+        if (voice.Positional && (!bound.Send || filterChanged))
         {
-            _al.Source3i((uint)source, AL_AUXILIARY_SEND_FILTER, (int)_slot, 0, 0);
+            _al.Source3i((uint)source, AL_AUXILIARY_SEND_FILTER, (int)_slot, 0, lowPass >= 0.999f ? 0 : (int)_filter);
             bound.Send = true;
         }
 

@@ -300,11 +300,95 @@ public class MusicTests
         var mixer = new AudioMixer();
         var player = new MusicPlayer();
         player.Update(loaded, app.Records, mixer, Dt);
-        Assert.Equal(2, player.Decks.Count);                               // both sides of the fade, from the top
+        Assert.Equal(2, player.Decks.Count);                               // both sides of the fade
         Assert.Equal(1f, VoiceOf(player, mixer, Game("a"), stem: 1).Gain / VoiceOf(player, mixer, Game("a")).Gain, 3);
     }
 
-    // Sound turned off silences the music and forgets it; on again, the world's track starts from the top. A
+    // A load comes back in where the save left the track, every stem together, even with the same track
+    // already playing; a change of track starts at the top, and the fade is not cut short for a jump (#606).
+    [Fact]
+    public void MusicResumesWhereASaveLeftIt()
+    {
+        using var app = Boot();
+        var world = app.World;
+        var mixer = new AudioMixer();
+        var player = new MusicPlayer();
+        MusicRules.Play(world, Game("a"), 0f);
+        Step(app, player, mixer, 150);
+        Assert.Equal(0.0, VoiceOf(player, mixer, Game("a")).StartAt, 3);
+        double saved = MusicRules.Of(world).Position;
+        Assert.InRange(saved, 2.4, 2.6);
+
+        Assert.True(app.Engine.Saves.Save("music"));
+        Step(app, player, mixer, 300);
+        Assert.True(app.Engine.Saves.Load("music"));
+        player.Update(MusicRules.Of(world), app.Records, mixer, Dt);
+
+        Assert.Equal(saved, MusicRules.Of(world).Position, 3);
+        Assert.Equal(saved, VoiceOf(player, mixer, Game("a")).StartAt, 3);
+        Assert.Equal(saved, VoiceOf(player, mixer, Game("a"), stem: 1).StartAt, 3);
+
+        MusicRules.Play(world, Game("b"), 2f);
+        Step(app, player, mixer);
+        Assert.NotNull(player.DeckOf(Game("a")));                          // still fading out
+        Assert.InRange(VoiceOf(player, mixer, Game("b")).StartAt, 0.0, 0.1);
+    }
+
+    // A conversation brings the music down and it comes back after; so does a line on the Voice bus.
+    [Fact]
+    public void DialogueDucksTheMusic()
+    {
+        using var app = Boot();
+        var world = app.World;
+        var settings = new AudioSettings { MusicDuck = 0.25f };
+        var mixer = new AudioMixer(settings);
+        var player = new MusicPlayer();
+        MusicRules.Play(world, Game("a"), 0f);
+        Step(app, player, mixer, 5);
+        var voice = VoiceOf(player, mixer, Game("a"));
+        float full = voice.Volume;
+        Assert.Equal(1f, full, 3);
+
+        void Frames(bool talking)
+        {
+            for (int i = 0; i < 30; i++) player.Update(MusicRules.Of(world), app.Records, mixer, Dt, talking);
+        }
+
+        Frames(talking: true);
+        Assert.Equal(0.25f, voice.Volume, 3);
+        Frames(talking: false);
+        Assert.Equal(full, voice.Volume, 3);
+
+        var line = mixer.Play(default, new SoundRecord { Bus = AudioBus.Voice, Variations = { AssetPath.Intern("audio/line.wav") } }, System.Numerics.Vector3.Zero, positional: false);
+        Frames(talking: false);
+        Assert.Equal(0.25f, voice.Volume, 3);
+        mixer.Remove(line);
+        Frames(talking: false);
+        Assert.Equal(full, voice.Volume, 3);
+    }
+
+    // Where a position lands in the file: as it is inside it, wrapped round the loop past it, and the end of
+    // a sound that does not loop.
+    [Fact]
+    public void AStreamerStartsWhereThePositionFallsInTheFile()
+    {
+        using var looped = new PcmStreamer(new AudioStreamingTests.Generated(1000, 1, rate: 100), loop: true, framesPerBuffer: 10, loopStart: 200, loopEnd: 800);
+        looped.StartAt(3.0);
+        Assert.True(looped.TryFill(out _, out _));
+        Assert.Equal(0, looped.Loops);
+
+        looped.StartAt(9.5);                                               // 950: 150 past the end, 350 in the loop
+        Assert.True(looped.TryFill(out _, out int bytes));
+        Assert.Equal(20, bytes);
+        Assert.Equal(360L, looped.Position);
+
+        using var once = new PcmStreamer(new AudioStreamingTests.Generated(1000, 1, rate: 100), loop: false, framesPerBuffer: 10);
+        once.StartAt(20.0);
+        Assert.False(once.TryFill(out _, out _));
+        Assert.True(once.Ended);
+    }
+
+    // Sound turned off silences the music and forgets it; on again, the world's track starts where it got to. A
     // track with no record is silence, said once, not an error every frame.
     [Fact]
     public void SilenceStopsTheVoices_AndAMissingTrackIsQuiet()

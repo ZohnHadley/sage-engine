@@ -8,7 +8,8 @@ namespace Sage.Simulation;
 // without a sound card, and handed to the backend as numbers — the same split as the rest of the mixer.
 //
 // **Occlusion.** A ray from the listener to each positional voice; a hit means something solid is in the
-// way, and the voice's occlusion moves toward 1 (toward 0 when the ray is clear) over `Smoothing` seconds,
+// way, and the voice's occlusion moves toward what the thing is made of (its physics material's `occlusion`,
+// 1 for a wall, less for a curtain; toward 0 when the ray is clear) over `Smoothing` seconds,
 // so walking past a door frame does not click. An occluded voice is quieter (`OccludedGain`) and duller
 // (`OccludedLowPass`, the high-frequency gain the backend's low-pass filter gets). Rays are **budgeted**:
 // at most `AudioSettings.OcclusionRays` per update, round-robin over the voices, so forty footsteps cost
@@ -163,13 +164,21 @@ internal sealed class AudioEnvironment
             var layers = space.Layers;
             var mask = LayerMask.All.Except(layers.Player).Except(layers.Enemy).Except(layers.Trigger);
             var hit = space.Raycast(mixer.ListenerPosition, to / distance, reach, mask);
-            if (hit.Hit) target = 1f;
+            if (hit.Hit) target = OcclusionOf(hit.Surface);
         }
 
         if (target != voice.OcclusionTarget)
             Log.Trace(LogCat.Audio, $"occlusion {voice.Sound} {(target > 0f ? "blocked" : "clear")} " +
                                     $"at {distance:F1} m (now {voice.Occlusion:F2})");
         voice.OcclusionTarget = target;
+    }
+
+    // How much a surface stops: its physics material's say, and all of it with no material to ask.
+    private float OcclusionOf(RecordId surface)
+    {
+        var records = _world.Engine?.Records;
+        if (surface.IsEmpty || records == null || records.TypeNameOf(typeof(PhysicsMaterialRecord)) == null) return 1f;
+        return records.TryGet(surface, out PhysicsMaterialRecord material) ? Math.Clamp(material.Occlusion, 0f, 1f) : 1f;
     }
 
     private void Apply(Voice voice)
