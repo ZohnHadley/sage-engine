@@ -1474,9 +1474,10 @@ archived `joy_glyphs` says `xbox` or `playstation`.
 to `user://demos/<name>.sagedemo`; `stop` ends it; `playdemo <name>` loads that save and plays the commands back,
 and says whether the world ended with the hash it was recorded with (`world_hash [world]` prints one: FNV-1a over
 the world's saved state); `demos` lists the files. A demo is refused when the build, game, plugins, mods or actions
-differ from the ones that made it. It replays exactly where the save holds everything the simulation reads; in
-the real Sandbox client it does not yet (the camera rig, `FaceCameraSystem` and `HopSystem` read what a save does
-not hold), so use it for scripted tests and headless games first.
+differ from the ones that made it. It replays exactly where the save holds everything the simulation reads, in the
+real client too (#605): play it in a fresh launch, since in the session that recorded it the physics can land a
+millionth of a metre away and the hash then says so. A system a tick runs must not read a runtime entity id or
+anything written at frame rate.
 
 ## 5. Levels: rooms, doors and triggers
 
@@ -1497,7 +1498,8 @@ Then name the level in a record and load it from your scene (`"maps": ["tavern"]
 
 A level standing on the terrain flattens the ground under its brushes to the bottom of its lowest one, blended
 back over the next 8 m cell, so a hillside never comes up through its floor (#591, test:
-ALevelOnTerrainFlattensTheGroundUnderItsBrushes); `"flattenTerrain": false` leaves the ground as it is.
+ALevelOnTerrainFlattensTheGroundUnderItsBrushes), once: a load leaves it where it was (#605, test:
+LoadingLeavesALevelAndTheGroundUnderItWhereTheyWere); `"flattenTerrain": false` leaves the ground as it is.
 
 In the editor:
 
