@@ -122,6 +122,14 @@ public sealed class AudioMixer
 
     public IReadOnlyList<Voice> Voices => _voices;
 
+    // Whether a voice is playing this file, or has yet to stop it (AssetReleases keeps the sound until then).
+    internal bool Plays(AssetPath asset)
+    {
+        foreach (var voice in _voices)
+            if (voice.Asset == asset) return true;
+        return false;
+    }
+
     public int Playing => _voices.Count;
 
     // How many were refused since the last reset, for `snd_stats`: a number nobody looks at until the

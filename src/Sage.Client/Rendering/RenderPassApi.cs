@@ -129,6 +129,7 @@ public sealed class RenderContext
     public void AddItem(int view, MeshHandle mesh, RecordId material, Matrix world, Vector4? tint = null, byte layer = 0)
     {
         RequireExtract(nameof(AddItem));
+        if (!mesh.IsEmpty && !_renderer.IsCurrent(mesh)) return;
         ref var v = ref Snapshot.Views[CheckView(view)];
         var materials = _renderer.Materials;
         int meshId = mesh.IsEmpty ? 0 : mesh.Id;

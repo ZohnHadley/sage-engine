@@ -147,7 +147,7 @@ public sealed partial class Renderer : IDisposable
         _content = content;
         _engine = engine;
         _targets = new RenderTargetPool(_device);
-        Materials = new MaterialCache(_device, content, engine.Records, _targets);
+        Materials = new MaterialCache(_device, content, engine.Records, _targets, Budget);
         _targets.Changed += Materials.Invalidate;   // a remade target: materials sampling it rebuild
         engine.Records.Reloaded += Materials.Invalidate;
 #pragma warning disable SAGE0133   // the editor's live preview (#366): a material edited in the record browser draws at once
@@ -325,7 +325,13 @@ public sealed partial class Renderer : IDisposable
     }
 
     // Frees one released asset when it is loaded at a scope a sector lets go of.
-    private bool Evict(AssetKey key) => key.Type == AssetType.Mesh ? EvictMesh(key.Path) : _content.EvictTexture(key.Path);
+    private bool Evict(AssetKey key) => key.Type switch
+    {
+        AssetType.Mesh => EvictMesh(key.Path),
+        AssetType.Texture => _content.EvictTexture(key.Path),
+        AssetType.Sound => _content.EvictSound(key.Path),
+        _ => _content.EvictEffect(key.Path),
+    };
 
     // The scope a world's content loads at: a streaming world's is the sectors' (released with them, and
     // within the upload budget), any other world's is the game's.
@@ -529,7 +535,8 @@ public sealed partial class Renderer : IDisposable
             Bounds = bounds,
         };
         // The game's scope: the code that made it destroys it (a sector's chunks with the sector, #277).
-        return new MeshHandle(_meshes.Add(default, new MeshData { Name = name, Parts = new[] { part }, Owned = true }, AssetScope.Game, bytes, _assetFrame));
+        int id = _meshes.Add(default, new MeshData { Name = name, Parts = new[] { part }, Owned = true }, AssetScope.Game, bytes, _assetFrame);
+        return new MeshHandle(id) { Generation = _meshes.EntryAt(id).Generation };
     }
 
     // A box mesh, for props and debug geometry.
@@ -561,13 +568,16 @@ public sealed partial class Renderer : IDisposable
         }
     }
 
-    // Frees a built mesh. Its slot is reused by a later mesh (#308), so a handle must not be drawn after
-    // it is destroyed: the entity holding it goes with it (a sector's chunks, a level's brushes).
+    // Frees a built mesh. Its slot is reused by a later mesh (#308), and a handle kept past this is stale:
+    // it draws nothing (#612), and destroying it again leaves the new mesh alone.
     public void DestroyMesh(MeshHandle handle)
     {
-        if (handle.IsEmpty || !_meshes.IsLive(handle.Id) || !_meshes.EntryAt(handle.Id).Path.IsEmpty) return;
+        if (handle.IsEmpty || !IsCurrent(handle) || !_meshes.EntryAt(handle.Id).Path.IsEmpty) return;
         if (_meshes.Remove(handle.Id) is { } mesh) Dispose(mesh);
     }
+
+    // Whether a handle still names the mesh it was made for.
+    internal bool IsCurrent(MeshHandle handle) => _meshes.IsCurrent(handle.Id, handle.Generation);
 
     // The texture id for an asset path (the content service's table), loading it on first use at the
     // game's scope. Missing → 0, the checker (05 §8).

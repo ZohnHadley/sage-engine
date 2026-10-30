@@ -264,8 +264,12 @@ internal sealed class MaterialCache : IDisposable
 
     private readonly RenderTargetPool _targets;
 
-    public MaterialCache(GraphicsDevice device, ContentService content, RecordStore records, RenderTargetPool targets)
+    private readonly UploadBudget _budget;
+    private bool _waiting;   // the Build just run found a streamed texture still on its way
+
+    public MaterialCache(GraphicsDevice device, ContentService content, RecordStore records, RenderTargetPool targets, UploadBudget budget)
     {
+        _budget = budget;
         _content = content;
         _records = records;
         _targets = targets;
@@ -311,12 +315,16 @@ internal sealed class MaterialCache : IDisposable
         return index;
     }
 
-    // The runtime for an id, building it on first use. Null only if even sage:error can't be built.
+    // The runtime for an id, building it on first use. Null if even sage:error can't be built, or for now
+    // while a streamed texture of its is still on its way (#612): it draws nothing until they are all there.
     public MaterialRuntime? Get(int id)
     {
         var runtime = _runtimes[id];
         if (runtime != null || _unbuildable[id]) return runtime;
-        runtime = Build(_idList[id], _scopes[id]) ?? ErrorRuntime();
+        _waiting = false;
+        runtime = Build(_idList[id], _scopes[id]);
+        if (_waiting) return null;
+        runtime ??= ErrorRuntime();
         _runtimes[id] = runtime;
         _unbuildable[id] = runtime == null;
         return runtime;
@@ -400,7 +408,7 @@ internal sealed class MaterialCache : IDisposable
     private MaterialRuntime? Build(RecordId id, MaterialRecord record, AssetScope scope)
     {
         if (record.Effect.IsEmpty) { Log.Error(LogCat.Shaders, $"Material {id}: no \"effect\""); return null; }
-        var effect = _content.LoadEffect(record.Effect);
+        var effect = _content.LoadEffect(record.Effect, scope);
         if (effect == null) { Log.Error(LogCat.Shaders, $"Material {id}: effect {record.Effect} didn't load"); return null; }
         if (!_effects.TryGetValue(effect, out var binding)) _effects[effect] = binding = new EffectBinding(effect);
 
@@ -436,12 +444,18 @@ internal sealed class MaterialCache : IDisposable
             }
             else if (value.IsTexture)
             {
-                texture = _content.LoadTexture(value.Texture, scope);
+                if (!_content.TryResolveTexture(value.Texture, scope, _budget, out int textureId))
+                {
+                    _waiting = true;
+                    continue;
+                }
+                texture = textureId == 0 ? null : _content.Textures[textureId];
                 if (texture == null) Log.Warn(LogCat.Shaders, $"Material {id}: texture {value.Texture} missing; using the checker placeholder");
                 texture ??= _missingTexture;
             }
             values.Add((p, value, texture));
         }
+        if (_waiting) return null;
         if (missing.Count > 0)
         {
             Log.Error(LogCat.Shaders, $"Material {id}: effect {record.Effect} needs values for {string.Join(", ", missing)} (GL has no .fx defaults)");

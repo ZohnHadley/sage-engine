@@ -4,13 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 
 namespace Sage.Tests;
 
 using Assert = Xunit.Assert;
 
-// Issue #308: asset scopes (engine, game, sector, UI), ref-counted release, eviction on unload and the
-// per-frame upload budget (docs/design/05 §3.3, §3.4; Sage.Simulation's Content/AssetScopes.cs). The
+// Issues #308, #612: asset scopes (engine, game, sector, UI), ref-counted release, eviction on unload, the
+// per-frame upload budget, decoding off the main thread and stale mesh handles (docs/design/05 §3.3, §3.4; Sage.Simulation's Content/AssetScopes.cs). The
 // client's GPU tables are `AssetTable`s and its safe point is `AssetReleases.Collect`; `Client` below drives
 // the same two the way the renderer does (resolve what each live entity draws, collect at the start of the
 // frame), so the bookkeeping is proved here without a graphics device. The renderer's own use of them is
@@ -22,8 +23,9 @@ public class AssetScopeTests
     private const float Sector = Terrain.SectorSize;
     private const int Sectors = 50;
 
-    // Hills, and a prop in each of fifty sectors east of the player, each with its own model and its own
-    // material whose texture is its own; a lamp in (0, 0) and (25, 0) shares one model and one texture.
+    // Hills, and a prop in each of fifty sectors east of the player, each with its own model, its own sound
+    // and its own material, whose texture and effect are its own; a lamp in (0, 0) and (25, 0) shares one
+    // model, one sound and one texture.
     private static string Content()
     {
         var json = new StringBuilder("""
@@ -31,13 +33,16 @@ public class AssetScopeTests
           { "type": "terrain", "id": "hills", "generator": "Hills", "seed": 4, "height": 0, "amplitude": 20, "wavelength": 300 },
           { "type": "prefab", "id": "hero", "name": "hero", "tags": ["player_controlled"] },
           { "type": "material", "id": "lamp_glass", "effect": "shaders/test.mgfxo", "params": { "Albedo": "textures/lamp.png" } },
-          { "type": "prefab", "id": "lamp", "name": "lamp", "components": { "mesh_renderer": { "mesh": "models/lamp.glb", "material": "lamp_glass" } } },
+          { "type": "sound", "id": "hum", "variations": ["sounds/hum.ogg"] },
+          { "type": "prefab", "id": "lamp", "name": "lamp", "components": { "mesh_renderer": { "mesh": "models/lamp.glb", "material": "lamp_glass" },
+            "audio_source": { "sound": "hum", "loop": true } } },
         """);
         var place = new StringBuilder("""{ "prefab": "lamp", "at": [60, 0, 60] }, { "prefab": "lamp", "at": [""" + (25 * Sector + 60) + ", 0, 60] }");
         for (int i = 1; i <= Sectors; i++)
         {
-            json.Append($$"""{ "type": "material", "id": "mat{{i}}", "effect": "shaders/test.mgfxo", "params": { "Albedo": "textures/prop{{i}}.png" } },""");
-            json.Append($$"""{ "type": "prefab", "id": "prop{{i}}", "name": "prop{{i}}", "components": { "mesh_renderer": { "mesh": "models/prop{{i}}.glb", "material": "mat{{i}}" } } },""");
+            json.Append($$"""{ "type": "material", "id": "mat{{i}}", "effect": "shaders/prop{{i}}.mgfxo", "params": { "Albedo": "textures/prop{{i}}.png" } },""");
+            json.Append($$"""{ "type": "sound", "id": "snd{{i}}", "variations": ["sounds/prop{{i}}.ogg"] },""");
+            json.Append($$"""{ "type": "prefab", "id": "prop{{i}}", "name": "prop{{i}}", "components": { "mesh_renderer": { "mesh": "models/prop{{i}}.glb", "material": "mat{{i}}" }, "audio_source": { "sound": "snd{{i}}", "loop": true } } },""");
             place.Append($$""", { "prefab": "prop{{i}}", "at": [{{i * Sector + 100}}, 0, 100] }""");
         }
         json.Append($$"""
@@ -55,15 +60,18 @@ public class AssetScopeTests
         files.Write("game", "shaders/test.mgfxo", "");
         files.Write("game", "models/lamp.glb", "");
         files.Write("game", "textures/lamp.png", "");
+        files.Write("game", "sounds/hum.ogg", "");
         for (int i = 1; i <= Sectors; i++)
         {
             files.Write("game", $"models/prop{i}.glb", "");
             files.Write("game", $"textures/prop{i}.png", "");
+            files.Write("game", $"sounds/prop{i}.ogg", "");
+            files.Write("game", $"shaders/prop{i}.mgfxo", "");
         }
         files.Mount("game", "game");
-        // `material` is the client's record type (sage.client); a headless world that names materials registers it.
+        // `material` and `sound` are the client's record types (sage.client); a headless world that names them registers them.
         var app = HeadlessApp.Bare().With(new PhysicsModule(), new StreamingModule()).WithGameplay()
-            .OnRegistered(a => a.Records.Register<MaterialRecord>())
+            .OnRegistered(a => { a.Records.Register<MaterialRecord>(); a.Records.Register<SoundRecord>(); })
             .Mount(files).StartScene("game:valley").Boot();
         Assert.Equal(0, app.Records.ErrorCount);
         app.Engine.Saves.Root = TestEnv.NewTempDir();
@@ -92,6 +100,8 @@ public class AssetScopeTests
     {
         public readonly AssetTable<string> Meshes = new("(error mesh)");
         public readonly AssetTable<string> Textures = new("(checker)");
+        public readonly AssetTable<string> Sounds = new(null);
+        public readonly AssetTable<string> Effects = new(null);
         public readonly AssetReleases Releases = new();
         public readonly UploadBudget Budget = new() { MillisecondsPerFrame = 0f };
         public readonly HashSet<AssetPath> EverLoaded = new();
@@ -105,25 +115,30 @@ public class AssetScopeTests
             _load = path => { EverLoaded.Add(path); return (path.ToString(), 1024); };
         }
 
+        private AssetTable<string> Table(AssetType type) => type switch
+        {
+            AssetType.Mesh => Meshes,
+            AssetType.Texture => Textures,
+            AssetType.Sound => Sounds,
+            _ => Effects,
+        };
+
         public void Frame(World world)
         {
             _frame++;
             Budget.BeginFrame(_frame);
-            Releases.Collect(new[] { world }, key => (key.Type == AssetType.Mesh ? Meshes : Textures).TryEvict(key.Path, out _));
+            Releases.Collect(new[] { world }, key => Table(key.Type).TryEvict(key.Path, out _));
             var records = world.Resources.Get<RecordStore>();
-            foreach (var entity in world.Query<MeshRenderer>().Entities.ToEntityList())
-            {
-                _keys.Clear();
-                AssetUse.Of(records, world.Get<MeshRenderer>(entity), _keys);
-                foreach (var key in _keys)
-                    (key.Type == AssetType.Mesh ? Meshes : Textures).TryResolve(key.Path, AssetScope.Sector, _frame, Budget, _load, out _);
-            }
+            _keys.Clear();
+            foreach (var entity in world.Query<MeshRenderer>().Entities.ToEntityList()) AssetUse.Of(records, world.Get<MeshRenderer>(entity), _keys);
+            foreach (var entity in world.Query<AudioSource>().Entities.ToEntityList()) AssetUse.Of(records, world.Get<AudioSource>(entity), _keys);
+            foreach (var key in _keys) Table(key.Type).TryResolve(key.Path, AssetScope.Sector, _frame, Budget, _load, out _);
         }
     }
 
-    // The done line of #308: walking out across fifty sectors and back loads each one's model and texture
-    // and frees them as it unloads, so the counts come back to where they started — and the tables reuse
-    // their slots rather than growing a slot per sector.
+    // The done lines of #308 and #612: walking out across fifty sectors and back loads each one's model,
+    // texture, sound and effect and frees them as it unloads, so the counts and the memory come back to where
+    // they started — and the tables reuse their slots rather than growing a slot per sector.
     [Xunit.Fact]
     public void LoadingAndUnloadingFiftySectorsReturnsTextureAndMeshCountsToBaseline()
     {
@@ -131,10 +146,10 @@ public class AssetScopeTests
         var world = app.World;
         var client = new Client(world);
         client.Frame(world);
-        int meshes = client.Meshes.Count, textures = client.Textures.Count;
+        int meshes = client.Meshes.Count, textures = client.Textures.Count, sounds = client.Sounds.Count, effects = client.Effects.Count;
         var lamp = AssetPath.Intern("models/lamp.glb");
         Assert.True(client.Meshes.TryFind(lamp, out _));
-        Assert.True(meshes >= 2 && textures >= 2, $"{meshes} meshes, {textures} textures at the start");
+        Assert.True(meshes >= 2 && textures >= 2 && sounds >= 2 && effects >= 2, $"{meshes} meshes, {textures} textures, {sounds} sounds, {effects} effects at the start");
 
         int most = 0;
         for (int i = 1; i <= Sectors; i++)
@@ -167,8 +182,10 @@ public class AssetScopeTests
         {
             Assert.Contains(AssetPath.Intern($"models/prop{i}.glb"), client.EverLoaded);
             Assert.Contains(AssetPath.Intern($"textures/prop{i}.png"), client.EverLoaded);
+            Assert.Contains(AssetPath.Intern($"sounds/prop{i}.ogg"), client.EverLoaded);
+            Assert.Contains(AssetPath.Intern($"shaders/prop{i}.mgfxo"), client.EverLoaded);
         }
-        Assert.True(client.Releases.Evicted >= 2 * Sectors, $"{client.Releases.Evicted} evicted");
+        Assert.True(client.Releases.Evicted >= 4 * Sectors, $"{client.Releases.Evicted} evicted");
         // ...and only a ring's worth was ever loaded at once, in slots reused all the way.
         Assert.True(most < 30, $"{most} assets loaded at once");
         Assert.True(client.Meshes.Slots < 20 && client.Textures.Slots < 20, $"{client.Meshes.Slots} mesh slots, {client.Textures.Slots} texture slots");
@@ -176,7 +193,107 @@ public class AssetScopeTests
         // Back home: the same counts as at the start.
         Assert.Equal(meshes, client.Meshes.Count);
         Assert.Equal(textures, client.Textures.Count);
+        Assert.Equal(sounds, client.Sounds.Count);
+        Assert.Equal(effects, client.Effects.Count);
         Assert.Equal(meshes * 1024L, client.Meshes.Bytes);
+        Assert.Equal(sounds * 1024L, client.Sounds.Bytes);
+    }
+
+    // A one-shot can outlive the source its sector took away: the sound waits for the voice, then goes.
+    [Xunit.Fact]
+    public void ASoundStillPlayingIsKeptUntilItsVoiceHasEnded()
+    {
+        using var app = Run();
+        var world = app.World;
+        var mixer = new AudioMixer();
+        world.Resources.Add(mixer);
+        var client = new Client(world);
+        client.Frame(world);
+        var hum = AssetPath.Intern("sounds/hum.ogg");
+        Assert.True(client.Sounds.TryFind(hum, out int id));
+
+        var record = new SoundRecord { Variations = { hum } };
+        var voice = mixer.Play(default, record, Vector3.Zero, positional: false);
+        Assert.True(voice.IsValid);
+        Walk(world, 6 * Sector + 100, 100);   // home goes dormant: its lamp lets go of the hum
+        client.Frame(world);
+        Assert.True(client.Sounds.IsLive(id));
+        Assert.True(client.Releases.Pending > 0);
+
+        mixer.Remove(voice);
+        client.Frame(world);
+        Assert.False(client.Sounds.IsLive(id));
+        Assert.Equal(0, client.Releases.Pending);
+    }
+
+    // #612: a handle kept past its mesh names nothing, even once the slot holds another mesh.
+    [Xunit.Fact]
+    public void AStaleGenerationIsNotCurrentEvenWhenItsSlotIsReused()
+    {
+        var table = new AssetTable<string>("error mesh");
+        int id = table.Add(default, "chunk", AssetScope.Game, 1, 0);
+        int generation = table.EntryAt(id).Generation;
+        Assert.True(table.IsCurrent(id, generation));
+
+        table.Remove(id);
+        Assert.False(table.IsCurrent(id, generation));
+        int reused = table.Add(default, "another chunk", AssetScope.Game, 1, 0);
+        Assert.Equal(id, reused);
+        Assert.False(table.IsCurrent(id, generation));
+        Assert.True(table.IsCurrent(id, table.EntryAt(id).Generation));
+    }
+
+    // #612: a streamed asset decodes on a worker while the main thread goes on, and what is decoded is
+    // uploaded on the main thread, as much a frame as the budget allows.
+    [Xunit.Fact]
+    public void AStreamedDecodeRunsOffTheMainThreadAndUploadsWithinTheBudget()
+    {
+        var table = new AssetTable<string>("placeholder");
+        var decodes = new AssetDecodes<string>();
+        var budget = new UploadBudget { MillisecondsPerFrame = 2f };
+        var paths = Enumerable.Range(0, 3).Select(i => AssetPath.Intern($"textures/decode_{i}.png")).ToArray();
+        int main = Environment.CurrentManagedThreadId, onMain = 0;
+        using var hold = new ManualResetEventSlim(false);
+        Func<AssetPath, string?> decode = p =>
+        {
+            hold.Wait();
+            if (Environment.CurrentManagedThreadId == main) Interlocked.Increment(ref onMain);
+            return p.ToString();
+        };
+        Func<AssetPath, string, (string?, long)> upload = (_, data) =>
+        {
+            Assert.Equal(main, Environment.CurrentManagedThreadId);
+            budget.Spend(3);
+            return (data, 1);
+        };
+        bool Resolve(AssetPath path) => table.TryResolve(path, AssetScope.Sector, 1, budget, decodes, decode, upload, out _);
+
+        // The decodes are held, and the main thread is not.
+        budget.BeginFrame(1);
+        Assert.All(paths, path => Assert.False(Resolve(path)));
+        Assert.Equal(paths.Length, decodes.Running);
+        Assert.Equal(0, table.Count);
+
+        hold.Set();
+        Assert.True(SpinWait.SpinUntil(() => paths.All(p => decodes.Ready(p, decode)), 10000));
+        for (int frame = 2; frame < 2 + paths.Length; frame++)
+        {
+            budget.BeginFrame(frame);
+            foreach (var path in paths) Resolve(path);
+            Assert.Equal(frame - 1, table.Count);   // one upload a frame, the rest wait
+        }
+        Assert.Equal(0, decodes.Running);
+        Assert.Equal(0, onMain);
+
+        // A decode that found nothing is a failed load; one nobody wants any more is dropped.
+        budget.BeginFrame(10);
+        var broken = AssetPath.Intern("textures/decode_broken.png");
+        Assert.True(SpinWait.SpinUntil(() => decodes.Ready(broken, _ => null), 10000));
+        Assert.True(table.TryResolve(broken, AssetScope.Sector, 10, budget, decodes, decode, upload, out int id));
+        Assert.Equal(0, id);
+        decodes.Ready(AssetPath.Intern("textures/decode_gone.png"), decode);
+        decodes.Cancel(AssetPath.Intern("textures/decode_gone.png"));
+        Assert.Equal(0, decodes.Running);
     }
 
     // A released asset that something took up again before the safe point (a sector came straight back,
