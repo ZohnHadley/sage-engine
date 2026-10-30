@@ -284,6 +284,28 @@ public sealed partial class SaveSystem
     [Experimental("SAGE0131", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]
     public const string ThumbnailFile = "thumbnail.png";
 
+    // How many times a slot's folder is tried, a little longer between each: about half a second.
+    private const int ReplaceAttempts = 8;
+
+    // The finished save over the old one. Another process may hold a file of the old one for a moment (a
+    // virus scanner, a backup), which on Windows stops the delete: that is waited out rather than losing the save.
+    private static void ReplaceFolder(string staging, string directory)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+                Directory.Move(staging, directory);
+                return;
+            }
+            catch (Exception ex) when (attempt < ReplaceAttempts && ex is IOException or UnauthorizedAccessException)
+            {
+                System.Threading.Thread.Sleep(attempt * 20);
+            }
+        }
+    }
+
     // Writes a snapshot into its slot. Touches no world and no engine state but the log, so it runs on the
     // writer's thread as well as the caller's.
     private bool Write(SaveSnapshot s)
@@ -307,8 +329,7 @@ public sealed partial class SaveSystem
             if (s.Thumbnail is { } thumbnail)
                 File.WriteAllBytes(Path.Combine(staging, ThumbnailFile), Png.Encode(thumbnail.Width, thumbnail.Height, thumbnail.Rgba));
 
-            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
-            Directory.Move(staging, directory);
+            ReplaceFolder(staging, directory);
             _slotsStale = true;
             _lastTiming = new SaveTiming(s.Took, clock.Elapsed, s.Worlds.Sum(w => w.Entities.SerialisedOnTick));
             Log.Info(LogCat.Save, $"Saved '{s.Slot}' ({KindName(s.Kind)}): {s.Entities} entities across {s.WorldCount} world(s)");
@@ -1364,6 +1385,9 @@ public sealed partial class SaveSystem
             {
                 string name = Path.GetFileName(directory);
                 if (name.EndsWith(".writing", StringComparison.Ordinal)) continue;   // a save interrupted mid-write
+                // Not opened: the writer is replacing it, and on Windows a file open here stops that, which lost
+                // the save.
+                if (pendingHere != null && pendingHere.Exists(p => SameSlot(p.Name, name))) continue;
                 string headerPath = Path.Combine(directory, "header.json");
                 if (!File.Exists(headerPath)) continue;
                 slots.Add(ReadSlot(name, directory, () => JsonNode.Parse(File.ReadAllText(headerPath))));
@@ -1372,7 +1396,7 @@ public sealed partial class SaveSystem
         if (pendingHere != null)
             foreach (var pending in pendingHere)
             {
-                slots.RemoveAll(s => SameSlot(s.Name, pending.Name));
+                slots.RemoveAll(s => SameSlot(s.Name, pending.Name));   // two saves of one slot: the later one
                 slots.Add(pending);
             }
         slots.Sort((a, b) =>
