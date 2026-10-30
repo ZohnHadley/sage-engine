@@ -136,6 +136,83 @@
       "description": "A second panorama for the night, faded in as the stars come out (SkyRules.StarsAt). Empty: the day picture all night, darkened by the keys' skyboxTint. A texture path. Category: Skybox. (AssetPath)",
       "type": "string"
     },
+    "skyboxFaces": {
+      "description": "A painted sky as six square pictures (issue #635), instead of `skybox`: px east, nx west, py up, ny down, pz south, nz north, each as seen from inside. (SkyboxFaces)",
+      "type": "object",
+      "properties": {
+        "px": {
+          "description": "Looking east (+x) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "nx": {
+          "description": "Looking west (-x) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "py": {
+          "description": "Looking up (+y): its bottom edge joins nz's top. A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "ny": {
+          "description": "Looking down (-y): its top edge joins nz's bottom. A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "pz": {
+          "description": "Looking south (+z) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "nz": {
+          "description": "Looking north (-z) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "skyboxNightFaces": {
+      "description": "Six faces for the night, faded in as the stars come out. Empty: the day's all night, darkened by skyboxTint. (SkyboxFaces)",
+      "type": "object",
+      "properties": {
+        "px": {
+          "description": "Looking east (+x) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "nx": {
+          "description": "Looking west (-x) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "py": {
+          "description": "Looking up (+y): its bottom edge joins nz's top. A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "ny": {
+          "description": "Looking down (-y): its top edge joins nz's bottom. A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "pz": {
+          "description": "Looking south (+z) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "nz": {
+          "description": "Looking north (-z) A texture path. (AssetPath)",
+          "type": "string"
+        },
+        "replace": {
+          "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "skyboxYaw": {
+      "description": "Turns the painted sky about the vertical, clockwise from above. Unit: deg. Range: -360 to 360. (float, default 0)",
+      "default": 0,
+      "type": "number",
+      "minimum": -360,
+      "maximum": 360
+    },
     "keys": {
       "description": "The keyframes, by hour; any order, any number. One is a sky that never changes. (List<SkyKey>)",
       "type": "array",

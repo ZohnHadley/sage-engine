@@ -73,6 +73,7 @@ internal sealed class CameraExtract : ISystem
         env.CloudTexture = e.CloudTexture; env.CloudCover = e.CloudCover; env.CloudScale = e.CloudScale;
         env.CloudScroll = e.CloudScroll; env.CloudColor = SkyRules.CloudColor(e);
         env.Skybox = e.Skybox; env.SkyboxNight = e.SkyboxNight; env.SkyboxTint = e.SkyboxTint; env.SkyboxNightMix = e.SkyboxNightMix;
+        env.SkyboxFaces = e.SkyboxFaces; env.SkyboxNightFaces = e.SkyboxNightFaces; env.SkyboxYaw = e.SkyboxYaw;
         env.SunDirection = Vector3.Normalize(e.SunDirection);
         env.SunColor = e.SunColor;
         env.AmbientSky = e.AmbientSky;

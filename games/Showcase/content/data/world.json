@@ -93,6 +93,12 @@
     "type": "sky", "id": "alien", "base": "painted", "skybox": "textures/sky_red.png", "skyboxNight": ""
   },
   {
+    // Six square faces instead of one panorama (`sky_set showcase:cubed`).
+    "type": "sky", "id": "cubed", "base": "day",
+    "skyboxFaces": { "px": "textures/sky_clouds_px.png", "nx": "textures/sky_clouds_nx.png", "py": "textures/sky_clouds_py.png",
+                     "ny": "textures/sky_clouds_ny.png", "pz": "textures/sky_clouds_pz.png", "nz": "textures/sky_clouds_nz.png" }
+  },
+  {
     // The fog field's east half (scene.json): the day sky with linear fog, which the `fog` weather pulls in
     // to a few tens of metres. The west half is the day sky's own Exp² fog under the same weather.
     "type": "sky", "id": "linear", "base": "day", "fogMode": "Linear"

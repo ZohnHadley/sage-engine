@@ -11,7 +11,8 @@ namespace Sage.Client;
 // (`ClearColor`) to `Zenith`, hazed to the fog colour along the horizon, the sun disc, and stars as the
 // sun goes down. `shaders/sky.fx` draws it; what it draws is `SkyRules.ColorAt` and `SkyRules.StarsAt`,
 // headless and tested. A sky with a panorama (`SkyRecord.Skybox`, issue #630) draws the picture, looked up
-// by `SkyRules.SkyboxUv`, in place of the gradient, and everything else over it.
+// by `SkyRules.SkyboxUv`, in place of the gradient, and everything else over it. Six faces (issue #635) go
+// the same way, through a cube `SkyCubes` makes of them.
 //
 // Drawn only while `RenderEnvironment.DrawSky` — the sky system turns it on for a world with a sky record
 // — so a world without one keeps the clear colour, exactly as before. Not in a depth-only view (the
@@ -36,6 +37,7 @@ internal sealed class SkyDome : IDisposable
     private EffectParameter? _invViewProj, _horizon, _zenith, _fogColor, _sunDir, _sunColor, _params, _disc;
     private EffectParameter? _haze, _starAxis, _moon, _moonLight, _cloud, _cloudColor, _moonTex, _cloudTex;
     private EffectParameter? _box, _boxTint, _boxTex, _boxNightTex;
+    private EffectParameter? _boxCube, _boxNightCube;
     private ContentService? _content;
 
     public SkyDome(GraphicsDevice device)
@@ -69,13 +71,14 @@ internal sealed class SkyDome : IDisposable
             _haze = P("SkyHaze"); _starAxis = P("SkyStarAxis"); _moon = P("SkyMoon"); _moonLight = P("SkyMoonLight");
             _cloud = P("SkyCloud"); _cloudColor = P("SkyCloudColor"); _moonTex = P("MoonTex"); _cloudTex = P("CloudTex");
             _box = P("SkyBox"); _boxTint = P("SkyBoxTint"); _boxTex = P("SkyBoxTex"); _boxNightTex = P("SkyBoxNightTex");
+            _boxCube = P("SkyBoxCube"); _boxNightCube = P("SkyBoxNightCube");
         }
         _content = content;
         return true;
     }
 
     // The sky behind what the view drew. Returns the draw calls made.
-    public int Draw(in RenderView view, in EnvironmentParams env)
+    public int Draw(in RenderView view, in EnvironmentParams env, SkyCubes cubes)
     {
         if (_effect == null) return 0;
         _invViewProj?.SetValue(Matrix.Invert(view.ViewProj));
@@ -104,9 +107,14 @@ internal sealed class SkyDome : IDisposable
         // Issue #630: the panorama, and the night's faded in; not named or not loaded, the gradient.
         var box = !env.Skybox.IsEmpty ? _content?.LoadTexture(env.Skybox) : null;
         var night = box != null && !env.SkyboxNight.IsEmpty ? _content?.LoadTexture(env.SkyboxNight) : null;
+        var cube = cubes.Get(env.SkyboxFaces);
+        var nightCube = cube == null ? null : cubes.Get(env.SkyboxNightFaces);
         _boxTex?.SetValue(box);
         _boxNightTex?.SetValue(night ?? box);
-        _box?.SetValue(new Vector4(box != null ? 1f : 0f, night != null ? env.SkyboxNightMix : 0f, 0f, 0f));
+        _boxCube?.SetValue(cube?.Texture);
+        _boxNightCube?.SetValue((nightCube ?? cube)?.Texture);
+        _box?.SetValue(new Vector4(box != null || cube != null ? 1f : 0f, night != null || nightCube != null ? env.SkyboxNightMix : 0f,
+                                   cube != null ? 1f : 0f, MathHelper.ToRadians(env.SkyboxYaw)));
         _boxTint?.SetValue(env.SkyboxTint);
 
         _device.BlendState = BlendState.Opaque;

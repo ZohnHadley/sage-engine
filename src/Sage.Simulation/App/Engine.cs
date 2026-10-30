@@ -66,6 +66,7 @@ public sealed class Engine : IDisposable
         Records.AddCheck<MeshLodRecord>(MeshLodRecord.Check);
         // A terrain material's layers, tiles and rules (issue #307).
         Records.AddCheck<TerrainMaterialRecord>(TerrainSplat.Check);
+        Records.AddCheck<SkyRecord>(SkyRules.Check);
         // A particle effect's sheet grid and collision fractions (issue 4n-6).
         Records.AddCheck<ParticleRecord>(ParticleRecord.Check);
         // A material's surface maps and factors (issue #410). The record type is the client's; the check

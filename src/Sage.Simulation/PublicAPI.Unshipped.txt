@@ -193,6 +193,9 @@ Sage.Simulation.RebindStatus.CannotSave = 4 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Conflict = 2 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Invalid = 3 -> Sage.Simulation.RebindStatus
 Sage.Simulation.RebindStatus.Unchanged = 1 -> Sage.Simulation.RebindStatus
+Sage.Simulation.RenderEnvironment.SkyboxFaces -> Sage.Simulation.SkyboxFaces?
+Sage.Simulation.RenderEnvironment.SkyboxNightFaces -> Sage.Simulation.SkyboxFaces?
+Sage.Simulation.RenderEnvironment.SkyboxYaw -> float
 Sage.Simulation.ReverbRecord
 Sage.Simulation.ReverbRecord.DecayHFRatio -> float
 Sage.Simulation.ReverbRecord.DecayTime -> float
@@ -254,6 +257,17 @@ Sage.Simulation.SkeletonMapRecord.Scale -> float
 Sage.Simulation.SkeletonMapRecord.SkeletonMapRecord() -> void
 Sage.Simulation.SkeletonMapRecord.Source -> Sage.Core.AssetPath
 Sage.Simulation.SkeletonMapRecord.Target -> Sage.Core.AssetPath
+Sage.Simulation.SkyboxFaces
+Sage.Simulation.SkyboxFaces.Nx -> Sage.Core.AssetPath
+Sage.Simulation.SkyboxFaces.Ny -> Sage.Core.AssetPath
+Sage.Simulation.SkyboxFaces.Nz -> Sage.Core.AssetPath
+Sage.Simulation.SkyboxFaces.Px -> Sage.Core.AssetPath
+Sage.Simulation.SkyboxFaces.Py -> Sage.Core.AssetPath
+Sage.Simulation.SkyboxFaces.Pz -> Sage.Core.AssetPath
+Sage.Simulation.SkyboxFaces.SkyboxFaces() -> void
+Sage.Simulation.SkyRecord.SkyboxFaces -> Sage.Simulation.SkyboxFaces?
+Sage.Simulation.SkyRecord.SkyboxNightFaces -> Sage.Simulation.SkyboxFaces?
+Sage.Simulation.SkyRecord.SkyboxYaw -> float
 Sage.Simulation.SoundRecord.Caption -> string!
 Sage.Simulation.SoundRecord.Speaker -> string!
 Sage.Simulation.Terrain.CopySculpt() -> Sage.Simulation.TerrainSculpt!
@@ -371,6 +385,7 @@ Sage.Simulation.WeatherRecord.LightningRate -> float
 Sage.Simulation.WeatherRecord.ShelteredVolume -> float
 Sage.Simulation.WeatherRecord.Thunder -> Sage.Core.RecordRef<Sage.Simulation.SoundRecord!>
 Sage.Simulation.WeatherRecord.ThunderVolume -> float
+static Sage.Simulation.SkyRules.SkyboxDirection(System.Numerics.Vector3 direction, float yawDegrees) -> System.Numerics.Vector3
 static Sage.Simulation.TerrainSculpt.FromBytes(byte[]! bytes) -> Sage.Simulation.TerrainSculpt!
 static Sage.Simulation.TerrainSculpt.Read(System.IO.Stream! stream) -> Sage.Simulation.TerrainSculpt!
 static Sage.Simulation.WeatherRules.LightningRateNow(Sage.Core.RecordStore! records, Sage.Simulation.Weather! weather) -> float

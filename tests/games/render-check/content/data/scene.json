@@ -29,6 +29,22 @@
     ]
   },
 
+  // The same noon under six painted faces (issue #635, content/checks/cube_*.json): `sky_set rendercheck:cube`.
+  // Every quadrant of every face is a colour of its own, so a mirrored or turned face fails.
+  {
+    "type": "sky", "id": "cube", "sunrise": 6, "sunset": 18, "lean": 0.3, "fogMode": "Linear",
+    "skyboxFaces": { "px": "textures/cube_px.png", "nx": "textures/cube_nx.png", "py": "textures/cube_py.png",
+                     "ny": "textures/cube_ny.png", "pz": "textures/cube_pz.png", "nz": "textures/cube_nz.png" },
+    "keys": [
+      { "hour": 12, "sun": [0, 0, 0], "ambientSky": [0.2, 0.2, 0.2], "ambientGround": [0.1, 0.1, 0.1],
+        "horizon": [0.55, 0.65, 0.85], "zenith": [0.15, 0.35, 0.85], "fog": [0.85, 0.6, 0.35],
+        "fogStart": 20, "fogEnd": 50, "shadow": 1, "skyboxTint": [1, 1, 1] }
+    ]
+  },
+
+  // The same faces turned a quarter clockwise from above (content/checks/cube_turned.json).
+  { "type": "sky", "id": "cube_turned", "base": "cube", "skyboxYaw": 90 },
+
   // The same noon in a thick fog (issue #633, content/checks/water_fog.json): `sky_set rendercheck:foggy`
   // switches to it. It ends four metres out, so the pool and the ground near the camera are all fog.
   {

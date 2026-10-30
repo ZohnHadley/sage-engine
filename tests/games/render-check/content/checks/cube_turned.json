@@ -1,0 +1,17 @@
+{
+  // cube_up.json's corner under `sky_set rendercheck:cube_turned`, the faces a quarter clockwise from above
+  // (issue #635): what was the north-west corner stands north-east, so the west face shows where north did,
+  // the north face where east did.
+  "width": 640, "height": 360,
+  "regions": [
+    { "name": "py", "rect": [0.46, 0.14, 0.08, 0.14], "sees": "sky" },
+    { "name": "nx", "rect": [0.2, 0.62, 0.1, 0.14], "sees": "sky" },
+    { "name": "nz", "rect": [0.7, 0.62, 0.1, 0.14], "sees": "sky" }
+  ],
+  "checks": [
+    { "name": "the top's north-west quadrant", "region": "py", "when": "shaders", "color": [0.075, 0.425, 0.075], "tolerance": 0.05 },
+    { "name": "the west face, on the left", "region": "nx", "when": "shaders", "color": [0.112, 0.637, 0.637], "tolerance": 0.05 },
+    { "name": "the north face, on the right", "region": "nz", "when": "shaders", "color": [0.9, 0.85, 0.15], "tolerance": 0.05 },
+    { "name": "without shaders the frame is the clear colour", "region": "py", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}

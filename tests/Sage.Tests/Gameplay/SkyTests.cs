@@ -466,6 +466,48 @@ public class SkyTests
         Assert.True(plain.SkyboxNight.IsEmpty);
     }
 
+    // Six faces reach the environment as a panorama does (issue #635), and their mistakes are load errors.
+    [Fact]
+    public void SixFacesReachTheEnvironmentAndTheirMistakesAreLoadErrors()
+    {
+        const string faces = """{ "px": "a.png", "nx": "a.png", "py": "a.png", "ny": "a.png", "pz": "a.png", "nz": "a.png" }""";
+        const string key = """{ "hour": 12, "horizon": [0, 0, 0], "zenith": [0, 0, 0], "fog": [0, 0, 0], "sun": [1, 1, 1] }""";
+        HeadlessApp App(string sky) => HeadlessApp.Bare()
+            .File("data/skies.json", $$"""[{ "type": "sky", "id": "s", {{sky}}, "keys": [{{key}}] }]""").Boot("faces");
+
+        using (var good = App($$""" "skyboxFaces": {{faces}}, "skyboxNightFaces": {{faces}}, "skyboxYaw": 30 """))
+        {
+            Assert.Equal(0, good.Records.ErrorCount);
+            var environment = new RenderEnvironment();
+            SkyRules.Apply(good.Records.Get<SkyRecord>(new RecordId("sage", "s")), 12, good.Records, Settled("clear"), environment);
+            Assert.Equal("a.png", environment.SkyboxFaces!.Nz.ToString());
+            Assert.NotNull(environment.SkyboxNightFaces);
+            Assert.Equal(30f, environment.SkyboxYaw);
+        }
+
+        foreach (var (sky, errors) in new[]
+        {
+            ($$""" "skybox": "b.png", "skyboxFaces": {{faces}} """, 1),                      // two painted skies
+            ($$""" "skyboxNightFaces": {{faces}} """, 1),                                    // a night over no day
+            (""" "skyboxFaces": { "px": "a.png", "nx": "a.png", "py": "a.png", "ny": "a.png", "pz": "a.png" } """, 1),   // no nz
+        })
+        {
+            using var bad = App(sky);
+            Assert.Equal(errors, bad.Records.ErrorCount);
+        }
+    }
+
+    // A yaw turns the painted sky clockwise from above: a quarter turn brings the west to where north was.
+    [Fact]
+    public void AYawTurnsThePaintedSkyClockwiseFromAbove()
+    {
+        var north = new Vector3(0, 0, -1);
+        Assert.True(Vector3.Distance(new Vector3(-1, 0, 0), SkyRules.SkyboxDirection(north, 90f)) < 1e-5f);
+        Assert.True(Vector3.Distance(new Vector3(1, 0, 0), SkyRules.SkyboxDirection(north, -90f)) < 1e-5f);
+        Assert.Equal(north, SkyRules.SkyboxDirection(north, 0f));
+        Assert.Equal(0.5f, SkyRules.SkyboxDirection(new Vector3(0, 0.5f, -1), 45f).Y);
+    }
+
     // Where the panorama is read for a view direction, as sky.fx reads it: straight up is its top row, the
     // horizon its middle, -z its centre and +x a quarter turn to the right.
     [Fact]
