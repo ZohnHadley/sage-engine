@@ -61,7 +61,7 @@ public class AudioEnvironmentTests
 
     // A world from the map above: the wall, and an `echo` brush zone (map x 320..576, y -128..128, z 0..128:
     // engine x 10..18, z -4..4, height 0..4) with the engine's cave.
-    private static (Engine engine, World world) Level()
+    private static (Engine engine, World world) Level(string extra = "")
     {
         var engine = HeadlessApp.Gameplay().WithEngineContent()
             .With(new MapModule())
@@ -72,6 +72,7 @@ public class AudioEnvironmentTests
                   { "type": "prefab", "id": "echo", "name": "echo", "parts": { "reverb_zone": { "reverb": "sage:cave", "fade": 1 } } }
                 ]
                 """, "sandbox")
+            .File("data/extra.json", "[" + extra + "]", "sandbox")
             .Build().Engine;
         var world = engine.CreateWorld("level");
         Assert.NotNull(MapLoader.Load(world, new RecordId("sandbox", "wall")));
@@ -108,6 +109,27 @@ public class AudioEnvironmentTests
         Assert.True(behind.LowPass < 1f, "behind the wall should be filtered");
         Assert.Equal(1f, open.LowPass);
         Assert.Equal(open.Gain * mixer.Environment!.OccludedGain, behind.Gain, 3);
+    }
+
+    // A wall of something thin stops less of it (#606): its physics material's `occlusion`, between the open
+    // and the stone wall above, in gain and in low-pass alike.
+    [Fact]
+    public void OcclusionIsGradedByWhatTheWallIsMadeOf()
+    {
+        var (engine, world) = Level("""{ "type": "physics_material", "id": "curtain", "textures": ["wall"], "occlusion": 0.5 }""");
+        using var _ = engine;
+        var mixer = Mixer(world);
+        mixer.SetListener(new Vector3(0, 1.5f, 2f), Quaternion.Identity);
+        mixer.Update(0.0);
+
+        var behind = mixer.Find(mixer.Play(Fire, Sound(), new Vector3(0, 1.5f, -6f), positional: true))!;
+        var open = mixer.Find(mixer.Play(Fire, Sound(), new Vector3(0, 1.5f, 10f), positional: true))!;
+        mixer.Update(0.016);
+
+        Assert.Equal(0.5f, behind.Occlusion);
+        var room = mixer.Environment!;
+        Assert.Equal(open.Gain * (1f + room.OccludedGain) / 2f, behind.Gain, 3);
+        Assert.Equal((1f + room.OccludedLowPass) / 2f, behind.LowPass, 3);
     }
 
     // The same without any physics: nothing to ask, nothing occluded, and the gain is the mixer's own.

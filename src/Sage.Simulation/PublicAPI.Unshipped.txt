@@ -11,6 +11,8 @@ const Sage.Simulation.ShadowMath.DefaultSunStep = 0.25 -> float
 const Sage.Simulation.ShadowMath.MaxAtlasSize = 4096 -> int
 const Sage.Simulation.ShadowMath.MaxCascades = 3 -> int
 const Sage.Simulation.TerrainSculpt.Extension = ".sterrain" -> string!
+Sage.Simulation.AudioSettings.MusicDuck.get -> float
+Sage.Simulation.AudioSettings.MusicDuck.set -> void
 Sage.Simulation.ClipRetargeter
 Sage.Simulation.Decal
 Sage.Simulation.Decal.Age -> float
@@ -167,6 +169,8 @@ Sage.Simulation.MouseCaptureTracker.MouseCaptureTracker() -> void
 Sage.Simulation.MouseCaptureTracker.Step(bool want, int x, int y, int centreX, int centreY) -> Sage.Simulation.MouseCaptureFrame
 Sage.Simulation.PadAssignment.Auto.get -> bool
 Sage.Simulation.PadAssignment.Auto.set -> void
+Sage.Simulation.Music.Position.get -> double
+Sage.Simulation.Music.Position.set -> void
 Sage.Simulation.PadFamily
 Sage.Simulation.PadFamily.PlayStation = 1 -> Sage.Simulation.PadFamily
 Sage.Simulation.PadFamily.Xbox = 0 -> Sage.Simulation.PadFamily
@@ -182,6 +186,7 @@ Sage.Simulation.PendingRebind.Context.init -> void
 Sage.Simulation.PendingRebind.Input.get -> Sage.Simulation.InputBinding!
 Sage.Simulation.PendingRebind.Input.init -> void
 Sage.Simulation.PendingRebind.PendingRebind(Sage.Simulation.InputContext Context, string! Action, Sage.Simulation.InputBinding! Input, System.Collections.Generic.IReadOnlyList<string!>! Conflicts, bool CanReplace) -> void
+Sage.Simulation.PhysicsMaterialRecord.Occlusion -> float
 Sage.Simulation.Placement.Pitch -> float
 Sage.Simulation.Placement.Roll -> float
 Sage.Simulation.Placement.Scale -> System.Numerics.Vector3

@@ -63,6 +63,7 @@ public sealed class Voice
     internal bool Preview;
     internal long LoopStart;
     internal long LoopEnd;
+    internal double StartAt;             // music's: seconds into the file it starts (a load, PcmStreamer.StartAt)
 }
 
 // What the player set, as opposed to what a world is doing: bus volumes and the voice cap.
@@ -89,6 +90,9 @@ public sealed class AudioSettings
     public float DopplerScale { get; set; } = 1f;
 
     public float SpeedOfSound { get; set; } = 343f;
+    // What's left of the music while somebody speaks (`snd_music_duck`), 0 to 1.
+    public float MusicDuck { get; set; } = 0.4f;
+
     // Occlusion rays per mixer update (issue #329, `snd_occlusion_rays`); 0 turns occlusion off.
     internal int OcclusionRays { get; set; } = 8;
 
@@ -121,6 +125,19 @@ public sealed class AudioMixer
     }
 
     public IReadOnlyList<Voice> Voices => _voices;
+
+    internal float MusicDuck => _settings.MusicDuck;
+
+    // Somebody is talking: a voice on the Voice bus.
+    internal bool Speaking
+    {
+        get
+        {
+            foreach (var voice in _voices)
+                if (voice.Record?.Bus == AudioBus.Voice && !voice.Stopping) return true;
+            return false;
+        }
+    }
 
     // Whether a voice is playing this file, or has yet to stop it (AssetReleases keeps the sound until then).
     internal bool Plays(AssetPath asset)
@@ -276,7 +293,7 @@ public sealed class AudioMixer
     // A stem of a music track (issue #325, MusicPlayer): 2D, streamed, on the Music bus, and outside the
     // voice cap — never refused for being one too many and never stolen, so the music does not drop out
     // because a fight got loud. Its volume is the player's to move (SetVolume) as it fades.
-    internal VoiceHandle PlayMusic(RecordId music, AssetPath asset, float volume, bool loop, long loopStart, long loopEnd)
+    internal VoiceHandle PlayMusic(RecordId music, AssetPath asset, float volume, bool loop, long loopStart, long loopEnd, double startAt = 0.0)
     {
         var voice = new Voice
         {
@@ -290,6 +307,7 @@ public sealed class AudioMixer
             Music = true,
             LoopStart = loopStart,
             LoopEnd = loopEnd,
+            StartAt = startAt,
         };
         Compute(voice);
         _voices.Add(voice);

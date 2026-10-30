@@ -222,6 +222,7 @@ public class AudioStreamingTests
 
         public int Channels { get; }
         public int SampleRate { get; }
+        public long TotalFrames => _frames;
 
         public int Read(float[] buffer, int offset, int count)
         {
