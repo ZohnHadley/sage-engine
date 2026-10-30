@@ -1,0 +1,12 @@
+{
+  "size": 256,
+  "materials": [
+    { "name": "cobble", "kind": "cobble", "seed": 24, "normal": true, "spec": true, "bands": 0 },
+    { "name": "brick", "kind": "brick", "seed": 25, "normal": true, "spec": true, "depth": 6 },
+    { "name": "planks", "kind": "planks", "seed": 26, "normal": true, "bands": 0 },
+    { "name": "metal", "kind": "metal", "seed": 27, "normal": true, "spec": true },
+    { "name": "roof", "kind": "roof_tile", "seed": 28, "normal": true, "spec": true, "bands": 0 },
+    { "name": "moss", "kind": "moss", "seed": 29, "normal": true, "bands": 0 },
+    { "name": "stone", "kind": "stone", "seed": 30, "normal": true, "spec": true, "bands": 0 }
+  ]
+}

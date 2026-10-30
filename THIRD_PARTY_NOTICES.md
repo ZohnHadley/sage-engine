@@ -72,6 +72,20 @@ file was changed further, the row says how. Paths are under `games/Sandbox/conte
 | `music/wander_drums.ogg` | Cinematic percussion loop | Marwan Antonios | <https://opengameart.org/content/cinematic-percussion-loop> | CC0 |
 | `music/crypt.ogg` | Dungeon Ambience | yd | <https://opengameart.org/content/dungeon-ambience> | CC0 |
 
+The graphics showcase's (`games/Showcase/content/`) pictures from OpenGameArt are CC0 1.0 too, each licence read
+on the asset's own page; its other textures are made by `tools/texgen.py` (`games/Showcase/tools/textures.json`),
+its models by `games/Showcase/tools/make_models.py` (Blender) and its maps by `games/Showcase/tools/make_maps.py`.
+
+| File(s) | Asset | Author | Source | Licence |
+|---|---|---|---|---|
+| `textures/sky_day.png` (Panorama_Sky_05), `sky_night.png` (Panorama_Sky_12), `sky_red.png` (Panorama_Sky_19); unchanged 2048x1024 equirectangular panoramas | Cloudy Skyboxes (panorama set) | Screaming Brain Studios | <https://opengameart.org/content/cloudy-skyboxes-0> | CC0 |
+| `textures/smoke_sheet.png` (smoke_01, 02, 04, 05), `flame_sheet.png` (flame_01 to 04), `spark.png` (spark_01), `scorch.png` (scorch_01), `scorch_b.png` (scorch_02), `rune.png` (magic_03); scaled down, made white with the picture in the alpha (the rune: in the colour), frames packed 2x2 (`games/Showcase/tools/make_sprites.py`) | Particle Pack (80+ sprites) | Kenney | <https://opengameart.org/content/particle-pack-80-sprites> | CC0 |
+| `textures/grass.png` (grass1), `rock.png` (rock 6), `sand.png` (sand 1); unchanged 480x480 | Wall, grass, rock, stone, wood and dirt (480) | West (submitted by qubodup) | <https://opengameart.org/content/wall-grass-rock-stone-wood-and-dirt-480> | CC0 |
+| `textures/moon.png`, `clouds.png`, `terrain_detail.png` | copies of the Sandbox's (rows above: Full Moon; 700+ Noise Textures) | Fupi; Screaming Brain Studios | as above | CC0 |
+
+`games/Showcase/content/models/mannequin.glb` is a copy of the engine's own test model
+(`games/Sandbox/tools/make_mannequin.py`).
+
 Everything else under `games/` and `tests/games/` (the models, the sprites `creature.png`, `hands.png` and
 `sword_fp.png`, `map_main.png`) is still made by the scripts in `games/Sandbox/tools/`.
 
