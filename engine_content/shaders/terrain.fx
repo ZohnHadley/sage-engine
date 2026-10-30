@@ -52,6 +52,7 @@ struct VSOutput
     float2 UV       : TEXCOORD1;
     float3 Relative : TEXCOORD2;   // camera-relative position
     float4 Weights  : TEXCOORD3;
+    float Height    : TEXCOORD4;   // up the mesh, in UV units: what a slope's sideways projection reads (#655)
 };
 
 VSOutput VS(VSInput input)
@@ -63,16 +64,29 @@ VSOutput VS(VSInput input)
     output.UV = input.UV;
     output.Relative = relative.xyz;
     output.Weights = input.Weights;
+    output.Height = -input.Position.y / 8;   // TerrainSplat.MetresPerUv; down the texture, so a slope reads upright
     return output;
 }
 
-float3 Splat(float2 uv, float4 weights)
+float3 Layers(float2 uv, float4 w)
 {
-    float4 w = weights / max(dot(weights, float4(1, 1, 1, 1)), 0.0001);
     float3 albedo = tex2D(Layer0Sampler, uv * LayerTiling.x).rgb * w.x;
     albedo += tex2D(Layer1Sampler, uv * LayerTiling.y).rgb * w.y;
     albedo += tex2D(Layer2Sampler, uv * LayerTiling.z).rgb * w.z;
     albedo += tex2D(Layer3Sampler, uv * LayerTiling.w).rgb * w.w;
+    return albedo;
+}
+
+// Three projections by how the ground faces (#655, TerrainSplat.Projections): straight down on the flat, as it
+// always was, and from the side as it steepens, so a slope does not stretch the texture.
+float3 Splat(float2 uv, float height, float3 n, float4 weights)
+{
+    float4 w = weights / max(dot(weights, float4(1, 1, 1, 1)), 0.0001);
+    float3 p = abs(n);
+    p *= p;
+    p *= p;
+    p /= p.x + p.y + p.z;
+    float3 albedo = Layers(uv, w) * p.y + Layers(float2(uv.y, height), w) * p.x + Layers(float2(uv.x, height), w) * p.z;
     // Mid-grey detail leaves the colour as it is; lighter brightens and darker darkens.
     float detail = tex2D(DetailSampler, uv * DetailParams.x).r * 2;
     return albedo * lerp(1, detail, DetailParams.y);
@@ -80,8 +94,8 @@ float3 Splat(float2 uv, float4 weights)
 
 float4 PSSplat(VSOutput input) : COLOR0
 {
-    float3 albedo = Splat(input.UV, input.Weights) * Tint.rgb;
     float3 n = normalize(input.Normal);
+    float3 albedo = Splat(input.UV, input.Height, n, input.Weights) * Tint.rgb;
     float3 v = -normalize(input.Relative);   // towards the camera, at the origin
 
     // Rain (issue #311; WetnessRules, common.fxh `Wetting`): the ground is under the open sky, so it is as wet as

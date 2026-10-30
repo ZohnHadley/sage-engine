@@ -15,6 +15,19 @@ public class TerrainSplatTests
 {
     public TerrainSplatTests() { _ = TestEnv.UserRoot; }
 
+    // A slope takes the texture from the side (#655): flat ground is the plain top-down map, a cliff none of it.
+    [Xunit.Fact]
+    public void ASlopeTakesItsTextureFromTheSide()
+    {
+        Assert.Equal(new System.Numerics.Vector3(0, 1, 0), TerrainSplat.Projections(System.Numerics.Vector3.UnitY));
+        Assert.Equal(new System.Numerics.Vector3(1, 0, 0), TerrainSplat.Projections(-System.Numerics.Vector3.UnitX));
+        var gentle = TerrainSplat.Projections(System.Numerics.Vector3.Normalize(new System.Numerics.Vector3(0.2f, 1, 0)));
+        Assert.True(gentle.Y > 0.99f, "a gentle hill keeps the top-down map");
+        var steep = TerrainSplat.Projections(System.Numerics.Vector3.Normalize(new System.Numerics.Vector3(1, 1, 0)));
+        Assert.Equal(0.5f, steep.X, 4);
+        Assert.Equal(1f, steep.X + steep.Y + steep.Z, 4);
+    }
+
     private static string SandboxGame => Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
 
     private static HeadlessApp Boot(string records) =>
