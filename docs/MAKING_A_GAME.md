@@ -1234,7 +1234,8 @@ still lights everything else (props, creatures, doors) as an ordinary lamp. Only
 drawn rippling, reflecting the sky and the shore, showing the bottom, thickening with depth and fading at the
 shore; under it the view is tinted and fogged. A `water_surface` record sets the look (`colour`, `fogDensity`,
 `reflectivity`, `refraction`, the waves, and `underwaterColour`, `underwaterDensity`, `underwaterTint`);
-`sage:water` is the default. `r_water` switches it. It draws in the main view only.
+`sage:water` is the default. `r_water` switches it. It goes into the air's fog by its distance, as the ground
+does, and it draws in the main view only.
 
 **Weather that knows where you are** (issue #311). The rain stops under a roof (a ray up from the camera to the
 first static collider; an interior scene always is covered) and its sound drops to the weather's

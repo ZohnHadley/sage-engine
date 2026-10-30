@@ -14,7 +14,7 @@ traps; [`handoff-2026-09-28.md`](handoff-2026-09-28.md) §3 for how to build and
 2. **Next:** #592 (the lake, the rest of #601: a test game with a pool and a pixel check first, §2), then #602
    (saves at scale), then the P2s (#603–#612) and P3s (#613–#615). #617 (styled runs in a label) was filed by
    the UI pass. Still waiting for the owner: #296 (a public NuGet feed) and #582 (the scripting gate).
-3. Build and verify as `CLAUDE.md` says. Now: **2691 headless tests**. <!-- counts -->
+3. Build and verify as `CLAUDE.md` says. Now: **2697 headless tests**. <!-- counts -->
 4. **The owner's rules this session:** game assets (textures, sounds, models) come from opengameart.org rather
    than being generated, each with its licence in `THIRD_PARTY_NOTICES.md` (prefer CC0); commits carry no
    `Co-Authored-By` trailer, a plain "Written with Claude Code" line instead.

@@ -167,7 +167,7 @@ Sorting by material first minimises effect and texture switches; depth last give
 
 ### 3.9 Lighting and atmosphere (forward, SM3-friendly)
 - Per frame: one **sun** (direction, colour), **hemispheric ambient** (sky colour, ground colour), **fog** (linear or exp², colour, start/end/density).
-- Per object: up to **4 point lights**, the strongest by influence, chosen per draw by `LightRules.Nearest` (`r_lights`; 4 is what SM3's constant budget affords). Built — see "As built (point lights)" below.
+- Per object: up to **4 point lights**, the strongest by influence at the draw's bounding sphere, chosen per draw by `LightRules.Nearest` (`r_lights`; 4 is what SM3's constant budget affords). Built — see "As built (point lights)" below.
 - Sprites use the same inputs. The normal faces the camera for cylindrical sprites, or the material can be marked unlit (+ fog), which is the Daggerfall look.
 - **Render scale:** the scene can render into a lower-resolution target and be upscaled with point filtering (`r_scale 0.5`) for a retro look and cheap performance. UI always renders at full resolution. Built in issue 4h-6: "As built (post-processing)".
 
@@ -1374,6 +1374,17 @@ and #315, finished the same day) is the last three sections of this list.
   listed in the 8 m cells their ranges touch and a draw reads its cell's list, which chooses what the full
   list chooses (test: TheGridChoosesWhatTheFullListChooses) and allocates nothing once warm
   (test: RebuildingAndAskingTheGridAllocatesNothingOnceWarm).
+- **Lamps are chosen by a draw's bounding sphere since #634** (2026-10-30), not its origin: a terrain chunk's
+  origin is its sector's corner, so the ground under a wall lamp drew with no lamps. `Renderer.LampsOf` asks with
+  the part's `Bounds` through the item's world matrix, the pair culling uses. Influence is measured from the
+  sphere's nearest point (test: ALampOverABigMeshIsChosenHoweverFarItsOriginIs) and a spot's cone is tested
+  against the sphere (test: ASpotAimedAtTheEdgeOfABigMeshIsChosen). Lamps inside a big sphere all score the
+  same, so a tie goes to the one nearer its centre
+  (test: LampsTiedOverABigMeshAreChosenWhateverOrderTheyArrivedIn). The grid reads every cell the sphere
+  touches, each light once, and a sphere over `MaxCellsPerLight` cells reads every light
+  (test: TheGridChoosesWhatTheFullListChoosesForASphere). The cap stays at four, so a chunk in a lit town still
+  gets four. `LampsOf` itself has no headless test, since tests can't reference `Sage.Client`; a before and
+  after of the Sandbox's wall lamp checked it. Frame time with many lamps was not measured.
 - **Not yet:** no per-lamp phase offset; lamps cast shadows only when asked (#315, "As built (lamp shadows)"); the `.map` `style` key is not mapped;
   a bad pattern is caught when the lamp is placed, not when the record loads.
 
@@ -1528,6 +1539,13 @@ and #315, finished the same day) is the last three sections of this list.
   from the matrices' registers and no water ever drew there; the arrays now come first. The render check
   draws a pool and checks its surface (`checks/water.json`; test: TheWaterRegionLooksAtThePoolsTop), and the
   Sandbox's lake shows from its shore. `check_glsl_constants.py` finds gaps, not a reordering like this one.
+- **In the air's fog since #633** (2026-10-30). The step runs after the scene's fog and never applied it, so a
+  far lake stayed clear beside fogged ground. `water.fx` now fogs the shaded surface by the metres to it, before
+  the shore fade, with `common.fxh`'s factor from `WaterFogParams`
+  (test: TheWatersFogIsTheScenesAtTheSameDistance). The step also runs after the tonemap, so under `r_hdr` the
+  fog colour is tonemapped first (`Renderer.FogInPicture`). The render check's `foggy` sky puts the pool and the
+  ground past the fog's end, and `checks/water_fog.json` wants both the fog's colour
+  (test: TheWaterFogRegionsArePastTheFogsEnd). No spec covers `r_hdr`; it was tried by hand once.
 - **Not yet:** the main view only; sprites in front of the water are drawn over by it; reflections are
   on-screen only; it shades the LDR picture after the tonemap.
 
