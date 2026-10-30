@@ -292,6 +292,7 @@ internal sealed class LayoutBuilder
                 case UiBindings.Radius: bound.Radius = reader; break;
                 case UiBindings.Icon: bound.Icon = reader; break;
                 case UiBindings.IconTurned: bound.IconTurned = reader; break;
+                case UiBindings.Meter: bound.Meter = reader; break;
                 case UiBindings.ColumnSpan: bound.ColumnSpan = reader; break;
                 case UiBindings.RowSpan: bound.RowSpan = reader; break;
                 case UiBindings.Rows:
@@ -474,10 +475,12 @@ internal static class UiBindings
                         Fog = "fog", Target = "target", Radius = "radius",
                         // A button's picture and whether it is turned on its side, and the cells a grid's child
                         // spans (issue #346: an item's picture across its footprint). Lower case: keys are.
-                        Icon = "icon", IconTurned = "iconturned", ColumnSpan = "columnspan", RowSpan = "rowspan";
+                        Icon = "icon", IconTurned = "iconturned", ColumnSpan = "columnspan", RowSpan = "rowspan",
+                        // A button's meter along its bottom edge (issue #603: an item's condition).
+                        Meter = "meter";
 
     public static readonly string[] All = { Text, Tooltip, Value, Min, Max, Source, Style, Visible, Enabled, Data, Rows, Columns, X, Y, W, H, Checked, Selected, Options, Fog, Target, Radius,
-                                            Icon, IconTurned, ColumnSpan, RowSpan };
+                                            Icon, IconTurned, ColumnSpan, RowSpan, Meter };
 
     // What `bind` means on a widget of this type, or null when it has no main value.
     public static string? Primary(string widget) => widget switch
@@ -513,7 +516,7 @@ internal static class UiBindings
         Source => widget is "image" or "view",
         Fog => widget is "image" or "view",
         Target or Radius => widget == "view",
-        Icon or IconTurned => widget == "button",
+        Icon or IconTurned or Meter => widget == "button",
         Rows => widget is "stack" or "item_list" or "grid" or "box",
         Columns => widget == "grid",   // a grid as wide as its view-model says (an inventory's, issue #98)
         _ => true,
@@ -556,6 +559,7 @@ internal sealed class BoundNode
     public BindingReader? Checked, Selected, Options, Content;   // the form widgets' (issue #340)
     public BindingReader? Fog, Target, Radius;                     // a picture's fog, a view's (issue #348)
     public BindingReader? Icon, IconTurned, ColumnSpan, RowSpan;  // pictures across a grid's cells (issue #346)
+    public BindingReader? Meter;                                   // a button's meter (issue #603)
     private string? _icon;
     public RowsSlot? Rows;
     public BindingReader? Scope;    // what this node and everything inside it read from (issue #347)
@@ -569,7 +573,7 @@ internal sealed class BoundNode
                            || Enabled != null || Data != null || Columns != null || X != null || Y != null || W != null || H != null
                            || Checked != null || Selected != null || Options != null || Content != null
                            || Fog != null || Target != null || Radius != null
-                           || Icon != null || IconTurned != null || ColumnSpan != null || RowSpan != null;
+                           || Icon != null || IconTurned != null || ColumnSpan != null || RowSpan != null || Meter != null;
 
     // Listens for the player changing the widget, when its value is bound, to write it back (issue #340).
     public void WriteBack()
@@ -664,6 +668,7 @@ internal sealed class BoundNode
                 if (!ReferenceEquals(icon, _icon)) { _icon = icon; button.Icon = string.IsNullOrEmpty(icon) ? null : icon; }
             }
             if (IconTurned != null) button.IconTurned = IconTurned.Read(source).IsTrue;
+            if (Meter != null) button.Meter = Meter.Read(source).AsFloat;
         }
         if (ColumnSpan != null) Widget.ColumnSpan = (int)ColumnSpan.Read(source).Number;
         if (RowSpan != null) Widget.RowSpan = (int)RowSpan.Read(source).Number;

@@ -678,3 +678,8 @@ static Sage.Gameplay.DialogueBarks.Bark(Sage.Simulation.World! world, Sage.Simul
 static Sage.Gameplay.DialogueRules.Greeting(Sage.Simulation.World! world, Sage.Gameplay.DialogueRecord! record, Sage.Simulation.Entity speaker, Sage.Simulation.Entity listener) -> Sage.Gameplay.DialogueGreeting?
 static Sage.Gameplay.DialogueRules.Line(Sage.Simulation.World! world) -> string!
 static Sage.Gameplay.DialogueTopics.LearnLinks(Sage.Simulation.World! world, Sage.Simulation.Entity listener, string! text) -> int
+Sage.Gameplay.ItemUse.Target.get -> int?
+Sage.Gameplay.ItemUse.Target.init -> void
+static Sage.Gameplay.ItemUses.Aims(Sage.Gameplay.ItemRecord! record) -> bool
+static Sage.Gameplay.ItemUses.CanUseOn(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, int target, out string! why) -> bool
+static Sage.Gameplay.ItemUses.UseItemOn(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, int target, out string! why) -> bool

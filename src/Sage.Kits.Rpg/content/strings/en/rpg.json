@@ -42,7 +42,9 @@
     "no_room_to_turn": "There is no room to turn {item} there.",
     "cannot_split": "{item} cannot be split.",
     "cannot_drop": "{item} cannot be dropped here.",
-    "quest_item": "{item} is needed for a quest."
+    "quest_item": "{item} is needed for a quest.",
+    "used_on": "{item} used on {target}.",
+    "cannot_use_on": "{item} cannot be used on {target}: {why}."
   },
   "loot": {
     "title": "{who}",

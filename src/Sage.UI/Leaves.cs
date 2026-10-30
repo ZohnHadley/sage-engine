@@ -116,6 +116,12 @@ public class Button : Label
     // The icon is drawn a quarter turn clockwise: an item turned on its side in a grid.
     public bool IconTurned { get => _iconTurned; set { if (_iconTurned == value) return; _iconTurned = value; InvalidateVisual(); } }
 
+    private float _meter = -1f;
+
+    // A meter along the bottom of its content, filled from 0 to 1 (issue #603: an item's condition on its
+    // square in a grid); below 0 there is none.
+    public float Meter { get => _meter; set { if (_meter == value) return; _meter = value; InvalidateVisual(); } }
+
     public event Action<Button>? Pressed;
 
     protected internal override void OnActivate()
