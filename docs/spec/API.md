@@ -449,7 +449,7 @@ A component is saved by declaring it (§4); a world singleton by `[SavedResource
 cannot write by default by `SaveSystem.AddConverter` in `Init`. `GameRules.OnLoaded` runs after a load;
 `ISavedResource.AfterLoad` runs per resource. A save is snapshotted on the tick and, when taken while
 playing, written on a thread-pool thread (#285): the snapshot copies component columns, a component made only of values and strings is serialised
-by the writer, and one with entity references, lists or a plugin's converter (it may read the world) in the snapshot, on the tick, per entity. A client sets
+by the writer, and since #602 one with entity references or lists is copied with its changeable parts and serialised by the writer too; a plugin converter that implements `ISaveCapture` (experimental, SAGE0131) copies its values on the tick and hands the writer a converter that never reads the world, and what can be neither is serialised in the snapshot, on the tick, per entity. `Slots` lists a save still being written from its snapshot's header. A client sets
 `SaveSystem.Thumbnail` to hand over the frame's pixels; `SaveSystem.WaitForWrites`, `IsWriting` and
 `Report(slot)` (a `SaveVersionReport`) are SAGE0131, as are `SaveSlot.Title`, `ThumbnailPath` and `Compressed`.
 

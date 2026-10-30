@@ -626,10 +626,35 @@ column copies, since PR #453), `SaveReport.cs`
   on the tick and the snapshot is under a fifth of the write, and prints both (test:
   ATenThousandEntitySaveDoesNotStallAFrame).
 - **Limits of the column copy.** A component with entity references or attributes is still serialised per
-  entity on the tick; the per-world dialect assumes a plugin's converters keep no state of their own; and an
+  entity on the tick (lifted by #602, below); the per-world dialect assumes a plugin's converters keep no state of their own; and an
   empty `SavePlaceholder` is now written as an ordinary entity.
 - **Not done here:** ~~a snapshot under a frame at 10k entities~~ (PR #453); the tagged binary format; thumbnails in the
-  Sandbox's load menu; and `Slots`, which a menu reads every frame, blocks while a write is in flight.
+  Sandbox's load menu; ~~and `Slots`, which a menu reads every frame, blocks while a write is in flight~~ (#602, below).
+
+### As built (copies off the tick, and a slot list that does not wait, issue #602, 2026-10-30)
+- **Code:** `src/Sage.Simulation/Content/SaveCapturePlans.cs` (`CapturePlan`, `ISaveCapture`), `SaveJson.ForWriter`,
+  `SaveCapture.cs`, `SleepingReferences.Copy`, `SaveSystem.cs` and `SaveBackground.cs`; the attribute and tag
+  converters in Gameplay (`AttributeSaveConverters.cs`). Tests: `tests/Sage.Tests/Content/SaveWriterTests.cs`.
+- **The rest of the components are copied.** A component with an entity reference, a list or a plugin's converter
+  has its column copied whole, then each row's changeable parts (lists, arrays, a plugin's values) replaced with
+  copies, by a delegate compiled once per type and world. Entity handles go into the copy as they are, and the
+  writer writes them as the persistent ids recorded on the tick. A plugin converter that implements
+  `ISaveCapture` (SAGE0131) copies its values on the tick and gives the writer a converter that never reads the
+  world; the attribute and tag converters do. What can be neither (a dictionary, a class with no capturing
+  converter, a self-containing type, a code mod's type) is serialised on the tick, as before. Changes made after
+  the snapshot are not in the save, and it loads back (test: ABackgroundSaveCopiesGameplayStateOnTheTick); a
+  background save serialises nothing on the tick (test: ABackgroundSaveIsTheTickItWasTakenOn).
+- **Measured** (Debug, 10k NPCs with attributes, tags, effects and a component holding an entity reference and a
+  list): the snapshot was 85 to 92 ms (40,003 components serialised on the tick) and is about 5 to 8 ms; 5 to 6 ms
+  in Development. The test asserts the best of three snapshots is under a 60 Hz frame
+  (test: ATenThousandEntityAutosaveCostsTheTickUnderAFrame).
+- **The slot list does not wait.** While a write is in flight, `Slots` lists that save from its snapshot's
+  header with no thumbnail until the file exists, and rescans once the write lands; the same test reads it on
+  another thread while the writer is held. Load, `Exists`, `Delete` and the file listing still wait, so code that
+  opens a slot's files right after a background save calls `WaitForWrites` first.
+- **The format is unchanged:** no saved field was renamed, and the golden saves load.
+- **Not yet:** `NextAutosaveSlot` still calls `Exists`, so an autosave asked for while another is being written
+  waits for it; the first save in a world pays a one-time compile per captured component type.
 
 ### As built (where a slot was saved, and the title, issue #342, 2026-10-06)
 - **The header says where.** A save's header has `scene`, the first world's scene, and `SaveSlot.Scene` reads it

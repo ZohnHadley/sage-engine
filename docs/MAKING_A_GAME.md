@@ -1148,6 +1148,12 @@ shown as far as the weather's `cloudCover` says (0.3 unless a weather sets it), 
 an axis `starTilt` degrees up, and `hazeAbove`, the fog colour left over the sky above the haze band
 (`hazeBand`). A sky that names none of them looks as before.
 
+A painted sky (issue #630): `skybox` names one equirectangular picture (2:1, straight up along the top row,
+the horizon across the middle, -z at the centre) drawn in place of the gradient, with the clouds, haze, sun,
+moon and stars over it; `skyboxNight` is a second picture that fades in as the stars come out, and each key's
+`skyboxTint` (white unless you set it) darkens or warms the picture at its hour. The water reflects the
+picture's mean sky colour. `sky_set <sky|none>` (a cheat) switches the sky a running game is lit by.
+
 **Post-processing** (issue 4h-6, SAGE0130) needs no C#: a `post_effect` record names a material whose
 effect reads the picture as `Source`, runs by `order` and is switched by a cvar. The engine's are
 `sage:grade` (colour grade and exposure, with a night tint from the sky) and `sage:vignette`, drawn by
@@ -1170,6 +1176,14 @@ panorama) with `reflectivity`. A map left out changes nothing, so older material
 `emissiveMap` without an `emissive` colour, a `reflectivity` without an `environmentMap`, or `params` that set
 one of these names are load errors. Meshes built in code (brush levels, terrain) have no tangents, so a normal
 map does nothing on them.
+
+**Tiling textures from a recipe** (issue #627). `python tools/texgen.py <recipe.json> --out <folder>` paints
+tiling textures in fourteen kinds (ground, grass, stone, cobble, brick, roof_tile, planks, bark, metal, water,
+cloud, sand, snow, moss) from periodic noise, so every map repeats with no seam. A material in the recipe can
+ask for a `normal` map and a `spec` map in the layout above, a `palette`, `bands` (painted-looking steps of
+the colour ramp), `scale`, `variants` and its own `size`; a `sheet` packs the colour maps into one atlas with a
+JSON of each tile's rectangle. `tools/texgen_recipes/basics.json` has every kind; `--selftest` prints how
+well each tiles. It makes base materials and placeholders, not finished art.
 
 **Level of detail** (issue #305). A `mesh_lod` record lists coarser meshes and when they take over, by
 `distance` (metres) or `screenSize` (the share of the view's height), plus `cullDistance` or `cullScreenSize`
@@ -2403,9 +2417,11 @@ writes `world_<name>.json.gz` (`SaveSlot.Compressed`); either kind loads. A save
 plays (F5, a trigger's `save_game`, an autosave) is snapshotted on the tick and written on a background
 thread (`save_background`, on by default). The snapshot only copies your components' columns, a few
 milliseconds for ten thousand entities; a component with an `Entity` field, a list or a converter of your
-plugin's is serialised there and then, per entity, so a component thousands of things carry is cheapest
-made of plain values and strings. Reading a slot
-waits for a write in flight, and `SaveSystem.WaitForWrites()` does it by hand. F5 and F9 work while the game is paused. `save_quick_slot`
+plugin's is copied too, its lists and arrays included (issue #602), so ten thousand NPCs with attributes and
+entity references cost a few milliseconds. A converter of your own copies its values on the tick by
+implementing `ISaveCapture`; one that does not, or a dictionary, is serialised there and then, per entity.
+The slot list shows a save still being written, from its header; loading or opening a slot's files waits for
+the write, and `SaveSystem.WaitForWrites()` does it by hand. F5 and F9 work while the game is paused. `save_quick_slot`
 and `save_autosave_prefix` rename the quick slot and the autosaves, and the rotation never overwrites a
 slot the player saved under an autosave's name. `save_report <slot>` (`SaveSystem.Report`) says what
 loading a save would do: each component's and resource's saved version against this build's, as current,

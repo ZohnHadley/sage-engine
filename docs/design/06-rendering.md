@@ -1523,6 +1523,11 @@ and #315, finished the same day) is the last three sections of this list.
   (Archive, on) switches it; `sage:post_water`'s `ReflectionDistance`, `ReflectionThickness` and
   `ScreenReflections` tune the screen-space reflection. The Sandbox has a lake in the basin about 85 m east of
   the clearing (test: TheSandboxHasALake).
+- **Drawn on OpenGL since #592** (2026-10-29). `water.fx` declared its two matrices before its five per-surface
+  arrays, but the OpenGL build's constant buffer lays the arrays out first, so the shader read every surface
+  from the matrices' registers and no water ever drew there; the arrays now come first. The render check
+  draws a pool and checks its surface (`checks/water.json`; test: TheWaterRegionLooksAtThePoolsTop), and the
+  Sandbox's lake shows from its shore. `check_glsl_constants.py` finds gaps, not a reordering like this one.
 - **Not yet:** the main view only; sprites in front of the water are drawn over by it; reflections are
   on-screen only; it shades the LDR picture after the tonemap.
 
@@ -1550,6 +1555,30 @@ and #315, finished the same day) is the last three sections of this list.
   `tools/make_sky_art.py`.
 - **Not yet:** clouds drift by game-clock hours, so they stop with `time_scale 0`; the moon's lit side
   assumes a northern view; lamps still switch rather than fade.
+
+### As built (a painted skybox, 2026-10-30 — #630)
+- **Code:** the `skybox`, `skyboxNight` and key `skyboxTint` fields and `SkyRules.SkyboxUv` in
+  `src/Sage.Simulation/Rendering/Sky.cs`, the environment's `Skybox*` fields, `SkyPass.cs`, `sky.fx`, the water's
+  mean sky colour in `Renderer.Water.cs`, and `sky_set` in `WorldConsoleCommands.cs`. Tests:
+  `tests/Sage.Tests/Gameplay/SkyTests.cs` and `RenderCheckSceneTests`.
+- **A panorama in place of the gradient.** `skybox` names one equirectangular picture (2:1; straight up along
+  the top row, the horizon across the middle, -z at the centre, +x a quarter turn right)
+  (test: ThePanoramaIsReadEquirectangularWithMinusZAtItsCentre). `sky.fx` reads it at its top level, so the
+  seam where u wraps does not show, and draws the clouds, haze, sun, moon and stars over it as before.
+- **Night and the hour.** `skyboxNight` fades in as the stars come out; each key's `skyboxTint` (white by
+  default) is blended between keys and multiplied by the weather's sky tint
+  (test: ASkyboxReachesTheEnvironmentTintedByTheHourAndTheWeather). A sky with no `skybox` draws exactly as
+  before.
+- **The water** under a painted sky reflects the panorama's mean sky-half colour, worked out once per picture;
+  a compressed picture, which the CPU cannot read back, leaves it reflecting the gradient.
+- **`sky_set <sky|none>`** (a cheat) switches the sky every world is lit by, as a scene's `environment.sky`
+  does (test: SkySetChangesTheWorldsSky).
+- **Checked on screen:** the render check's `painted` sky (a 64x32 test panorama, pink over dark brown) and
+  `checks/skybox.json`, run in CI after `sky_set rendercheck:painted`: the sky shows the picture, the fog is
+  unchanged and the pool reflects it (test: TheSkyboxRegionReadsThePanoramasSkyHalf). On a Windows GPU the sky
+  region read (0.839, 0.353, 0.588), the picture's pink.
+- **Not yet:** one panorama, not six cube faces; no turning the picture (its -z is the world's); the water
+  reflects its mean colour, not the picture itself.
 
 ### As built (render pass replacement, the snapshot dump and debug labels, 2026-10-06 — #322, 4n-18)
 - **Code:** `RenderPassRegistry.Replace`/`Disable` in `src/Sage.Simulation/Rendering/RenderPasses.cs`,

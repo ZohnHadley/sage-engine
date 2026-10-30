@@ -3,10 +3,10 @@
 A C#/MonoGame game engine, being redesigned into a base engine for game designers, developers and
 modders: action RPGs first (Daggerfall, Half-Life, Morrowind, S.T.A.L.K.E.R.), 3D and 2D.
 
-**Start here:** [`docs/history/handoff-2026-10-29-polish.md`](docs/history/handoff-2026-10-29-polish.md) (where things
+**Start here:** [`docs/history/handoff-2026-10-30.md`](docs/history/handoff-2026-10-30.md) (where things
 stand and what is next), then [`docs/REDESIGN.md`](docs/REDESIGN.md) (the plan; §5 is the roadmap). Work is
 tracked as GitHub issues: phases #2, #9, #15, #23, then Stage B #75 (4a), #87 (4b), #88 (4c), #115 (4d), #132 (4e, done; next 4f), #152 (4h, done), #153 (4i, done), #182 (4g, done), #200 (4j, done), #215 (10a, the editor, done; guide docs/EDITOR.md), #365 (10b, the editor's second half, done), #376 (4f, RPG progression and economy, done), #385 (4r, AI/combat/quests/factions, done), #395 (9, code mods and packaging, done), Stage C #575 (5, the action-RPG samples in `games/Samples`, done), each with sub-issues.
-**The Polish milestone, #596, is under way** (engine features and systems only, owner 2026-10-29): #597, #599, #600, #586, #590 and #591 done; next #592 (the lake), then #602. Game assets come from opengameart.org, each licence in THIRD_PARTY_NOTICES.md (owner, 2026-10-29).
+**The Polish milestone, #596, is under way** (engine features and systems only, owner 2026-10-29): #597, #599, #600, #586, #590, #591, #592, #602, #627 (a texture generator) and #630 (a skybox) done; next the P2s, #603–#612. Game assets come from opengameart.org, each licence in THIRD_PARTY_NOTICES.md (owner, 2026-10-29).
 Since the 2026-10-02 replan (REDESIGN §5 "Stage B, part 2") every phase is a GitHub milestone with a parent issue,
 and issues carry `priority:`, `type:`, `area:` and `size:` labels: 4k #130, 4l #258, 4m #274, R1 #292,
 4n #304, 4o #324, 4q #337 (done), 4p #356 (done), 10b #365 (done), 4f #376 (done), 4r #385 (done), 9 #395 (done), 5 #575 (done), Polish #596 (under way). What "complete" means
@@ -35,6 +35,7 @@ tools/kit_screens_check.sh src/Sage.Host/bin/Development/net8.0 [--update]   # e
 tools/editor_smoke.sh src/Sage.Host/bin/Development/net8.0   # -edit level: place, wire, `ed_panel all`, play, save, check
 tools/smoke_run.sh --packaged-editor <package dir> 4 Shaders Audio   # a package's edit.sh (sage package --editor)
 SAGE_UPDATE_GOLDENS=1 dotnet test tests/Sage.Tests -c Debug --filter KitScreenGoldenTests   # rewrite plan goldens
+python3 tools/texgen.py tools/texgen_recipes/basics.json --out <dir>   # tiling textures from a recipe (#627)
 dotnet run --project games/Hello -c Development         # a Sage.Sdk game runs itself (host -game <folder>);
                                                         # the host never guesses a game without -game
 tools/pack_sdk.sh /tmp/feed                             # Sage.Sdk + Sage.Player + templates -> local feed (after
