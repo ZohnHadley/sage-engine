@@ -1607,8 +1607,18 @@ and #315, finished the same day) is the last three sections of this list.
   `checks/skybox.json`, run in CI after `sky_set rendercheck:painted`: the sky shows the picture, the fog is
   unchanged and the pool reflects it (test: TheSkyboxRegionReadsThePanoramasSkyHalf). On a Windows GPU the sky
   region read (0.839, 0.353, 0.588), the picture's pink.
-- **Not yet:** one panorama, not six cube faces; no turning the picture (its -z is the world's); the water
-  reflects its mean colour, not the picture itself.
+- **Six faces since #635** (2026-10-30). `skyboxFaces` and `skyboxNightFaces` name six square pictures in place of
+  a panorama (test: SixFacesReachTheEnvironmentAndTheirMistakesAreLoadErrors), and `skyboxYaw` turns either
+  clockwise from above (test: AYawTurnsThePaintedSkyClockwiseFromAbove). Faces are named for the way they look:
+  px east, nx west, py up, ny down, pz south, nz north, each as seen from inside; a side's top is up, and `py`
+  joins `nz` along its bottom edge and `ny` along its top. `SkyCubes` builds one `TextureCube` per set, mirrored
+  as it goes in, since a cube is looked up left-handed, and works out the mean sky colour the water reflects. The
+  render check looks into two opposite corners of a cube whose every quadrant differs (`checks/cube_up.json`,
+  `cube_down.json`) and a turned one (`cube_turned.json`); each read within 0.002 on a Windows GPU. Showcase's
+  `sky_set showcase:cubed` is a real set (CC0): as named, its side seams differ by about 2/255, against 78/255
+  with east and west swapped, so the convention fits.
+- **Not yet:** the water reflects a mean colour, not the picture itself; seamless cube filtering is not on, so a
+  face that does not match at its edge shows it; a compressed face leaves the sky its gradient.
 
 ### As built (render pass replacement, the snapshot dump and debug labels, 2026-10-06 — #322, 4n-18)
 - **Code:** `RenderPassRegistry.Replace`/`Disable` in `src/Sage.Simulation/Rendering/RenderPasses.cs`,

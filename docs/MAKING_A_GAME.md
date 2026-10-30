@@ -1154,6 +1154,18 @@ moon and stars over it; `skyboxNight` is a second picture that fades in as the s
 `skyboxTint` (white unless you set it) darkens or warms the picture at its hour. The water reflects the
 picture's mean sky colour. `sky_set <sky|none>` (a cheat) switches the sky a running game is lit by.
 
+Six square pictures work too (issue #635), as most skyboxes on opengameart.org come: `skyboxFaces` (and
+`skyboxNightFaces`) instead of `skybox`:
+
+```json
+"skyboxFaces": { "px": "textures/east.png", "nx": "textures/west.png", "py": "textures/up.png",
+                 "ny": "textures/down.png", "pz": "textures/south.png", "nz": "textures/north.png" }
+```
+
+Each is named for the way it looks and drawn as seen from inside: a side's top is up, `py`'s bottom edge joins
+`nz`'s top and `ny`'s top edge joins `nz`'s bottom. All six are one square size and uncompressed. `skyboxYaw`
+turns a painted sky clockwise from above, in degrees.
+
 **Post-processing** (issue 4h-6, SAGE0130) needs no C#: a `post_effect` record names a material whose
 effect reads the picture as `Source`, runs by `order` and is switched by a cvar. The engine's are
 `sage:grade` (colour grade and exposure, with a night tint from the sky) and `sage:vignette`, drawn by
@@ -1184,6 +1196,12 @@ ask for a `normal` map and a `spec` map in the layout above, a `palette`, `bands
 the colour ramp), `scale`, `variants` and its own `size`; a `sheet` packs the colour maps into one atlas with a
 JSON of each tile's rectangle. `tools/texgen_recipes/basics.json` has every kind; `--selftest` prints how
 well each tiles. It makes base materials and placeholders, not finished art.
+
+`"finish": true` on a material adds a second pass (issue #636): `break` (large-scale variation), `detail`,
+`imperfect` (uneven joints, chips, replaced and missing pieces in brick, roof_tile, planks and cobble), `cracks`,
+`stains`, `wear` on raised edges, `dirt` in recesses, `shade` (occlusion and a top light in the colour) and
+`warmth`. An object sets a layer's strength, 0 to 1, or `false` for none: `"finish": { "dirt": 0.15 }`. Cracks
+and stains stay off what they don't suit unless you ask. Without `finish` a material draws as before.
 
 **Level of detail** (issue #305). A `mesh_lod` record lists coarser meshes and when they take over, by
 `distance` (metres) or `screenSize` (the share of the view's height), plus `cullDistance` or `cullScreenSize`

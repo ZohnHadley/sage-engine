@@ -208,7 +208,9 @@ prefabs. Code: `src/Sage.Simulation/Content/PrefabOverrides.cs` (`PrefabOverride
   `sage:sprite_renderer` are one), a field whichever spelling it used; a bare shorthand value
   (`"faction": "beasts"`) becomes its object before an object merges in. The record is never touched
   (test: APlacementsOverridesMergeIntoACopyOfThePrefab). A bare record id inside an override means the
-  prefab's namespace, as in the body it merges into.
+  prefab's namespace, as in the body it merges into, unless the file that wrote it overrides another
+  namespace's prefab and has a record of that name: then it is its own, and the load check writes that in (#649,
+  test: ABareIdInAnOverrideIsTheWritersWhereItHasThatRecord).
 - **A `.map`'s per-entity keys are overrides of the same shape.** `PrefabKeys.Overrides` reads
   `"light.range" "12"` into `{ "parts": { "light": { "range": 12 } } }`, and the map spawn goes through
   the same merge, so the two cannot drift (test: MapKeysAreOverridesOfTheSameShape).
