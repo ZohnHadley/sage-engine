@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
@@ -19,20 +20,26 @@ namespace Sage.Simulation;
 //
 // **The snapshot serialises as little as it can** (SaveCapture). It copies the component columns of the
 // archetypes that hold persistent entities, and the writer builds every entity's JSON from the copies; what
-// stays on the tick is what needs the world: a component with an entity reference, a list or a plugin's
-// converter in it (serialised there, per entity), where content placed an entity, and a copy of each prefab
-// baseline the diffs are taken against. For 10k spawned crates that took the tick from about 190 ms (the
-// whole save) to about 60 (JSON trees built on the tick) to under 10 (Debug build), the rest moving to the
-// writer (test: ATenThousandEntitySaveDoesNotStallAFrame).
+// stays on the tick is what needs the world: where content placed an entity, a copy of each prefab baseline
+// the diffs are taken against, and a component that cannot be copied for the writer (CapturePlan: a
+// dictionary, a plugin converter that is no ISaveCapture), serialised there, per entity. Entity references,
+// lists and gameplay's attributes and tags are copied, and the writer writes them in a dialect that reads
+// nothing of the world (issue #602). For 10k spawned crates that took the tick from about 190 ms (the whole
+// save) to about 60 (JSON trees built on the tick) to under 10 (Debug build), the rest moving to the writer
+// (test: ATenThousandEntitySaveDoesNotStallAFrame); for 10k creatures with attributes, tags, effects and a
+// reference each, from 85 to 90 ms to about 6 (test: ATenThousandEntityAutosaveCostsTheTickUnderAFrame).
 //
 // Which saves go to the background (`save_background`, default on): the ones a game takes while it plays —
 // a request made during a tick (F5, a system, a trigger), an autosave, `quicksave`, `RequestSave` between
 // ticks. `Save(slot)` between ticks is still written before it returns, because its caller (a menu's
 // Overwrite, a tool, a test) asks for its result.
 //
-// **Nothing reads a slot half-written.** Load, Exists, Delete, List and Slots wait for the writes still in
-// flight before they look at the folder, so a quick-load straight after a quick-save loads it, and an
-// autosave's rotation sees the slot the last one is writing. The engine waits for them when it is disposed.
+// **Nothing reads a slot half-written.** Load, Exists, Delete and List wait for the writes still in flight
+// before they look at the folder, so a quick-load straight after a quick-save loads it, and an autosave's
+// rotation sees the slot the last one is writing. Slots, which a menu reads every frame, does not wait
+// (issue #602): a save still on its way is listed from its snapshot's header, never from a `.writing`
+// folder, and the folder is read again once the write lands. The engine waits for the writes when it is
+// disposed.
 //
 // **The thumbnail** (SaveSystem.Thumbnail) is the client's hook: called in the snapshot, on the thread that
 // owns the graphics device, it hands over the frame's pixels (RGBA, top row first); the writer encodes
@@ -82,8 +89,12 @@ public sealed partial class SaveSystem
         if (snapshot == null) return false;
         Interlocked.Increment(ref _writesInFlight);
         WorkStats.JobStarted();   // `stat render`'s jobs (issue #300)
+        // Slots lists it from its header while it is written (issue #602), read here, on the tick: the writer
+        // owns the snapshot's tree from now on.
+        var pending = (snapshot.Directory, Slot: ReadSlot(Path.GetFileName(snapshot.Directory), snapshot.Directory, () => snapshot.Header));
         lock (_writerGate)
         {
+            _pendingSlots.Add(pending);
             _writer = _writer.ContinueWith(_ =>
             {
                 try
@@ -91,11 +102,21 @@ public sealed partial class SaveSystem
                     WriterGate?.Wait();
                     Write(snapshot);
                 }
-                finally { Interlocked.Decrement(ref _writesInFlight); WorkStats.JobFinished(); }
+                finally
+                {
+                    lock (_writerGate) _pendingSlots.Remove(pending);
+                    _slotsStale = true;
+                    Interlocked.Decrement(ref _writesInFlight);
+                    WorkStats.JobFinished();
+                }
             }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
         }
+        _slots = null;
         return true;
     }
+
+    // The saves queued for the writer and not yet written, as Slots lists them (guarded by _writerGate).
+    private readonly List<(string Directory, SaveSlot Slot)> _pendingSlots = new();
 
     private void RegisterBackgroundCommands(CVarRegistry cvars)
     {

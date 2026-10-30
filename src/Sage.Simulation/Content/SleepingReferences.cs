@@ -35,6 +35,9 @@ internal sealed class SleepingHandles
 
     public void Clear() => _ids.Clear();
 
+    // The handles and their ids as they are now, for a save's writer (issue #602).
+    public Dictionary<Entity, PersistentId> Copy() => new(_ids);
+
     // An entity, and the children its prefab placed, is going to sleep: its handles stand for its ids.
     public static void Asleep(World world, Entity entity)
     {

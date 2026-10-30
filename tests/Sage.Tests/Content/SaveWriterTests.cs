@@ -21,6 +21,13 @@ public struct WriterLink : IComponent
     public List<int> Marks;
 }
 
+// A dictionary: a component a save cannot copy for its writer, so it is serialised on the tick (issue #602).
+[Component("test:writer_book")]
+public struct WriterBook : IComponent
+{
+    public Dictionary<string, int> Pages;
+}
+
 // Saves, issue #285: compressed world files, a thumbnail the client hands over, titles and configurable
 // slot names, quick-save keys heard while paused, a save written in the background, and the save-version
 // report. (The 10k-entity measurement is SaveWriterMeasurements, below.)
@@ -74,7 +81,8 @@ public class SaveWriterTests
         world.RunFixed(Dt);
 
         Assert.True(saves.Save("now"));   // written before it returns
-        Assert.Equal(1, saves.LastTiming.SerialisedOnTick);   // the hero's link: it names an entity
+        // The hero's link names an entity and holds a list: copied on the tick, written by the writer (#602).
+        Assert.Equal(0, saves.LastTiming.SerialisedOnTick);
 
         var gate = new ManualResetEventSlim(false);
         saves.WriterGate = gate;
@@ -117,6 +125,87 @@ public class SaveWriterTests
         var target = world.Get<WriterLink>(world.Resolve(PersistentId.FromName("writer_hero"))).Target;
         Assert.Equal(13, world.Get<QuickCount>(target).Value);
         Assert.Equal(new Vector3(3, 0, 2), world.Get<Transform>(target).LocalPosition);
+    }
+
+    private const string GameplayContent = """
+    [
+      { "type": "attribute", "id": "health", "max": 100, "start": 100 },
+      { "type": "tag", "id": "wary" },
+      { "type": "tag", "id": "calm" },
+      { "type": "effect", "id": "ward", "duration": "Infinite", "modifiers": [ { "attribute": "health", "op": "Add", "value": 5 } ] },
+      { "type": "prefab", "id": "npc", "name": "npc", "parts": { "attributes": {} } },
+      { "type": "scene", "id": "main", "place": [ { "prefab": "npc", "at": [1, 0, 0], "name": "npc" } ] }
+    ]
+    """;
+
+    // Issue #602: gameplay's attributes, tags and active effects, which plugin converters write by name, are
+    // copied on the tick (ISaveCapture) and written by the writer as they were then; a component that cannot
+    // be copied (a dictionary) is still serialised on the tick. What the game does after the snapshot is not
+    // in the save, and the save loads back to the state it was taken in.
+    [Xunit.Fact]
+    public void ABackgroundSaveCopiesGameplayStateOnTheTick()
+    {
+        var files = new MountFixture();
+        files.Write("game", "data/content.json", GameplayContent);
+        files.Mount("game", "game");
+        using var app = HeadlessApp.Gameplay().Mount(files).StartScene("game:main").Boot();
+        var world = app.World;
+        var saves = app.Engine.Saves;
+        saves.Root = Path.Combine(TestEnv.NewTempDir(), "saves");
+        world.RunFixed(Dt);
+
+        var registries = world.Resources.Get<Sage.Gameplay.GameplayRegistries>();
+        int health = registries.Attribute(new RecordId("game", "health"));
+        int wary = registries.Tag(new RecordId("game", "wary")), calm = registries.Tag(new RecordId("game", "calm"));
+        var npc = world.Spawn(new RecordId("game", "npc"), new Vector3(3, 0, 3));
+        var caster = world.Spawn(new RecordId("game", "npc"), new Vector3(6, 0, 3));
+        world.Get<Sage.Gameplay.Attributes>(npc).Values.SetBase(health, 40);
+        world.Get<Sage.Gameplay.GameplayTags>(npc).Add(wary);
+        Assert.True(Sage.Gameplay.Effects.Apply(world, npc, new RecordId("game", "ward"), caster));
+        world.Add(npc, new WriterBook { Pages = new Dictionary<string, int> { ["one"] = 1 } });
+        world.RunFixed(Dt);
+        var npcId = world.Get<Persistent>(npc).Id;
+        var casterId = world.Get<Persistent>(caster).Id;
+
+        var gate = new ManualResetEventSlim(false);
+        saves.WriterGate = gate;
+        try
+        {
+            saves.QuickSave();
+            Assert.True(saves.IsWriting);
+            // After the snapshot: none of this is in the save.
+            world.Get<Sage.Gameplay.Attributes>(npc).Values.SetBase(health, 7);
+            world.Get<Sage.Gameplay.GameplayTags>(npc).Remove(wary);
+            world.Get<Sage.Gameplay.GameplayTags>(npc).Add(calm);
+            world.Get<Sage.Gameplay.ActiveEffects>(npc).Effects.Clear();
+            world.Get<WriterBook>(npc).Pages["two"] = 2;
+            world.RunFixed(Dt);
+        }
+        finally
+        {
+            gate.Set();
+            saves.WriterGate = null;
+        }
+        saves.WaitForWrites();
+        Assert.Equal(1, saves.LastTiming.SerialisedOnTick);   // the book: a dictionary is not copied
+
+        var saved = JsonNode.Parse(File.ReadAllText(Assert.Single(Directory.GetFiles(Folder(saves, SaveSystem.QuickSlot), "world_*"))))!
+            ["entities"]!.AsArray().Single(e => (string?)e!["id"] == npcId.ToString())!["components"]!;
+        Assert.Equal(40f, (float)saved["sage:attributes"]!["data"]!["Values"]!["game:health"]!);
+        Assert.Equal("[\"game:wary\"]", saved["sage:gameplay_tags"]!["data"]!.ToJsonString());
+        var effect = Assert.Single(saved["sage:active_effects"]!["data"]!["Effects"]!.AsArray())!;
+        Assert.Equal("game:ward", (string?)effect["Record"]);
+        Assert.Equal(casterId.ToString(), (string?)effect["Source"]);
+        Assert.Equal("{\"one\":1}", saved["test:writer_book"]!["data"]!["Pages"]!.ToJsonString());
+
+        Assert.True(saves.Load(SaveSystem.QuickSlot));
+        world.RunFixed(Dt);
+        var back = world.Resolve(npcId);
+        Assert.Equal(40f, world.Get<Sage.Gameplay.Attributes>(back).Values.BaseOf(health));
+        Assert.True(world.Get<Sage.Gameplay.GameplayTags>(back).Has(wary));
+        Assert.False(world.Get<Sage.Gameplay.GameplayTags>(back).Has(calm));
+        Assert.Equal(world.Resolve(casterId), Assert.Single(world.Get<Sage.Gameplay.ActiveEffects>(back).Effects).Source);
+        Assert.Equal(new[] { "one" }, world.Get<WriterBook>(back).Pages.Keys);
     }
 
     // `save_compress 1`: the world files are gzip; the slot says so; it loads, lists its entities, and a save
@@ -170,6 +259,7 @@ public class SaveWriterTests
         int calls = 0;
         saves.Thumbnail = () => { calls++; return new SaveThumbnail(4, 2, rgba); };
         app.CVars.Execute("quicksave");   // in the background
+        saves.WaitForWrites();            // listed at once (issue #602), but with no thumbnail until it is written
         var slot = saves.Slots.Single(s => s.Name == SaveSystem.QuickSlot);
         Assert.Equal(1, calls);
         Assert.NotNull(slot.ThumbnailPath);
@@ -522,5 +612,104 @@ public class SaveWriterMeasurements
         Assert.True(saves.Load(SaveSystem.QuickSlot));
         world.RunFixed(SaveWriterTests.Dt);
         Assert.True(world.QueryAll().Entities.ToEntityList().Count(e => e.Name == "crate") > Entities);
+    }
+
+    private const string NpcContent = """
+    [
+      { "type": "attribute", "id": "health", "max": 100, "start": 100 },
+      { "type": "attribute", "id": "stamina", "max": 50, "start": 50 },
+      { "type": "tag", "id": "wary" },
+      { "type": "prefab", "id": "npc", "name": "npc", "parts": { "attributes": {} } },
+      { "type": "scene", "id": "main", "place": [ { "prefab": "npc", "at": [1, 0, 0], "name": "npc" } ] }
+    ]
+    """;
+
+    // Issue #602: an autosave of a 10k-entity scene whose entities need the world to be written (attributes and
+    // gameplay tags by name, active effects, a reference to another entity, a list) costs the tick under a
+    // frame. A wall-clock bound, which is why it is here: the best of three autosaves is held to 16.7 ms. The
+    // writer is held shut while each is taken, and the slot list is read meanwhile without waiting for it.
+    [Xunit.Fact]
+    public void ATenThousandEntityAutosaveCostsTheTickUnderAFrame()
+    {
+        var files = new MountFixture();
+        files.Write("game", "data/content.json", NpcContent);
+        files.Mount("game", "game");
+        using var app = HeadlessApp.Gameplay().Mount(files).StartScene("game:main").Boot();
+        var world = app.World;
+        var saves = app.Engine.Saves;
+        saves.Root = Path.Combine(TestEnv.NewTempDir(), "saves");
+        app.CVars.Execute("save_compress 1");
+        world.RunFixed(SaveWriterTests.Dt);
+
+        var npc = new RecordId("game", "npc");
+        var registries = world.Resources.Get<Sage.Gameplay.GameplayRegistries>();
+        int health = registries.Attribute(new RecordId("game", "health")), wary = registries.Tag(new RecordId("game", "wary"));
+        var npcs = new Entity[Entities];
+        for (int i = 0; i < Entities; i++)
+            npcs[i] = world.Spawn(npc, new Vector3(i % 100, 0, i / 100));
+        for (int i = 0; i < Entities; i++)
+        {
+            world.Get<Sage.Gameplay.Attributes>(npcs[i]).Values.SetBase(health, i % 100);
+            if (i % 3 == 0) world.Get<Sage.Gameplay.GameplayTags>(npcs[i]).Add(wary);
+            world.Add(npcs[i], new WriterLink { Target = npcs[(i + 1) % Entities], Marks = new List<int> { i } });
+        }
+        world.RunFixed(SaveWriterTests.Dt);
+
+        Assert.True(saves.Save("warm"));
+        Assert.True(saves.Save("warm"));   // the second: no first-call costs
+        var whole = saves.LastTiming;
+
+        var ask = new AskOnce(() => saves.Autosave());
+        world.AddSystem(ask, Phase.Gameplay);
+        var best = TimeSpan.MaxValue;
+        var snapshots = new List<string>();
+        var tick = Stopwatch.StartNew();
+        world.RunFixed(SaveWriterTests.Dt);   // what a tick of this scene costs with no save in it
+        var plain = tick.Elapsed;
+        for (int run = 0; run < 3; run++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var gate = new ManualResetEventSlim(false);
+            saves.WriterGate = gate;
+            try
+            {
+                ask.Armed = true;
+                tick.Restart();
+                world.RunFixed(SaveWriterTests.Dt);   // asks mid-tick; snapshotted at the tick's end
+                tick.Stop();
+                Assert.True(saves.IsWriting);
+                // The listing does not wait for the write, and lists the autosave on its way from its header
+                // (read on another thread, so a listing that waited fails rather than hangs).
+                IReadOnlyList<SaveSlot>? listed = null;
+                var listing = new Thread(() => listed = saves.Slots) { IsBackground = true };
+                listing.Start();
+                Assert.True(listing.Join(TimeSpan.FromSeconds(10)));
+                Assert.True(saves.IsWriting);
+                Assert.Equal(run + 1, listed!.Count(s => s.Kind == SaveKind.Auto));
+            }
+            finally
+            {
+                gate.Set();
+                saves.WriterGate = null;
+            }
+            saves.WaitForWrites();
+            var timing = saves.LastTiming;
+            snapshots.Add($"{timing.Snapshot.TotalMilliseconds:F1} ms in a {tick.Elapsed.TotalMilliseconds:F1} ms tick ({timing.SerialisedOnTick} serialised on it)");
+            if (timing.Snapshot < best) best = timing.Snapshot;
+        }
+        Console.WriteLine($"10k-entity autosave with attributes and references: snapshots {string.Join(", ", snapshots)}; " +
+                          $"a tick with no save: {plain.TotalMilliseconds:F1} ms; a whole save on the tick: snapshot {whole.Snapshot.TotalMilliseconds:F1} ms, write {whole.Write.TotalMilliseconds:F1} ms");
+        Assert.True(best.TotalMilliseconds < 1000.0 / 60.0, $"snapshots {string.Join(", ", snapshots)}");
+
+        // What it wrote loads: every npc, its reference to the next one.
+        var slot = saves.Slots.First(s => s.Kind == SaveKind.Auto).Name;
+        Assert.True(saves.Load(slot));
+        world.RunFixed(SaveWriterTests.Dt);
+        var loaded = world.QueryAll().Entities.ToEntityList().Where(e => e.Name == "npc" && world.Has<WriterLink>(e)).ToArray();
+        Assert.Equal(Entities, loaded.Length);
+        Assert.All(loaded, e => Assert.Equal("npc", world.Get<WriterLink>(e).Target.Name));
+        Assert.Equal(Entities, loaded.Count(e => world.Get<WriterLink>(e).Marks is { Count: 1 }));
     }
 }

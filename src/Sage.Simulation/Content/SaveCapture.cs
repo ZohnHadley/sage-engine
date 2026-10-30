@@ -21,9 +21,13 @@ namespace Sage.Simulation;
 // in the background are the same file.
 //
 // **What stays on the tick** is what needs the world, and only where an entity has it:
-// - a component whose type is not values and strings all the way down (SaveSerializer.CanDefer): an
-//   entity reference, a list the game may change under the writer, or a plugin's converter (attributes
-//   and tags by name read the world) — serialised there and then, per entity, as before;
+// - a component whose type is not values and strings all the way down (SaveSerializer.CanDefer) and cannot be
+//   captured either: one with a dictionary in it, a class, a plugin converter that is not an ISaveCapture —
+//   serialised there and then, per entity. Entity references, lists, arrays and gameplay's attributes and
+//   tags no longer are (issue #602, CapturePlan): the column is copied, then what in it the game could
+//   change (a list, an attribute set) is copied row by row, and the writer writes it in a dialect of its own
+//   that reads nothing of the world — an entity as the persistent id the tick gave it, an attribute by the
+//   name it had then;
 // - where content placed it (ContentBaseline, one lookup an entity), its parent's id for a child its
 //   parent's prefab placed, its kept placement's overrides and wires (KeptPlacement), and whether content's
 //   entity still stands where it was placed;
@@ -36,16 +40,19 @@ public sealed partial class SaveSystem
     // entries serialised on the tick (null: it could not be, and the log said so).
     internal sealed class CapturedColumn
     {
-        public CapturedColumn(ComponentDeclaration declaration, Array? values, JsonNode?[]? written)
+        public CapturedColumn(ComponentDeclaration declaration, Array? values, JsonNode?[]? written, JsonSerializerOptions? json = null)
         {
             Declaration = declaration;
             Values = values;
             Written = written;
+            Json = json;
         }
 
         public ComponentDeclaration Declaration { get; }
         public Array? Values { get; }
         public JsonNode?[]? Written { get; }
+        // The dialect its values are written in when it is not the world's: the writer's (CapturePlan, #602).
+        public JsonSerializerOptions? Json { get; }
     }
 
     // Entities with the same components and tags (one archetype, or one entity), captured together: a row
@@ -65,6 +72,7 @@ public sealed partial class SaveSystem
         public required List<CapturedColumn> Columns { get; init; }
         public required HashSet<string> Has { get; init; }  // every saved component id it has
         public required List<string> Tags { get; init; }
+        public int[]? EntityIds { get; init; }               // the entities' ids in the store (a whole archetype)
         public int Count => Persistent.Length;
     }
 
@@ -78,11 +86,12 @@ public sealed partial class SaveSystem
 
     private sealed class CaptureContext
     {
-        public CaptureContext(World world, JsonSerializerOptions json, ContentBaseline? content)
+        public CaptureContext(World world, JsonSerializerOptions json, ContentBaseline? content, bool forWriter = false)
         {
             World = world;
             Json = json;
             Content = content;
+            ForWriter = forWriter;
         }
 
         public World World { get; }
@@ -90,14 +99,25 @@ public sealed partial class SaveSystem
         public ContentBaseline? Content { get; }
         public Dictionary<SpawnBaseline, SpawnBaseline> Copies { get; } = new(ReferenceEqualityComparer.Instance);
         public int SerialisedOnTick;
+
+        // Built later, on another thread (a save's writer): a component that needs the world is captured for
+        // the writer's dialect where it can be (CapturePlan, issue #602), not serialised now. False: built at
+        // once, on the tick (a cell going dormant), where the world's dialect is the one to use.
+        public bool ForWriter { get; }
+        public CapturedEntityIds? Ids;
+        public bool NeedsIds;
+        private JsonSerializerOptions? _writer;
+
+        public JsonSerializerOptions Writer => _writer ??= SaveJson.ForWriter(Json, Ids ??= new CapturedEntityIds());
     }
 
     // ---- on the tick --------------------------------------------------------------------------------
 
-    // Every persistent entity of the world, disabled ones included, archetype by archetype.
-    private CapturedEntities CaptureEntities(World world, JsonSerializerOptions json, ContentBaseline? content)
+    // Every persistent entity of the world, disabled ones included, archetype by archetype. `forWriter`: the
+    // entities are built later, by the writer (CaptureContext.ForWriter).
+    private CapturedEntities CaptureEntities(World world, JsonSerializerOptions json, ContentBaseline? content, bool forWriter = true)
     {
-        var context = new CaptureContext(world, json, content);
+        var context = new CaptureContext(world, json, content, forWriter);
         var result = new CapturedEntities();
         foreach (var archetype in world.PersistentArchetypes().ToArray())
             if (CaptureBatch(context, archetype, only: null) is { } batch)
@@ -106,6 +126,17 @@ public sealed partial class SaveSystem
                 foreach (var persistent in batch.Persistent)
                     if (!persistent.Id.IsEmpty) result.Entities++;
             }
+        // Something captured names entities: their persistent ids now, for the writer's entity converter.
+        if (context.NeedsIds && context.Ids is { } ids)
+        {
+            var store = world.Store;
+            foreach (var batch in result.Batches)
+                for (int i = 0; i < batch.Count; i++)
+                    if (!batch.Persistent[i].Id.IsEmpty)
+                        ids.Live[new Entity(store.GetEntityById(batch.EntityIds![i]))] = batch.Persistent[i].Id;
+            if (world.Resources.TryGet<SleepingHandles>(out var asleep) && asleep is { Count: > 0 })
+                ids.Asleep = asleep.Copy();
+        }
         result.SerialisedOnTick = context.SerialisedOnTick;
         return result;
     }
@@ -195,6 +226,15 @@ public sealed partial class SaveSystem
                 columns.Add(new CapturedColumn(declaration, values, null));
                 continue;
             }
+            // Not plain, but what in it the game could change can be copied (issue #602): copied now, written
+            // by the writer in its dialect, which reads nothing of the world.
+            if (context.ForWriter && CapturePlan.For(type, context.Json) is { } plan)
+            {
+                plan.Fix?.Invoke(values);
+                if (plan.Entities) context.NeedsIds = true;
+                columns.Add(new CapturedColumn(declaration, values, null, context.Writer));
+                continue;
+            }
             var written = new JsonNode?[count];
             for (int i = 0; i < count; i++)
             {
@@ -213,7 +253,7 @@ public sealed partial class SaveSystem
         {
             Persistent = persistent, From = from, Baselines = baselines, Names = names, Placeholders = placeholders,
             Unknown = unknown, Sources = sources, Parents = parents, Kept = kept, AtPlacement = atPlacement,
-            Columns = columns, Has = has, Tags = _serializer.SavedTags(At(0).AsSage()),
+            Columns = columns, Has = has, Tags = _serializer.SavedTags(At(0).AsSage()), EntityIds = ids,
         };
     }
 
@@ -292,12 +332,15 @@ public sealed partial class SaveSystem
         foreach (var column in batch.Columns)
         {
             var declaration = column.Declaration;
+            var dialect = column.Json ?? json;
             JsonNode? data;
             if (column.Values is { } values)
             {
                 object value = values.GetValue(i)!;
-                if (SaveSerializer.UnchangedSinceSpawn(declaration.Id, declaration.Version, declaration.Type, value, asSpawned)) continue;
-                try { data = JsonSerializer.SerializeToNode(value, declaration.Type, json); }
+                // Not for a captured one (#602): its Equals may read what the copy shares with the world (a
+                // field the save does not write); the diff below leaves it out just the same.
+                if (column.Json == null && SaveSerializer.UnchangedSinceSpawn(declaration.Id, declaration.Version, declaration.Type, value, asSpawned)) continue;
+                try { data = JsonSerializer.SerializeToNode(value, declaration.Type, dialect); }
                 catch (Exception ex) when (ex is NotSupportedException or JsonException or ArgumentException)
                 {
                     SaveSerializer.Unwritable(declaration.Id, ex);
@@ -310,7 +353,7 @@ public sealed partial class SaveSystem
                 column.Written[i] = null;   // given to this entity's tree
             }
             else continue;
-            if (SaveSerializer.Diffed(declaration.Id, declaration.Version, declaration.Type, data, asSpawned, json) is { } entry)
+            if (SaveSerializer.Diffed(declaration.Id, declaration.Version, declaration.Type, data, asSpawned, dialect) is { } entry)
                 components[declaration.Id] = entry;
         }
         if (asSpawned != null)

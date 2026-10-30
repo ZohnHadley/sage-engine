@@ -908,3 +908,6 @@ Sage.Simulation.SkyKey.SkyboxTint -> System.Numerics.Vector3
 Sage.Simulation.SkyRecord.Skybox -> Sage.Core.AssetPath
 Sage.Simulation.SkyRecord.SkyboxNight -> Sage.Core.AssetPath
 static Sage.Simulation.SkyRules.SkyboxUv(System.Numerics.Vector3 direction) -> System.Numerics.Vector2
+Sage.Simulation.ISaveCapture
+Sage.Simulation.ISaveCapture.Capture(object! value) -> object!
+Sage.Simulation.ISaveCapture.ForWriter() -> System.Text.Json.Serialization.JsonConverter!

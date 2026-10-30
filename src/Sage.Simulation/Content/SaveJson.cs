@@ -32,7 +32,23 @@ internal static class SaveJson
         return options;
     }
 
-    private static JsonSerializerOptions Base(World world) => new()
+    // The dialect a save's writer writes captured components in (issue #602, CapturePlan), on its own thread:
+    // the same, but reading nothing of the world. Entities become the persistent ids `entities` copied on the
+    // tick; plugins' converters are the copies their ISaveCapture made then. A plugin converter that cannot be
+    // copied is left out: nothing it writes is captured (CapturePlan leaves that to the tick).
+    public static JsonSerializerOptions ForWriter(JsonSerializerOptions dialect, CapturedEntityIds entities)
+    {
+        var options = Base(new CapturedEntityConverter(entities));
+#pragma warning disable SAGE0131 // the save system's own writer
+        foreach (var converter in dialect.Converters)
+            if (converter is ISaveCapture capture) options.Converters.Add(capture.ForWriter());
+#pragma warning restore SAGE0131
+        return options;
+    }
+
+    private static JsonSerializerOptions Base(World world) => Base(new EntitySaveConverter(world));
+
+    private static JsonSerializerOptions Base(JsonConverter<Entity> entities) => new()
     {
         PropertyNameCaseInsensitive = true,
         IncludeFields = true,               // components are public fields
@@ -51,7 +67,7 @@ internal static class SaveJson
             new Vector3JsonConverter(),
             new QuaternionJsonConverter(),
             new JsonStringEnumConverter(),
-            new EntitySaveConverter(world),
+            entities,
         },
         TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { DropTransient } },
     };
@@ -125,5 +141,34 @@ internal sealed class EntitySaveConverter : JsonConverter<Entity>
             return;
         }
         writer.WriteStringValue(asleep.ToString());
+    }
+}
+
+// The persistent ids of a world's entities as the tick had them (issue #602), for the writer: each persistent
+// entity's handle, and the handles that stand for entities asleep (SleepingHandles). Filled on the tick and
+// only read after.
+internal sealed class CapturedEntityIds
+{
+    public Dictionary<Entity, PersistentId> Live { get; } = new();
+    public Dictionary<Entity, PersistentId> Asleep { get; set; } = new();
+}
+
+// EntitySaveConverter's Write, from the ids the tick copied: a live persistent entity by its id, a handle to
+// one asleep by the id it stands for, anything else as null. Write only: the writer never reads.
+internal sealed class CapturedEntityConverter : JsonConverter<Entity>
+{
+    private readonly CapturedEntityIds _ids;
+
+    public CapturedEntityConverter(CapturedEntityIds ids) => _ids = ids;
+
+    public override Entity Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        throw new NotSupportedException("The save writer's dialect only writes; a load reads in the world's");
+
+    public override void Write(Utf8JsonWriter writer, Entity value, JsonSerializerOptions options)
+    {
+        if (_ids.Live.TryGetValue(value, out var id) || _ids.Asleep.TryGetValue(value, out id))
+            writer.WriteStringValue(id.ToString());
+        else
+            writer.WriteNullValue();
     }
 }

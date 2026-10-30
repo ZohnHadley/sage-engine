@@ -53,6 +53,10 @@ public sealed class GameplayRegistries
     public int Tag(RecordId id) => _tags.TryGetValue(id, out int index) ? index : -1;
     public RecordId TagId(int index) => _tagIds[index];
 
+    // Every attribute's and tag's id, by index (the save converters).
+    internal IReadOnlyList<RecordId> AttributeIds() => _attributeIds;
+    internal IReadOnlyList<RecordId> TagIds() => _tagIds;
+
     // Called after records load or reload.
     public void Rebuild(RecordStore records)
     {
@@ -100,6 +104,12 @@ public sealed class AttributeSet
         _current[attribute] = value;
         _known[attribute] = true;
     }
+
+    // Another set with the same values, for a save's writer (issue #602): nothing done to this one changes it.
+    internal AttributeSet Copy() => new()
+    {
+        _base = (float[])_base.Clone(), _current = (float[])_current.Clone(), _known = (bool[])_known.Clone(),
+    };
 
     internal void SetCurrent(int attribute, float value)
     {
