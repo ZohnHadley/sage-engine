@@ -1,0 +1,17 @@
+{
+  // The pool's surface with `r_post 0` (issue #592): the water step draws the top of the scene's pool, right
+  // of the slab, over the white ground under it. Seen this low the surface is the water's dark colour over
+  // the ground and the blue sky by Fresnel, so it is darker and bluer than the ground in the sun; a chain
+  // that stopped drawing water leaves the white ground there. RenderCheckSceneTests proves the region's rays
+  // meet the pool's top in front of the ground.
+  "width": 640, "height": 360,
+  "regions": [
+    { "name": "water", "rect": [0.72, 0.66, 0.14, 0.08], "sees": "water" },
+    { "name": "lit",   "rect": [0.08, 0.70, 0.10, 0.08], "sees": "lit" }
+  ],
+  "checks": [
+    { "name": "the pool is darker than the sunlit ground", "region": "water", "than": "lit", "when": "shaders", "max": -0.25 },
+    { "name": "the pool is blue", "region": "water", "when": "shaders", "measure": "b-r", "min": 0.1 },
+    { "name": "without shaders the pool region is the clear colour", "region": "water", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}
