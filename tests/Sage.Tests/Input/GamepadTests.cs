@@ -32,6 +32,32 @@ public class GamepadTests
         Assert.Empty(pads.Update(Pads(1, 2, 3)).ToArray());     // steady state: nothing changes
     }
 
+    // `joy_players 0` (#607): a second pad picks itself up as a new player, and only when none is free. The
+    // player stays when their pad goes, and it comes back to them. A number set by hand is not exceeded.
+    [Xunit.Fact]
+    public void ASecondPadMakesAPlayerByItself()
+    {
+        var pads = new PadAssignment { Auto = true };
+        Assert.Equal(new PadAssignment.Change(0, 0, true), Assert.Single(pads.Update(Pads(0)).ToArray()));
+        Assert.Equal(1, pads.Players);
+
+        Assert.Equal(new PadAssignment.Change(1, 1, true), Assert.Single(pads.Update(Pads(0, 1)).ToArray()));
+        Assert.Equal(2, pads.Players);
+
+        pads.Update(Pads(0));
+        Assert.Equal(2, pads.Players);
+        pads.Update(Pads(0, 1));
+        Assert.Equal(1, pads.PadOf(1));
+
+        pads.Update(Pads(0, 1, 2, 3));
+        Assert.Equal(4, pads.Players);
+
+        var fixedCount = new PadAssignment();
+        fixedCount.Update(Pads(0, 1));
+        Assert.Equal(1, fixedCount.Players);
+        Assert.Equal(-1, fixedCount.PlayerOf(1));
+    }
+
     // Hot-swap: an unplugged pad leaves its player without one; the same pad coming back returns to that
     // player even though another player was waiting first.
     [Xunit.Fact]

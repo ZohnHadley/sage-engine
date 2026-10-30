@@ -43,7 +43,10 @@ public sealed record PendingRebind(InputContext Context, string Action, InputBin
 // whether an input can drive an action; headless, only the shape is checked.
 //
 // Capture mode (the controls screen): BeginCapture(context, action), then the client offers the next input
-// the player presses (Offer). A conflict ends the capture with a PendingRebind to Resolve.
+// the player presses (Offer). A conflict ends the capture with a PendingRebind to Resolve. A two-axis action
+// (Move, Look; #607) takes four keys in turn, up, down, left and right, or one stick.
+//
+// A button action's hold-or-toggle (SetMode) is kept the same way, as `modes` on the player's map.
 public sealed class InputRebinds
 {
     private static readonly InputContext[] Contexts = { InputContext.Gameplay, InputContext.UI, InputContext.Editor, InputContext.Console };
@@ -52,6 +55,7 @@ public sealed class InputRebinds
     private readonly RecordStore _records;
     private readonly string? _file;
     private bool _captureFresh;
+    private readonly List<string> _captureKeys = new();
 
     internal InputRebinds(ActionRegistry actions, RecordStore records, string? file)
     {
@@ -96,7 +100,16 @@ public sealed class InputRebinds
     }
 
     public bool IsOverridden(InputContext context, string action) =>
-        Overrides().ContainsKey((context, Canonical(action)));
+        Overrides().ContainsKey((context, Canonical(action))) || ModeOverrides().ContainsKey((context, Canonical(action)));
+
+    // Whether a button action follows its input as held or toggles: the player's say, then the game's maps.
+    public InputMode ModeOf(InputContext context, string action)
+    {
+        if (ModeOverrides().TryGetValue((context, Canonical(action)), out var mine)) return mine;
+        foreach (var (_, map) in MapsOf(context))
+            if (map.Modes.TryGetValue(action, out var mode)) return mode;
+        return InputMode.Hold;
+    }
 
     // The actions in the context that an input triggers.
     public IReadOnlyList<string> ActionsFor(InputContext context, InputBinding input)
@@ -124,12 +137,44 @@ public sealed class InputRebinds
     public RebindResult Rebind(InputContext context, string action, InputBinding input, bool replaceConflicts = false) =>
         Note(Change(context, action, input, replaceConflicts, (list, a) =>
         {
+            if (a.Kind != ActionKind.Button) return RebindAxis(list, input);
             int at = list.FindIndex(b => b.IsGamepad == input.IsGamepad && b.Composite == null);
             var next = list.Where(b => b.IsGamepad != input.IsGamepad || b.Composite != null).ToList();
             if (at < 0) next.Add(input.Clone());
             else next.Insert(Math.Min(at, next.Count), input.Clone());
             return next;
         }));
+
+    // An axis keeps a binding per device: four keys replace the composite, a stick the stick, and Look's mouse
+    // stays whatever is done to the rest. The new one moves as the old did; with none, as a binding that is per
+    // second does, or keys on Look would turn a whole scale a frame.
+    private static List<InputBinding> RebindAxis(List<InputBinding> list, InputBinding input)
+    {
+        static bool SameDevice(InputBinding a, InputBinding b) =>
+            (a.Composite != null) == (b.Composite != null) && a.IsGamepad == b.IsGamepad && (a.Mouse != null) == (b.Mouse != null);
+        int at = list.FindIndex(b => SameDevice(b, input));
+        var next = input.Clone();
+        if ((at >= 0 ? list[at] : list.Find(b => b.Rate)) is { } shape)
+        {
+            next.Scale = shape.Scale;
+            next.Deadzone = shape.Deadzone;
+            next.Invert = shape.Invert;
+            next.Rate = shape.Rate;
+        }
+        if (at >= 0) list[at] = next;
+        else list.Add(next);
+        return list;
+    }
+
+    // Sets a button action to follow its input as held or to toggle; saved with the rebinds.
+    public RebindResult SetMode(InputContext context, string action, InputMode mode) => Note(SetModeCore(context, action, mode));
+
+    private RebindResult SetModeCore(InputContext context, string action, InputMode mode)
+    {
+        if (!_actions.TryGet(action, out var info) || info.Kind != ActionKind.Button) return Invalid($"'{action}' is no button action");
+        if (ModeOf(context, info.Name) == mode) return new RebindResult(RebindStatus.Unchanged, $"{info.Name} is already {mode}");
+        return Apply(new(), $"{info.Name}: {mode} in {context}", new() { [(context, info.Name)] = mode });
+    }
 
     // Takes the input off the action; with no action, off every action in the context that has it.
     public RebindResult Unbind(InputContext context, string? action, InputBinding input) => Note(UnbindCore(context, action, input));
@@ -155,14 +200,16 @@ public sealed class InputRebinds
 
     private RebindResult ResetCore(InputContext? context, string? action)
     {
-        var overrides = Overrides();
+        bool Matches((InputContext Context, string Action) key) => (context == null || key.Context == context) &&
+            (action == null || string.Equals(key.Action, action, StringComparison.OrdinalIgnoreCase));
         var changes = new Dictionary<(InputContext, string), List<InputBinding>?>();
-        foreach (var key in overrides.Keys)
-            if ((context == null || key.Item1 == context) &&
-                (action == null || string.Equals(key.Item2, action, StringComparison.OrdinalIgnoreCase)))
-                changes[key] = null;
-        if (changes.Count == 0) return new RebindResult(RebindStatus.Unchanged, "nothing was rebound");
-        return Apply(changes, $"{changes.Count} action(s) back to their defaults");
+        var modes = new Dictionary<(InputContext, string), InputMode?>();
+        foreach (var key in Overrides().Keys)
+            if (Matches(key)) changes[key] = null;
+        foreach (var key in ModeOverrides().Keys)
+            if (Matches(key)) modes[key] = null;
+        if (changes.Count == 0 && modes.Count == 0) return new RebindResult(RebindStatus.Unchanged, "nothing was rebound");
+        return Apply(changes, $"{changes.Keys.Union(modes.Keys).Count()} action(s) back to their defaults", modes);
     }
 
     // ---- Capture next input ----
@@ -171,6 +218,10 @@ public sealed class InputRebinds
     public InputContext CaptureContext { get; private set; }
     public string CaptureAction { get; private set; } = "";
     public PendingRebind? Pending { get; private set; }
+
+    // A two-axis capture wants keys or a stick; how many of its four keys it has so far.
+    public bool CaptureIsAxis2D { get; private set; }
+    public int CaptureStep => _captureKeys.Count;
 
     // What the last change said (a command's, a capture's, a screen's), for a screen to show; ResultVersion
     // counts them.
@@ -187,8 +238,10 @@ public sealed class InputRebinds
 
     public bool BeginCapture(InputContext context, string action)
     {
-        if (!_actions.TryGet(action, out var info) || info.Kind != ActionKind.Button) return false;
+        if (!_actions.TryGet(action, out var info)) return false;
         Capturing = true;
+        CaptureIsAxis2D = info.Kind == ActionKind.Axis2D;
+        _captureKeys.Clear();
         CaptureContext = context;
         CaptureAction = info.Name;
         Pending = null;
@@ -218,6 +271,18 @@ public sealed class InputRebinds
     public RebindResult Offer(InputBinding input)
     {
         if (!Capturing) return new RebindResult(RebindStatus.Unchanged, "not capturing");
+        if (CaptureIsAxis2D)
+        {
+            if (input.Key == null && input.Gamepad is not ("LeftStick" or "RightStick"))
+                return new RebindResult(RebindStatus.Unchanged, "an axis takes four keys or a stick");
+            if (input.Key != null)
+            {
+                if (!_captureKeys.Contains(input.Key, StringComparer.OrdinalIgnoreCase)) _captureKeys.Add(input.Key);
+                Version++;
+                if (_captureKeys.Count < 4) return new RebindResult(RebindStatus.Unchanged, "next direction");
+                input = new InputBinding { Composite = string.Join(",", _captureKeys) };
+            }
+        }
         Capturing = false;
         var result = Rebind(CaptureContext, CaptureAction, input);
         if (result.Status == RebindStatus.Conflict)
@@ -255,7 +320,8 @@ public sealed class InputRebinds
                 if (b.Overlaps(input))
                 {
                     if (!conflicts.Contains(other.Name)) conflicts.Add(other.Name);
-                    if (b.Composite != null || other.Kind != ActionKind.Button) canReplace = false;
+                    // A button never strips an axis; one axis may take a stick or keys from another (southpaw).
+                    if (info.Kind == ActionKind.Button && (b.Composite != null || other.Kind != ActionKind.Button)) canReplace = false;
                 }
         }
         if (conflicts.Count > 0 && (!replaceConflicts || !canReplace))
@@ -320,9 +386,21 @@ public sealed class InputRebinds
         return overrides;
     }
 
-    // Writes the file with `changes` applied (a null list removes an action's override), then reloads
-    // records so the bindings are rebuilt. Nothing is changed if the file cannot be written.
-    private RebindResult Apply(Dictionary<(InputContext, string), List<InputBinding>?> changes, string message)
+    // The player's hold-or-toggle choices as the file has them now.
+    private Dictionary<(InputContext, string), InputMode> ModeOverrides()
+    {
+        var modes = new Dictionary<(InputContext, string), InputMode>();
+        foreach (var context in Contexts)
+            if (_records.TryGet(UserMap(context), out InputMapRecord map))
+                foreach (var (name, mode) in map.Modes)
+                    modes[(context, Canonical(name))] = mode;
+        return modes;
+    }
+
+    // Writes the file with `changes` applied (a null list removes an action's override, a null mode a choice),
+    // then reloads records so the bindings are rebuilt. Nothing is changed if the file cannot be written.
+    private RebindResult Apply(Dictionary<(InputContext, string), List<InputBinding>?> changes, string message,
+                               Dictionary<(InputContext, string), InputMode?>? modeChanges = null)
     {
         if (_file == null)
             return new RebindResult(RebindStatus.CannotSave, "there is no user folder to keep the bindings in");
@@ -332,12 +410,19 @@ public sealed class InputRebinds
             if (list == null) next.Remove(key);
             else next[key] = list;
         }
+        var modes = ModeOverrides();
+        if (modeChanges != null)
+            foreach (var (key, mode) in modeChanges)
+            {
+                if (mode is { } set) modes[key] = set;
+                else modes.Remove(key);
+            }
         try
         {
             string? dir = Path.GetDirectoryName(_file);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             string temp = _file + ".tmp";
-            System.IO.File.WriteAllText(temp, Serialise(next).ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            System.IO.File.WriteAllText(temp, Serialise(next, modes).ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
             System.IO.File.Move(temp, _file, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -352,24 +437,32 @@ public sealed class InputRebinds
 
     // One definition per context for what the player chose, and a patch emptying that action in every map of
     // the context that bound it, so the player's list is the whole list.
-    private JsonArray Serialise(Dictionary<(InputContext, string), List<InputBinding>> overrides)
+    private JsonArray Serialise(Dictionary<(InputContext, string), List<InputBinding>> overrides, Dictionary<(InputContext, string), InputMode> modes)
     {
         var array = new JsonArray();
         foreach (var context in Contexts)
         {
             var mine = overrides.Where(kv => kv.Key.Item1 == context).OrderBy(kv => kv.Key.Item2, StringComparer.OrdinalIgnoreCase).ToList();
-            if (mine.Count == 0) continue;
+            var myModes = modes.Where(kv => kv.Key.Item1 == context).OrderBy(kv => kv.Key.Item2, StringComparer.OrdinalIgnoreCase).ToList();
+            if (mine.Count == 0 && myModes.Count == 0) continue;
 
             var actions = new JsonObject();
             foreach (var ((_, name), list) in mine)
                 actions[name] = new JsonArray(list.Select(b => (JsonNode)b.ToJson()).ToArray());
-            array.Add(new JsonObject
+            var userMap = new JsonObject
             {
                 ["type"] = "input_map",
                 ["id"] = UserMap(context).ToString(),
                 ["context"] = context.ToString(),
                 ["actions"] = actions,
-            });
+            };
+            if (myModes.Count > 0)
+            {
+                var written = new JsonObject();
+                foreach (var ((_, name), mode) in myModes) written[name] = mode.ToString();
+                userMap["modes"] = written;
+            }
+            array.Add(userMap);
 
             foreach (var (id, map) in MapsOf(context))
             {
@@ -414,6 +507,13 @@ public sealed class InputRebinds
                 if (Enum.TryParse(a[i], true, out InputContext parsed) && Enum.IsDefined(parsed)) context = parsed;
                 else action = a[i];
             Print(Unbind(context ?? (action != null ? ContextOf(a, int.MaxValue, action) : InputContext.Gameplay), action, input));
+        });
+        cvars.RegisterCommand("bind_mode", CVarFlags.None,
+            "bind_mode <action> <hold|toggle> [context]: whether a button action follows its input as held or flips with each press; saved in user://input.json.", a =>
+        {
+            if (a.Count < 2 || !Enum.TryParse(a[1], true, out InputMode mode) || !Enum.IsDefined(mode))
+                throw new ArgumentException("usage: bind_mode <action> <hold|toggle> [context]");
+            Print(SetMode(ContextOf(a, 2, a[0]), a[0], mode));
         });
         cvars.RegisterCommand("bind_reset", CVarFlags.None,
             "bind_reset [action|all] [context]: put an action (or everything) back to the game's own bindings.", a =>

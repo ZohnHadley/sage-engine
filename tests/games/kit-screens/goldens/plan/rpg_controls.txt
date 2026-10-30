@@ -16,30 +16,44 @@ text 384,234.7 58.9x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "Gam
 pushclip 384,263.6 512x240 @list
 text 384,269.6 71.62x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Spellbook" @action
 text 552,271.55 8.49x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "B" @bindings
+rect 755.66,263.6 57.9x32.8 #25221cff @mode
+text 767.66,269.6 33.9x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Hold" @mode
 rect 821.57,263.6 74.43x32.8 #25221cff @rebind
 text 833.57,269.6 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 text 384,304.4 81.31x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Spellmaker" @action
 text 552,306.35 10.56x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "M" @bindings
+rect 755.66,298.4 57.9x32.8 #25221cff @mode
+text 767.66,304.4 33.9x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Hold" @mode
 rect 821.57,298.4 74.43x32.8 #25221cff @rebind
 text 833.57,304.4 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 text 384,339.2 54.06x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Journal" @action
 text 552,341.15 6.63x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "J" @bindings
+rect 755.66,333.2 57.9x32.8 #25221cff @mode
+text 767.66,339.2 33.9x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Hold" @mode
 rect 821.57,333.2 74.43x32.8 #25221cff @rebind
 text 833.57,339.2 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 text 384,374 32.08x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rest" @action
 text 552,375.95 7.44x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "T" @bindings
+rect 755.66,368 57.9x32.8 #25221cff @mode
+text 767.66,374 33.9x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Hold" @mode
 rect 821.57,368 74.43x32.8 #25221cff @rebind
 text 833.57,374 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 text 384,408.8 40.1x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Perks" @action
 text 552,410.75 7.88x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "P" @bindings
+rect 755.66,402.8 57.9x32.8 #25221cff @mode
+text 767.66,408.8 33.9x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Hold" @mode
 rect 821.57,402.8 74.43x32.8 #25221cff @rebind
 text 833.57,408.8 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 text 384,443.6 60.35x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Factions" @action
 text 552,445.55 9.04x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "G" @bindings
+rect 755.66,437.6 57.9x32.8 #25221cff @mode
+text 767.66,443.6 33.9x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Hold" @mode
 rect 821.57,437.6 74.43x32.8 #25221cff @rebind
 text 833.57,443.6 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 text 384,478.4 30.82x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Map" @action
 text 552,480.35 9.19x16.9 #9a9080ff scale 1 font fonts/plex-sans.ttf size 13 "N" @bindings
+rect 755.66,472.4 57.9x32.8 #25221cff @mode
+text 767.66,478.4 33.9x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Hold" @mode
 rect 821.57,472.4 74.43x32.8 #25221cff @rebind
 text 833.57,478.4 50.43x20.8 #ede6d8ff scale 1 font fonts/plex-sans.ttf size 16 "Rebind" @rebind
 popclip 0,0 0x0 @list

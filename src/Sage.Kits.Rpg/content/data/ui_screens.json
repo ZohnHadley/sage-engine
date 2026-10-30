@@ -216,9 +216,9 @@
     } }
   ,
 
-  // ---- controls: the buttons of each input context and the keys they have, rebound by pressing one (#328) --
+  // ---- controls: the actions of each input context and the keys they have, rebound by pressing one (#328) --
   // Over `ui_controls` (Sage.UI ControlsView), a view of the engine's InputRebinds: Rebind waits for the next
-  // key, mouse or pad button; a conflict asks to replace or keep; every change is written to
+  // key, mouse or pad button (four keys or a stick for Move and Look, #607); a button action holds or toggles; a conflict asks to replace or keep; every change is written to
   // user://input.json and is in force at once (the console's bind / unbind / bind_reset do the same).
   { "type": "screen", "id": "controls", "layout": "controls", "viewModel": "ui_controls" },
   { "type": "ui_layout", "id": "controls", "style": "panel",
@@ -238,10 +238,11 @@
       "row":        { "widget": "stack", "parent": "rows", "direction": "row", "spacing": 8 },
       "action":     { "widget": "label", "parent": "row", "style": "text", "bind": "action", "minSize": [160, 0] },
       "bindings":   { "widget": "label", "parent": "row", "style": "hint", "bind": "bindings", "expand": 1 },
+      "mode":       { "widget": "button", "parent": "row", "style": "button", "bind": "modeLabel", "bindings": { "visible": "canToggle" } },
       "rebind":     { "widget": "button", "parent": "row", "style": "button", "bind": "rebindLabel" },
       "reset":      { "widget": "button", "parent": "row", "style": "button", "text": "@rpg.controls.reset", "bindings": { "visible": "overridden" } },
 
-      "capturing":  { "widget": "label", "parent": "window", "style": "warning", "text": "@rpg.controls.capturing",
+      "capturing":  { "widget": "label", "parent": "window", "style": "warning", "bind": "capturePrompt",
                       "args": { "action": "captureAction" }, "bindings": { "visible": "capturing" } },
       "conflict":   { "widget": "label", "parent": "window", "style": "warning", "text": "@rpg.controls.conflict",
                       "args": { "input": "conflictInput", "others": "conflictOthers" }, "bindings": { "visible": "conflictPending" } },

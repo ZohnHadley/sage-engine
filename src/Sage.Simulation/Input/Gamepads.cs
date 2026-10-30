@@ -36,6 +36,10 @@ public sealed class PadAssignment
         Array.Fill(_playerOfPad, -1);
     }
 
+    // Players come as pads do (`joy_players 0`, #607): a pad with no player free makes a new one. A player
+    // stays once made, in case their pad comes back. What the game does with them is the game's.
+    public bool Auto { get; set; }
+
     // How many local players there are (1..4): `joy_players`. Lowering it frees the pads of the players
     // that went.
     public int Players
@@ -89,6 +93,7 @@ public sealed class PadAssignment
             for (int p = 0; p < _players && player < 0; p++)
                 if (_padOfPlayer[p] < 0 && !(_lastPadOfPlayer[p] >= 0 && _lastPadOfPlayer[p] != pad && _connected[_lastPadOfPlayer[p]] && _playerOfPad[_lastPadOfPlayer[p]] < 0))
                     player = p;
+            if (player < 0 && Auto && _players < MaxPads) player = _players++;
             if (player < 0) continue;
             _padOfPlayer[player] = pad;
             _playerOfPad[pad] = player;

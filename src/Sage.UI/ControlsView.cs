@@ -5,9 +5,9 @@ using System.Linq;
 
 namespace Sage.UI;
 
-// The controls screen's view-model (issue #328; docs/design/08 §3.2, §14): every button action of a
-// context with the inputs it has now, a Rebind button that waits for the next key, mouse button or pad
-// button the player presses (the engine's capture mode, InputRebinds.BeginCapture, which the client feeds),
+// The controls screen's view-model (issue #328; docs/design/08 §3.2, §14): every action of a context with
+// the inputs it has now, a hold-or-toggle button for a button action (#607), a Rebind button that waits for
+// the next key, mouse button or pad button the player presses (four keys or a stick for Move and Look) (the engine's capture mode, InputRebinds.BeginCapture, which the client feeds),
 // a Reset for an action the player has changed and one for all of them, and a tab per context. It is a view
 // of `Engine.Rebinds` and writes nothing itself: a change goes to `user://input.json` there, the same
 // calls the console's `bind`, `unbind` and `bind_reset` make, and is in force at once.
@@ -24,7 +24,7 @@ namespace Sage.UI;
 public sealed class ControlsView : IViewModel
 {
     public const string RebindButton = "rebind", ResetButton = "reset", ResetAllButton = "resetAll",
-                        ReplaceButton = "replace", KeepButton = "keep", TabPrefix = "tab";
+                        ReplaceButton = "replace", KeepButton = "keep", ModeButton = "mode", TabPrefix = "tab";
 
     public sealed class Row
     {
@@ -34,8 +34,16 @@ public sealed class ControlsView : IViewModel
         public string Bindings { get; internal set; } = "-";
         public bool Overridden { get; internal set; }
         public bool Capturing { get; internal set; }
-        public string RebindLabel => Capturing ? "@rpg.controls.press" : "@rpg.controls.rebind";
+        public string RebindLabel => Capturing ? Prompt : "@rpg.controls.rebind";
+        internal string Prompt = "";
+
+        // A button action's hold-or-toggle.
+        public bool CanToggle { get; internal set; }
+        public bool Toggles { get; internal set; }
+        public string ModeLabel => Toggles ? "@rpg.controls.toggle" : "@rpg.controls.hold";
     }
+
+    private static readonly string[] Directions = { "up", "down", "left", "right" };
 
     private readonly List<Row> _pool = new();
     private InputRebinds? _rebinds;
@@ -53,6 +61,7 @@ public sealed class ControlsView : IViewModel
     // Waiting for a press, and for which action.
     public bool Capturing { get; private set; }
     public string CaptureAction { get; private set; } = "";
+    public string CapturePrompt { get; private set; } = "";
 
     // A capture ended in a conflict: who has the input, and whether the player may take it.
     public bool ConflictPending { get; private set; }
@@ -108,6 +117,9 @@ public sealed class ControlsView : IViewModel
             case ResetButton:
                 rebinds.Reset(_context, row.Action);
                 return true;
+            case ModeButton:
+                rebinds.SetMode(_context, row.Action, row.Toggles ? InputMode.Hold : InputMode.Toggle);
+                return true;
         }
         return false;
     }
@@ -126,9 +138,9 @@ public sealed class ControlsView : IViewModel
     {
         Rows.Clear();
         int used = 0;
+        string prompt = rebinds.CaptureIsAxis2D ? "@rpg.controls.press_" + Directions[Math.Min(rebinds.CaptureStep, 3)] : "@rpg.controls.press";
         foreach (var action in rebinds.ActionsIn(_context))
         {
-            if (action.Kind != ActionKind.Button) continue;   // an axis (Move, Look) is not one input to press
             if (used == _pool.Count) _pool.Add(new Row());
             var row = _pool[used++];
             var bindings = rebinds.Bindings(_context, action.Name);
@@ -136,11 +148,15 @@ public sealed class ControlsView : IViewModel
             row.Bindings = bindings.Count == 0 ? "-" : string.Join(", ", bindings.Select(b => b.DisplayName));
             row.Overridden = rebinds.IsOverridden(_context, action.Name);
             row.Capturing = rebinds.Capturing && rebinds.CaptureContext == _context && rebinds.CaptureAction == action.Name;
+            row.Prompt = prompt;
+            row.CanToggle = action.Kind == ActionKind.Button;
+            row.Toggles = row.CanToggle && rebinds.ModeOf(_context, action.Name) == InputMode.Toggle;
             Rows.Add(row);
         }
 
         Capturing = rebinds.Capturing;
         CaptureAction = rebinds.CaptureAction;
+        CapturePrompt = rebinds.CaptureIsAxis2D ? "@rpg.controls.capturing_axis" : "@rpg.controls.capturing";
         var pending = rebinds.Pending;
         ConflictPending = pending != null;
         CanReplace = pending is { CanReplace: true };

@@ -1,4 +1,5 @@
 #nullable enable
+const Sage.UI.ControlsView.ModeButton = "mode" -> string!
 const Sage.UI.InputPrompts.GlyphTablePrefix = "@input." -> string!
 const Sage.UI.InputPrompts.Placeholder = "action:" -> string!
 const Sage.UI.UiModule.CrosshairCVar = "ui_crosshair" -> string!
@@ -13,6 +14,10 @@ override Sage.UI.View.OnNavigate(Sage.UI.UiNavigation direction) -> bool
 override Sage.UI.View.OnPointerDragged(System.Numerics.Vector2 point) -> void
 override Sage.UI.View.OnPointerPressed(System.Numerics.Vector2 point) -> void
 override Sage.UI.View.TypeName.get -> string!
+Sage.UI.ControlsView.CapturePrompt.get -> string!
+Sage.UI.ControlsView.Row.CanToggle.get -> bool
+Sage.UI.ControlsView.Row.ModeLabel.get -> string!
+Sage.UI.ControlsView.Row.Toggles.get -> bool
 Sage.UI.CrosshairView
 Sage.UI.CrosshairView.CrosshairView() -> void
 Sage.UI.CrosshairView.Refresh(in Sage.UI.UiBindContext context) -> void
