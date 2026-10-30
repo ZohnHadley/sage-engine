@@ -288,6 +288,10 @@ public sealed class ClientModule : IModule
             "Doppler shift scale for moving sounds and listeners: 0 turns it off, 1 is physical (11 §3).");
         doppler.Changed += _ => _audioSettings!.DopplerScale = Math.Max(doppler.Value, 0f);
         _audioSettings.DopplerScale = Math.Max(doppler.Value, 0f);
+        var duck = ctx.Engine.CVars.Register("snd_music_duck", 0.4f, CVarFlags.Archive,
+            "What's left of the music while somebody speaks, 0 to 1: a conversation, or a sound on the Voice bus.");
+        duck.Changed += _ => _audioSettings!.MusicDuck = Math.Clamp(duck.Value, 0f, 1f);
+        _audioSettings.MusicDuck = Math.Clamp(duck.Value, 0f, 1f);
         // Occlusion's budget (issue #329): rays per frame from the listener to the voices, round-robin.
         var occlusion = ctx.Engine.CVars.Register("snd_occlusion_rays", 8, CVarFlags.Archive,
             "Occlusion rays per frame, listener to voice, shared round-robin by the voices; 0 turns occlusion off.");
@@ -313,7 +317,9 @@ public sealed class ClientModule : IModule
                                              $"mix {room.Reverb.Mix:F2} (blend {room.Blend:F2}); " +
                                              $"{room.RaysLastUpdate} occlusion ray(s) last frame");
                 foreach (var voice in mixer.Voices)
-                    Log.Info(LogCat.Console, $"  {voice.Sound,-28} gain {voice.Gain:F2} pan {voice.Pan,5:F2} " +
+                    Log.Info(LogCat.Console, $"  {voice.Sound,-28} " +
+                                             $"{(voice.Positional ? $"{System.Numerics.Vector3.Distance(voice.Position, mixer.ListenerPosition),6:F1} m" : "     2D")} " +
+                                             $"gain {voice.Gain:F2} pan {voice.Pan,5:F2} pitch {voice.Pitch,5:F2} " +
                                              $"occl {voice.Occlusion:F2} lowpass {voice.LowPass:F2} " +
                                              $"{(voice.Loop ? "loop" : "one-shot")}{(voice.Stopping ? " (stopping)" : "")}");
                 mixer.ResetStats();

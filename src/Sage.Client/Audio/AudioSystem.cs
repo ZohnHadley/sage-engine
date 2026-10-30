@@ -85,7 +85,8 @@ internal sealed class AudioSystem : ISystem
             foreach (ref readonly var used in _used.Read()) Used(used);
             Sources(world);
             if (world.Resources.TryGet<Music>(out var music) && music != null)
-                _music.Update(music, _records, _mixer, ctx.Frame.Dt);
+                _music.Update(music, _records, _mixer, ctx.Frame.Dt,
+                              world.Resources.TryGet<Conversation>(out var talk) && talk is { Running: true });
         }
         else
         {

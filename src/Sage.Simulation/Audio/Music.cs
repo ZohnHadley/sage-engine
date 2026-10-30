@@ -13,13 +13,15 @@ namespace Sage.Simulation;
 //   - a `music` record says what a track *is*: its file, the layers (stems) played in step with it, where it
 //     loops and how long it takes to fade in and out;
 //   - the `Music` world resource says which track is playing, which one it is fading from and how far it
-//     has got, and how intense things are (which layers are heard). Saved, like the weather;
+//     has got, how far into it the track is and how intense things are (which layers are heard). Saved,
+//     like the weather;
 //   - content changes it with data alone: a scene's `"environment": { "music": ... }` when the player
 //     arrives, the `PlayMusic` / `StopMusic` / `SetMusicIntensity` inputs on any wire, and the `play_music`,
 //     `stop_music` and `music_intensity` actions in a `then`;
 //   - the `MusicPlayer` turns that into voices: one streamed voice per stem of at most two tracks, faded
 //     against each other, outside the voice cap and never stolen. Headless, so a test hears a crossfade
-//     tick by tick; the client only asks it to update once a frame.
+//     tick by tick; the client only asks it to update once a frame. A conversation, or anything on the
+//     Voice bus, ducks it (`snd_music_duck`).
 //
 //   { "type": "music", "id": "wander", "track": "music/wander.ogg", "loopStart": 44100, "fadeIn": 3,
 //     "layers": [ { "asset": "music/wander_drums.ogg", "intensity": 0.5 } ] }
@@ -92,8 +94,8 @@ public sealed class MusicLayer
 // What the world's music is doing: the track playing (or coming in), the one going out, how far between
 // them, and how intense things are. One per world.
 //
-// Saved (09 §3.1), so a load is back in the crypt's drone rather than the title music; the tracks start
-// again from the top. Like the weather's, the rate is finite even for a cut: `Infinity` is not JSON.
+// Saved (09 §3.1), so a load is back in the crypt's drone rather than the title music, where it was. Like
+// the weather's, the rate is finite even for a cut: `Infinity` is not JSON.
 [SavedResource("music", Plugin = RegistrationOwners.Core)]
 public sealed class Music
 {
@@ -103,6 +105,10 @@ public sealed class Music
     public RecordId Previous { get; set; }       // what is going out; empty once it has
     public float Blend { get; set; } = 1f;       // 0 = all Previous, 1 = all Track
     public float BlendRate { get; set; } = 1f;   // per second
+
+    // Seconds into Track, counted on the tick: where a load comes back in (the file's own length and loop
+    // points wrap it, PcmStreamer.StartAt), and not read off the device, which would part a replay.
+    public double Position { get; set; }
 
     private float _intensity;
 
@@ -121,6 +127,7 @@ public sealed class Music
     public void Play(RecordId track, float seconds)
     {
         if (track == Track) return;
+        Position = 0.0;
         float rate = !float.IsFinite(seconds) || seconds <= 0.001f ? Instant : 1f / seconds;
         if (!Settled && track == Previous)
         {
@@ -141,6 +148,7 @@ public sealed class Music
 
     public void Advance(float dt)
     {
+        if (!Track.IsEmpty) Position += dt;
         if (Settled)
         {
             Previous = default;
@@ -312,8 +320,8 @@ internal sealed class MusicIntensityAction : IAction
 // The world's music made into voices (issue #325, docs/design/11 §13 "music wants a second mixer path"): it
 // owns a *deck* for each of at most two tracks, the one playing and the one going out, and a deck owns one
 // streamed voice per stem — the track and its layers, started together so they keep step. Each update sets
-// every voice's volume from the crossfade (Music.GainOf), the track's volume and, for a layer, its own fade
-// toward the world's intensity. Its voices are the mixer's music voices (AudioMixer.PlayMusic): outside the
+// every voice's volume from the crossfade (Music.GainOf), the track's volume, the duck and, for a layer, its
+// own fade toward the world's intensity. Its voices are the mixer's music voices (AudioMixer.PlayMusic): outside the
 // voice cap, never stolen, on the Music bus.
 //
 // Headless: the client's audio system calls Update once a frame before the backend applies the mixer, and a
@@ -328,7 +336,16 @@ internal sealed class MusicPlayer
         public float[] LayerGain = Array.Empty<float>();             // each layer's own fade, 0..1
     }
 
+    // Seconds the duck takes to go down or come back.
+    private const float DuckSeconds = 0.3f;
+
+    // A jump this big in the same track's position is a load, not a tick.
+    private const double Resync = 1.0;
+
     private readonly List<Deck> _decks = new(2);
+    private float _duck = 1f;
+    private RecordId _track;
+    private double _position;
 
     public IReadOnlyList<Deck> Decks => _decks;
 
@@ -341,9 +358,18 @@ internal sealed class MusicPlayer
     }
 
     // Follows the world's music: starts what has come in, stops what has gone, and sets every voice's
-    // volume. `dt` is the frame's, for the layers' fades.
-    public void Update(Music music, RecordStore? records, AudioMixer mixer, float dt)
+    // volume. `dt` is the frame's, for the fades. `talking`: a conversation is on, which ducks it, as
+    // anything on the Voice bus does.
+    public void Update(Music music, RecordStore? records, AudioMixer mixer, float dt, bool talking = false)
     {
+        if (music.Track == _track && Math.Abs(music.Position - _position) > Resync) Silence(mixer);
+        _track = music.Track;
+        _position = music.Position;
+
+        float duckTo = talking || mixer.Speaking ? Math.Clamp(mixer.MusicDuck, 0f, 1f) : 1f;
+        float duckStep = dt / DuckSeconds;
+        _duck = _duck < duckTo ? MathF.Min(duckTo, _duck + duckStep) : MathF.Max(duckTo, _duck - duckStep);
+
         // What has gone out (or was replaced mid-fade) stops.
         for (int i = _decks.Count - 1; i >= 0; i--)
         {
@@ -359,7 +385,7 @@ internal sealed class MusicPlayer
         foreach (var deck in _decks)
         {
             if (deck.Record == null) continue;
-            float gain = music.GainOf(deck.Track) * deck.Record.Volume;
+            float gain = music.GainOf(deck.Track) * deck.Record.Volume * _duck;
             SetVolume(deck, 0, gain, mixer);
             for (int l = 0; l < deck.Record.Layers.Count && l + 1 < deck.Voices.Length; l++)
             {
@@ -373,8 +399,8 @@ internal sealed class MusicPlayer
         }
     }
 
-    // Everything stops and is forgotten: sound turned off, or the world going. The next Update starts the
-    // world's music again from the top.
+    // Everything stops and is forgotten: sound turned off, a load, or the world going. The next Update
+    // starts the world's music again where it has got to.
     public void Silence(AudioMixer mixer)
     {
         foreach (var deck in _decks) Stop(deck, mixer);
@@ -394,20 +420,23 @@ internal sealed class MusicPlayer
             return;
         }
 
+        // Every stem from one position, so a load comes back in step. A track just begun is a tick in by now,
+        // and must not lose its first note; the one going out is nearly silent.
+        double startAt = track == music.Track && music.Position >= Resync ? music.Position : 0.0;
         deck.Voices = new VoiceHandle[1 + record.Layers.Count];
         deck.LayerGain = new float[record.Layers.Count];
         float gain = music.GainOf(track) * record.Volume;
-        deck.Voices[0] = Start(track, record, record.Track, gain, mixer);
+        deck.Voices[0] = Start(track, record, record.Track, gain, startAt, mixer);
         for (int l = 0; l < record.Layers.Count; l++)
         {
             var layer = record.Layers[l];
             deck.LayerGain[l] = music.Intensity >= layer.Intensity ? 1f : 0f;   // a track starts with its layers where they belong
-            deck.Voices[l + 1] = Start(track, record, layer.Asset, gain * layer.Volume * deck.LayerGain[l], mixer);
+            deck.Voices[l + 1] = Start(track, record, layer.Asset, gain * layer.Volume * deck.LayerGain[l], startAt, mixer);
         }
     }
 
-    private static VoiceHandle Start(RecordId track, MusicRecord record, AssetPath asset, float volume, AudioMixer mixer) =>
-        asset.IsEmpty ? VoiceHandle.None : mixer.PlayMusic(track, asset, volume, record.Loop, record.LoopStart, record.LoopEnd);
+    private static VoiceHandle Start(RecordId track, MusicRecord record, AssetPath asset, float volume, double startAt, AudioMixer mixer) =>
+        asset.IsEmpty ? VoiceHandle.None : mixer.PlayMusic(track, asset, volume, record.Loop, record.LoopStart, record.LoopEnd, startAt);
 
     // A voice the backend has finished with (a track that does not loop, at its end) is not started again.
     private static void SetVolume(Deck deck, int stem, float volume, AudioMixer mixer)

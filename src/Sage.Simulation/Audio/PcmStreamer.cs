@@ -12,6 +12,9 @@ internal interface IPcmSource : IDisposable
     int Channels { get; }
     int SampleRate { get; }
 
+    // Per channel; what StartAt wraps by.
+    long TotalFrames { get; }
+
     // Up to `count` samples (all channels, so a multiple of Channels) into `buffer` at `offset`; fewer only
     // at the end, and 0 once there are none left. Throws InvalidDataException on a file that breaks off.
     int Read(float[] buffer, int offset, int count);
@@ -201,6 +204,8 @@ internal sealed class PcmStreamer : IDisposable
     private int _next;
     private long _position;   // the source's next frame
 
+    internal long Position => _position;
+
     // `loopStart` and `loopEnd` are frames: where a loop winds back to, and where it wraps (0: the end of
     // the source). Ignored when it does not loop.
     public PcmStreamer(IPcmSource source, bool loop, int framesPerBuffer = DefaultFramesPerBuffer, int maxBuffers = DefaultMaxBuffers,
@@ -281,6 +286,22 @@ internal sealed class PcmStreamer : IDisposable
         return true;
     }
 
+    // Starts `seconds` in, where it would have got to by now: wrapped round the loop, or at the end of a
+    // sound that does not loop and would have finished.
+    public void StartAt(double seconds)
+    {
+        long frame = (long)(seconds * SampleRate);
+        if (frame <= 0) return;
+        long end = Loop && LoopEnd > 0 ? LoopEnd : _source.TotalFrames;
+        if (end > 0 && frame >= end)
+        {
+            if (!Loop) { Ended = true; return; }
+            frame = LoopStart + (frame - end) % Math.Max(end - LoopStart, 1);
+        }
+        _source.Seek(frame);
+        _position = frame;
+    }
+
     private void Wrap()
     {
         _source.Seek(LoopStart);
@@ -319,7 +340,7 @@ internal sealed class PcmStreamer : IDisposable
     // or cannot be read as Ogg Vorbis.
     public static PcmStreamer? Open(VirtualFileSystem vfs, AssetPath path, bool loop, out string? error,
                                     int framesPerBuffer = DefaultFramesPerBuffer, int maxBuffers = DefaultMaxBuffers,
-                                    long loopStart = 0, long loopEnd = 0)
+                                    long loopStart = 0, long loopEnd = 0, double startAt = 0.0)
     {
         error = null;
         if (vfs.Which(path.Path) is not { } mount)
@@ -335,7 +356,12 @@ internal sealed class PcmStreamer : IDisposable
         try
         {
             var source = new VorbisPcmSource(() => mount.Open(path.Path));
-            try { return new PcmStreamer(source, loop, framesPerBuffer, maxBuffers, loopStart, loopEnd); }
+            try
+            {
+                var streamer = new PcmStreamer(source, loop, framesPerBuffer, maxBuffers, loopStart, loopEnd);
+                streamer.StartAt(startAt);
+                return streamer;
+            }
             catch (ArgumentOutOfRangeException ex) { source.Dispose(); error = ex.Message; return null; }
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)

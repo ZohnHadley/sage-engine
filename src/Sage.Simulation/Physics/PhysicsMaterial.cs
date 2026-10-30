@@ -42,6 +42,8 @@ public sealed class PhysicsMaterialRecord
     public AssetPath Decal;
     [Property(Category = "Effects", Min = 0, Tooltip = "How hard it is to shoot through, per metre: 0 never stops a round, 1 is the reference (brick); a hint for hitscan")]
     public float Penetration = 1f;
+    [Property(Category = "Effects", Min = 0, Max = 1, Tooltip = "How much of a sound it stops: 1 a stone wall, 0.5 a curtain, 0 nothing")]
+    public float Occlusion = 1f;
 
     [Property(Category = "Brushes", Tooltip = "The brush textures it covers: a name, or a pattern with * (\"wood*\"); case does not matter")]
     public List<string> Textures = new();
