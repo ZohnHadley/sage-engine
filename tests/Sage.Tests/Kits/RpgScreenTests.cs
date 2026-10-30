@@ -372,6 +372,62 @@ public class RpgScreenTests
         [ { "type": "rpg_item", "id": "sword", "patch": true, "icon": "textures/sword.png" } ]
         """;
 
+    // Condition on the grid (issue #603): a worn item's square draws a meter at its condition and a new one
+    // none; wear done in place shows at the next refresh; and a repair kit picked up and put down on the
+    // worn sword mends it (its use aimed at that stack) and is used up, staying where it lay.
+    [Fact]
+    public void AWornItemShowsItsConditionAndARepairKitPutOnItMendsIt()
+    {
+        using var app = Boot("""
+            [ { "type": "item", "id": "sword", "patch": true, "durability": { "wearPerHit": 0.1 } },
+              { "type": "item", "id": "repair_kit", "label": "repair kit", "weight": 0.5, "maxStack": 10,
+                "uses": [{ "use": "repair", "amount": 0.5 }, "consume"] } ]
+            """);
+        var world = app.World;
+        var hero = Carrier(world, "hero", 0f);
+        world.Give(hero, Id("sword"), new ItemInstance { Condition = 0.25f });
+        world.Give(hero, Id("repair_kit"), 2);
+        world.Give(hero, Id("bread"), 1);
+        var bag = Open(app, RpgKitModule.InventoryScreen, hero);
+        var view = Assert.IsType<InventoryView>(bag.Screen.ViewModel);
+        var cells = bag.Screen.View.Find<Grid>("cells")!;
+        bag.Press(UiInput.Wait(1f));
+
+        var sword = view.Bag.Items.Single(i => i.Item == Id("sword"));
+        var kit = view.Bag.Items.Single(i => i.Item == Id("repair_kit"));
+        var bread = view.Bag.Items.Single(i => i.Item == Id("bread"));
+        Assert.Equal((0, 0, 1, 0), (sword.X, sword.Y, kit.X, kit.Y));
+        Assert.Equal(0.25f, view.Bag.CellAt(0, 0)!.Meter, 3);
+        Assert.Equal(0.25f, ((Button)CellWidget(cells, view.Bag.CellAt(0, 0)!)).Meter, 3);
+        Assert.Equal(-1f, view.Bag.CellAt(0, 1)!.Meter);                        // the sword's other squares: none
+        Assert.Equal(-1f, view.Bag.CellAt(bread.X, bread.Y)!.Meter);            // as made: none
+
+        // The meter is drawn: two more rectangles on the worn sword's square than on the new bread's.
+        var plan = new UiRenderPlan();
+        plan.Update(bag.Root, world.Resources.Get<UiStyles>());
+        int Rects(Widget w) => plan.Commands.ToArray().Count(c => c.Kind == UiDrawKind.Rect && c.Widget == w);
+        Assert.Equal(Rects(CellWidget(cells, view.Bag.CellAt(bread.X, bread.Y)!)) + 2, Rects(CellWidget(cells, view.Bag.CellAt(0, 0)!)));
+
+        // Wear changes the instance in place; the grid still sees it.
+        world.Get<Inventory>(hero).Items.Single(s => s.Item == Id("sword")).Instance!.Condition = 0.2f;
+        Assert.True(view.Bag.Refresh(world, hero));
+        Assert.Equal(0.2f, view.Bag.CellAt(0, 0)!.Meter, 3);
+
+        // Pick the kit up and put it down on the sword.
+        var stack = bag.Stack;
+        stack.Update(UiInput.Hold(At(cells, 1, 0)));
+        stack.Update(UiInput.Release(At(cells, 1, 0)));
+        Assert.Equal(Id("repair_kit"), view.Held?.Item);
+        stack.Update(UiInput.Hold(At(cells, 0, 1)));
+        stack.Update(UiInput.Release(At(cells, 0, 1)));
+        stack.Update(UiInput.Wait(0f));
+        Assert.Equal("repair kit ×2 used on sword.", view.Message);
+        Assert.Equal(0.7f, world.Get<Inventory>(hero).Items.Single(s => s.Item == Id("sword")).Instance!.Condition, 3);
+        Assert.Equal(1, world.CountOf(hero, Id("repair_kit")));
+        Assert.Equal(0.7f, view.Bag.CellAt(0, 0)!.Meter, 3);
+        Assert.Equal((1, 0), (view.Bag.ItemAt(1, 0)!.X, view.Bag.ItemAt(1, 0)!.Y));   // the kit stays where it lay
+    }
+
     private static Widget CellWidget(Grid cells, GridCell cell) => cells.Child(cell.Y * cell.Grid.Columns + cell.X);
 
     // A square's middle in pixels (the stack's viewport is the design size: one pixel a unit), from the

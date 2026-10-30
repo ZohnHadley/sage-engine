@@ -547,9 +547,11 @@ public static class Items
             ref var melee = ref world.Get<Melee>(entity);
             melee.Attack = record.Attack;
         }
-        foreach (var effect in record.Effects) Effects.Apply(world, entity, effect, entity);
+        // What it gives while worn is as strong as it is whole (issue #603): half its effect at half condition.
+        float scale = Durability.EffectScale(Durability.ConditionOf(stack));
+        foreach (var effect in record.Effects) Effects.Apply(world, entity, effect, entity, scale);
         if (stack.Instance?.Effects != null)
-            foreach (var effect in stack.Instance.Effects) Effects.Apply(world, entity, effect, entity);
+            foreach (var effect in stack.Instance.Effects) Effects.Apply(world, entity, effect, entity, scale);
 
         Log.Debug(LogCat.Gameplay, $"{World.Describe(entity)} equips {record.Describe(stack.Item, stack.Instance)}");
         return true;

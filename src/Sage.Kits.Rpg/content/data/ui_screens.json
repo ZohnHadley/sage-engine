@@ -26,7 +26,7 @@
       "cell":       { "widget": "button", "parent": "cells", "style": "cell", "bind": "label",
                       "draggable": true,
                       "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
-                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [56, 56] },
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned", "meter": "meter" }, "minSize": [56, 56] },
       "holding":    { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.grid.holding",
                       "args": { "item": "heldLabel" }, "bindings": { "visible": "holding" } },
       "message":    { "widget": "label", "parent": "window", "style": "warning", "bind": "message" },
@@ -65,7 +65,7 @@
       "their_cell":  { "widget": "button", "parent": "their_cells", "style": "cell", "bind": "label",
                        "draggable": true,
                       "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
-                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned", "meter": "meter" }, "minSize": [48, 48] },
       "empty":       { "widget": "label", "parent": "theirs", "style": "hint", "text": "@rpg.loot.empty",
                        "bindings": { "visible": "isEmpty" } },
 
@@ -80,7 +80,7 @@
       "your_cell":   { "widget": "button", "parent": "your_cells", "style": "cell", "bind": "label",
                        "draggable": true,
                       "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
-                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned", "meter": "meter" }, "minSize": [48, 48] },
 
       "take_all":    { "widget": "button", "parent": "window", "style": "button", "text": "@rpg.loot.take_all", "hAlign": "center" },
       "holding":     { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.grid.holding",
@@ -125,7 +125,7 @@
       "stock_cell":  { "widget": "button", "parent": "stock_cells", "style": "cell", "bind": "label",
                        "draggable": true,
                       "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
-                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned", "meter": "meter" }, "minSize": [48, 48] },
 
       "yours":       { "widget": "stack", "parent": "sides", "spacing": 4 },
       "your_title":  { "widget": "label", "parent": "yours", "style": "title", "text": "@rpg.shop.yours" },
@@ -134,7 +134,7 @@
       "your_cell":   { "widget": "button", "parent": "your_cells", "style": "cell", "bind": "label",
                        "draggable": true,
                       "bindings": { "style": "style", "tooltip": "tooltip", "visible": "shown", "columnSpan": "columnSpan",
-                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned" }, "minSize": [48, 48] },
+                                    "rowSpan": "rowSpan", "icon": "icon", "iconTurned": "iconTurned", "meter": "meter" }, "minSize": [48, 48] },
 
       "buying":      { "widget": "label", "parent": "window", "style": "text", "text": "@rpg.shop.buy",
                        "args": { "item": "heldLabel", "price": "heldPrice" }, "bindings": { "visible": "heldIsStock" } },

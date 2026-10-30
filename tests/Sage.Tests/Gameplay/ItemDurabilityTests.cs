@@ -233,6 +233,88 @@ public class ItemDurabilityTests
         Assert.Equal(1, world.CountOf(hero, Shield));
     }
 
+    // What a worn item gives is as strong as it is whole (issue #603): the shield's +20 armour is +10 at half
+    // condition, back to +20 when mended, and a shield put on already worn gives its share from the start.
+    [Fact]
+    public void WornArmourGivesItsEffectByItsCondition()
+    {
+        using var app = NewApp();
+        var world = NewWorld(app);
+        var hero = Carrier(world, Vector3.Zero, "hero", new Vector3(0, 0, -2));
+        world.Give(hero, Shield);
+        world.Give(hero, Kit);
+        Assert.True(world.Equip(hero, Shield));
+        world.RunFixed(1f / 60f);
+        Assert.Equal(20f, world.Attribute(hero, Armor));
+
+        Combat.ApplyDamage(world, new DamageInfo(default, hero, default, 10f, Vector3.Zero, Vector3.UnitZ));
+        world.RunFixed(1f / 60f);
+        Assert.Equal(0.5f, world.ConditionIn(hero, Hands.Off), 3);
+        Assert.Equal(10f, world.Attribute(hero, Armor), 3);
+
+        Assert.True(world.UseItem(hero, Kit));                     // mended back to as made
+        world.RunFixed(1f / 60f);
+        Assert.Equal(20f, world.Attribute(hero, Armor), 3);
+
+        var other = Carrier(world, new Vector3(4, 0, 0), "other", Vector3.Zero);
+        world.Give(other, Shield, new ItemInstance { Condition = 0.25f });
+        Assert.True(world.Equip(other, Shield));
+        world.RunFixed(1f / 60f);
+        Assert.Equal(5f, world.Attribute(other, Armor), 3);
+    }
+
+    // A kit aimed at a stack (a screen's choice, issue #603) mends that one, not the most worn thing worn;
+    // aimed at something that needs nothing it refuses and is not used up.
+    [Fact]
+    public void ARepairKitAimedAtAStackMendsThatOne()
+    {
+        using var app = NewApp();
+        var world = NewWorld(app);
+        var hero = Carrier(world, Vector3.Zero, "hero", new Vector3(0, 0, -2));
+        world.Give(hero, Sword, new ItemInstance { Condition = 0.1f });
+        world.Give(hero, Shield, new ItemInstance { Condition = 0.4f });
+        world.Give(hero, Stick);
+        world.Give(hero, Kit, 2);
+        Assert.True(world.Equip(hero, Sword));
+        int shield = Stacks(world, hero).FindIndex(s => s.Item == Shield);
+        int stick = Stacks(world, hero).FindIndex(s => s.Item == Stick);
+
+        Assert.True(world.UseItemOn(hero, Kit, shield, out string why), why);
+        Assert.Equal(0.9f, Stacks(world, hero).Single(s => s.Item == Shield).Instance!.Condition, 3);
+        Assert.Equal(0.1f, world.ConditionIn(hero, Hands.Main), 3);      // the worn sword, untouched
+        Assert.Equal(1, world.CountOf(hero, Kit));
+
+        Assert.False(world.CanUseOn(hero, Kit, stick, out why));         // a new stick needs nothing
+        Assert.Equal("nothing needs repair", why);
+        Assert.False(world.UseItemOn(hero, Kit, stick, out _));
+        Assert.Equal(1, world.CountOf(hero, Kit));
+        Assert.True(ItemUses.Aims(app.Records.Get<ItemRecord>(Kit)));
+        Assert.False(ItemUses.Aims(app.Records.Get<ItemRecord>(Sword)));
+    }
+
+    // `repair [slot]` (issue #603) is a cheat that mends the local player's things back to as made: a slot
+    // named, only what is in it; none, everything carried.
+    [Fact]
+    public void TheRepairCommandMendsThePlayersThings()
+    {
+        using var app = NewApp();
+        var world = NewWorld(app);
+        var hero = Carrier(world, Vector3.Zero, "hero", new Vector3(0, 0, -2));
+        hero.AddTag<PlayerControlled>();
+        world.Give(hero, Sword, new ItemInstance { Condition = 0.3f });
+        world.Give(hero, Shield, new ItemInstance { Condition = 0.5f });
+        Assert.True(world.Equip(hero, Sword));
+
+        app.CVars.Execute("repair");
+        Assert.Equal(0.3f, world.ConditionIn(hero, Hands.Main), 3);     // a cheat: refused until cheats are on
+        app.CVars.Execute("sv_cheats 1");
+        app.CVars.Execute($"repair {Hands.Main}");
+        Assert.Null(world.WornInstance(hero, Hands.Main));              // as made: plain again
+        Assert.Equal(0.5f, Stacks(world, hero).Single(s => s.Item == Shield).Instance!.Condition, 3);
+        app.CVars.Execute("repair");
+        Assert.All(Stacks(world, hero), s => Assert.Null(s.Instance));
+    }
+
     // A repair kit's use mends what is in hand and is used up; mended back to as made it is plain again;
     // with nothing to mend it refuses and is not used up.
     [Fact]

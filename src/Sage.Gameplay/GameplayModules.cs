@@ -310,6 +310,7 @@ public sealed class ItemsModule : IModule
             "How far the Use action reaches, in metres.", 0.5f, 10f);
         ItemUses.RegisterCommands(ctx.Engine);   // use_item (issue #28)
         Durability.AddChecks(_records);           // durability's numbers (issue #382)
+        Durability.RegisterCommands(ctx.Engine);  // repair (issue #603)
         _records.AddCheck<LootTableRecord>(LootTables.Check);   // missing references, nested cycles (issue #379)
         LootTables.RegisterCommands(ctx.Engine);                 // loot <table>
         _records.AddCheck<MerchantRecord>(Merchants.Check);      // a currency, sane prices (issue #380)

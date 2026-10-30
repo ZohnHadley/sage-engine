@@ -146,6 +146,21 @@ public static class Effects
         return true;
     }
 
+    // Sets the strength of every running instance of an effect, as a new application would but without
+    // restarting, stacking or raising its cues: a worn item's effects following its condition (issue #603).
+    internal static void Rescale(World world, Entity target, RecordId effect, float magnitude)
+    {
+        if (!world.TryGet<ActiveEffects>(target, out var active) || active.Effects == null) return;
+        var list = active.Effects;
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i].Record != effect) continue;
+            var running = list[i];
+            running.Magnitude = magnitude;
+            list[i] = running;
+        }
+    }
+
     // Removes every instance of an effect (raising its RemovedCues for each). Returns how many were removed.
     public static int Remove(World world, Entity target, RecordId effect)
     {

@@ -91,6 +91,9 @@ public sealed class GridItem
     // Its picture (rpg_item `icon`), or null.
     public string? Icon { get; internal set; }
 
+    // Its condition, 0 (broken) to 1 (as made; issue #603): what its square's meter shows.
+    public float Condition { get; internal set; } = 1f;
+
     // Its footprint lying the other way from how it lies now, or the same way: what a turn would make it.
     public (int Width, int Height) FootprintIf(bool rotated) => rotated == Rotated ? (Width, Height) : (Height, Width);
 
@@ -140,6 +143,10 @@ public sealed class GridCell
     public string? Icon { get; internal set; }
     public bool IconTurned { get; internal set; }
 
+    // The item's condition on the square at its top left, for a button's meter (issue #603); -1 (none)
+    // on its other squares and for anything as made, so a bag of new things shows no bars.
+    public float Meter { get; internal set; } = -1f;
+
     public ItemGrid Grid { get; internal set; } = null!;
 
     public bool IsEmpty => Item == null;
@@ -149,7 +156,7 @@ public sealed class GridCell
 [System.Diagnostics.CodeAnalysis.Experimental("SAGE0125", UrlFormat = "https://github.com/ZohnHadley/sage-engine/blob/main/docs/MAKING_A_GAME.md#10b-experimental-api")]   // the RPG screens (#98): SAGE0125, as Sage.UI
 public sealed class ItemGrid
 {
-    private readonly List<(RecordId Item, int Count, ItemInstance? Instance)> _stacks = new();
+    private readonly List<(RecordId Item, int Count, ItemInstance? Instance, float Condition)> _stacks = new();
     private readonly List<GridPlacement> _placed = new();
     private readonly List<GridItem> _itemPool = new();
     private readonly List<GridCell> _cellPool = new();
@@ -221,7 +228,7 @@ public sealed class ItemGrid
         _stacks.Clear();
         if (stacks != null)
             foreach (var stack in stacks)
-                if (stack.Count > 0) _stacks.Add((stack.Item, stack.Count, stack.Instance));
+                if (stack.Count > 0) _stacks.Add((stack.Item, stack.Count, stack.Instance, Durability.ConditionOf(stack)));
         _placed.Clear();
         if (placed != null) _placed.AddRange(placed);
         Build(world);
@@ -236,7 +243,8 @@ public sealed class ItemGrid
             {
                 if (stacks[i].Count <= 0) continue;
                 if (n >= _stacks.Count || _stacks[n].Item != stacks[i].Item || _stacks[n].Count != stacks[i].Count
-                    || _stacks[n].Instance != stacks[i].Instance) return false;
+                    || _stacks[n].Instance != stacks[i].Instance
+                    || _stacks[n].Condition != Durability.ConditionOf(stacks[i])) return false;   // wear is in place (issue #603)
                 n++;
             }
         if (n != _stacks.Count) return false;
@@ -470,7 +478,7 @@ public sealed class ItemGrid
         {
             if (_itemPool.Count <= i) _itemPool.Add(new GridItem());
             var item = _itemPool[i];
-            var (id, count, instance) = _stacks[i];
+            var (id, count, instance, condition) = _stacks[i];
             records.TryGet(id, out ItemRecord record);
             var (w, h) = RpgItemRecord.Of(records, id);
             float each = record?.Weight ?? 0f;
@@ -489,6 +497,7 @@ public sealed class ItemGrid
             item.Height = h;
             item.Rotated = false;
             item.Icon = RpgItemRecord.IconOf(records, id);
+            item.Condition = condition;
             item.Weight = each * count;
             item.Grid = this;
             item.X = item.Y = -1;
@@ -563,6 +572,7 @@ public sealed class ItemGrid
             cell.RowSpan = whole && corner ? item!.Height : 1;
             cell.Icon = whole && corner ? item!.Icon : null;
             cell.IconTurned = whole && corner && item!.Rotated;
+            cell.Meter = whole && corner && item!.Condition < 1f ? item.Condition : -1f;
         }
     }
 

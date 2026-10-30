@@ -128,6 +128,14 @@
       "minimum": 0,
       "maximum": 90
     },
+    "skybox": {
+      "description": "A painted sky behind everything (issue #630): one equirectangular panorama (2:1; straight up along the top row, the horizon across the middle, -z at the centre), drawn in place of the horizon-to-zenith gradient, with clouds, haze, the sun, the moon and the stars over it. Empty: the gradient. A texture path. Category: Skybox. (AssetPath)",
+      "type": "string"
+    },
+    "skyboxNight": {
+      "description": "A second panorama for the night, faded in as the stars come out (SkyRules.StarsAt). Empty: the day picture all night, darkened by the keys' skyboxTint. A texture path. Category: Skybox. (AssetPath)",
+      "type": "string"
+    },
     "keys": {
       "description": "The keyframes, by hour; any order, any number. One is a sky that never changes. (List<SkyKey>)",
       "type": "array",
@@ -214,6 +222,15 @@
             "type": "number",
             "minimum": 0,
             "maximum": 1
+          },
+          "skyboxTint": {
+            "description": "With a skybox only: what the panorama is multiplied by at this hour (darker at night, warmer at dusk; issue #630) (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
           },
           "replace": {
             "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
@@ -310,6 +327,15 @@
             "minimum": 0,
             "maximum": 1
           },
+          "skyboxTint": {
+            "description": "With a skybox only: what the panorama is multiplied by at this hour (darker at night, warmer at dusk; issue #630) (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
           "replace": {
             "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
             "type": "boolean"
@@ -404,6 +430,15 @@
             "type": "number",
             "minimum": 0,
             "maximum": 1
+          },
+          "skyboxTint": {
+            "description": "With a skybox only: what the panorama is multiplied by at this hour (darker at night, warmer at dusk; issue #630) (Vector3)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
           },
           "replace": {
             "description": "true (in a patch): replace this object with what the patch writes, instead of merging into it.",
