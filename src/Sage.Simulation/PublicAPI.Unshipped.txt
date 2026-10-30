@@ -911,3 +911,9 @@ static Sage.Simulation.SkyRules.SkyboxUv(System.Numerics.Vector3 direction) -> S
 Sage.Simulation.ISaveCapture
 Sage.Simulation.ISaveCapture.Capture(object! value) -> object!
 Sage.Simulation.ISaveCapture.ForWriter() -> System.Text.Json.Serialization.JsonConverter!
+Sage.Simulation.PointLight.Fade -> float
+Sage.Simulation.PointLight.FadeEnd -> double
+Sage.Simulation.PointLight.FadeFrom -> float
+static Sage.Simulation.LightRules.Switch(ref Sage.Simulation.PointLight light, bool off, double seconds) -> void
+Sage.Simulation.TerrainLayer.Surface -> Sage.Core.RecordId
+Sage.Simulation.TerrainMaterialRecord.LayerAt(Sage.Simulation.Heightfield! heights, int x, int z) -> int

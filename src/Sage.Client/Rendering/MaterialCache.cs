@@ -186,7 +186,7 @@ internal sealed class EffectBinding
             ref readonly var cascade = ref shadow.Cascades[Math.Min(k, Math.Max(shadow.Count - 1, 0))];
             _cascadeViewProj[k] = on ? toCaster * cascade.ViewProj : Matrix.Identity;
             _cascadeRects[k] = on ? cascade.Rect : new Vector4(0f, 0f, 1f, 1f);
-            float b = on ? cascade.Bias : 0f;
+            float b = on ? cascade.Bias + (view.DepthOnly ? ViewmodelPass.OwnShadow / cascade.DepthRange : 0f) : 0f;
             if (k == 0) bias.X = b; else if (k == 1) bias.Y = b; else bias.Z = b;
         }
         ShadowViewProj?.SetValue(_cascadeViewProj);

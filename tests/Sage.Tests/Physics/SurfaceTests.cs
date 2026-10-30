@@ -55,6 +55,10 @@ public class SurfaceTests
           { "type": "physics_material", "id": "dirt", "footstep": "step_dirt" },
           { "type": "physics_material", "id": "ice", "friction": 0.02 },
           { "type": "physics_material", "id": "rough", "friction": 1.5 },
+          { "type": "terrain_material", "id": "three", "layers": [
+              { "texture": "textures/x.png", "surface": "dirt" },
+              { "texture": "textures/x.png", "minHeight": 5, "maxHeight": 15, "heightBlend": 0, "surface": "grass" },
+              { "texture": "textures/x.png", "minHeight": 15, "heightBlend": 0 } ] },
           { "type": "cue", "id": "step_grass" },
           { "type": "cue", "id": "step_wood" },
           { "type": "cue", "id": "step_dirt" }
@@ -191,6 +195,27 @@ public class SurfaceTests
         Assert.Equal(Id("dirt"), physics.Sweep(Collider.Sphere(0.3f), At(new Vector3(100, 5, 300)), -Vector3.UnitY, 10f).Surface);
     }
 
+    // A terrain_material's layer names what it is made of (#610): the ground takes the layer that shows most,
+    // the one its rules put there, and a layer that names nothing leaves the terrain record's surface.
+    [Fact]
+    public void ADrawnLayerIsTheSurfaceOfTheGroundItShowsOn()
+    {
+        using var app = NewApp();
+        var world = app.CreateWorld("drawn");
+#pragma warning disable SAGE0129 // phase 4g's open world
+        var terrain = new Terrain { Origin = world.Origin(), Generator = new ThreeSteps(), Material = Id("three") };
+#pragma warning restore SAGE0129
+        terrain.SurfaceLayers.Add(Id("brick"));
+        world.Resources.Add(terrain);
+        terrain.Load(SectorCoord.Zero);
+        world.RunFixed(Dt);
+        var physics = world.Resources.Get<IPhysicsWorld>();
+
+        Assert.Equal(Id("dirt"), physics.Raycast(new Vector3(100, 40, 300), -Vector3.UnitY, 60f).Surface);
+        Assert.Equal(Id("grass"), physics.Raycast(new Vector3(500, 40, 300), -Vector3.UnitY, 60f).Surface);
+        Assert.Equal(Id("brick"), physics.Raycast(new Vector3(900, 40, 300), -Vector3.UnitY, 60f).Surface);
+    }
+
     // Done when (issue #270): a step looks at what is underfoot and raises that surface's footstep cue,
     // the cue the client plays. A stride walked is a step, and so is the animation's `footstep` event.
     [Fact]
@@ -253,6 +278,17 @@ public class SurfaceTests
         Assert.Equal(matches, SurfaceTextures.Matches(pattern, texture));
 
     // Flat ground, the east half (x >= 512 m) painted layer 1.
+    // Three bands of ground, west to east: at 0 m, 10 m and 20 m.
+    private sealed class ThreeSteps : ITerrainGenerator
+    {
+        public void Generate(SectorCoord sector, Heightfield heights, int seed)
+        {
+            for (int z = 0; z < heights.Resolution; z++)
+                for (int x = 0; x < heights.Resolution; x++)
+                    heights[x, z] = x * 3 / heights.Resolution * 10f;
+        }
+    }
+
     private sealed class HalfGrass : ITerrainGenerator
     {
         public void Generate(SectorCoord sector, Heightfield heights, int seed)

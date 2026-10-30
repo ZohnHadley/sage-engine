@@ -29,6 +29,15 @@ public struct PointLight : IComponent
     // before it has no such field and loads as on, which is what every light was.
     [Property(Tooltip = "Switched off: no light until TurnOn or Toggle (entity I/O) reaches it")]
     public bool Off;
+    // A fade (issue #610): the seconds a switch takes on the world's scaled clock; 0 switches at once. The fade
+    // under way is the level it left from and when it ends, saved with the clock it runs on. `LightRules.Switch`
+    // starts one and `LightRules.Level` reads it.
+    [Property(Min = 0, Unit = "s", Tooltip = "How long TurnOn, TurnOff and Toggle take to fade the light in or out; 0 = at once")]
+    public float Fade;
+    [Property(Min = 0, Max = 1, Tooltip = "The fade under way: the level it left from. Set by a switch")]
+    public float FadeFrom;
+    [Property(Min = 0, Unit = "s", Tooltip = "The fade under way: when it ends on the world's scaled clock. Set by a switch")]
+    public double FadeEnd;
     // Baked (issue #313): a level with a lightmap bakes it in, shadows and all, and its lightmapped faces
     // leave it out of their four; everything else (props, creatures, doors) is still lit by it. It cannot
     // switch or flicker as far as those faces are concerned: it is in the texture.
@@ -250,8 +259,31 @@ public static class LightRules
     {
         float brightness = LightStyles.Brightness(light.Pattern, light.PatternRate, seconds);
         var spot = light.Cone > 0f ? Spot(Vector3.Transform(TransformMath.Forward, rotation), light.Cone, light.InnerCone) : Vector4.Zero;
-        return new LightSample(at, light.Colour * (light.Intensity * brightness), light.Range) { Spot = spot, CastsShadows = light.Shadows };
+        return new LightSample(at, light.Colour * (light.Intensity * brightness * Level(light, seconds)), light.Range) { Spot = spot, CastsShadows = light.Shadows };
     }
+
+    // Switches a lamp at `seconds` (WorldTime.Scaled), fading from wherever it is now, so a switch back in the
+    // middle of a fade does not jump. A switch to what it already is does nothing.
+    public static void Switch(ref PointLight light, bool off, double seconds)
+    {
+        if (light.Off == off) return;
+        light.FadeFrom = Level(light, seconds);
+        light.FadeEnd = seconds + light.Fade;
+        light.Off = off;
+    }
+
+    // How far up a lamp is at `seconds`: 1 on, 0 off, between during a fade.
+    internal static float Level(in PointLight light, double seconds)
+    {
+        float target = light.Off ? 0f : 1f;
+        double left = light.FadeEnd - seconds;
+        if (left <= 0.0 || light.Fade <= 0f) return target;
+        return target + (light.FadeFrom - target) * MathF.Min((float)(left / light.Fade), 1f);
+    }
+
+    // Whether a lamp gives any light at `seconds`: `Lit`, or on its way out.
+    internal static bool Shines(in PointLight light, double seconds) =>
+        light.Range > 0f && light.Intensity > 0f && Level(light, seconds) > 0f;
 
     // What the chosen lights add at a point on a surface facing `normal`: the shaders' sum, and these are
     // its tests (common.fxh `PointLights`, Lambert; sprite.fx `SpritePointLights`, `wrapped` half-Lambert

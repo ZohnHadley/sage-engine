@@ -33,6 +33,8 @@ public sealed class LightPart : IPrefabPart
     public float Intensity = 1f;
     [Property(Tooltip = "Starts switched off; TurnOn, TurnOff and Toggle switch it (a lamp a state machine lights at night)")]
     public bool Off;
+    [Property(Min = 0, Unit = "s", Tooltip = "How long TurnOn, TurnOff and Toggle take to fade the light in or out; 0 = at once")]
+    public float Fade;
     [Property(Tooltip = "Static: baked into the lightmap of the level that places it, with shadows (a map record's \"lightmap\"); it should not switch")]
     public bool Baked;
     [Property(Tooltip = "Flicker: Quake-style letters a..z (m = as set, a = dark, z = double) or a preset (torch, candle, flicker, pulse, strobe, fluorescent...); empty = steady. SetPattern changes it")]
@@ -63,6 +65,7 @@ public sealed class LightPart : IPrefabPart
             Range = Range <= 0f ? 8f : Range,
             Intensity = Intensity <= 0f ? 1f : Intensity,
             Off = Off,
+            Fade = Fade,
             Baked = Baked,
             Pattern = string.IsNullOrEmpty(Pattern) ? null : Pattern,
             PatternRate = PatternRate,

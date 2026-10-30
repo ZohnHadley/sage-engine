@@ -1745,7 +1745,7 @@ internal sealed class RendererCVars
         UploadMs = cvars.Register("asset_upload_ms", 2f, CVarFlags.Archive,
             "Milliseconds a frame may spend loading a streaming world's meshes and textures (05 §3.4); what does not fit waits " +
             "for the next frame. The first load of a frame always starts; 0 is no budget.", 0f, 100f);
-        InstancingOn = cvars.Register("r_instancing", false, CVarFlags.Archive,
+        InstancingOn = cvars.Register("r_instancing", true, CVarFlags.Archive,
             "Instancing (06 §3.7): runs of at least r_instancing_min copies of one mesh part with one material, tint and lamps are one " +
             "instanced draw, and long sprite runs instanced quads. Off where the device cannot instance (GL below 3.2).");
         InstancingMin = cvars.Register("r_instancing_min", Instancing.DefaultMin, CVarFlags.Archive,

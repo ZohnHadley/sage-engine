@@ -56,7 +56,7 @@ public class LampTests
         foreach (var entity in world.Query<GlobalTransform, PointLight>().Entities.ToEntityList())
         {
             ref readonly var light = ref world.Get<PointLight>(entity);
-            if (!light.Lit) continue;
+            if (!LightRules.Shines(light, seconds)) continue;
             var pose = world.Get<GlobalTransform>(entity).Current;
             samples.Add(LightRules.Sample(light, pose.Position, pose.Rotation, seconds));
         }
@@ -73,6 +73,90 @@ public class LampTests
         int n = grid.Nearest(at, chosen);
         var sum = LightRules.Sum(chosen[..n], at, facing, wrapped: true);
         return MathF.Max(MathF.Max(sum.X, sum.Y), sum.Z);
+    }
+
+    private static float Brightness(World world) => Extract(world) is [var sample] ? sample.Colour.X : 0f;
+
+    private static void Seconds(World world, float seconds)
+    {
+        for (int i = 0; i < (int)MathF.Round(seconds / Dt); i++) world.RunFixed(Dt);
+    }
+
+    // A lamp with a `fade` goes down and up over it (#610), counted from the switch; `Lit` says at once which
+    // way it is going, and a lamp on its way out still shines until it is done.
+    [Fact]
+    public void ALampFadesOverItsFadeTime()
+    {
+        using var app = LampScene("""{ "range": 6, "intensity": 2, "fade": 1 }""");
+        Assert.Equal(0, app.Records.ErrorCount);
+        var world = app.World;
+        Tick(world);
+        Assert.Equal(2f, Brightness(world), 3);        // a lamp that starts on is on: no fade up at the start
+
+        Assert.True(app.Engine.CVars.Execute("ent_fire lamp TurnOff", ExecSource.Code));
+        world.RunFixed(Dt);
+        var lamp = Named(world, "lamp");
+        Assert.False(world.Get<PointLight>(lamp).Lit);
+        Seconds(world, 0.5f);
+        Assert.InRange(Brightness(world), 0.9f, 1.1f);
+        Seconds(world, 0.6f);
+        Assert.Empty(Extract(world));
+
+        Fire(app, "ent_fire lamp TurnOn");
+        Assert.True(world.Get<PointLight>(lamp).Lit);
+        Assert.InRange(Brightness(world), 0f, 0.2f);
+        Seconds(world, 1.1f);
+        Assert.Equal(2f, Brightness(world), 3);
+    }
+
+    // Switched back halfway it turns round where it is, and a second TurnOff doesn't start the fade again.
+    [Fact]
+    public void ALampSwitchedBackHalfwayFadesFromWhereItIs()
+    {
+        using var app = LampScene("""{ "range": 6, "intensity": 2, "fade": 1 }""");
+        var world = app.World;
+        Tick(world);
+
+        Fire(app, "ent_fire lamp TurnOff");
+        Seconds(world, 0.25f);
+        Fire(app, "ent_fire lamp TurnOff");            // already going: nothing restarts
+        Seconds(world, 0.25f);
+        float halfway = Brightness(world);
+        Assert.InRange(halfway, 0.8f, 1.1f);
+
+        Fire(app, "ent_fire lamp Toggle");
+        Assert.Equal(halfway, Brightness(world), 0.1f);
+        Seconds(world, 1.1f);
+        Assert.Equal(2f, Brightness(world), 3);
+    }
+
+    // No `fade` is the switch it always was.
+    [Fact]
+    public void ALampWithNoFadeSwitchesAtOnce()
+    {
+        using var app = LampScene();
+        var world = app.World;
+        Tick(world);
+        Fire(app, "ent_fire lamp TurnOff");
+        Assert.Empty(Extract(world));
+    }
+
+    // A fade saves with the clock it runs on, so a load carries on from where it was.
+    [Fact]
+    public void AFadeUnderWayIsSaved()
+    {
+        using var app = LampScene("""{ "range": 6, "intensity": 2, "fade": 1 }""");
+        var world = app.World;
+        Tick(world);
+        Fire(app, "ent_fire lamp TurnOff");
+        Seconds(world, 0.5f);
+        float saved = Brightness(world);
+        Assert.True(app.Engine.Saves.Save("fade"));
+
+        Seconds(world, 2f);
+        Assert.Empty(Extract(world));
+        Assert.True(app.Engine.Saves.Load("fade"));
+        Assert.Equal(saved, Brightness(app.World), 3);
     }
 
     // The issue's done criterion, both halves: `ent_fire` on a lamp toggles it, and a sprite near the lamp

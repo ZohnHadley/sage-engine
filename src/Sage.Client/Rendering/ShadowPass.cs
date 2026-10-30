@@ -153,6 +153,7 @@ internal sealed class ShadowPass : IRenderPass
             ref var cascade = ref frame.Cascades[k];
             cascade.ViewProj = view.ViewProj;
             cascade.Bias = fit.DepthBias;
+            cascade.DepthRange = fit.DepthRange;
             cascade.Rect = new Vector4((float)x / atlas.Width, (float)y / atlas.Height,
                                        (float)size / atlas.Width, (float)size / atlas.Height);
         }
@@ -190,13 +191,14 @@ internal sealed class ShadowPass : IRenderPass
 
         // The lamps that ask, camera-relative, as LightExtract samples them (unflickered: a flicker's dark
         // step must not take the map away and give it back).
+        double seconds = WorldTime.Of(context.World).Scaled;
         var query = _lampQueries.GetValue(context.World, static w => new LampQuery(w)).Lights;
         int count = 0;
         foreach (var (globals, lights, entities) in query.Chunks)
             for (int n = 0; n < globals.Length; n++)
             {
                 ref readonly var light = ref lights[n];
-                if (!light.Shadows || !light.Lit) continue;
+                if (!light.Shadows || !LightRules.Shines(light, seconds)) continue;
                 var pose = globals[n].Interpolated(context.Alpha);
                 var at = pose.Position - camera.ToNumerics();
                 var spot = light.Cone > 0f ? LightRules.Spot(System.Numerics.Vector3.Transform(TransformMath.Forward, pose.Rotation), light.Cone, light.InnerCone)

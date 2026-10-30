@@ -175,12 +175,14 @@ public sealed class LightsModule : IModule
     public void Init(ModuleContext ctx)
     {
         var inputs = ctx.Engine.Inputs;
-        inputs.Register<PointLight>(TurnOn, static (World world, in IOContext io) => world.Get<PointLight>(io.Self).Off = false);
-        inputs.Register<PointLight>(TurnOff, static (World world, in IOContext io) => world.Get<PointLight>(io.Self).Off = true);
+        inputs.Register<PointLight>(TurnOn, static (World world, in IOContext io) =>
+            LightRules.Switch(ref world.Get<PointLight>(io.Self), false, WorldTime.Of(world).Scaled));
+        inputs.Register<PointLight>(TurnOff, static (World world, in IOContext io) =>
+            LightRules.Switch(ref world.Get<PointLight>(io.Self), true, WorldTime.Of(world).Scaled));
         inputs.Register<PointLight>(Toggle, static (World world, in IOContext io) =>
         {
             ref var light = ref world.Get<PointLight>(io.Self);
-            light.Off = !light.Off;
+            LightRules.Switch(ref light, !light.Off, WorldTime.Of(world).Scaled);
         });
         // A flicker (issue #314): the parameter is a pattern or a preset (LightStyles), empty for steady.
         // One that is neither is refused with a warning, and the light keeps what it had.

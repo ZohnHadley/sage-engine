@@ -683,3 +683,4 @@ Sage.Gameplay.ItemUse.Target.init -> void
 static Sage.Gameplay.ItemUses.Aims(Sage.Gameplay.ItemRecord! record) -> bool
 static Sage.Gameplay.ItemUses.CanUseOn(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, int target, out string! why) -> bool
 static Sage.Gameplay.ItemUses.UseItemOn(this Sage.Simulation.World! world, Sage.Simulation.Entity user, Sage.Core.RecordId item, int target, out string! why) -> bool
+Sage.Gameplay.LightPart.Fade -> float

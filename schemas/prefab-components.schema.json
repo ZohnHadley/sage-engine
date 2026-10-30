@@ -7413,6 +7413,25 @@
           "default": false,
           "type": "boolean"
         },
+        "fade": {
+          "description": "How long TurnOn, TurnOff and Toggle take to fade the light in or out; 0 = at once. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
+        "fadeFrom": {
+          "description": "The fade under way: the level it left from. Set by a switch. Range: 0 to 1. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fadeEnd": {
+          "description": "The fade under way: when it ends on the world's scaled clock. Set by a switch. Unit: s. At least 0. (double, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
         "baked": {
           "description": "Static: baked into the lightmap of the level that places it (with shadows); still lights what is not lightmapped. (bool, default false)",
           "default": false,

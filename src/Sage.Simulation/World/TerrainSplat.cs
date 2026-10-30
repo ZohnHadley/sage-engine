@@ -42,6 +42,17 @@ public sealed class TerrainMaterialRecord
 
     [RecordRef("material"), Property(Tooltip = "What the ground is drawn with where the splat shader is not available (a build without shaders)")]
     public RecordId Fallback = TerrainSplat.DefaultMaterial;
+
+    // The layer showing most at grid vertex (x, z), rules and paint together: what the ground there looks
+    // like it is made of, for the layers that name a `surface` (issue #610).
+    public int LayerAt(Heightfield heights, int x, int z)
+    {
+        uint weights = TerrainSplat.Weights(this, heights, x, z);
+        int top = 0;
+        for (int i = 1; i < Math.Min(Layers.Count, TerrainSplat.MaxLayers); i++)
+            if (((weights >> (i * 8)) & 0xFF) > ((weights >> (top * 8)) & 0xFF)) top = i;
+        return top;
+    }
 }
 
 // One layer of a terrain material: a texture, how big a tile of it is, and where it lies.
@@ -50,6 +61,9 @@ public sealed class TerrainLayer
 {
     [AssetKind("texture"), Property(Tooltip = "The layer's texture, tiled over the ground")]
     public AssetPath Texture;
+
+    [RecordRef("physics_material"), Property(Tooltip = "What ground showing this layer is made of: footsteps, impacts and their decals. Empty: the terrain record's surfaces")]
+    public RecordId Surface;
 
     [Property(Min = 0.05, Max = 10000, Unit = "m", Tooltip = "How many metres one repeat of the texture covers")]
     public float Tile = 8f;
