@@ -6761,7 +6761,7 @@
           "type": "string"
         },
         "handle": {
-          "description": "(MeshHandle)",
+          "description": "Not saved. (MeshHandle)",
           "type": "object"
         },
         "material": {
