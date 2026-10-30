@@ -339,8 +339,11 @@ float2 Wetting(float3 relative, float normalY, float sky, float weathering)
     float facing = saturate((normalY - 0.3) / 0.6);
     float wet = WetParams.x * facing * open;
     float flat = saturate((normalY - 0.9) / 0.08);
-    float mask = tex2D(PuddleSampler, (relative.xz + WetParams.zw) / PUDDLE_TILE).r;
-    float puddle = saturate((mask - (1 - WetParams.y)) * 8) * flat * open;
+    // PuddleMask.At: two samples, so the tile does not show.
+    float2 at = relative.xz + WetParams.zw;
+    float mask = tex2D(PuddleSampler, at / PUDDLE_TILE).r + tex2D(PuddleSampler, float2(at.y, -at.x) * 0.375 / PUDDLE_TILE).r;
+    mask = saturate((mask - 1) * 0.75 + 0.5);
+    float puddle = saturate((mask - (1 - WetParams.y)) * 8) * flat * saturate(open * 2);
     return float2(wet, puddle);
 }
 

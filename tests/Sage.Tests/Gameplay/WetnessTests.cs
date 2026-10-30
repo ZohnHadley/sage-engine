@@ -14,6 +14,30 @@ using Assert = Xunit.Assert;
 #pragma warning disable SAGE0122, SAGE0130   // brush levels and the material's surface fields are experimental
 public class WetnessTests
 {
+    // The puddles do not repeat at the mask's 16 m (#656): they repeat at 128 m, where the camera's offset wraps.
+    [Fact]
+    public void ThePuddlesDoNotRepeatAtTheMasksTile()
+    {
+        float different = 0f, repeat = 0f;
+        for (float z = 0.5f; z < 16f; z += 1.1f)
+            for (float x = 0.5f; x < 16f; x += 1.1f)
+            {
+                different = MathF.Max(different, MathF.Abs(PuddleMask.At(x, z) - PuddleMask.At(x + 16f, z)));
+                repeat = MathF.Max(repeat, MathF.Abs(PuddleMask.At(x, z) - PuddleMask.At(x + WetnessRules.MaskRepeat, z)));
+            }
+        Assert.True(different > 0.2f, $"16 m on, the puddles differ by at most {different}");
+        Assert.True(repeat < 0.01f, $"{WetnessRules.MaskRepeat} m on, they differ by {repeat}");
+    }
+
+    // A yard under part of the sky, as a lightmap's sky term says, has its puddles whole (#656).
+    [Fact]
+    public void APartOpenYardKeepsItsPuddles()
+    {
+        float halfOpen = (WetnessRules.ShelteredSky + WetnessRules.OpenSky) * 0.5f;
+        Assert.Equal(1f, WetnessRules.Surface(1f, 1f, halfOpen, 1f, 1f).Puddle, 3);
+        Assert.Equal(0f, WetnessRules.Surface(1f, 1f, WetnessRules.ShelteredSky, 1f, 1f).Puddle);
+    }
+
     public WetnessTests() { _ = TestEnv.UserRoot; }
 
     private const float Dt = 1f / 60f;
@@ -156,8 +180,8 @@ public class WetnessTests
         Assert.Equal(255, PuddleMask.Pixels.Max());
         foreach (var (x, z) in new[] { (0.3f, 1.7f), (5.1f, 12.9f), (15.99f, 0.01f) })
         {
-            Assert.Equal(PuddleMask.At(x, z), PuddleMask.At(x + WetnessRules.MaskTile, z), 4);
-            Assert.Equal(PuddleMask.At(x, z), PuddleMask.At(x, z - 3 * WetnessRules.MaskTile), 4);
+            Assert.Equal(PuddleMask.At(x, z), PuddleMask.At(x + WetnessRules.MaskRepeat, z), 4);
+            Assert.Equal(PuddleMask.At(x, z), PuddleMask.At(x, z - 3 * WetnessRules.MaskRepeat), 4);
         }
     }
 
