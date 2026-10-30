@@ -348,6 +348,7 @@ internal sealed class TerrainCollisionSystem : ISystem
     // Chunks built so far of the sectors under way (by sector object: a sector unloaded and loaded again is a new one).
     private readonly Dictionary<TerrainSector, int> _progress = new();
     private readonly List<TerrainSector> _gone = new();
+    private readonly List<RecordId> _surfaces = new();
 
     public TerrainCollisionSystem(World world, PhysicsSpace space)
     {
@@ -434,6 +435,7 @@ internal sealed class TerrainCollisionSystem : ISystem
     private void Surfaces(in PhysicsBody body, Heightfield heights, int x0, int z0, int cells)
     {
         var layers = _terrain!.SurfaceLayers;
+        if (DrawnLayers() is { } drawn) { DrawnSurfaces(body, drawn, heights, x0, z0, cells); return; }
         if (layers.Count == 0) return;
         if (heights.CellLayers == null) { _space.SetSurface(body, layers[0]); return; }
         int triangles = cells * cells * 2;
@@ -446,6 +448,41 @@ internal sealed class TerrainCollisionSystem : ISystem
         }
         _space.SetSurfaces(body, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(layers), _triangleLayers.AsSpan(0, triangles));
     }
+
+#pragma warning disable SAGE0129 // phase 4g's open world: the ground's terrain_material
+    // The terrain_material drawn on this ground, if a layer of it names a surface (issue #610).
+    private TerrainMaterialRecord? DrawnLayers()
+    {
+        var records = _space.Records;
+        if (_terrain!.Material.IsEmpty || records == null || !records.TryGet(_terrain.Material, out TerrainMaterialRecord material)) return null;
+        foreach (var layer in material.Layers) if (!layer.Surface.IsEmpty) return material;
+        return null;
+    }
+
+    // Each cell is made of the drawn layer showing most at its corner; one that names no surface leaves the
+    // cell to the terrain record's layers.
+    private void DrawnSurfaces(in PhysicsBody body, TerrainMaterialRecord drawn, Heightfield heights, int x0, int z0, int cells)
+    {
+        var layers = _terrain!.SurfaceLayers;
+        _surfaces.Clear();
+        _surfaces.AddRange(layers);
+        if (_surfaces.Count == 0) _surfaces.Add(default);
+        int first = _surfaces.Count;
+        foreach (var layer in drawn.Layers) _surfaces.Add(layer.Surface);
+
+        int triangles = cells * cells * 2;
+        if (_triangleLayers.Length < triangles) _triangleLayers = new byte[triangles];
+        for (int t = 0; t < triangles; t += 2)
+        {
+            int x = x0 + t / 2 % cells, z = z0 + t / 2 / cells;
+            int top = drawn.LayerAt(heights, x, z);
+            byte own = heights.LayerAt(x, z);
+            byte surface = !drawn.Layers[top].Surface.IsEmpty ? (byte)(first + top) : own < first ? own : (byte)0;
+            _triangleLayers[t] = _triangleLayers[t + 1] = surface;
+        }
+        _space.SetSurfaces(body, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_surfaces), _triangleLayers.AsSpan(0, triangles));
+    }
+#pragma warning restore SAGE0129
 }
 
 // The engine's physics module (10 §14 steps 1–3): one space per world, the layer record, and the

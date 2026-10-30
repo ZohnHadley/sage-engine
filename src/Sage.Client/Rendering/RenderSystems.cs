@@ -558,7 +558,7 @@ internal sealed class LightExtract : ISystem
                     for (int n = 0; n < globals.Length; n++)
                     {
                         ref readonly var light = ref lights[n];
-                        if (!light.Lit) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
+                        if (!LightRules.Shines(light, seconds)) continue;   // switched off (TurnOff, issue 4h-7), or nothing to give
                         if (light.Baked != (baked == 1)) continue;
 
                         var pose = globals[n].Interpolated(alpha);

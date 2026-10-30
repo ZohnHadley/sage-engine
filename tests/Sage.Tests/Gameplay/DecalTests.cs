@@ -168,6 +168,37 @@ public class DecalTests
         Assert.Equal(0, decals.Count);
     }
 
+    // And terrain (#610): a terrain_material's layer names what it is made of, so a shot into the ground
+    // raises that surface's impact and lays the mark there.
+    [Xunit.Fact]
+    public void AShotIntoTerrainLeavesAMarkWhereItsLayerNamesASurface()
+    {
+        using var app = NewGame(patch: """
+            [{ "type": "terrain_material", "id": "plastered", "layers": [{ "texture": "textures/x.png", "surface": "plaster" }] }]
+            """);
+        var world = app.World;
+#pragma warning disable SAGE0129 // phase 4g's open world
+        var terrain = new Terrain { Origin = world.Origin(), Generator = new RaisedGround(), Material = new RecordId("sage", "plastered") };
+#pragma warning restore SAGE0129
+        world.Resources.Add(terrain);
+        terrain.Load(SectorCoord.Zero);
+        world.RunFixed(Dt);
+        var shooter = HitPipelineTests.Body(world, new Vector3(100, 1, 100), "shooter", new Vector3(100, 1, 90), "rifle");
+        world.Get<PawnIntent>(shooter).Pitch = -0.6f;
+
+        Fire(app, shooter);
+
+        var mark = Assert.Single(world.Resources.Get<Decals>().Live.ToArray());
+        Assert.Equal(new RecordId("sage", "hole"), mark.Effect);
+        Assert.Equal(1f, mark.Position.Y, 2);
+        Assert.Equal(1f, mark.Normal.Y, 3);
+    }
+
+    private sealed class RaisedGround : ITerrainGenerator
+    {
+        public void Generate(SectorCoord sector, Heightfield heights, int seed) => Array.Fill(heights.Heights, 1f);
+    }
+
     // A damage type names a decal too: blood lands on the wall behind what was hurt, along the blow —
     // never on the creature itself, which would walk away from it.
     [Xunit.Fact]

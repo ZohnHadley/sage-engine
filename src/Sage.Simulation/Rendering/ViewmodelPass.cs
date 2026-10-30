@@ -34,6 +34,10 @@ internal static class ViewmodelPass
 {
     private const float ToRadians = MathF.PI / 180f;
 
+    // Metres of extra shadow bias on the viewmodel's own view (issue #610): the arms are in the sun's map, and
+    // this is further than they and the weapon reach, so only something beyond them shades them.
+    public const float OwnShadow = 1.5f;
+
     // The screen's viewmodel this frame: the main view is a camera looking out of its first-person rig,
     // with an enabled Viewmodel whose arms are spawned. False in third person, from the editor's free
     // camera (a DebugCamera: no rig), from a scripted camera, and before the director has run.

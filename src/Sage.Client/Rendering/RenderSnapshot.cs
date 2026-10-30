@@ -146,6 +146,7 @@ internal struct ShadowCascade
 {
     public Matrix ViewProj;          // relative to ShadowFrame.Camera → this cascade's clip space
     public float Bias;               // ShadowFit.DepthBias
+    public float DepthRange;         // ShadowFit.DepthRange: metres from 0 to 1 in the map
     public Vector4 Rect;             // where it sits in the target, in uv: x, y, width, height
 }
 

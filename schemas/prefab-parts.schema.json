@@ -2311,6 +2311,12 @@
           "default": false,
           "type": "boolean"
         },
+        "fade": {
+          "description": "How long TurnOn, TurnOff and Toggle take to fade the light in or out; 0 = at once. Unit: s. At least 0. (float, default 0)",
+          "default": 0,
+          "type": "number",
+          "minimum": 0
+        },
         "baked": {
           "description": "Static: baked into the lightmap of the level that places it, with shadows (a map record's \"lightmap\"); it should not switch. (bool, default false)",
           "default": false,

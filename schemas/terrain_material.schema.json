@@ -54,6 +54,14 @@
             "description": "The layer's texture, tiled over the ground. A texture path. (AssetPath)",
             "type": "string"
           },
+          "surface": {
+            "description": "What ground showing this layer is made of: footsteps, impacts and their decals. Empty: the terrain record's surfaces. Names a physics_material record. (RecordId)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:physics_material"
+              }
+            ]
+          },
           "tile": {
             "description": "How many metres one repeat of the texture covers. Unit: m. Range: 0.05 to 10000. (float)",
             "type": "number",
@@ -114,6 +122,14 @@
             "description": "The layer's texture, tiled over the ground. A texture path. (AssetPath)",
             "type": "string"
           },
+          "surface": {
+            "description": "What ground showing this layer is made of: footsteps, impacts and their decals. Empty: the terrain record's surfaces. Names a physics_material record. (RecordId)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:physics_material"
+              }
+            ]
+          },
           "tile": {
             "description": "How many metres one repeat of the texture covers. Unit: m. Range: 0.05 to 10000. (float)",
             "type": "number",
@@ -173,6 +189,14 @@
           "texture": {
             "description": "The layer's texture, tiled over the ground. A texture path. (AssetPath)",
             "type": "string"
+          },
+          "surface": {
+            "description": "What ground showing this layer is made of: footsteps, impacts and their decals. Empty: the terrain record's surfaces. Names a physics_material record. (RecordId)",
+            "allOf": [
+              {
+                "$ref": "ids.schema.json#/definitions/record:physics_material"
+              }
+            ]
           },
           "tile": {
             "description": "How many metres one repeat of the texture covers. Unit: m. Range: 0.05 to 10000. (float)",

@@ -16,6 +16,11 @@ namespace Sage.Client;
 //
 // It runs after every other extract so they never see its view: none of them culls, lights or copies
 // debug lines into it. No culling here either: two pieces in front of the eye. Allocates nothing.
+//
+// The pieces also go into the sun's cascades of the view they are drawn over (issue #610), which share its
+// camera, so the arms cast a shadow as a first-person body does; a material with `castShadows` off does not.
+// The view looks its own map up with `ViewmodelPass.OwnShadow` of extra bias, so they do not shadow themselves.
+// shortcut: the sun's map only; a lamp's has no such bias, so the arms cast no lamp shadow. Upgrade with one.
 [System("sage.client.extract.viewmodel", Phase.Extract, After = new[]
 {
     "sage.client.extract.camera", "sage.client.extract.meshes", "sage.client.extract.skinned", "sage.client.extract.sprites",
@@ -52,12 +57,12 @@ internal sealed class ViewmodelExtract : ISystem
             var main = s.Views[v];   // a copy: Add below may move the list
             if (main.ShadowCaster || main.DepthOnly || main.NoViewmodel || main.Source < 0 || main.Source >= cameras.Count) continue;
             if (!ViewmodelPass.TryGet(_world, in cameras[main.Source], out var viewmodel)) continue;
-            Add(s, in main, in viewmodel, ctx.Frame.Alpha);
+            Add(s, in main, v, in viewmodel, ctx.Frame.Alpha);
         }
     }
 
     // The viewmodel's view over `main`, and its pieces in it.
-    private void Add(RenderSnapshot s, in RenderView main, in ViewmodelView viewmodel, float alpha)
+    private void Add(RenderSnapshot s, in RenderView main, int mainIndex, in ViewmodelView viewmodel, float alpha)
     {
         int index = s.Views.Count;
         ref var view = ref s.Views.Add();
@@ -76,8 +81,17 @@ internal sealed class ViewmodelExtract : ISystem
         view.SpriteStart = view.SpriteCount = 0;
         s.EnsureViewSlots(index + 1);          // per-view culling state; grows only when the view count does
 
-        var draws = new Draws { Owner = this, Snapshot = s, View = index, Forward = view.Forward, Far = view.Far };
+        var draws = new Draws { Owner = this, Snapshot = s, View = index, Main = mainIndex, Forward = view.Forward, Far = view.Far };
         ViewmodelPass.Emit(_world, in viewmodel, alpha, ref draws);
+    }
+
+    // Whether `view` is a cascade of the sun's map fitted to `main`.
+    private static bool CastsFor(RenderSnapshot s, int view, int main)
+    {
+        int shadow = s.Views[main].Shadow;
+        if (shadow < 0 || shadow >= s.Shadows.Count) return false;
+        ref readonly var frame = ref s.Shadows[shadow];
+        return view >= frame.View && view < frame.View + frame.Count;
     }
 
     private void Item(RenderSnapshot s, int view, int meshId, int part, int materialId, RenderPass pass, byte layer,
@@ -106,7 +120,7 @@ internal sealed class ViewmodelExtract : ISystem
     {
         public ViewmodelExtract Owner;
         public RenderSnapshot Snapshot;
-        public int View;
+        public int View, Main;
         public Vector3 Forward;
         public float Far;
 
@@ -121,6 +135,15 @@ internal sealed class ViewmodelExtract : ISystem
             Matrix at = world;   // System.Numerics → MonoGame (implicit)
             for (int p = 0; p < mesh.Parts.Length; p++)
                 Owner.Item(Snapshot, View, meshId, p, materialId, material.Pass, renderer.Layer, at, Forward, Far, 0, 0);
+
+            if (!ShadowMath.Casts(material.Pass, material.CastShadows)) return;
+            for (int v = 0; v < Snapshot.Views.Count; v++)
+            {
+                if (!CastsFor(Snapshot, v, Main)) continue;
+                ref readonly var caster = ref Snapshot.Views[v];
+                for (int p = 0; p < mesh.Parts.Length; p++)
+                    Owner.Item(Snapshot, v, meshId, p, materialId, material.Pass, renderer.Layer, at, caster.Forward, caster.Far, 0, 0);
+            }
         }
 
         public readonly void Skinned(Entity entity, in SkinnedMeshRenderer renderer, in System.Numerics.Matrix4x4 world)
@@ -146,27 +169,26 @@ internal sealed class ViewmodelExtract : ISystem
             }
             var one = new OneView
             {
-                Owner = Owner, Snapshot = Snapshot, View = View, MeshId = meshId, MaterialId = materialId, Pass = material.Pass,
-                Layer = renderer.Layer, Parts = mesh.Parts.Length, World = world, Forward = Forward, Far = Far,
+                Owner = Owner, Snapshot = Snapshot, View = View, Main = Main, Casts = ShadowMath.Casts(material.Pass, material.CastShadows),
+                MeshId = meshId, MaterialId = materialId, Pass = material.Pass, Layer = renderer.Layer, Parts = mesh.Parts.Length, World = world,
             };
             SkinnedExtract.Emit(ref one, joints, inverseBind, mesh.Name);
         }
     }
 
-    // SkinnedExtract.Emit's side for the one viewmodel view: it sees everything, and writes one palette.
+    // SkinnedExtract.Emit's side for the one viewmodel view and its caster views, all from one palette.
     private struct OneView : ISkinnedDraws
     {
         public ViewmodelExtract Owner;
         public RenderSnapshot Snapshot;
-        public int View, MeshId, MaterialId, Parts;
+        public int View, Main, MeshId, MaterialId, Parts;
+        public bool Casts;
         public RenderPass Pass;
         public byte Layer;
         public Matrix World;
-        public Vector3 Forward;
-        public float Far;
 
         public readonly int Views => Snapshot.Views.Count;
-        public readonly bool Sees(int view) => view == View;
+        public readonly bool Sees(int view) => view == View || (Casts && CastsFor(Snapshot, view, Main));
 
         public readonly Span<System.Numerics.Matrix4x4> AddBones(int count, out int start)
         {
@@ -176,8 +198,9 @@ internal sealed class ViewmodelExtract : ISystem
 
         public readonly void Draw(int view, int boneStart, int boneCount)
         {
+            ref readonly var seen = ref Snapshot.Views[view];
             for (int p = 0; p < Parts; p++)
-                Owner.Item(Snapshot, view, MeshId, p, MaterialId, Pass, Layer, World, Forward, Far, boneStart, boneCount);
+                Owner.Item(Snapshot, view, MeshId, p, MaterialId, Pass, Layer, World, seen.Forward, seen.Far, boneStart, boneCount);
         }
     }
 }
