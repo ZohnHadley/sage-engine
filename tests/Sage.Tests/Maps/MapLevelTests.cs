@@ -99,6 +99,32 @@ public class MapLevelTests
         Assert.True(MathF.Abs(far - floor) > 0.1f, "the hillside forty metres off is still a hillside");
     }
 
+    // #605: a load places every level again, and a flatten that read the ground it had already laid sank the
+    // level and the clearing with each load.
+    [Xunit.Fact]
+    public void LoadingLeavesALevelAndTheGroundUnderItWhereTheyWere()
+    {
+        string sandbox = System.IO.Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
+        using var app = HeadlessApp.ForGame(sandbox, new global::Sandbox.SandboxModule()).WithEngineContent().Boot();
+        var world = app.World;
+        MapLevel Hut() => Assert.Single(world.Resources.Get<MapLevels>().Loaded, l => l.Source.Contains("hut"));
+        for (int tick = 0; tick < 600 && !Hut().Placed; tick++) world.RunFixed(1f / 60f);
+        var terrain = world.Resources.Get<Terrain>();
+        float height = Hut().Position.Y;
+        var at = Hut().Position;
+        float ground = terrain.HeightAt(at.X, at.Z), edge = terrain.HeightAt(at.X + 12f, at.Z);
+
+        Assert.True(app.Engine.Saves.Save("again"));
+        for (int load = 0; load < 3; load++)
+        {
+            Assert.True(app.Engine.Saves.Load("again"));
+            for (int tick = 0; tick < 600 && !Hut().Placed; tick++) world.RunFixed(1f / 60f);
+            Assert.Equal(height, Hut().Position.Y, 3);
+            Assert.Equal(ground, terrain.HeightAt(at.X, at.Z), 3);
+            Assert.Equal(edge, terrain.HeightAt(at.X + 12f, at.Z), 3);
+        }
+    }
+
     [Fact]
     public void ALevelLoadsItsBrushesAndStandsThemWhereTheRecordSays()
     {

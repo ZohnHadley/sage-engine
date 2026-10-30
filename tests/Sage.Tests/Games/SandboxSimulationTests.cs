@@ -174,7 +174,7 @@ public class SandboxSimulationTests
                 {
                     bool launch = before[n] <= 0 && world.Get<Hop>(hoppers[n]).Velocity > 0;
                     if (!launch) continue;
-                    Assert.True(HopSystem.Beat(tick, dt, hoppers[n].Id), $"a hopper launched off its beat at tick {tick}");
+                    Assert.True(HopSystem.Beat(tick, dt, HopSystem.BeatId(world, hoppers[n])), $"a hopper launched off its beat at tick {tick}");
                     launched.Add(hoppers[n].Id);
                 }
             }

@@ -79,7 +79,9 @@ internal sealed class AIThinkSystem : ISystem
                 if (time >= s[n].NextThink)
                 {
                     float period = 1f / MathF.Max(profile.ThinkRate, 0.1f);
-                    s[n].NextThink = time + period * (0.85f + 0.3f * ((entity.Id % 7) / 7f));   // staggered
+                    // Staggered by what a save keeps: a runtime id is another number after a load (#605).
+                    int stagger = world.TryGet<Persistent>(entity, out var persistent) ? persistent.Id.Value.GetHashCode() : entity.Id;
+                    s[n].NextThink = time + period * (0.85f + 0.3f * (((stagger & int.MaxValue) % 7) / 7f));
                     Perceive(world, entity, ref t[n], ref s[n], profile, time);
                     s[n].Conditions |= Hearing.Conditions(ref s[n], time);
                     bool moved = Routines.Think(world, _records, entity, ref s[n], profile, time, out var routine);

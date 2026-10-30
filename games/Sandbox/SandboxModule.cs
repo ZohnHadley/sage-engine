@@ -111,6 +111,10 @@ public sealed class HopSystem : ISystem
         return (tick + id * 37L) % period == 0;
     }
 
+    // The id its beat is offset by: what a save keeps, since a runtime id is another number after a load (#605).
+    public static int BeatId(World world, Entity entity) =>
+        (world.TryGet<Persistent>(entity, out var persistent) ? persistent.Id.Value.GetHashCode() : entity.Id) & 0xFFFF;
+
     public void Run(in SystemContext ctx)
     {
         float dt = ctx.Tick.Dt;
@@ -122,7 +126,7 @@ public sealed class HopSystem : ISystem
             for (int n = 0; n < t.Length; n++)
             {
                 bool grounded = t[n].LocalPosition.Y <= h[n].BaseY;
-                if (grounded && Beat(tick, dt, entities.EntityAt(n).Id)) h[n].Velocity = LaunchSpeed;
+                if (grounded && Beat(tick, dt, BeatId(ctx.World, entities.EntityAt(n)))) h[n].Velocity = LaunchSpeed;
                 if (grounded && h[n].Velocity <= 0) continue;
                 h[n].Velocity += Gravity * dt;
                 t[n].LocalPosition.Y = MathF.Max(h[n].BaseY, t[n].LocalPosition.Y + h[n].Velocity * dt);
@@ -211,27 +215,34 @@ public sealed class OrbitSystem : ISystem
     }
 }
 
-// Gameplay phase (Fixed): turns FacesCamera entities towards the active camera. Running at the tick
-// rate and drawn interpolated, it also shows the loop at work: try `sim_tickrate 5`.
+// Gameplay phase (Fixed): turns FacesCamera entities towards the player's eye, not the camera: that is
+// written at frame rate, and a tick that read it could not replay (#605). Running at the tick rate and drawn
+// interpolated, it also shows the loop at work: try `sim_tickrate 5`.
 // (Sprite billboarding proper is a renderer job; docs/design/06 §3.8.)
 [System("sandbox.face_camera", Phase.Gameplay)]
 public sealed class FaceCameraSystem : ISystem
 {
+    private const float EyeHeight = 1.6f;
     private readonly Query<Transform> _facing;
+    private readonly Query<Transform> _players;
 
     public FaceCameraSystem(World world)
     {
         _facing = world.Query<Transform>().AllTags(Tags.Get<FacesCamera>());
+        _players = world.Query<Transform>().AllTags(Tags.Get<PlayerControlled>());
     }
 
     public void Run(in SystemContext ctx)
     {
-        Vector3 camera = ctx.World.Resources.Get<ActiveCamera>().Position;
+        Vector3? eye = null;
+        foreach (var (players, _) in _players.Chunks)
+            if (players.Length > 0) eye = players.Span[0].LocalPosition + new Vector3(0, EyeHeight, 0);
+        if (eye is not { } target) return;
         foreach (var (transforms, _) in _facing.Chunks)
         {
             var t = transforms.Span;
             for (int n = 0; n < t.Length; n++)
-                TransformMath.Billboard(ref t[n], camera);
+                TransformMath.Billboard(ref t[n], target);
         }
     }
 }

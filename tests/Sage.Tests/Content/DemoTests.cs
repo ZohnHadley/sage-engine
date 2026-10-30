@@ -157,9 +157,7 @@ public class DemoTests
     }
 
     // The Sandbox, with its AI, physics and hopping toys: a demo recorded from launch (`+record`, as a
-    // regression run does) replays from launch in another app to the same hash. From launch, because what
-    // a save does not keep — the order entities were made in, an AI's thinking between saves — is then the
-    // same in both; recorded later in a session, the hash check is what says when it is not.
+    // regression run does) replays from launch in another app to the same hash.
     [Xunit.Fact]
     public void ADemoRecordedAtLaunchReplaysInTheSandbox()
     {
@@ -189,6 +187,42 @@ public class DemoTests
         }
     }
 
+    // And recorded later in a session, played in the same one (#605): every record and playback is a load, so
+    // a level that sank into its own flatten, or anything keyed on a runtime entity id, parts them here. Near,
+    // not exact: the physics space keeps its history, and a resting crate lands a millionth of a metre away.
+    [Xunit.Fact]
+    public void ADemoRecordedInTheSandboxMidSessionReplaysInThatSession()
+    {
+        string sandbox = Path.Combine(TestEnv.FolderAbove("Sage.sln"), "games", "Sandbox");
+        using var app = HeadlessApp.ForGame(sandbox, new global::Sandbox.SandboxModule()).WithEngineContent().Boot();
+        app.Engine.Saves.Root = Path.Combine(TestEnv.NewTempDir(), "saves");
+        app.Engine.Demos.Root = TestEnv.NewTempDir();
+        Step(app.World, 120);
+
+        Assert.True(app.CVars.Execute("record later"));
+        for (int i = 0; i < 120; i++) Command(app, new Vector2(MathF.Sin(i * 0.05f), 1f), i * 0.01f);
+        Assert.True(app.CVars.Execute("stop"));
+        var recorded = PlacedPositions(app);
+
+        PlayToEnd(app, "later");
+        var replayed = PlacedPositions(app);
+
+        Assert.Equal(recorded.Keys.OrderBy(k => k), replayed.Keys.OrderBy(k => k));
+        foreach (var (id, position) in recorded)
+            Assert.True(Vector3.Distance(position, replayed[id]) < 0.001f, $"{id} was at {position}, and replayed to {replayed[id]}");
+    }
+
+    // Where everything the scene and the maps placed stands, by its id, from the saved state.
+    private static Dictionary<string, Vector3> PlacedPositions(HeadlessApp app)
+    {
+        var positions = new Dictionary<string, Vector3>();
+        var state = System.Text.Json.Nodes.JsonNode.Parse(app.Engine.Saves.StateOf(app.World))!;
+        foreach (var entity in state["entities"]!.AsArray())
+            if (entity!["source"] != null && entity["components"]?["sage:transform"]?["data"]?["LocalPosition"] is { } at)
+                positions[entity["id"]!.GetValue<string>()] = new Vector3(at[0]!.GetValue<float>(), at[1]!.GetValue<float>(), at[2]!.GetValue<float>());
+        return positions;
+    }
+
     // The hash is over saved state: the same world twice is one hash, a moved player another.
     [Xunit.Fact]
     public void TheWorldHashFollowsTheSavedState()
@@ -199,6 +233,22 @@ public class DemoTests
         Assert.Equal(before, WorldHash.Of(world));
         world.Teleport(Player(world), Transform.At(new Vector3(2, 0.1f, 2)));
         Assert.NotEqual(before, WorldHash.Of(world));
+    }
+
+    // But not over a camera rig's transform, which is written at frame rate: how the last frame fell is not
+    // the simulation (#605).
+    [Xunit.Fact]
+    public void TheWorldHashLeavesOutACameraRigsTransform()
+    {
+        using var app = Boot(TestEnv.NewTempDir());
+        var world = app.World;
+        var rig = Goblin(world);
+#pragma warning disable SAGE0123 // the rig's tag, on something the save holds
+        rig.AddTag<PlayerCamera>();
+#pragma warning restore SAGE0123
+        ulong before = WorldHash.Of(world);
+        world.Get<Transform>(rig).LocalPosition.Y += 0.02f;
+        Assert.Equal(before, WorldHash.Of(world));
     }
 
     // A demo recorded with another build and other mods is refused, with both reasons, before anything is

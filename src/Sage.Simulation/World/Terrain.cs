@@ -217,7 +217,13 @@ public sealed class Terrain
     {
         Version++;
         _ahead.Clear();
+        LevelGround.Clear();
     }
+
+    // The ground each level first stood on, by its source and absolute place (#605). A load places a level again
+    // and the ground under it is its own flatten by then: read again, the level and the ground sink every load.
+    // Gone when the ground is another one (Changed).
+    internal Dictionary<(string Level, double X, double Z), float> LevelGround { get; } = new();
 
     // ---- sculpt (issue #372) ---------------------------------------------------------------------------
     //

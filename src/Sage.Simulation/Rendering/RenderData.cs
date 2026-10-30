@@ -24,7 +24,7 @@ public readonly record struct MeshHandle(int Id)
 public struct MeshRenderer : IComponent
 {
     [AssetKind("mesh")] public AssetPath Mesh;
-    public MeshHandle Handle;
+    [Transient] public MeshHandle Handle;   // the renderer's number this run; what built it builds it again
     [RecordRef("material")] public RecordId Material;
     public byte Layer;   // sort layer (0..15), before material in the sort key (06 §3.5)
     // Its LOD group (issue 4n-1, MeshLod): the coarser meshes it switches to with distance, and where it
