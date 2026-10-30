@@ -16,6 +16,9 @@ namespace Sage.Simulation;
 public readonly record struct MeshHandle(int Id)
 {
     public bool IsEmpty => Id == 0;
+
+    // Which life of the slot this is: a handle kept past DestroyMesh draws nothing, not what reused the slot.
+    public int Generation { get; init; }
 }
 
 // Draws a mesh at the entity's interpolated GlobalTransform (06 §3.2), either a mesh asset (Mesh) or

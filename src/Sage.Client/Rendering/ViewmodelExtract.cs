@@ -127,6 +127,7 @@ internal sealed class ViewmodelExtract : ISystem
         public readonly void Mesh(Entity entity, in MeshRenderer renderer, in System.Numerics.Matrix4x4 world)
         {
             var r = Owner._renderer;
+            if (!renderer.Handle.IsEmpty && !r.IsCurrent(renderer.Handle)) return;
             int meshId = renderer.Handle.IsEmpty ? r.ResolveMesh(renderer.Mesh) : renderer.Handle.Id;
             var mesh = r.Mesh(meshId);
             int materialId = mesh.IsError ? 0 : r.Materials.Resolve(renderer.Material);

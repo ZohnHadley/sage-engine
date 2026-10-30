@@ -194,7 +194,7 @@ internal sealed class MonoGameAudioBackend : IAudioBackend
 
     private SoundEffectInstance? StartWhole(Voice voice)
     {
-        var effect = _content.LoadSound(voice.Asset);
+        var effect = _content.LoadSound(voice.Asset, AssetScope.Sector);
         if (effect == null) return null;
         var instance = effect.CreateInstance();
         instance.IsLooped = voice.Loop;

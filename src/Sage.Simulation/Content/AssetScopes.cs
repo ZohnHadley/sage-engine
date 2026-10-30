@@ -1,22 +1,26 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Sage.Simulation;
 
 // Asset scopes, ref-counted release, eviction and the upload budget (issue #308; docs/design/05 §3.3, §3.4).
 //
-// The client's GPU objects (meshes, textures) live in `AssetTable`s; this file is their bookkeeping, kept
+// The client's meshes, textures, sounds and effects live in `AssetTable`s; this file is their bookkeeping, kept
 // headless so a test can prove it without a graphics device. Who owns what:
 //
 //   * **AssetTable<T>**: one kind of loaded thing by stable id. Slot 0 is the placeholder (the error mesh,
 //     the checker texture), which is never evicted. A freed slot is reused by the next load and ids never
 //     shift, because snapshots, materials and components hold them.
-//   * **SectorAssets** (one per streaming world): how many live entities hold each mesh and texture, and
-//     which a sector released when it unloaded.
+//   * **SectorAssets** (one per streaming world): how many live entities hold each asset, and which a
+//     sector released when it unloaded.
 //   * **AssetReleases**: what the sectors of every world released, handed to the client at the frame's
-//     safe point (FrameUpdate, before Extract) — and only what no world holds again by then.
+//     safe point (FrameUpdate, before Extract) — and only what no world holds again by then. A sound a
+//     voice is still playing waits until it has finished.
 //   * **UploadBudget**: how many milliseconds of loading a frame may spend on streamed content.
+//   * **AssetDecodes**: streamed textures being decoded on worker threads, for the main thread to upload
+//     within that budget (#612).
 //
 // The scopes (05 §3.3), and when each lets go:
 //
@@ -37,18 +41,22 @@ internal enum AssetScope : byte
     Ui,
 }
 
-// What SectorAssets counts. Effects and sounds are the game's (a handful each, shared by everything).
+// What SectorAssets counts.
 internal enum AssetType : byte
 {
     Mesh,
     Texture,
+    Sound,
+    Effect,
 }
 
 internal readonly record struct AssetKey(AssetType Type, AssetPath Path)
 {
     public static AssetKey Mesh(AssetPath path) => new(AssetType.Mesh, path);
     public static AssetKey Texture(AssetPath path) => new(AssetType.Texture, path);
-    public override string ToString() => $"{(Type == AssetType.Mesh ? "mesh" : "texture")} {Path}";
+    public static AssetKey Sound(AssetPath path) => new(AssetType.Sound, path);
+    public static AssetKey Effect(AssetPath path) => new(AssetType.Effect, path);
+    public override string ToString() => $"{Type.ToString().ToLowerInvariant()} {Path}";
 }
 
 internal static class AssetScopes
@@ -79,6 +87,7 @@ internal sealed class AssetTable<T> where T : class
         public AssetScope Scope;
         public long Bytes;          // what it takes on the GPU, as near as the loader can say
         public long LastUsed;       // the frame it was last asked for
+        public int Generation;      // how many times this slot has been freed: what tells a stale handle (#612)
     }
 
     private Entry[] _entries = new Entry[16];
@@ -112,6 +121,9 @@ internal sealed class AssetTable<T> where T : class
 
     public bool IsLive(int id) => id > 0 && id < _length && _entries[id].Value != null;
 
+    // Whether `generation` is the one living in this slot now, not one freed since.
+    public bool IsCurrent(int id, int generation) => IsLive(id) && _entries[id].Generation == generation;
+
     // The id a path was loaded under: 0 when it was tried and failed (draw the placeholder), false when it
     // has not been asked for.
     public bool TryFind(AssetPath path, out int id) => _ids.TryGetValue(path, out id);
@@ -142,13 +154,35 @@ internal sealed class AssetTable<T> where T : class
         long started = System.Diagnostics.Stopwatch.GetTimestamp();
         var (value, bytes) = load(path);
         if (budgeted) budget!.Spend(System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-        if (value == null)
-        {
-            AddFailed(path);
-            id = 0;
-        }
-        else id = Add(path, value, scope, bytes, frame);
+        id = Store(path, value, scope, bytes, frame);
         return true;
+    }
+
+    // As TryResolve, with the slow part off the main thread (#612): `decode` runs on a worker, false until
+    // it has finished and the frame has budget left, and only `upload` is timed against the budget.
+    public bool TryResolve<TData>(AssetPath path, AssetScope scope, long frame, UploadBudget budget, AssetDecodes<TData> decodes,
+                                  Func<AssetPath, TData?> decode, Func<AssetPath, TData, (T? Value, long Bytes)> upload, out int id)
+        where TData : class
+    {
+        if (_ids.TryGetValue(path, out id))
+        {
+            Use(id, scope, frame);
+            return true;
+        }
+        if (!decodes.Ready(path, decode) || !budget.TryStart()) return false;
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var data = decodes.Take(path);
+        var (value, bytes) = data == null ? (null, 0) : upload(path, data);
+        budget.Spend(System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        id = Store(path, value, scope, bytes, frame);
+        return true;
+    }
+
+    private int Store(AssetPath path, T? value, AssetScope scope, long bytes, long frame)
+    {
+        if (value != null) return Add(path, value, scope, bytes, frame);
+        AddFailed(path);
+        return 0;
     }
 
     // A released asset (AssetReleases): freed when it is loaded at a scope a sector lets go of (Sector or
@@ -191,7 +225,7 @@ internal sealed class AssetTable<T> where T : class
         if (id <= 0 || id >= _length || _entries[id].Value == null) return null;
         var entry = _entries[id];
         if (!entry.Path.IsEmpty && _ids.TryGetValue(entry.Path, out int mapped) && mapped == id) _ids.Remove(entry.Path);
-        _entries[id] = default;
+        _entries[id] = new Entry { Generation = entry.Generation + 1 };
         _free.Push(id);
         Count--;
         Bytes -= entry.Bytes;
@@ -252,6 +286,7 @@ internal sealed class AssetTable<T> where T : class
             if (_length == _entries.Length) Array.Resize(ref _entries, _entries.Length * 2);
             id = _length++;
         }
+        entry.Generation = _entries[id].Generation;
         _entries[id] = entry;
         Count++;
         Bytes += entry.Bytes;
@@ -280,21 +315,34 @@ internal sealed class AssetReleases
     }
 
     // Every pending key no world holds now goes to `evict`, which frees it if it is loaded at a scope a
-    // sector may let go of and returns whether it did. Returns how many were freed.
+    // sector may let go of and returns whether it did. Returns how many were freed. A sound still playing
+    // stays pending, because freeing it would cut the voice off: a one-shot can outlive its sector's source.
     public int Collect(IReadOnlyList<World> worlds, Func<AssetKey, bool> evict)
     {
         if (_pending.Count == 0) return 0;
-        int n = 0;
+        int n = 0, kept = 0;
         for (int i = 0; i < _pending.Count; i++)
         {
             var key = _pending[i];
-            if (IsHeld(worlds, key)) continue;
-            if (evict(key)) n++;
+            bool held = IsHeld(worlds, key);
+            if (!held && key.Type == AssetType.Sound && IsPlaying(worlds, key.Path))
+            {
+                _pending[kept++] = key;
+                continue;
+            }
+            _queued.Remove(key);
+            if (!held && evict(key)) n++;
         }
-        _pending.Clear();
-        _queued.Clear();
+        _pending.RemoveRange(kept, _pending.Count - kept);
         Evicted += n;
         return n;
+    }
+
+    private static bool IsPlaying(IReadOnlyList<World> worlds, AssetPath sound)
+    {
+        for (int w = 0; w < worlds.Count; w++)
+            if (worlds[w].Resources.TryGet<AudioMixer>(out var mixer) && mixer != null && mixer.Plays(sound)) return true;
+        return false;
     }
 
     // Held by a live entity in any world.
@@ -358,9 +406,37 @@ internal sealed class UploadBudget
     public void Spend(double milliseconds) => Spent += milliseconds;
 }
 
-// Which assets a component draws with, as SectorAssets counts them: its mesh, and the textures of its sprite
-// sheet, particle effect and named material. A default material (an empty `Material`) is the engine's, and
-// its textures are not counted: nothing a sector does releases them.
+// Streamed decodes running on worker threads (#612): pure CPU work, whose result the main thread takes
+// when it has the budget to upload it. Main thread only; a decode nobody takes is dropped with `Cancel`.
+internal sealed class AssetDecodes<TData> where TData : class
+{
+    private readonly Dictionary<AssetPath, Task<TData?>> _running = new();
+
+    public int Running => _running.Count;
+
+    // Whether the decode has finished, starting it the first time it is asked about.
+    public bool Ready(AssetPath path, Func<AssetPath, TData?> decode)
+    {
+        if (_running.TryGetValue(path, out var task)) return task.IsCompleted;
+        Start(path, decode);
+        return false;
+    }
+
+    private void Start(AssetPath path, Func<AssetPath, TData?> decode) => _running[path] = Task.Run(() => decode(path));
+
+    // A finished decode's result; a decode that threw throws here, on the main thread, as a load there would.
+    public TData? Take(AssetPath path)
+    {
+        _running.Remove(path, out var task);
+        return task!.GetAwaiter().GetResult();
+    }
+
+    public void Cancel(AssetPath path) => _running.Remove(path);
+}
+
+// Which assets a component uses, as SectorAssets counts them: its mesh, the textures of its sprite sheet,
+// particle effect and named material, that material's effect, and an audio source's sound files. A default
+// material (an empty `Material`) is the engine's, and is not counted: nothing a sector does releases it.
 internal static class AssetUse
 {
     public static void Of(RecordStore? records, in MeshRenderer renderer, List<AssetKey> keys)
@@ -392,10 +468,17 @@ internal static class AssetUse
         MaterialTextures(records, effect.Material.Id, keys);
     }
 
+    public static void Of(RecordStore? records, in AudioSource source, List<AssetKey> keys)
+    {
+        if (records == null || !Registered<SoundRecord>(records, "sound") || !records.TryGet(source.Sound, out SoundRecord sound)) return;
+        foreach (var file in sound.Variations) keys.Add(AssetKey.Sound(file));
+    }
+
     private static void MaterialTextures(RecordStore? records, RecordId material, List<AssetKey> keys)
     {
         if (material.IsEmpty || records == null || !Registered<MaterialRecord>(records, "material")) return;
         if (!records.TryGet(material, out MaterialRecord record)) return;
+        if (!record.Effect.IsEmpty) keys.Add(AssetKey.Effect(record.Effect));
         foreach (var (_, value) in record.Params)
             if (value.IsTexture) keys.Add(AssetKey.Texture(value.Texture));
     }

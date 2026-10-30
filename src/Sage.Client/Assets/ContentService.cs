@@ -26,11 +26,17 @@ namespace Sage.Client;
 // bytes, which is what lets a mod replace one and a game ship art it made this morning.
 // A failed load logs once and returns null; callers draw placeholders (05 §8).
 //
-// **Textures have scopes** (issue #308, Sage.Simulation's Content/AssetScopes.cs): they live in an
-// `AssetTable` by stable id (the renderer's sprite and particle ids are these), each at the strongest
-// scope it was asked for. A Sector texture is evicted when the sectors that drew it unload (the renderer
-// collects them at its frame's safe point), a Ui one when no screen has drawn it for a while, and an
-// Engine or Game one stays. Effects, fonts and sounds are kept for the process, as before.
+// **Textures, sounds and effects have scopes** (issues #308, #612, Sage.Simulation's Content/AssetScopes.cs):
+// they live in `AssetTable`s by stable id (the renderer's sprite and particle ids are these), each at the
+// strongest scope it was asked for. A Sector asset is evicted when the sectors that used it unload (the
+// renderer collects them at its frame's safe point), a Ui one when no screen has drawn it for a while, and
+// an Engine or Game one stays. A voice's sound asks at the Sector scope: only a sector's `AudioSource` ever
+// releases one, so a sound nothing in a sector holds stays, and so does everything in a world that does
+// not stream. Fonts are kept for the process, as before.
+//
+// **A streamed texture decodes on a worker** (#612): `TryResolveTexture` starts it and answers "not yet",
+// and the frame that finds it done uploads it within `asset_upload_ms`. Everything else loads where it is
+// asked for, as a mesh still does.
 //
 // Dev hot reload (05 §3.6, F32): `Reload` drops one asset and raises `Reloaded`. Anything holding the
 // old object by reference — the renderer's texture table, a built material — listens and re-resolves;
@@ -41,10 +47,11 @@ public sealed class ContentService : IDisposable
 {
     private readonly GraphicsDevice _device;
     private readonly VirtualFileSystem _vfs;
-    private readonly Dictionary<AssetPath, Effect?> _effects = new();
+    private readonly AssetTable<Effect> _effects = new(null);
     private readonly AssetTable<Texture2D> _textures;
+    private readonly AssetDecodes<CookedTextureData> _decodes = new();
     private readonly Dictionary<AssetPath, BitmapFont?> _fonts = new();
-    private readonly Dictionary<AssetPath, Microsoft.Xna.Framework.Audio.SoundEffect?> _sounds = new();
+    private readonly AssetTable<Microsoft.Xna.Framework.Audio.SoundEffect> _sounds = new(null);
     private readonly HashSet<AssetPath> _streamed = new();   // files opened to stream, for hot reload (issue #326)
 
     // The device textures are made on: what a glyph atlas's texture is made on too (#338).
@@ -58,10 +65,23 @@ public sealed class ContentService : IDisposable
         MissingTexture = new Texture2D(_device, 2, 2) { Name = "(missing)" };
         MissingTexture.SetData(new[] { Color.Magenta, Color.Black, Color.Black, Color.Magenta });
         _textures = new AssetTable<Texture2D>(MissingTexture);
-        _readTexture = path => (ReadTexture(path, out long bytes), bytes);
+        _readTexture = path =>
+        {
+            _decodes.Cancel(path);
+            return ReadTexture(path);
+        };
+        _decodeTexture = DecodeTexture;
+        _uploadTexture = UploadTexture;
+        _readEffect = path => (ReadEffect(path, out long bytes), bytes);
+        _readSound = path => (ReadSound(path, out long bytes), bytes);
     }
 
-    private readonly Func<AssetPath, (Texture2D?, long)> _readTexture;   // made once: resolving is per sprite per frame
+    // Made once: resolving is per sprite per frame.
+    private readonly Func<AssetPath, (Texture2D?, long)> _readTexture;
+    private readonly Func<AssetPath, CookedTextureData?> _decodeTexture;
+    private readonly Func<AssetPath, CookedTextureData, (Texture2D?, long)> _uploadTexture;
+    private readonly Func<AssetPath, (Effect?, long)> _readEffect;
+    private readonly Func<AssetPath, (Microsoft.Xna.Framework.Audio.SoundEffect?, long)> _readSound;
 
     // The checker every missing texture draws as: texture id 0, never evicted.
     internal Texture2D MissingTexture { get; }
@@ -72,8 +92,12 @@ public sealed class ContentService : IDisposable
     // The texture table (ids, scopes, sizes), for the renderer and `asset_list`.
     internal AssetTable<Texture2D> Textures => _textures;
 
-    // Raised after a texture was evicted, with its path: whoever holds it by reference lets go (the
-    // renderer rebuilds its materials).
+    // The same for `asset_list`.
+    internal AssetTable<Microsoft.Xna.Framework.Audio.SoundEffect> Sounds => _sounds;
+    internal AssetTable<Effect> Effects => _effects;
+
+    // Raised after a texture or an effect was evicted, with its path: whoever holds it by reference lets go
+    // (the renderer rebuilds its materials).
     internal event Action<AssetPath>? Evicted;
 
     // Raised on the main thread after an asset has been reloaded, with the path that changed.
@@ -98,6 +122,7 @@ public sealed class ContentService : IDisposable
     // done about it.
     public bool Reload(AssetPath path)
     {
+        _decodes.Cancel(path);   // it may be reading the old file
         if (_textures.TryFind(path, out int textureId))
         {
             // Read again outside the table, and swapped into the same slot so every id handed out sees it
@@ -105,7 +130,7 @@ public sealed class ContentService : IDisposable
             if (textureId == 0) _textures.Forget(path);
             else
             {
-                var fresh = ReadTexture(path, out long bytes);
+                var (fresh, bytes) = ReadTexture(path);
                 if (fresh == null)
                 {
                     Log.Warn(LogCat.Assets, $"{path} did not reload; keeping the copy already loaded");
@@ -126,17 +151,15 @@ public sealed class ContentService : IDisposable
             return true;
         }
 
-        if (_effects.TryGetValue(path, out var oldEffect))
+        if (_effects.TryFind(path, out int effectId))
         {
-            _effects.Remove(path);
-            var fresh = LoadEffect(path);
-            if (fresh == null || ReferenceEquals(fresh, oldEffect))
+            var fresh = ReadEffect(path, out long bytes);
+            if (fresh == null)
             {
-                _effects[path] = oldEffect;
                 Log.Warn(LogCat.Assets, $"{path} did not reload; keeping the effect already loaded");
                 return false;
             }
-            oldEffect?.Dispose();
+            Swap(_effects, path, effectId, fresh, bytes);
             Log.Info(LogCat.Assets, $"Reloaded effect {path}");
             Reloaded?.Invoke(path);
             return true;
@@ -145,18 +168,16 @@ public sealed class ContentService : IDisposable
         // A sound (issue 4h-3). MonoGame's ownership is the catch: disposing a `SoundEffect` disposes
         // the instances made from it, so the backends drop theirs first (`SoundReplacing`) and the
         // mixers stop the one-shots and restart the loops from the fresh file.
-        if (_sounds.TryGetValue(path, out var oldSound))
+        if (_sounds.TryFind(path, out int soundId))
         {
-            _sounds.Remove(path);
-            var fresh = LoadSound(path);
-            if (fresh == null || ReferenceEquals(fresh, oldSound))
+            var fresh = ReadSound(path, out long bytes);
+            if (fresh == null)
             {
-                _sounds[path] = oldSound;
                 Log.Warn(LogCat.Audio, $"{path} did not reload; keeping the sound already loaded");
                 return false;
             }
             SoundReplacing?.Invoke(path);
-            oldSound?.Dispose();
+            Swap(_sounds, path, soundId, fresh, bytes);
             Log.Info(LogCat.Assets, $"Reloaded sound {path}");
             Reloaded?.Invoke(path);
             return true;
@@ -182,6 +203,18 @@ public sealed class ContentService : IDisposable
         return false;
     }
 
+    // A reload's result in the old slot, the old value disposed; a path that had failed gets a slot now.
+    private void Swap<T>(AssetTable<T> table, AssetPath path, int id, T fresh, long bytes) where T : class, IDisposable
+    {
+        if (id != 0)
+        {
+            table.Replace(id, fresh, bytes)?.Dispose();
+            return;
+        }
+        table.Forget(path);
+        table.Add(path, fresh, AssetScope.Game, bytes, Frame);
+    }
+
     // Everything currently loaded, for `asset_reload`. Every one of them is a *file* since R12, and all
     // of them can be reloaded: a sound since issue 4h-3 (the backends drop their instances first).
     // Models are not listed: the renderer's mesh table holds them, and `asset_reload <path>` asks it.
@@ -192,9 +225,11 @@ public sealed class ContentService : IDisposable
         {
             foreach (var (_, entry) in _textures.Entries) yield return (entry.Path, "texture", true);
             foreach (var path in _textures.Failed) yield return (path, "texture", true);
-            foreach (var path in _effects.Keys) yield return (path, "effect", true);
+            foreach (var (_, entry) in _effects.Entries) yield return (entry.Path, "effect", true);
+            foreach (var path in _effects.Failed) yield return (path, "effect", true);
             foreach (var path in _fonts.Keys) yield return (path, "font", true);
-            foreach (var path in _sounds.Keys) yield return (path, "sound", true);
+            foreach (var (_, entry) in _sounds.Entries) yield return (entry.Path, "sound", true);
+            foreach (var path in _sounds.Failed) yield return (path, "sound", true);
             foreach (var path in _streamed) yield return (path, "sound (streamed)", true);
         }
     }
@@ -254,10 +289,20 @@ public sealed class ContentService : IDisposable
         }
     }
 
-    public Effect? LoadEffect(AssetPath path)
+    // An effect, at the game's scope: kept for the process.
+    public Effect? LoadEffect(AssetPath path) => LoadEffect(path, AssetScope.Game);
+
+    // An effect at a scope: a Sector one goes when no live entity's material uses it (#612).
+    internal Effect? LoadEffect(AssetPath path, AssetScope scope)
     {
-        if (_effects.TryGetValue(path, out var effect)) return effect;
-        effect = null;
+        _effects.TryResolve(path, scope, Frame, null, _readEffect, out int id);
+        return id == 0 ? null : _effects[id];
+    }
+
+    private Effect? ReadEffect(AssetPath path, out long bytes)
+    {
+        bytes = 0;
+        Effect? effect = null;
         var mount = _vfs.Which(path.Path);
         if (mount == null) Log.Warn(LogCat.Shaders, $"Effect '{path}' not found in any mount");
         else
@@ -268,6 +313,7 @@ public sealed class ContentService : IDisposable
                 using var memory = new MemoryStream();
                 stream.CopyTo(memory);
                 effect = new Effect(_device, memory.ToArray()) { Name = path.ToString() };
+                bytes = memory.Length;
                 Log.Debug(LogCat.Shaders, $"Loaded effect {path} from {mount.Name}");
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException)
@@ -275,15 +321,23 @@ public sealed class ContentService : IDisposable
                 Log.Error(LogCat.Shaders, $"Effect '{path}' from {mount.Name} failed to load: {ex.Message}");
             }
         }
-        return _effects[path] = effect;
+        return effect;
     }
 
     // A WAV or an Ogg Vorbis file through the VFS (11 §3, 05 §3.2). `SoundEffect.FromStream` takes RIFF
     // wave data; a `.ogg` is decoded to PCM whole first (OggVorbis, issue #302).
-    public Microsoft.Xna.Framework.Audio.SoundEffect? LoadSound(AssetPath path)
+    public Microsoft.Xna.Framework.Audio.SoundEffect? LoadSound(AssetPath path) => LoadSound(path, AssetScope.Game);
+
+    internal Microsoft.Xna.Framework.Audio.SoundEffect? LoadSound(AssetPath path, AssetScope scope)
     {
-        if (_sounds.TryGetValue(path, out var sound)) return sound;
-        sound = null;
+        _sounds.TryResolve(path, scope, Frame, null, _readSound, out int id);
+        return id == 0 ? null : _sounds[id];
+    }
+
+    private Microsoft.Xna.Framework.Audio.SoundEffect? ReadSound(AssetPath path, out long bytes)
+    {
+        bytes = 0;
+        Microsoft.Xna.Framework.Audio.SoundEffect? sound = null;
 
         if (_vfs.Which(path.Path) is not { } mount)
         {
@@ -297,10 +351,15 @@ public sealed class ContentService : IDisposable
                 if (path.Path.Value.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase))
                 {
                     var pcm = OggVorbis.Decode(stream);
+                    bytes = pcm.Samples.Length;
                     sound = new Microsoft.Xna.Framework.Audio.SoundEffect(pcm.Samples, pcm.SampleRate,
                         pcm.Channels == 1 ? Microsoft.Xna.Framework.Audio.AudioChannels.Mono : Microsoft.Xna.Framework.Audio.AudioChannels.Stereo);
                 }
-                else sound = Microsoft.Xna.Framework.Audio.SoundEffect.FromStream(stream);
+                else
+                {
+                    bytes = stream.Length;
+                    sound = Microsoft.Xna.Framework.Audio.SoundEffect.FromStream(stream);
+                }
                 sound.Name = path.ToString();
                 Log.Debug(LogCat.Audio, $"Loaded sound {path} ({sound.Duration.TotalSeconds:F2}s) from {mount.Name}");
             }
@@ -310,7 +369,7 @@ public sealed class ContentService : IDisposable
                 Log.Once(LogCat.Audio, LogLevel.Error, $"sound-load:{path}", $"Sound '{path}': {ex.Message}");
             }
         }
-        return _sounds[path] = sound;
+        return sound;
     }
 
     // An Ogg Vorbis file opened to be decoded as it plays (issue #326, `"stream": true` on the sound): nothing
@@ -347,17 +406,44 @@ public sealed class ContentService : IDisposable
         return id;
     }
 
-    // As ResolveTexture, a Sector-scoped load waiting for a frame with upload budget left (05 §3.4).
-    internal bool TryResolveTexture(AssetPath path, AssetScope scope, UploadBudget budget, out int id) =>
-        _textures.TryResolve(path, scope, Frame, budget, _readTexture, out id);
+    // As ResolveTexture, a Sector-scoped load decoded on a worker and uploaded in a frame with upload budget
+    // left (05 §3.4, #612): false means "not loaded yet, draw nothing for it this frame".
+    internal bool TryResolveTexture(AssetPath path, AssetScope scope, UploadBudget budget, out int id)
+    {
+        if (scope == AssetScope.Sector) return _textures.TryResolve(path, scope, Frame, budget, _decodes, _decodeTexture, _uploadTexture, out id);
+        id = ResolveTexture(path, scope);
+        return true;
+    }
 
     // Frees a texture (issue #308): the renderer's eviction, at its safe point. Fonts drawn from it go too
     // (made again on next use), and `Evicted` tells whoever holds it by reference. False when it was not
     // loaded, or is the engine's.
     internal bool EvictTexture(AssetPath path)
     {
+        _decodes.Cancel(path);
         if (!_textures.TryEvict(path, out var texture) || texture == null) return false;
         Released(path, texture);
+        return true;
+    }
+
+    // Frees a sound (#612). AssetReleases keeps one a voice is playing, so this cuts nothing off; the
+    // backends still let go of whatever instance is left, since disposing the sound would dispose it.
+    internal bool EvictSound(AssetPath path)
+    {
+        if (!_sounds.TryEvict(path, out var sound) || sound == null) return false;
+        SoundReplacing?.Invoke(path);
+        sound.Dispose();
+        Log.Debug(LogCat.Assets, $"Evicted sound {path}");
+        return true;
+    }
+
+    // Frees an effect (#612): `Evicted` drops the materials and bindings built on it.
+    internal bool EvictEffect(AssetPath path)
+    {
+        if (!_effects.TryEvict(path, out var effect) || effect == null) return false;
+        effect.Dispose();
+        Log.Debug(LogCat.Assets, $"Evicted effect {path}");
+        Evicted?.Invoke(path);
         return true;
     }
 
@@ -374,40 +460,47 @@ public sealed class ContentService : IDisposable
     }
 
     // Reads a texture off its mount (or its cooked file) onto the GPU, outside the table.
-    private Texture2D? ReadTexture(AssetPath path, out long bytes)
+    private (Texture2D?, long) ReadTexture(AssetPath path) =>
+        DecodeTexture(path) is { } data ? UploadTexture(path, data) : (null, 0);
+
+    // The file to pixels, cooked or loose: no GPU here, because a streamed texture does this on a worker.
+    private CookedTextureData? DecodeTexture(AssetPath path) => CookedAssets.LoadTexture(_vfs, path.Path) ?? DecodeLoose(path);
+
+    private CookedTextureData? DecodeLoose(AssetPath path)
     {
-        bytes = 0;
-        Texture2D? texture = null;
-        if (CookedAssets.LoadTexture(_vfs, path.Path) is { } cooked && FromCooked(path, cooked) is { } fromCooked)
-        {
-            Log.Debug(LogCat.Assets, $"Loaded cooked texture {path} ({cooked.Width}x{cooked.Height} {cooked.Format})");
-            bytes = cooked.Data.Length;
-            return fromCooked;
-        }
         if (_vfs.Which(path.Path) is not { } mount)
         {
             Log.Warn(LogCat.Assets, $"Texture '{path}' not found in any mount");
+            return null;
         }
-        else
+        WorkStats.LoadStarted();   // `stat assets` (issue #300)
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try
         {
-            WorkStats.LoadStarted();   // `stat assets` (issue #300)
-            long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            try
-            {
-                // Decoded, premultiplied and mipmapped headlessly (issue #317), as a cook would, uncompressed.
-                var loose = CookedAssets.ReadLooseTexture(mount, path.Path);
-                texture = FromCooked(path, loose) ?? throw new InvalidDataException("the GPU texture could not be made");
-                bytes = loose.GpuBytes;
-                WorkStats.Uploaded(bytes);
-                Log.Debug(LogCat.Assets, $"Loaded texture {path} ({texture.Width}x{texture.Height}, {texture.LevelCount} level(s)) from {mount.Name}");
-            }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException or InvalidDataException)
-            {
-                Log.Warn(LogCat.Assets, $"Texture '{path}' from {mount.Name} failed to decode: {ex.Message}");
-            }
-            finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
+            // Decoded, premultiplied and mipmapped headlessly (issue #317), as a cook would, uncompressed.
+            return CookedAssets.ReadLooseTexture(mount, path.Path);
         }
-        return texture;
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException or NotSupportedException or InvalidDataException)
+        {
+            Log.Warn(LogCat.Assets, $"Texture '{path}' from {mount.Name} failed to decode: {ex.Message}");
+            return null;
+        }
+        finally { WorkStats.LoadFinished(System.Diagnostics.Stopwatch.GetTimestamp() - started); }
+    }
+
+    // Decoded pixels onto the GPU. A cooked file the device cannot take falls back to the loose one.
+    private (Texture2D?, long) UploadTexture(AssetPath path, CookedTextureData data)
+    {
+        var texture = FromCooked(path, data);
+        if (texture == null && data.Format != CookedTextureFormat.Rgba && DecodeLoose(path) is { } loose)
+        {
+            data = loose;
+            texture = FromCooked(path, data);
+        }
+        if (texture == null) return (null, 0);
+        WorkStats.Uploaded(data.GpuBytes);
+        Log.Debug(LogCat.Assets, $"Loaded texture {path} ({texture.Width}x{texture.Height}, {texture.LevelCount} level(s), {data.Format})");
+        return (texture, data.GpuBytes);
     }
 
     // A cooked texture on the GPU, every mip level of it: its blocks as they are where the device samples
@@ -462,9 +555,9 @@ public sealed class ContentService : IDisposable
 
     public void Dispose()
     {
-        foreach (var e in _effects.Values) e?.Dispose();
+        foreach (var (_, entry) in _effects.Entries) entry.Value?.Dispose();
         foreach (var (_, entry) in _textures.Entries) entry.Value?.Dispose();
         MissingTexture.Dispose();
-        foreach (var sound in _sounds.Values) sound?.Dispose();
+        foreach (var (_, entry) in _sounds.Entries) entry.Value?.Dispose();
     }
 }

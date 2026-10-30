@@ -14,8 +14,9 @@ namespace Sage.Simulation;
 // The rule is **ref-counted by live users, released by the sector that let go**:
 //
 //   * every live `MeshRenderer` and `SkinnedMeshRenderer` holds a reference to its mesh path, and every
-//     drawing component (those two, `SpriteRenderer`, `ParticleEmitter`) to the textures it draws with
-//     (`AssetUse`), counted from the world's structural events (an entity counts what it had when the
+//     drawing component (those two, `SpriteRenderer`, `ParticleEmitter`) to the textures and effect it
+//     draws with, and every `AudioSource` to its sound files (`AssetUse`), counted from the world's
+//     structural events (an entity counts what it had when the
 //     component was added, so a record reloaded since cannot unbalance the count);
 //   * when a sector leaves — its terrain unloads (Terrain.Unloaded) or a streamed sector goes dormant
 //     (StreamedScene.Unplace) — what it destroys is destroyed inside `Leave()`, and an asset whose count
@@ -80,7 +81,8 @@ internal sealed class SectorAssets
     }
 
     private static bool Tracked(Type type) =>
-        type == typeof(MeshRenderer) || type == typeof(SkinnedMeshRenderer) || type == typeof(SpriteRenderer) || type == typeof(ParticleEmitter);
+        type == typeof(MeshRenderer) || type == typeof(SkinnedMeshRenderer) || type == typeof(SpriteRenderer) || type == typeof(ParticleEmitter)
+        || type == typeof(AudioSource);
 
     private void OnAdded(Entity entity, Type type)
     {
@@ -95,7 +97,8 @@ internal sealed class SectorAssets
         }
         else if (type == typeof(SkinnedMeshRenderer)) AssetUse.Of(_records, _world.Get<SkinnedMeshRenderer>(entity), _scratch);
         else if (type == typeof(SpriteRenderer)) AssetUse.Of(_records, _world.Get<SpriteRenderer>(entity), _scratch);
-        else AssetUse.Of(_records, _world.Get<ParticleEmitter>(entity), _scratch);
+        else if (type == typeof(ParticleEmitter)) AssetUse.Of(_records, _world.Get<ParticleEmitter>(entity), _scratch);
+        else AssetUse.Of(_records, _world.Get<AudioSource>(entity), _scratch);
 
         // Taken before the old ones are dropped, so a component set again with the same assets never
         // passes through zero.

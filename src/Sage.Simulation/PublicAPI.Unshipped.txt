@@ -932,3 +932,5 @@ Sage.Simulation.PointLight.FadeFrom -> float
 static Sage.Simulation.LightRules.Switch(ref Sage.Simulation.PointLight light, bool off, double seconds) -> void
 Sage.Simulation.TerrainLayer.Surface -> Sage.Core.RecordId
 Sage.Simulation.TerrainMaterialRecord.LayerAt(Sage.Simulation.Heightfield! heights, int x, int z) -> int
+Sage.Simulation.MeshHandle.Generation.get -> int
+Sage.Simulation.MeshHandle.Generation.init -> void

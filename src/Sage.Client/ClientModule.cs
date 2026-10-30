@@ -383,11 +383,13 @@ public sealed class ClientModule : IModule
             foreach (var (_, entry) in _renderer.Meshes.Entries)
                 if (!entry.Path.IsEmpty) Row(entry.Path, "mesh", AssetType.Mesh, entry.Scope, entry.Bytes);
             foreach (var (_, entry) in _content.Textures.Entries) Row(entry.Path, "texture", AssetType.Texture, entry.Scope, entry.Bytes);
+            foreach (var (_, entry) in _content.Sounds.Entries) Row(entry.Path, "sound", AssetType.Sound, entry.Scope, entry.Bytes);
+            foreach (var (_, entry) in _content.Effects.Entries) Row(entry.Path, "effect", AssetType.Effect, entry.Scope, entry.Bytes);
             foreach (var (path, kind, canReload) in _content.Cached)
-                if (kind != "texture") Row(path, kind, null, AssetScope.Game, 0, canReload ? "" : "  (no hot reload)");
+                if (kind is not ("texture" or "sound" or "effect")) Row(path, kind, null, AssetScope.Game, 0, canReload ? "" : "  (no hot reload)");
             int built = 0;
             foreach (var (_, entry) in _renderer.Meshes.Entries) if (entry.Path.IsEmpty) built++;
-            Log.Info(LogCat.Console, $"{n} asset(s) listed, {bytes / (1024.0 * 1024.0):F1} MB of meshes and textures; {built} built mesh(es) " +
+            Log.Info(LogCat.Console, $"{n} asset(s) listed, {bytes / (1024.0 * 1024.0):F1} MB; {built} built mesh(es) " +
                                      $"(terrain, brushes); {_renderer.Releases.Evicted} evicted so far; upload budget {_renderer.Budget.MillisecondsPerFrame:F1} ms, " +
                                      $"{_renderer.Budget.TotalDeferred} load(s) put off to a later frame");
         });
