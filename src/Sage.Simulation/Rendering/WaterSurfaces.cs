@@ -249,7 +249,7 @@ internal static class WaterShading
     {
         "WaterInvViewProj", "WaterViewProj", "WaterCamera", "WaterViewport", "WaterCount", "WaterRect", "WaterLevel",
         "WaterColour", "WaterWaves", "WaterMore", "WaterHorizon", "WaterZenith", "WaterFog", "WaterSunDir",
-        "WaterSunColour", "WaterSky", "WaterLight", "WaterUnder", "WaterUnderTint",
+        "WaterSunColour", "WaterSky", "WaterLight", "WaterUnder", "WaterUnderTint", "WaterFogParams",
     };
 
     // The four ripples a surface is made of: turned from the look's direction by `Turn` radians, `Length`
@@ -300,6 +300,17 @@ internal static class WaterShading
 
     // How much of the bottom the water's colour hides, looking through `metres` of it.
     public static float DepthFog(float density, float metres) => 1f - MathF.Exp(-MathF.Max(density, 0f) * MathF.Max(metres, 0f));
+
+    // How much of the air's fog covers a surface `metres` away: `FogMath.Factor`, in the shaders' form (common.fxh
+    // `FogFactor`), from what they are given (`FogParams`: start, end, on, exp²) and nothing when the fog is off.
+    public static float Fog(Vector4 fogParams, float metres)
+    {
+        float x = MathF.Max(metres - fogParams.X, 0f);
+        float linear = Math.Clamp(x / MathF.Max(fogParams.Y - fogParams.X, 0.001f), 0f, 1f);
+        float k = fogParams.W * x;
+        float exp2 = Math.Clamp(1f - MathF.Pow(2f, -k * k), 0f, 1f);
+        return (fogParams.W > 0f ? exp2 : linear) * fogParams.Z;
+    }
 
     // How much of the surface shows where the bottom is `depth` metres under it: none at the waterline,
     // all of it from `shoreFade` down (a smoothstep). A shore fade of 0 is a hard edge.

@@ -342,6 +342,21 @@ public class WaterSurfaceTests
             Assert.Contains(param, declared);
     }
 
+    // The water goes into the fog with the ground beside it (#633): water.fx's factor is FogMath's, at the
+    // metres to the surface, in both modes, and nothing when the view has no fog.
+    [Fact]
+    public void TheWatersFogIsTheScenesAtTheSameDistance()
+    {
+        const float start = 40f, end = 300f;
+        foreach (var (mode, density) in new[] { (FogMode.Linear, 0f), (FogMode.Exp2, 0f), (FogMode.Exp2, 0.01f) })
+        {
+            var fog = new Vector4(start, end, 1f, FogMath.ShaderParam(mode, start, end, density));
+            foreach (float metres in new[] { 0f, 39f, 40f, 90f, 170f, 299f, 300f, 5000f })
+                Assert.Equal(FogMath.Factor(mode, metres, start, end, density), WaterShading.Fog(fog, metres), 3);
+            Assert.Equal(0f, WaterShading.Fog(fog with { Z = 0f }, 5000f));
+        }
+    }
+
     // A look's numbers are checked as it loads, each an error at its line.
     [Fact]
     public void ABadLook_IsALoadError()

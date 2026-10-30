@@ -1,15 +1,15 @@
 // Water surfaces and the underwater view (issue #411): the post chain's water step, drawn after the views
 // over `sage:scene` with this frame's `sage:depth` (the depth hook, issue #316). See Renderer.Water.cs for
 // why it is a post step, and WaterShading (Sage.Simulation) for the curves: `WaveNormal`, `Fresnel`,
-// `DepthFog`, `ShoreFade` and the underwater fog are its functions of the same names, line for line, and
-// tested there.
+// `DepthFog`, `ShoreFade`, `FogFactor` (its `Fog`) and the underwater fog are its functions of the same names,
+// line for line, and tested there.
 //
 // Per pixel: the main view's ray meets the nearest surface's plane in front of what the scene drew.
 // From above, the surface shows the bottom (bent by the ripples, fogged by the water the ray crosses),
 // reflects the shore by a short march through the depth buffer and the sky where that finds nothing,
-// glints in the sun, and fades out where the bottom comes up to the waterline. From below, it shows what
-// is above, bent. With the camera under water (WaterUnderTint.w) everything is tinted and fogged by the
-// metres of water the ray crosses.
+// glints in the sun, goes into the air's fog by its distance as the lit shaders do, and fades out where the
+// bottom comes up to the waterline. From below, it shows what is above, bent. With the camera under water
+// (WaterUnderTint.w) everything is tinted and fogged by the metres of water the ray crosses.
 //
 // Every Water* parameter is set by the engine (Renderer.SetWaterParams); the three Reflection ones are the
 // material's (engine_content/data/water.json, sage:post_water). Positions are relative to the camera.
@@ -43,13 +43,14 @@ float4 WaterViewport;        // the main view's rectangle in the picture: u0, v0
 float WaterCount;            // surfaces in the arrays below, nearest first (at most 4)
 float3 WaterHorizon;         // the sky the surface reflects (sky.fx's gradient and haze)
 float3 WaterZenith;
-float3 WaterFog;
+float3 WaterFog;             // the fog's colour as the picture has it: past the tonemap
 float3 WaterSunDir;          // the way the light travels
 float3 WaterSunColour;
 float4 WaterSky;             // x: the horizon hazes to the fog colour (0/1); y: the haze band
 float3 WaterLight;           // WaterShading.Light: what the water's own colour is lit by
 float4 WaterUnder;           // rgb: the underwater colour, lit; w: its density
 float4 WaterUnderTint;       // rgb: the underwater tint; w: 1 with the camera under water
+float4 WaterFogParams;       // common.fxh's FogParams: start, end, on (0/1), exp² (0: linear)
 
 float ReflectionDistance;    // the material's: how far the reflected ray is marched on screen (m)
 float ReflectionThickness;   // how far behind what the screen shows the ray may pass and still hit it (m)
@@ -137,6 +138,17 @@ float ShoreFade(float shore, float depth)
 {
     float hard = depth > 0 ? 1 : 0;
     return shore > 0 ? Smooth01(depth / shore) : hard;
+}
+
+// WaterShading.Fog: common.fxh's `FogFactor` and on/off, so the water and the ground beside it go into
+// the fog together.
+float FogFactor(float distance)
+{
+    float x = max(distance - WaterFogParams.x, 0);
+    float linearFog = saturate(x / max(WaterFogParams.y - WaterFogParams.x, 0.001));
+    float k = WaterFogParams.w * x;
+    float exp2Fog = saturate(1 - exp2(-k * k));
+    return (WaterFogParams.w > 0 ? exp2Fog : linearFog) * WaterFogParams.z;
 }
 
 // The sky in direction `d`: sky.fx's gradient, hazed to the fog colour along the horizon.
@@ -253,7 +265,7 @@ float4 PSWater(VSOutput input) : COLOR0
             float glint = pow(saturate(dot(r, -WaterSunDir)), 180) * more.z;
 
             float depth = sky ? Far : level.x - scenePoint.y;
-            float3 shaded = lerp(water, reflected, f) + WaterSunColour * glint;
+            float3 shaded = lerp(lerp(water, reflected, f) + WaterSunColour * glint, WaterFog, FogFactor(best));
             result = lerp(scene, shaded, ShoreFade(level.w, depth));
         }
         else

@@ -15,9 +15,9 @@ namespace Sage.Client;
 // nearest surface's plane in front of what the scene drew there, and shades it: ripples (four travelling
 // sine waves), the bottom seen through it bent by them and fogged by how much water the ray crosses, the
 // sky (and, by a short screen-space march along the reflected ray, the shore) reflected by Fresnel, the
-// sun's glint, and a fade where the bottom comes up to the waterline. With the camera under a volume the
-// whole view is tinted and fogged by the water instead, and its surface seen from below shows what is
-// above it, bent. The cost: one full-screen pass and the depth pass, only while water is in view.
+// sun's glint, the air's fog by the surface's distance, and a fade where the bottom comes up to the waterline.
+// With the camera under a volume the whole view is tinted and fogged by the water instead, and its surface seen
+// from below shows what is above it, bent. The cost: one full-screen pass and the depth pass, only while water is in view.
 //
 // **The reflection is the sky plus screen space**, not a mirrored second camera: the shore, trees and
 // huts on screen are found by marching the reflected ray through the depth buffer; what is off screen,
@@ -60,6 +60,17 @@ public sealed partial class Renderer
         _skyMeanOf = texture;
         _skyMean = sum / half;
         return _skyMean;
+    }
+
+    // The fog's colour as the picture has it: the scene fogs before the tonemap and the water step runs after
+    // it, so under `r_hdr` the two would part by up to 0.14 a channel at a mid colour.
+    private Vector3 FogInPicture(Vector3 fog)
+    {
+        int tonemap = _post.Options.Hdr ? _post.StepMaterial(PostStepKind.Tonemap) : -1;
+        var m = tonemap < 0 ? null : Materials.Get(tonemap);
+        if (m == null || m.IsError) return fog;   // no tonemap, or a step drawn as a plain copy
+        float exposure = m.Effect.Effect.Parameters["HdrExposure"]?.GetValueSingle() ?? 0f;
+        return new Vector3(PostCurves.Tonemap(fog.X, exposure), PostCurves.Tonemap(fog.Y, exposure), PostCurves.Tonemap(fog.Z, exposure));
     }
 
     // Whether the frame has water for the chain to draw: `r_water`, a main view, and a surface in sight or
@@ -116,7 +127,8 @@ public sealed partial class Renderer
         var painted = env.DrawSky && !env.Skybox.IsEmpty ? SkyMean(env.Skybox) : null;
         p["WaterHorizon"]?.SetValue(painted * env.SkyboxTint ?? env.ClearColor);
         p["WaterZenith"]?.SetValue(painted * env.SkyboxTint ?? (env.DrawSky ? env.Zenith : env.ClearColor));
-        p["WaterFog"]?.SetValue(env.FogColor);
+        p["WaterFog"]?.SetValue(FogInPicture(env.FogColor));
+        p["WaterFogParams"]?.SetValue(env.FogParams);
         p["WaterSunDir"]?.SetValue(env.SunDirection);
         p["WaterSunColour"]?.SetValue(env.SunColor);
         p["WaterSky"]?.SetValue(new Vector4(env.DrawSky ? env.FogParams.Z : 0f, SkyRules.HazeBand, 0f, 0f));

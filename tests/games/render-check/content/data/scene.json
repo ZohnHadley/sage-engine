@@ -29,6 +29,17 @@
     ]
   },
 
+  // The same noon in a thick fog (issue #633, content/checks/water_fog.json): `sky_set rendercheck:foggy`
+  // switches to it. It ends four metres out, so the pool and the ground near the camera are all fog.
+  {
+    "type": "sky", "id": "foggy", "sunrise": 6, "sunset": 18, "lean": 0.3, "fogMode": "Linear",
+    "keys": [
+      { "hour": 12, "sun": [1, 1, 1], "ambientSky": [0.2, 0.2, 0.2], "ambientGround": [0.1, 0.1, 0.1],
+        "horizon": [0.55, 0.65, 0.85], "zenith": [0.15, 0.35, 0.85], "fog": [0.85, 0.6, 0.35],
+        "fogStart": 1, "fogEnd": 4, "shadow": 1 }
+    ]
+  },
+
   // The view: a camera that wins the screen, two metres up, looking north (-Z) level with the ground. It is
   // the scene's player, which is nothing but this camera: nothing walks, nothing turns.
   { "type": "prefab", "id": "eye", "name": "eye", "parts": { "camera": { "priority": 10 } } },
