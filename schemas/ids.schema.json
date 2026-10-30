@@ -1332,7 +1332,9 @@
       "enum": [
         "day",
         "noon",
+        "painted",
         "rendercheck:noon",
+        "rendercheck:painted",
         "sandbox:day"
       ]
     },
@@ -3094,7 +3096,9 @@
       "enum": [
         "day",
         "noon",
+        "painted",
         "rendercheck:noon",
+        "rendercheck:painted",
         "sandbox:day"
       ]
     },

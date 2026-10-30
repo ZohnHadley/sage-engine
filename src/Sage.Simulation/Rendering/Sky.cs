@@ -64,6 +64,11 @@ public sealed class SkyRecord
     [Property(Min = 0, Max = 90, Unit = "deg", Tooltip = "How high the pole star is: the stars turn about an axis this far above the northern (-z) horizon, once a day (issue 4n-16)", Category = "Stars")]
     public float StarTilt = 45f;
 
+    [AssetKind("texture"), Property(Tooltip = "A painted sky behind everything (issue #630): one equirectangular panorama (2:1; straight up along the top row, the horizon across the middle, -z at the centre), drawn in place of the horizon-to-zenith gradient, with clouds, haze, the sun, the moon and the stars over it. Empty: the gradient", Category = "Skybox")]
+    public AssetPath Skybox;
+    [AssetKind("texture"), Property(Tooltip = "A second panorama for the night, faded in as the stars come out (SkyRules.StarsAt). Empty: the day picture all night, darkened by the keys' skyboxTint", Category = "Skybox")]
+    public AssetPath SkyboxNight;
+
     [Property(Tooltip = "The keyframes, by hour; any order, any number. One is a sky that never changes")]
     public List<SkyKey> Keys = new();
 }
@@ -94,6 +99,8 @@ public sealed class SkyKey
     public float FogDensity;
     [Property(Min = 0, Max = 1, Tooltip = "How dark shadows are (0: none, 1: full); the sun's own height fades it too")]
     public float Shadow = 1f;
+    [Property(Tooltip = "With a skybox only: what the panorama is multiplied by at this hour (darker at night, warmer at dusk; issue #630)")]
+    public Vector3 SkyboxTint = Vector3.One;
 }
 
 // What the sky is at one moment: the output of `SkyRules.Evaluate`.
@@ -248,6 +255,17 @@ public static class SkyRules
         if (cloudAlpha > 0f) sky = Vector3.Lerp(sky, cloud, cloudAlpha);
         if (environment.Fog) sky = Vector3.Lerp(sky, environment.FogColor, Haze(d.Y, environment.HazeBand, environment.HazeAbove));
         return sky + environment.SunColor * (SunDiscGain * SunDisc(d, environment.SunDirection) * (1f - CloudBlock * cloudAlpha));
+    }
+
+    // Where a panorama (`SkyRecord.Skybox`, issue #630) is looked up for a view direction: equirectangular,
+    // u round the horizon with -z at the centre and +x to its right, v from straight up (0) to straight down
+    // (1). `sky.fx` repeats it. `ColorAt` has no picture to sample, so it keeps the gradient.
+    public static Vector2 SkyboxUv(Vector3 direction)
+    {
+        var d = Vector3.Normalize(direction);
+        float u = MathF.Atan2(d.X, -d.Z) / (2f * MathF.PI) + 0.5f;
+        float v = MathF.Acos(Math.Clamp(d.Y, -1f, 1f)) / MathF.PI;
+        return new Vector2(u, v);
     }
 
     // ---- Moon, clouds, turning stars (issue 4n-16) ------------------------------------------------------
@@ -432,6 +450,14 @@ public static class SkyRules
         environment.CloudCover = CloudCoverOf(records, weather);
         environment.CloudScale = sky.CloudScale;
         environment.CloudScroll = CloudScroll(sky, day * 24.0 + hour);
+
+        // Issue #630: the painted sky, tinted by the hour's keys and the weather's sky tint, and the night's
+        // picture as much as the stars are out.
+        environment.Skybox = sky.Skybox;
+        environment.SkyboxNight = sky.SkyboxNight;
+        var (ka, kb, kt) = Bracket(sky.Keys, hour - Math.Floor(hour / 24.0) * 24.0);
+        environment.SkyboxTint = Vector3.Lerp(ka.SkyboxTint, kb.SkyboxTint, kt) * skyTint;
+        environment.SkyboxNightMix = state.Stars;
     }
 
     private static float Smooth(float x)

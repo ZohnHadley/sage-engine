@@ -361,8 +361,8 @@ jobs:
           # The render check (issue #318): its fixed scene drawn, read back and checked by r_pixelcheck. Without
           # shaders every view is its clear colour, so only the checks of that run here; the drawing job runs the
           # rest with the Windows job's shaders. This proves the readback, the regions and the specs in the host.
-          SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+r_shadows 1\n+wait 2\n+r_pixelcheck checks/drawing.json\n+wait\n+r_pixelcheck checks/water.json\n+wait\n+r_post 1\n+r_post_vignette 0\n+wait 1\n+r_pixelcheck checks/post.json\n+wait 1' \
-            tools/smoke_run.sh "$host" tests/games/render-check 5 Shaders Audio Records Input
+          SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+r_shadows 1\n+wait 2\n+r_pixelcheck checks/drawing.json\n+wait\n+r_pixelcheck checks/water.json\n+wait\n+r_post 1\n+r_post_vignette 0\n+wait 1\n+r_pixelcheck checks/post.json\n+wait 1\n+r_post 0\n+sky_set rendercheck:painted\n+wait 1\n+r_pixelcheck checks/skybox.json\n+wait 1' \
+            tools/smoke_run.sh "$host" tests/games/render-check 8 Shaders Audio Records Input
 
       # Every RPG kit screen drawn by the real client (issue #355): tests/games/kit-screens/screens.txt, each opened
       # over the kit-screens game at 960x540 and its frame compared, a grid of cell colours, with its golden in
@@ -586,8 +586,8 @@ jobs:
   # a floating slab shading a white ground, orange fog in the distance. `r_pixelcheck <spec> shaders` reads the
   # frame back and checks named regions against tests/games/render-check/content/checks/*.json (PixelCheck,
   # headless; RenderCheckSceneTests proves what each region looks at): the sky pass's colour, the shadow darker
-  # than the sunlit ground beside it, the far ground the fog's colour, a pool's water surface drawn (#592), and
-  # with `r_post 1` the scene's grey grade.
+  # than the sunlit ground beside it, the far ground the fog's colour, a pool's water surface drawn (#592), with
+  # `r_post 1` the scene's grey grade, and under `sky_set rendercheck:painted` a painted skybox (#630).
   # A failed check is an ERROR, so the smoke run fails; `shaders` makes missing shaders an error rather than a
   # skip, and Shaders is not an allowed category here: every effect must load. The frames are uploaded.
   drawing:
@@ -629,12 +629,12 @@ jobs:
           test -s src/Sage.Host/bin/Development/net8.0/Content/shaders/lit.mgfxo
           # 640x360, the specs' frame; the clock stopped at the scene's noon; sun shadows on (off by default).
           # Then post-processing on with the vignette off, so the scene's grey grade is the visible step.
-          SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+r_shadows 1\n+wait 3\n+r_pixelcheck checks/drawing.json shaders\n+wait\n+r_pixelcheck checks/water.json shaders\n+wait\n+r_post 1\n+r_post_vignette 0\n+wait 2\n+r_pixelcheck checks/post.json shaders\n+wait 1' \
-            tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 tests/games/render-check 8 Audio Records Input
+          SAGE_SMOKE_COMMANDS=$'+vid_width 640\n+vid_height 360\n+sv_cheats 1\n+time_scale 0\n+r_shadows 1\n+wait 3\n+r_pixelcheck checks/drawing.json shaders\n+wait\n+r_pixelcheck checks/water.json shaders\n+wait\n+r_post 1\n+r_post_vignette 0\n+wait 2\n+r_pixelcheck checks/post.json shaders\n+wait 1\n+r_post 0\n+sky_set rendercheck:painted\n+wait 1\n+r_pixelcheck checks/skybox.json shaders\n+wait 1' \
+            tools/smoke_run.sh src/Sage.Host/bin/Development/net8.0 tests/games/render-check 10 Audio Records Input
           log=$(ls -t user/rendercheck/logs/sage-*.log | head -1)
           grep "Pixel check" "$log" | sed 's/^.*Render    //'
-          # All three specs ran, with shaders: a run that never reached them must not pass.
-          test "$(grep -c 'Pixel check checks/.* with shaders: .* 0 failed' "$log")" -eq 3
+          # All four specs ran, with shaders: a run that never reached them must not pass.
+          test "$(grep -c 'Pixel check checks/.* with shaders: .* 0 failed' "$log")" -eq 4
 
       - name: Upload the frames and the log
         if: always()

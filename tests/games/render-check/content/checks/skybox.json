@@ -1,0 +1,21 @@
+{
+  // The render check's frame under the painted sky (issue #630), after `sky_set rendercheck:painted`, with
+  // `r_post 0`: the sky region shows the panorama's pink upper half where the gradient was blue, and the
+  // fogged ground is unchanged, since the picture only replaces the gradient, and the pool reflects the
+  // panorama's mean sky colour (pink) where under the gradient it reflected blue: r-b about +0.07 here, -0.22
+  // under the gradient (measured 2026-10-30). The regions are drawing.json's and water.json's.
+  // RenderCheckSceneTests proves the sky region reads the panorama's upper half, above the haze.
+  "width": 640, "height": 360,
+  "regions": [
+    { "name": "sky",    "rect": [0.87, 0.08, 0.10, 0.10], "sees": "sky" },
+    { "name": "fog",    "rect": [0.30, 0.508, 0.40, 0.022], "sees": "fog" },
+    { "name": "water",  "rect": [0.72, 0.66, 0.14, 0.08], "sees": "water" }
+  ],
+  "checks": [
+    { "name": "the sky shows the painted panorama", "region": "sky", "when": "shaders", "color": [0.84, 0.35, 0.59], "tolerance": 0.08 },
+    { "name": "the far ground is still the fog's colour", "region": "fog", "when": "shaders", "color": [0.85, 0.6, 0.35], "tolerance": 0.08 },
+    { "name": "the pool reflects the painted sky, not the gradient", "region": "water", "when": "shaders", "measure": "r-b", "min": -0.05 },
+    // Without shaders there is no sky pass: every view is its clear colour, the sky's horizon.
+    { "name": "without shaders the sky region is the clear colour", "region": "sky", "when": "noShaders", "color": [0.55, 0.65, 0.85], "tolerance": 0.02 }
+  ]
+}
