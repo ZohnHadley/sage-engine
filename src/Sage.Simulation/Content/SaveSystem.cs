@@ -1346,6 +1346,18 @@ public sealed partial class SaveSystem
     private List<SaveSlot> ScanSlots()
     {
         _slotsVersion++;
+        // The saves still on their way to disk (issue #602), taken before the folders are (issue #638): the
+        // writer moves a finished save's folder into place before it leaves this list, so each one is either
+        // here or already on disk when the folders are read. Read the other way round, a save landing between
+        // the two was in neither.
+        static string Full(string? path) => path == null ? "" : Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        string root = Full(Root);
+        List<SaveSlot>? pendingHere = null;
+        lock (_writerGate)
+            foreach (var pending in _pendingSlots)
+                if (string.Equals(Full(Path.GetDirectoryName(Full(pending.Directory))), root, StringComparison.OrdinalIgnoreCase))
+                    (pendingHere ??= new()).Add(pending.Slot);
+
         var slots = new List<SaveSlot>();
         if (Directory.Exists(Root))
             foreach (string directory in Directory.EnumerateDirectories(Root))
@@ -1356,17 +1368,13 @@ public sealed partial class SaveSystem
                 if (!File.Exists(headerPath)) continue;
                 slots.Add(ReadSlot(name, directory, () => JsonNode.Parse(File.ReadAllText(headerPath))));
             }
-        // The saves still on their way to disk (issue #602), as their headers say: listed now, in place of
-        // what their folders hold until the write lands.
-        static string Full(string? path) => path == null ? "" : Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
-        string root = Full(Root);
-        lock (_writerGate)
-            foreach (var pending in _pendingSlots)
-                if (string.Equals(Full(Path.GetDirectoryName(Full(pending.Directory))), root, StringComparison.OrdinalIgnoreCase))
-                {
-                    slots.RemoveAll(s => SameSlot(s.Name, pending.Slot.Name));
-                    slots.Add(pending.Slot);
-                }
+        // Those pending, as their headers say: listed in place of what their folders hold until the write lands.
+        if (pendingHere != null)
+            foreach (var pending in pendingHere)
+            {
+                slots.RemoveAll(s => SameSlot(s.Name, pending.Name));
+                slots.Add(pending);
+            }
         slots.Sort((a, b) =>
         {
             int byTime = b.SavedUtc.CompareTo(a.SavedUtc);
